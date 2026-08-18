@@ -1,0 +1,262 @@
+/// <reference types="vite/client" />
+import { convexTest } from "convex-test";
+import { describe, expect, test } from "vitest";
+import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import schema from "./schema";
+
+const modules = import.meta.glob("./**/*.ts");
+
+/** Only the words these tests actually need. */
+const WORDS = ["AD", "DO", "AT", "TO", "A", "I", "ACE", "CAM", "EMU", "EM"];
+
+const at = (x: number, y: number, letter: string, isBlank = false) => ({
+  x,
+  y,
+  letter,
+  isBlank,
+});
+
+/** A two-player game, started, with both racks stocked with `letters`. */
+async function twoPlayerGame(letters: string[]) {
+  const t = convexTest(schema, modules);
+
+  // Better Auth mirrors its user into this table via a trigger; the tests
+  // create the mirrored row directly so the game logic can be exercised
+  // without standing up the auth component.
+  const [alice, bob] = await t.run(async (ctx) => {
+    const a = await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+    const b = await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
+    for (const word of WORDS) await ctx.db.insert("words", { word });
+    return [a, b];
+  });
+
+  const asAlice = t.withIdentity({ subject: "auth|alice" });
+  const asBob = t.withIdentity({ subject: "auth|bob" });
+
+  const gameId = await asAlice.mutation(api.games.createGame, { playerCount: 2 });
+  await asBob.mutation(api.games.joinGame, { gameId });
+
+  // Hand both players a known rack so tests are about rules, not luck.
+  await t.run(async (ctx) => {
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_game", (q) => q.eq("gameId", gameId))
+      .take(4);
+    for (const p of players) {
+      await ctx.db.patch("players", p._id, { letters: [...letters], blank: true });
+    }
+  });
+
+  return { t, gameId, asAlice, asBob, alice, bob };
+}
+
+describe("placeTiles", () => {
+  test("scores a legal opening 2x2 and banks it to the player", async () => {
+    const { gameId, asAlice, alice, t } = await twoPlayerGame(["A", "D", "D", "O"]);
+
+    const result = await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
+    });
+
+    expect(result).toEqual({ score: 8, squares: [2] });
+
+    const player = await t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .unique(),
+    );
+    expect(player?.score).toBe(8);
+  });
+
+  test("refills the rack back to full after a play", async () => {
+    const { gameId, asAlice, alice, t } = await twoPlayerGame(["A", "D", "D", "O"]);
+
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
+    });
+
+    const player = await t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .unique(),
+    );
+    expect(player?.letters).toHaveLength(7);
+    expect(player?.blank).toBe(true);
+  });
+
+  test("rejects a play from the player whose turn it is not", async () => {
+    const { gameId, asBob } = await twoPlayerGame(["A", "D"]);
+
+    await expect(
+      asBob.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(0, 0, "A"), at(1, 0, "D")],
+      }),
+    ).rejects.toThrow("Not your turn");
+  });
+
+  test("rejects letters the player does not hold", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+
+    await expect(
+      asAlice.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(0, 0, "A"), at(1, 0, "T")],
+      }),
+    ).rejects.toThrow("do not hold the letter T");
+  });
+
+  test("rejects a word that is not in the dictionary", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["D", "A"]);
+
+    await expect(
+      asAlice.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(0, 0, "D"), at(1, 0, "A")],
+      }),
+    ).rejects.toThrow("Not a word: DA");
+  });
+
+  test("rejects a second play that does not touch the mass", async () => {
+    const { gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "T", "O"]);
+
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+
+    await expect(
+      asBob.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(20, 20, "T"), at(21, 20, "O")],
+      }),
+    ).rejects.toThrow("connect to the tiles already on the board");
+  });
+
+  test("lets the opponent complete a square and take the whole thing", async () => {
+    const { gameId, asAlice, asBob, bob, t } = await twoPlayerGame(["A", "D", "D", "O"]);
+
+    // Alice builds three corners of the 2x2.
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D")],
+    });
+
+    // Bob closes it with one tile and scores 1 + 4.
+    const result = await asBob.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(1, 1, "O")],
+    });
+    expect(result).toEqual({ score: 5, squares: [2] });
+
+    const player = await t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", bob))
+        .unique(),
+    );
+    expect(player?.score).toBe(5);
+  });
+
+  test("rotates the turn to the next seat", async () => {
+    const { gameId, asAlice, t } = await twoPlayerGame(["A", "D"]);
+
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.currentSeat).toBe(1);
+    expect(game?.turnNumber).toBe(1);
+    expect(game?.tileCount).toBe(2);
+  });
+
+  test("only one blank may be played per turn", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+
+    await expect(
+      asAlice.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(0, 0, "A", true), at(1, 0, "D", true)],
+      }),
+    ).rejects.toThrow("Only one blank per turn");
+  });
+
+  test("a blank scores no point but still counts in the square", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D", "D"]);
+
+    const result = await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O", true)],
+    });
+
+    // 3 tile points (the blank scores 0) + 4 for the 2x2
+    expect(result).toEqual({ score: 7, squares: [2] });
+  });
+});
+
+describe("getGame", () => {
+  test("hides the opponent's letters but reveals your own", async () => {
+    const { gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D"]);
+
+    const view = await asAlice.query(api.games.getGame, { gameId });
+
+    const players = view!.players;
+    const mine = players.find((p: { userId: Id<"users"> }) => p.userId === alice);
+    const theirs = players.find((p: { userId: Id<"users"> }) => p.userId === bob);
+
+    expect(mine?.letters).toEqual(["A", "D"]);
+    expect(theirs?.letters).toBeNull();
+    expect(theirs?.letterCount).toBe(2);
+  });
+});
+
+describe("end of game", () => {
+  test("finishes only after the round completes, so seats get equal turns", async () => {
+    const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "T", "O"]);
+
+    // Drop the threshold to something these two turns will cross.
+    await t.run(async (ctx) => {
+      await ctx.db.patch("games", gameId, { endThreshold: 2 });
+    });
+
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+
+    // Alice crossed the threshold at seat 0, so Bob still gets his turn.
+    let game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("active");
+    expect(game?.endsAfterTurn).toBe(1);
+
+    await asBob.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 1, "D"), at(1, 1, "O")],
+    });
+
+    game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("finished");
+  });
+
+  test("rejects a play once the game has finished", async () => {
+    const { t, gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("games", gameId, { status: "finished" });
+    });
+
+    await expect(
+      asAlice.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(0, 0, "A"), at(1, 0, "D")],
+      }),
+    ).rejects.toThrow("not active");
+  });
+});

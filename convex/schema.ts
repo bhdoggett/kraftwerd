@@ -1,0 +1,101 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export const gameStatus = v.union(
+  v.literal("lobby"),
+  v.literal("active"),
+  v.literal("finished"),
+);
+
+export const placement = v.object({
+  x: v.number(),
+  y: v.number(),
+  letter: v.string(),
+  isBlank: v.boolean(),
+});
+
+export default defineSchema({
+  /**
+   * App-level mirror of the Better Auth user, kept in sync by the triggers in
+   * `auth.ts`. Game documents reference this row, not the component's, so the
+   * game schema does not depend on the auth provider.
+   */
+  users: defineTable({
+    /** The Better Auth user id, which is also the JWT subject. */
+    authId: v.string(),
+    email: v.optional(v.string()),
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+  }).index("by_authId", ["authId"]),
+
+  games: defineTable({
+    status: gameStatus,
+    boardSize: v.number(),
+    /** Game ends once this many tiles are on the board (design.md §6). */
+    endThreshold: v.number(),
+    playerCount: v.number(),
+    /** Seat whose turn it is; seats are 0..playerCount-1. */
+    currentSeat: v.number(),
+    /** Increments once per play, across all players. */
+    turnNumber: v.number(),
+    /** Denormalised: Convex has no count operator, and §6 reads this often. */
+    tileCount: v.number(),
+    /**
+     * Set the moment `tileCount` crosses `endThreshold`. The game finishes
+     * after this turn, so the round completes and every player has had an
+     * equal number of turns (design.md §6).
+     */
+    endsAfterTurn: v.optional(v.number()),
+    createdBy: v.id("users"),
+  }).index("by_status", ["status"]),
+
+  /** One row per player per game: seat, score, and their private rack. */
+  players: defineTable({
+    gameId: v.id("games"),
+    userId: v.id("users"),
+    seat: v.number(),
+    score: v.number(),
+    letters: v.array(v.string()),
+    /** The single blank slot, refilled every turn (design.md §5). */
+    blank: v.boolean(),
+  })
+    .index("by_game", ["gameId"])
+    .index("by_game_and_user", ["gameId", "userId"])
+    .index("by_game_and_seat", ["gameId", "seat"])
+    .index("by_user", ["userId"]),
+
+  /**
+   * One row per placed tile. A tiles array on the game document would hit the
+   * 1MB limit and rewrite the whole board on every play.
+   */
+  tiles: defineTable({
+    gameId: v.id("games"),
+    x: v.number(),
+    y: v.number(),
+    letter: v.string(),
+    isBlank: v.boolean(),
+    placedBy: v.id("users"),
+    turnNumber: v.number(),
+  })
+    .index("by_game", ["gameId"])
+    .index("by_game_and_position", ["gameId", "x", "y"]),
+
+  /** Turn history, for replay and for showing what the last player scored. */
+  turns: defineTable({
+    gameId: v.id("games"),
+    turnNumber: v.number(),
+    userId: v.id("users"),
+    placements: v.array(placement),
+    words: v.array(v.string()),
+    squares: v.array(v.number()),
+    score: v.number(),
+  }).index("by_game_and_turn", ["gameId", "turnNumber"]),
+
+  /**
+   * The dictionary, loaded via `npx convex import` rather than bundled: 59k
+   * words is far too much to ship inside a function module.
+   */
+  words: defineTable({
+    word: v.string(),
+  }).index("by_word", ["word"]),
+});
