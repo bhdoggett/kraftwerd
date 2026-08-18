@@ -1,0 +1,145 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.preview {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.previewScore {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--text-inverse);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-4);
+  font-weight: 600;
+  transition: background-color 90ms ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.secondary {
+  composes: button;
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+.error {
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.notice {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.blankPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.blankLetter {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.blankLetter:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.blankPrompt {
+  width: 100%;
+  margin: 0 0 var(--space-1);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.hint {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.88rem;
+}
+
+/* The tile that follows the pointer during a drag. Centred on the pointer and
+   click-through so elementFromPoint resolves the board cell underneath. */
+.dragTile {
+  position: fixed;
+  z-index: 100;
+  translate: -50% -50%;
+  width: 42px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--tile-edge);
+  border-radius: var(--radius);
+  background: var(--tile-face);
+  color: var(--tile-text);
+  font-size: 1.15rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-lift);
+  pointer-events: none;
+  opacity: 0.92;
+}

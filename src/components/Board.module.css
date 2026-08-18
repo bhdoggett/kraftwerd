@@ -1,0 +1,89 @@
+.viewport {
+  overflow: auto;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.06);
+  max-height: 70vh;
+}
+
+.grid {
+  display: grid;
+  gap: 1px;
+  padding: var(--space-2);
+  background: transparent;
+  width: max-content;
+}
+
+.cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  padding: 0;
+  border: 1px solid var(--cell-line);
+  border-radius: 3px;
+  background: var(--cell-empty);
+  display: grid;
+  place-items: center;
+  font-weight: 650;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--tile-text);
+  transition:
+    background-color 90ms ease,
+    transform 90ms ease;
+}
+
+.cell:disabled {
+  cursor: default;
+}
+
+/* An empty cell that can accept the currently selected letter. Armed cells
+   are tinted the whole time a tile is in hand, so it is obvious where the
+   letter can go rather than only revealing on hover. */
+.armed {
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--cell-empty));
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--cell-line));
+}
+
+.playable:not(:disabled):hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  transform: scale(1.06);
+}
+
+.tile {
+  background: var(--tile-face);
+  border: 1px solid var(--tile-edge);
+  box-shadow: var(--shadow);
+  position: relative;
+}
+
+.blank {
+  background: var(--tile-blank-face);
+  border-color: var(--tile-blank-edge);
+}
+
+/* Placed this turn, not yet submitted. */
+.pending {
+  background: var(--pending-soft);
+  border-color: var(--pending);
+  border-style: dashed;
+  color: var(--pending);
+}
+
+.pending:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
+}
+
+/* Ownership stripe along the bottom edge of a committed tile. */
+.seat {
+  position: absolute;
+  inset: auto 3px 2px 3px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.empty {
+  color: transparent;
+}

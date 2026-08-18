@@ -1,0 +1,61 @@
+.rack {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-3);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.tile {
+  /* Stop the browser treating a drag off a tile as a scroll gesture. */
+  touch-action: none;
+  width: 42px;
+  height: 46px;
+  border: 1px solid var(--tile-edge);
+  border-radius: var(--radius);
+  background: var(--tile-face);
+  color: var(--tile-text);
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow);
+  transition:
+    transform 90ms ease,
+    box-shadow 90ms ease;
+}
+
+.tile:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+
+.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  transform: translateY(-3px);
+}
+
+.blank {
+  background: var(--tile-blank-face);
+  border-color: var(--tile-blank-edge);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.spent {
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+.label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-right: var(--space-1);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

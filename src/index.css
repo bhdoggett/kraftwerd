@@ -1,0 +1,129 @@
+/* ---------------------------------------------------------------------------
+   Design tokens. Everything visual in the app resolves to a variable here;
+   component CSS modules never hard-code a colour or a spacing value.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Surfaces, light theme */
+  --surface: #fdfcfa;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f1efe9;
+  --border: #ddd8cc;
+  --border-strong: #bdb6a4;
+
+  /* Text */
+  --text: #23201a;
+  --text-muted: #6d675b;
+  --text-inverse: #fdfcfa;
+
+  /* Board */
+  --cell-empty: #f7f5f0;
+  --cell-line: #e3ded1;
+  --tile-face: #f0e2c0;
+  --tile-edge: #cbb489;
+  --tile-text: #3a2f18;
+  --tile-blank-face: #e4e7ec;
+  --tile-blank-edge: #b9bfc9;
+
+  /* Accents */
+  --accent: #3f6f52;
+  --accent-hover: #345c44;
+  --accent-soft: #d9e7dd;
+  --pending: #b4632c;
+  --pending-soft: #f6e3d5;
+  --danger: #a33a2c;
+  --danger-soft: #f6dcd8;
+
+  /* Player seat colours, used for tile ownership dots */
+  --seat-0: #3f6f52;
+  --seat-1: #2f5d7c;
+  --seat-2: #8a5a2b;
+  --seat-3: #6d4370;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius: 6px;
+  --radius-lg: 10px;
+
+  --cell-size: 34px;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 8px rgb(0 0 0 / 0.04);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.14), 0 6px 16px rgb(0 0 0 / 0.1);
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #17161a;
+    --surface-raised: #201f24;
+    --surface-sunken: #111014;
+    --border: #33313a;
+    --border-strong: #4c4955;
+
+    --text: #eceaf0;
+    --text-muted: #9a95a5;
+    --text-inverse: #17161a;
+
+    --cell-empty: #1c1b21;
+    --cell-line: #2b2933;
+    --tile-face: #d8c69b;
+    --tile-edge: #a08d63;
+    --tile-text: #262010;
+    --tile-blank-face: #b9bfc9;
+    --tile-blank-edge: #8b919c;
+
+    --accent: #6aa17f;
+    --accent-hover: #7cb391;
+    --accent-soft: #24352c;
+    --pending: #d98a52;
+    --pending-soft: #3a2a1e;
+    --danger: #d97a6c;
+    --danger-soft: #3a221e;
+
+    --seat-0: #6aa17f;
+    --seat-1: #6f9fc4;
+    --seat-2: #c9975c;
+    --seat-3: #a985ad;
+
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.3);
+    --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.5), 0 6px 16px rgb(0 0 0 / 0.4);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+}

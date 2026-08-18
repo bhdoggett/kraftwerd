@@ -1,0 +1,134 @@
+.shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border);
+}
+
+.brandButton {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.main {
+  padding: var(--space-6);
+  flex: 1;
+}
+
+.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.link:hover {
+  text-decoration: none;
+}
+
+.signOut {
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.9rem;
+}
+
+.signOut:hover {
+  background: var(--surface-sunken);
+}
+
+/* --- sign in --- */
+
+.auth {
+  max-width: 360px;
+  margin: var(--space-8) auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+
+
+
+
+
+
+.error {
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.tagline {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  transition:
+    background-color 90ms ease,
+    box-shadow 90ms ease;
+}
+
+.google:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.google:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow);
+}
+
+.googleMark {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
