@@ -1,0 +1,318 @@
+# Word Craft — Design Spec (draft)
+
+Working name: **Word Craft**.
+
+Async turn-based word-square builder. Convex + React/Vite. Multi-account.
+
+Status: design recovered from pre-rename session. Locked decisions below are
+answered; **§9 Open** are not.
+
+---
+
+## 1. Core loop
+
+**2–4 players**, turn order fixed. Players share one large finite board. On your turn you place any number of
+tiles from your rack anywhere on the board. Every contiguous run of tiles you
+create or touch must spell a valid word. You score 1 point per tile you
+placed, plus a bonus for every filled square block your placement completes —
+including squares built mostly from your opponent's tiles.
+
+The game is not Scrabble. There are no letter values, no premium squares, no
+fixed board, no connectivity requirement, and the central mechanic (square
+construction) does not exist in Scrabble. IP exposure is limited to the name.
+
+## 2. Board
+
+- **Large finite grid.** 40×40 baseline. Rejected: infinite plane (pan/zoom,
+  sparse storage, "where am I" navigation — largest single frontend cost in
+  the project, and it removes late-game space competition).
+- Storage: dense representation is fine at this size. `tiles` as a flat array
+  or a per-cell document set — see §7.
+- No center-start rule. No connectivity rule.
+
+## 3. Placement legality
+
+A turn is legal iff **all** hold:
+
+1. Every placed tile lands on an empty cell.
+2. Placed tiles come from the player's rack (§5).
+3. After placement, **every maximal contiguous run of length ≥ 2** — both
+   horizontal and vertical, anywhere on the board — is in the dictionary.
+4. After placement, **every tile on the board forms a single orthogonally-
+   connected mass.**
+
+Rule 3 is the crossword rule, applied in both directions with no exceptions.
+Only runs intersecting placed tiles can have changed, so validation checks
+those runs, not the whole board.
+
+**Connectivity (rule 4).** The opening play establishes the mass; from then
+on every play by every player must touch it. Diagonal contact does not count.
+There is one shared structure, so all 2–4 players are in each other's way from
+move two onward, and "completer takes it" (§4.4) is live every turn.
+
+*This reverses an earlier "free islands" decision.* Free islands broke the
+game: since every tile scores 1 point regardless, word validity contributed no
+points at all, so scattering 8 unconnected tiles scored a guaranteed 8 — equal
+to a 2×2 word square — with no dictionary constraint whatsoever. Connectivity
+closes that hole for free: a tile touching the mass is adjacent to a tile,
+therefore sits in a run of ≥2, therefore must spell something.
+
+**One-letter runs.** A tile with no neighbours must itself be a word — so `A`
+and `I` only. This is reachable *only* on the opening play, since rule 4 gives
+every later tile a neighbour. Note that SCOWL lists all 26 letters as
+one-letter words (a spellchecker artifact); the build script strips all but
+A and I.
+
+**Consequence for 3×3s.** Rule 4 kills the trick of laying rows 1 and 3 with a
+gap and filling the middle later — row 3 would touch nothing. A 3×3 is 9 tiles
+against a rack of 8, so it always spans two turns, and the 8-tile intermediate
+state must itself be fully legal: the partial bottom row has to be a real word
+too. Verified end-to-end in `integration.test.ts` with `ACE/CAM/EMU`, which
+pays 20 on the first turn and 14 on the second.
+
+Consequence worth internalizing: a 2×2 block is four 2-letter words (2 across,
+2 down). A 3×3 is six 3-letter words. This is a genuine word square and it is
+hard — which is what justifies the payouts in §4.
+
+```
+  C A     across: CA, AT
+  A T     down:   CA, AT
+```
+
+## 4. Scoring
+
+### 4.1 Tile points
+
+**1 point per tile you placed this turn.** No per-letter values. A Q scores
+exactly what an E scores.
+
+**Blanks score 0.** A placed blank still occupies a cell and counts fully
+toward square formation (§4.2) — it just earns no tile point. A blank that
+completes a 2×2 still pays the full 4. Net cost of using a blank is exactly
+1 point.
+
+### 4.2 Square bonus — nested
+
+Every axis-aligned, fully-filled `k×k` block on the board, for `k ≥ 2`, is a
+*square*. A square of size `k` is worth `k²`.
+
+**Nested counting**: a 3×3 contains four 2×2s and one 3×3. All of them count.
+
+| Build | Tiles | Sub-squares | Bonus | Total | Pts/tile |
+|-------|-------|-------------|-------|-------|----------|
+| 2×2 | 4 | 1×(2×2 @4) | 4 | **8** | 2.0 |
+| 3×3 | 9 | 4×(2×2 @4) + 1×(3×3 @9) | 25 | **34** | 3.8 |
+| 4×4 | 16 | 9×@4 + 4×@9 + 1×@16 | 88 | **104** | 6.5 |
+
+Rate climbs 2.0 → 3.8 → 6.5. Big builds are worth chasing, which is correct
+given a 4×4 word square is brutally hard.
+
+### 4.3 Completion — squares score ONCE
+
+A square scores only on the turn it first comes into existence. Without this,
+a 2×2 would pay out every turn forever.
+
+**No diff is needed.** Placements only ever *add* tiles, so a block is new iff
+at least one of its cells was empty before the turn — i.e. iff it contains at
+least one placed cell:
+
+```
+new squares = { filled k×k blocks containing ≥1 placed cell },  k ≥ 2
+score       = Σ k²
+```
+
+Provably equivalent to `squares_after − squares_before`, but needs no board
+history and no set subtraction. Enumerate candidate blocks by anchoring each
+size-k block at `(px − i, py − j)` for `i, j ∈ [0, k)` around each placed cell,
+dedupe by `(anchor, k)`, and keep those fully filled. `k` is bounded by
+`⌊√(tiles on board)⌋`, since a k×k block needs k² tiles.
+
+Implemented in `shared/engine/squares.ts`.
+
+### 4.4 Completer takes it
+
+Whoever places the final tile of a square scores the **entire** square,
+regardless of who placed the other tiles.
+
+```
+opponent (o), you (Y):
+
+  o o          o o
+  o .    ->    o Y      you score: 1 tile + 4 = 5
+```
+
+This falls out of the diff rule with zero extra logic and it is the sole
+source of player interaction. Leaving an open corner is dangerous. Every build
+is a risk.
+
+### 4.5 Order of operations
+
+```
+1. count tiles placed         -> +1 each
+2. diff square sets           -> + Σ k² for new squares
+3. sum                        -> turn score
+```
+
+## 5. Rack and letter generation
+
+- Rack is **7 letters + 1 blank**. Place up to all 8 in a turn.
+- Letters refill to 7 after your turn.
+- **Blank cadence: one blank slot, never more.** If you use it, you get a new
+  one next turn. If you don't, you still have exactly one — blanks do not
+  accumulate. Max one blank placed per turn, always.
+- Blank is wild, assigned a letter permanently on placement.
+- **No finite bag.** Letters are randomly generated per draw.
+
+### 5.1 Distribution
+
+Because every tile is worth 1 point, rare letters have **no compensating
+upside** — a Q is pure dead weight. Scrabble's distribution is therefore the
+wrong model, and so is English prose frequency.
+
+Derive weights from data:
+
+1. **Short-word frequency.** Count each letter's occurrences across all 2–5
+   letter words in the chosen dictionary; normalize to sampling weights.
+2. **Dead-letter suppression.** Compute the set of letters appearing in *no*
+   valid 2-letter word (they can never appear in a 2×2). Drop them or weight
+   them near zero.
+3. **Vowel floor.** Enforce ≥3 vowels per 7-letter rack; resample the rack if
+   it fails. IID draws will otherwise hand someone `BCDFGHJ`.
+4. **Duplicate cap.** Cap any single letter at 2 per rack, or draw from a
+   large refilled virtual bag rather than IID. IID produces `EEEEEEE`.
+
+All four live in `shared/config.ts` (`RACK`), reading weights from
+`shared/data/letter-weights.json`, which `scripts/build-dictionary.mjs`
+derives from the corpus. Data, not code — this will be retuned many times from
+real games and the engine must not care.
+
+**Derived weights** (per 10,000, from 2–5 letter words):
+
+```
+E 1042   S 1035   A 828   O 676   R 598   L 569   T 564   I 543
+N  449   D  425   U 378   P 354   C 320   M 299   H 281   B 263
+G  253   Y  253   K 211   W 211   F 205   V 106   X  42   Z  41
+J   38   Q   15
+```
+
+J/Q/V/X/Z fall out near zero on their own, so the "dead letter suppression"
+step needs no separate mechanism — the data already handles it, and those
+letters stay playable in longer words where they belong.
+
+**Measured over 5,000 generated racks:**
+
+| metric | value |
+|--------|-------|
+| can spell at least one 2- or 3-letter word | **99.9%** |
+| vowel share (corpus is 34.7%) | **45.8%** |
+| J/Q/X/Z combined | 1.0% |
+
+The vowel floor is what lifts 34.7% to 45.8% — close to Scrabble's ~43%, and
+appropriate here since word squares are vowel-hungry. Known tuning knob: `S`
+is inflated by plurals (8.4% of drawn tiles). If racks feel S-heavy in play,
+damp it in the config rather than in the generator.
+
+### 5.2 Dictionary
+
+**Source: SCOWL tier 50**, via the `wordlist-english` npm package, built by
+`scripts/build-dictionary.mjs` into `shared/data/words.json` (59,513 words).
+SCOWL's licence permits any use but requires its copyright notice travel with
+the words; the build copies it to `shared/data/SCOWL-Copyright.txt`.
+
+Measured across the tiers — the numbers that actually decide the game:
+
+| tier | words | 2-letter | valid 2×2 | valid 3×3 | letters in no 2-letter word |
+|------|-------|----------|-----------|-----------|------------------------------|
+| 35 | 38k | 41 | 187 | 39,595 | j k l q v z |
+| 40 | 43k | 54 | 327 | 49,576 | j q v z |
+| **50** | **60k** | **60** | **393** | **95,481** | **j q v z** |
+| 70 | 108k | 90 | 1,094 | 504,440 | v z |
+
+Two findings from this:
+
+- **The 2×2 is the bottleneck, not the 3×3.** Only 393 valid 2×2 squares exist
+  in the whole language at tier 50, against 95,481 3×3s — 3-letter words are
+  numerous enough that the combinatorics explode. The 34-point payout is far
+  more reachable than the 8-point one. Do not assume the small square is the
+  easy one.
+- **Tier 40 is the floor.** At tier 35 the letter `L` appears in no 2-letter
+  word at all, and a common rack letter that can never enter a 2×2 feels
+  broken. Tier 50 chosen: recognizable vocabulary, and only J/Q/V/Z are
+  2×2-dead.
+
+
+
+**Do not use NWL, TWL, OSPD, or Collins/SOWPODS.** All are proprietary
+licensed products (NASPA / Merriam-Webster / Collins), and NASPA actively
+issues takedowns against word-list repositories. Whether a word list is
+copyrightable at all is unsettled — facts aren't protectable under *Feist*,
+but editorial selection of "valid words" is a plausible compilation claim.
+Irrelevant in practice: free lists are equally good.
+
+**Use SCOWL**, at a mid-size frequency cut. Permissive license, and tiered by
+word commonality so the obscurity level is a tunable parameter rather than a
+fixed property of the list. This matters more here than in most word games: a
+3×3 requires six simultaneously-valid words, and if most solutions are words
+no player recognizes, the mechanic reads as a lottery rather than a puzzle.
+
+Alternative: **ENABLE** (~172k, explicit public domain) as a straight drop-in
+if tiering isn't wanted.
+
+**Hand-curate the 2-letter list.** It's ~100 entries, it is the single
+highest-leverage file in the game — it determines whether a 2×2 is trivial or
+hard — and an hour of curation makes it a tuned game asset rather than an
+inherited one.
+
+## 6. Game end
+
+- Game ends when **total tiles on board ≥ N**.
+- End triggers at the **end of the round**, not immediately, so every player
+  gets equal turns. Otherwise the player who crosses the threshold takes the
+  last uncontested snipe.
+- Highest total score wins.
+
+## 7. Data model — implemented in `convex/schema.ts`
+
+```
+games:     status, boardSize, playerIds[], currentTurnIndex,
+           tileCount, endThreshold, createdAt
+tiles:     gameId, x, y, letter, isBlank, placedBy, turnNumber
+           index: by_game_position (gameId, x, y)
+           index: by_game (gameId)
+racks:     gameId, playerId, letters[]        (private per player)
+turns:     gameId, turnNumber, playerId, placements[], score, at
+users:     Convex Auth
+```
+
+Notes:
+- Racks must not be readable by the opponent. Enforce in the query, not the UI.
+- Dictionary as a Convex table with an index on the word, or bundled and
+  loaded server-side — decide on wordlist size.
+- All scoring runs server-side in a mutation. The client never computes score.
+- Convex mutations are deterministic/retryable; confirm the correct RNG
+  approach for rack generation against `convex/_generated/ai/guidelines.md`.
+
+## 8. Build order
+
+1. ~~Scoring engine — run extraction, square detection, nested counting,
+   turn scoring.~~ **Done.** `shared/engine/`, no Convex/React deps.
+2. ~~Dictionary + placement legality (§3).~~ **Done.** SCOWL tier 50 +
+   `shared/engine/legality.ts`.
+3. ~~Rack generation + letter config (§5.1).~~ **Done.** `shared/engine/rack.ts`
+   + `shared/config.ts`.
+4. ~~Convex schema + `placeTiles` mutation wrapping the engine.~~ **Done.**
+   `convex/schema.ts`, `convex/games.ts`, 13 convex-test cases.
+5. ~~Board UI (render, select rack tile, place, preview score, submit).~~
+   **Done.** CSS modules + design tokens, no Tailwind.
+6. ~~Auth (Better Auth + Google), lobby, game list.~~ **Done** — see
+   `docs/auth-setup.md` for the two manual Google steps. Turn notifications
+   still outstanding.  ← current
+
+Steps 1–3 are where the game is won or lost. The rest is plumbing.
+
+## 9. Open
+
+- **SCOWL cut size.** Which frequency tier. Needs playtesting.
+- **N.** Tile-count threshold for game end. Needs playtesting; 400 (25% of a
+  40×40) is a starting guess.
+- **`package.json` rename.** Still says `zabble`; should be `word-craft`.
