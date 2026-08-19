@@ -60,18 +60,16 @@
   cursor: default;
 }
 
-/* An empty cell that can accept the currently selected letter. Armed cells
-   are tinted the whole time a tile is in hand, so it is obvious where the
-   letter can go rather than only revealing on hover. */
+/* Tinted the whole time a tile is in hand, so it is obvious where the letter
+   can go. Squares that would do nothing on a click stay inert. */
 .armed {
   background: color-mix(in srgb, var(--accent-soft) 55%, var(--cell-empty));
   border-color: color-mix(in srgb, var(--accent) 35%, var(--cell-line));
 }
 
+/* Only squares a click would actually fill respond to the pointer. */
 .playable:not(:disabled):hover {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  transform: scale(1.06);
+  background: color-mix(in srgb, var(--accent-soft) 85%, var(--accent));
 }
 
 .tile {
@@ -122,9 +120,6 @@
 }
 
 
-.open:hover {
-  background: var(--accent-soft);
-}
 
 /* A blank that has landed but has not been told its letter yet. */
 .awaiting {
