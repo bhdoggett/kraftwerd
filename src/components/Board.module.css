@@ -28,8 +28,8 @@
   background: var(--cell-empty);
   display: grid;
   place-items: center;
-  font-weight: 650;
-  font-size: 0.95rem;
+  font-weight: 800;
+  font-size: 1.35rem;
   line-height: 1;
   color: var(--tile-text);
   transition:
@@ -64,48 +64,12 @@
 
 /*
  * A blank keeps showing the letter it stands for -- the word has to be
- * readable -- but must never be mistaken for that actual tile, since it scores
- * nothing. Grey face plus a corner mark, in both staged and played states.
+ * readable -- and is told apart by its grey face, which scores nothing.
  */
 .blank {
   background: var(--tile-blank-face);
   border-color: var(--tile-blank-edge);
   color: var(--tile-text);
-  font-style: italic;
-}
-
-.blank::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--tile-blank-edge);
-}
-
-/* Placed this turn, not yet submitted. */
-.pending {
-  touch-action: none;
-  cursor: grab;
-  background: var(--pending-soft);
-  border-color: var(--pending);
-  border-style: dashed;
-  color: var(--pending);
-}
-
-.pending:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-lift);
-}
-
-/* Ownership stripe along the bottom edge of a committed tile. */
-.seat {
-  position: absolute;
-  inset: auto 3px 2px 3px;
-  height: 2px;
-  border-radius: 1px;
 }
 
 .pending.blank {
@@ -114,15 +78,10 @@
   color: var(--tile-text);
 }
 
-.pending.blank::before {
-  background: var(--pending);
-}
-
 /* An empty square adjacent to the played mass: a legal target. Dashed so it
    reads as a possibility rather than a tile. */
 .open {
   background: transparent;
-  border-style: dashed;
   border-color: var(--border);
   color: transparent;
 }
@@ -134,7 +93,6 @@
 
 /* A blank that has landed but has not been told its letter yet. */
 .awaiting {
-  border-style: dashed;
   border-color: var(--pending);
   animation: pulse 1.2s ease-in-out infinite;
 }

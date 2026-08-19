@@ -1,6 +1,6 @@
 .rack {
   /* One tile plus the gap: how far a tile travels to swap places. */
-  --rack-step: calc(42px + var(--space-2));
+  --rack-step: calc(48px + var(--space-2));
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -15,14 +15,14 @@
 .tile {
   /* Stop the browser treating a drag off a tile as a scroll gesture. */
   touch-action: none;
-  width: 42px;
-  height: 46px;
+  width: 48px;
+  height: 54px;
   border: 1px solid var(--tile-edge);
   border-radius: var(--radius);
   background: var(--tile-face);
   color: var(--tile-text);
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1.6rem;
+  font-weight: 800;
   display: grid;
   place-items: center;
   box-shadow: var(--shadow);
