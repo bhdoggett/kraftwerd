@@ -7,7 +7,13 @@
   max-height: 70vh;
   min-height: 320px;
   display: grid;
-  place-items: center;
+  /*
+   * Anchored, not centred. Centring re-positions the whole board whenever the
+   * played area changes size, so every tile appeared to jump the moment a turn
+   * was committed and the frontier grew.
+   */
+  place-items: start;
+  padding: var(--space-4);
 }
 
 .grid {
