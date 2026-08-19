@@ -1,5 +1,8 @@
 .viewport {
   overflow: auto;
+  /* Dragging empty board pans it, so a drag must not select text as well. */
+  user-select: none;
+  cursor: grab;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -58,6 +61,10 @@
 
 .cell:disabled {
   cursor: default;
+}
+
+.viewport:active {
+  cursor: grabbing;
 }
 
 /* Tinted the whole time a tile is in hand, so it is obvious where the letter

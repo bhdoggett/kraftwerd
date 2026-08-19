@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { layoutByName, shapeOf } from "../../shared/boards";
 import type { Placement } from "../../shared/engine/score";
 import styles from "./Board.module.css";
@@ -52,6 +52,45 @@ export function Board({
 }: BoardProps) {
   const shape = useMemo(() => shapeOf(layoutByName(layout)), [layout]);
 
+  /**
+   * Dragging empty board pans it. Only for a mouse: touch already scrolls the
+   * container natively, and hijacking that would fight the browser.
+   *
+   * A drag that moves past a few pixels also swallows the click that follows,
+   * so panning away from a square does not drop a tile on it.
+   */
+  const viewport = useRef<HTMLDivElement>(null);
+  const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const panned = useRef(false);
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const start = pan.current;
+      const el = viewport.current;
+      if (start === null || el === null) return;
+
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) panned.current = true;
+
+      el.scrollLeft = start.left - dx;
+      el.scrollTop = start.top - dy;
+    };
+
+    const onUp = () => {
+      pan.current = null;
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, []);
+
   const committed = useMemo(() => {
     const map = new Map<string, BoardTile>();
     for (const t of tiles) map.set(key(t.x, t.y), t);
@@ -97,6 +136,7 @@ export function Board({
           type="button"
           className={classes.join(" ")}
           data-cell={blocked || tile !== undefined ? undefined : k}
+          data-staged={stage === undefined ? undefined : ""}
           aria-disabled={blocked || tile !== undefined || (!stage && !canPlace)}
           aria-label={
             blocked
@@ -109,6 +149,8 @@ export function Board({
             if (stage && onGrabStaged) onGrabStaged(x, y, e);
           }}
           onClick={() => {
+            // Swallowed if this click ended a pan rather than picking a square.
+            if (panned.current) return;
             if (blocked || tile) return;
             if (stage) onPickUp(x, y);
             else if (canPlace) onPlace(x, y);
@@ -121,7 +163,25 @@ export function Board({
   }
 
   return (
-    <div className={styles.viewport}>
+    <div
+      ref={viewport}
+      className={styles.viewport}
+      onPointerDown={(e) => {
+        if (e.pointerType !== "mouse") return;
+        // A staged tile is dragged, not panned from.
+        if ((e.target as HTMLElement).closest("[data-staged]") !== null) return;
+
+        panned.current = false;
+        const el = viewport.current;
+        if (el === null) return;
+        pan.current = {
+          x: e.clientX,
+          y: e.clientY,
+          left: el.scrollLeft,
+          top: el.scrollTop,
+        };
+      }}
+    >
       <div
         className={styles.grid}
         style={{ gridTemplateColumns: `repeat(${boardSize}, var(--cell-size))` }}
