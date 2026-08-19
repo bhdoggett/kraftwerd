@@ -347,6 +347,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
           tiles={view.tiles}
           pending={pending}
           seatOf={seatOf}
+          showOwnership={game.playerCount > 1}
           canPlace={myTurn && selected !== null && !choosingBlank}
           onPlace={place}
           onPickUp={pickUp}

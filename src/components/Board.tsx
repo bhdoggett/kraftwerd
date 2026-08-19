@@ -17,6 +17,8 @@ interface BoardProps {
   /** Seat index per user id, for the ownership stripe. */
   seatOf: (userId: string) => number;
   canPlace: boolean;
+  /** Ownership stripes only mean something with an opponent to distinguish. */
+  showOwnership: boolean;
   onPlace: (x: number, y: number) => void;
   onPickUp: (x: number, y: number) => void;
   /** Begin dragging a tile staged this turn to another square. */
@@ -78,6 +80,7 @@ export function Board({
   pending,
   seatOf,
   canPlace,
+  showOwnership,
   onPlace,
   onPickUp,
   onGrabStaged,
@@ -175,7 +178,7 @@ export function Board({
               }}
             >
               {(tile ?? stage)?.letter ?? ""}
-              {tile && (
+              {tile && showOwnership && (
                 <span
                   className={styles.seat}
                   style={{ background: `var(--seat-${seatOf(tile.placedBy) % 4})` }}
