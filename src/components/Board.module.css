@@ -32,10 +32,6 @@
     --cell-base: 22px;
     padding: var(--space-2);
   }
-
-  .cell {
-    font-size: 0.9rem;
-  }
 }
 
 /*
@@ -64,7 +60,8 @@
   display: grid;
   place-items: center;
   font-weight: 800;
-  font-size: 1.35rem;
+  /* Tied to the cell, so letters grow and shrink with the board when zoomed. */
+  font-size: calc(var(--cell-size) * 0.6);
   line-height: 1;
   color: var(--tile-text);
   transition:
