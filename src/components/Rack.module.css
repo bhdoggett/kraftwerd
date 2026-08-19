@@ -1,6 +1,15 @@
 .rack {
+  --rack-tile-width: 48px;
+  --rack-tile-height: 54px;
   /* One tile plus the gap: how far a tile travels to swap places. */
-  --rack-step: calc(48px + var(--space-2));
+  --rack-step: calc(var(--rack-tile-width) + var(--space-2));
+  /*
+   * Height fixed by the tiles it can hold rather than the tiles it does hold.
+   * Left to shrink-wrap, an empty rack grew the moment a placeholder appeared
+   * for an incoming tile, which pushed its own edge past the pointer, removed
+   * the placeholder and shrank it back — flickering at the boundary.
+   */
+  min-height: calc(var(--rack-tile-height) + var(--space-3) * 2);
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -15,8 +24,8 @@
 .tile {
   /* Stop the browser treating a drag off a tile as a scroll gesture. */
   touch-action: none;
-  width: 48px;
-  height: 54px;
+  width: var(--rack-tile-width);
+  height: var(--rack-tile-height);
   border: 1px solid var(--tile-edge);
   border-radius: var(--radius);
   background: var(--tile-face);
