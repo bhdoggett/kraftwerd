@@ -1,8 +1,6 @@
 .rack {
-  --rack-tile-width: 48px;
-  --rack-tile-height: 54px;
   /* One tile plus the gap: how far a tile travels to swap places. */
-  --rack-step: calc(var(--rack-tile-width) + var(--space-2));
+  --rack-step: calc(var(--rack-tile-width) + var(--rack-gap));
   /*
    * Three columns: an empty one, the tiles, then the buttons. The empty column
    * balances the buttons, so the tiles are centred in the rack rather than in
@@ -32,7 +30,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: var(--rack-gap);
   flex-wrap: wrap;
   /*
    * Holds its height with no tiles in it. An empty rack that grew when a
@@ -58,7 +56,8 @@
   border-radius: 0;
   background: var(--tile-face);
   color: var(--tile-text);
-  font-size: 1.6rem;
+  /* Tied to the tile, so a smaller rack keeps its proportions. */
+  font-size: calc(var(--rack-tile-width) * 0.53);
   font-weight: 800;
   display: grid;
   place-items: center;

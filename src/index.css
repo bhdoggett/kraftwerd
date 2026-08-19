@@ -117,6 +117,15 @@ body,
   height: 100%;
 }
 
+@media (max-width: 640px) {
+  :root {
+    /* Small enough that a full rack of seven still fits on one row. */
+    --rack-tile-width: 40px;
+    --rack-tile-height: 46px;
+    --rack-gap: 5px;
+  }
+}
+
 body {
   margin: 0;
   font-family: var(--font);
