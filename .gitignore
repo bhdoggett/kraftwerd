@@ -25,3 +25,8 @@ dist-ssr
 
 # generated dictionary data
 shared/data/words.jsonl
+
+.agents/
+.claude/
+.cursor/
+.fallow/

@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:dictionary": "node scripts/build-dictionary.mjs",
-    "seed:dictionary": "convex import --table words --replace shared/data/words.jsonl"
+    "seed:dictionary": "convex import --table words --replace shared/data/words.jsonl",
+    "start": "serve -s dist --no-port-switching -l ${PORT:-3000}"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.12.5",
@@ -21,6 +22,7 @@
     "convex": "^1.44.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "serve": "^14.2.6",
     "wordlist-english": "^1.2.1"
   },
   "devDependencies": {
