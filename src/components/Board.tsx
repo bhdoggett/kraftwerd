@@ -25,17 +25,29 @@ interface BoardProps {
   onGrabStaged?: (x: number, y: number, event: React.PointerEvent) => void;
 }
 
+/**
+ * Diagonals included deliberately. Connectivity (design.md §3) is orthogonal,
+ * so a tile touching only at a corner is not yet legal — but it becomes legal
+ * once the gap is filled, and a 2x2 is often easiest to sketch by dropping its
+ * far corner first. Offering the square lets you build in whatever order suits
+ * you; the validator still refuses to let you play a disconnected shape.
+ */
 const NEIGHBOURS = [
   [1, 0],
   [-1, 0],
   [0, 1],
   [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
 ] as const;
 
 const key = (x: number, y: number) => `${x},${y}`;
 
 /**
- * The empty squares worth drawing: those touching an occupied square.
+ * The empty squares worth drawing: those touching an occupied square, corners
+ * included.
  *
  * The board is far larger than any game uses, and connectivity (design.md §3)
  * means a tile may only be placed against the existing mass — so the squares
