@@ -112,7 +112,7 @@
 
 /* Blocked squares are the grid's shape, drawn solid as in a crossword. */
 .blocked {
-  background: var(--text);
+  background: var(--cell-blocked);
   cursor: default;
 }
 

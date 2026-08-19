@@ -19,6 +19,12 @@
   /* Board */
   --cell-empty: #f7f5f0;
   --cell-line: #e3ded1;
+  /*
+   * Blocked squares read as solid in either theme: near-black on the light
+   * board, darker still than the board on the dark one. Using the text colour
+   * inverted them, so a dark theme showed white blocks.
+   */
+  --cell-blocked: #2b2620;
   --tile-face: #f0e2c0;
   --tile-edge: #cbb489;
   --tile-text: #3a2f18;
@@ -74,6 +80,7 @@
 
     --cell-empty: #1c1b21;
     --cell-line: #2b2933;
+    --cell-blocked: #08080a;
     --tile-face: #d8c69b;
     --tile-edge: #a08d63;
     --tile-text: #262010;

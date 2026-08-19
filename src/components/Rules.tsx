@@ -61,7 +61,7 @@ export function Rules() {
               </li>
               <li>
                 Every run of two or more tiles, across and down, has to be a
-                word. Dark squares cannot be played on.
+                word. Blocked squares cannot be played on.
               </li>
             </ul>
 
