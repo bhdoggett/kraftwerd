@@ -910,14 +910,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr>
-                <th scope="row" colSpan={2}>
-                  Total
-                </th>
-                <td>{preview.total}</td>
-              </tr>
-            </tfoot>
           </table>
         )}
 
