@@ -211,11 +211,16 @@ Two steps only the owner can do:
 - invite him to the **Convex team** so `npx convex dev` provisions under the
   same project
 
-And one after his deployment exists: each Convex deployment has its own
+And two after his deployment exists: each Convex deployment has its own
 `.convex.site` host, so the owner adds
 `https://<his-deployment>.convex.site/api/auth/callback/google` as an
-additional redirect URI on the existing Google OAuth client. Without it his
-local sign-in fails as an untrusted origin.
+additional redirect URI on the existing Google OAuth client — without it
+sign-in fails with `redirect_uri_mismatch` — and sends him the client ID and
+secret over a private channel.
+
+The team invite must land **before** he runs `npm run dev`. Otherwise his
+deployment provisions under a personal team of his own, isolated from the
+project.
 
 ## GitHub ruleset on main
 
