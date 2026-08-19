@@ -204,6 +204,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const view = useQuery(api.games.getGame, { gameId });
   const placeTiles = useMutation(api.games.placeTiles);
   const resignGame = useMutation(api.games.resignGame);
+  const tradeTiles = useMutation(api.games.tradeTiles);
   const joinGame = useMutation(api.games.joinGame);
   const [copied, setCopied] = useState(false);
 
@@ -226,6 +227,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const [rackOrder, setRackOrder] = useState<number[]>([]);
   /** Letter index the pointer is over while dragging a rack tile. */
   const [rackHover, setRackHover] = useState<number | null>(null);
+  /** Tiles picked for trading. Null when not trading at all. */
+  const [trading, setTrading] = useState<number[] | null>(null);
 
   /** Live pointer drag: the tile that follows the finger/cursor. */
   const [drag, setDrag] = useState<{
@@ -597,6 +600,25 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     setError(null);
   }
 
+  function startTrade() {
+    // Trading forfeits the turn, so anything staged has to come back first.
+    setPending([]);
+    setSelected(null);
+    setBlankAt(null);
+    setTrading([]);
+  }
+
+  async function confirmTrade() {
+    if (trading === null || trading.length === 0) return;
+    setError(null);
+    try {
+      await tradeTiles({ gameId, indices: trading });
+      setTrading(null);
+    } catch (e) {
+      setError(userMessage(e));
+    }
+  }
+
   /** Answer the question the dropped blank is asking. */
   function nameBlank(letter: string) {
     if (blankAt === null) return;
@@ -662,6 +684,18 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             onShuffle={shuffleRack}
             onRecall={clear}
             canRecall={pending.length > 0}
+            trading={trading}
+            onToggleTrade={(index) =>
+              setTrading((current) =>
+                current === null
+                  ? current
+                  : current.includes(index)
+                    ? current.filter((i) => i !== index)
+                    : [...current, index],
+              )
+            }
+            onStartTrade={startTrade}
+            canTrade={myTurn && trading === null}
           />
         )}
 
@@ -755,7 +789,39 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           </p>
         )}
 
-        {myTurn && (
+        {trading !== null && (
+          <div className={styles.tradeBar}>
+            <span>
+              {trading.length === 0
+                ? "Pick the tiles to trade in."
+                : `Trading ${trading.length} ${trading.length === 1 ? "tile" : "tiles"}. This forfeits your turn.`}
+            </span>
+            <button
+              type="button"
+              className={styles.secondary}
+              onClick={() => setTrading((me?.letters ?? []).map((_, i) => i))}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={styles.button}
+              disabled={trading.length === 0}
+              onClick={() => void confirmTrade()}
+            >
+              Trade
+            </button>
+            <button
+              type="button"
+              className={styles.secondary}
+              onClick={() => setTrading(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {myTurn && trading === null && (
           <p className={styles.hint}>
             {selected === null
               ? "Pick a letter from your rack, then drag it onto the board or tap a highlighted square."

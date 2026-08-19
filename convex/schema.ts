@@ -60,6 +60,12 @@ export default defineSchema({
      * equal number of turns (design.md §6).
      */
     endsAfterTurn: v.optional(v.number()),
+    /**
+     * Turns in a row where nobody placed a tile. Letters never run out, so
+     * without this a table that keeps trading would never reach the threshold
+     * that ends a game.
+     */
+    consecutivePasses: v.optional(v.number()),
     /** Set when the game finishes; ties give every leader a win. */
     winnerIds: v.optional(v.array(v.id("users"))),
     /** Players who quit. They forfeit and cannot win. */

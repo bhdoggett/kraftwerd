@@ -107,3 +107,10 @@
 .tile {
   touch-action: none;
 }
+
+/* Picked for trading: dimmed and outlined, so the choice reads as removal. */
+.trading {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+  opacity: 0.6;
+}

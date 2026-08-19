@@ -586,3 +586,77 @@ describe("the lobby's game lists", () => {
     expect(bob.past[0]?.youWon).toBe(true);
   });
 });
+
+describe("trading tiles", () => {
+  test("swaps the chosen letters and passes the turn", async () => {
+    const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "B", "C", "D"]);
+
+    await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0, 1] });
+
+    const [player, game] = await t.run(async (ctx) => [
+      await ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .unique(),
+      await ctx.db.get("games", gameId),
+    ]);
+
+    // The kept letters are still there; the traded ones were replaced.
+    expect(player?.letters).toContain("C");
+    expect(player?.letters).toContain("D");
+    expect(player?.letters).toHaveLength(RACK.size);
+    // Turn moved on, and nothing was placed.
+    expect(game?.currentSeat).toBe(1);
+    expect(game?.tileCount).toBe(0);
+  });
+
+  test("trading everything is allowed", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "B", "C", "D", "E", "F"]);
+
+    await expect(
+      asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0, 1, 2, 3, 4, 5] }),
+    ).resolves.toBeNull();
+  });
+
+  test("cannot trade out of turn", async () => {
+    const { gameId, asBob } = await twoPlayerGame(["A", "B"]);
+
+    await expect(
+      asBob.mutation(api.games.tradeTiles, { gameId, indices: [0] }),
+    ).rejects.toThrow("Not your turn");
+  });
+
+  test("cannot trade nothing", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "B"]);
+
+    await expect(
+      asAlice.mutation(api.games.tradeTiles, { gameId, indices: [] }),
+    ).rejects.toThrow("at least one");
+  });
+
+  test("a table that only trades ends rather than running forever", async () => {
+    const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "B"]);
+
+    // Two full rounds of nobody placing anything.
+    for (const who of [asAlice, asBob, asAlice, asBob]) {
+      await who.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+    }
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("finished");
+  });
+
+  test("placing resets the stalled count", async () => {
+    const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "D", "O"]);
+
+    await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+    await asBob.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.consecutivePasses).toBe(0);
+    expect(game?.status).toBe("active");
+  });
+});

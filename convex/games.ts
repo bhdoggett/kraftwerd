@@ -296,6 +296,49 @@ export const inviteToGame = mutation({
   },
 });
 
+/**
+ * Swap chosen letters for new ones and forfeit the turn.
+ *
+ * Letters are generated rather than drawn from a finite bag, so there is
+ * nothing to run out of and no limit on how often this can be done.
+ */
+export const tradeTiles = mutation({
+  args: { gameId: v.id("games"), indices: v.array(v.number()) },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+
+    const game = await ctx.db.get("games", args.gameId);
+    if (game === null) throw new ConvexError("No such game");
+    if (game.status !== "active") throw new ConvexError("Game is not active");
+
+    const player = await ctx.db
+      .query("players")
+      .withIndex("by_game_and_user", (q) =>
+        q.eq("gameId", args.gameId).eq("userId", userId),
+      )
+      .unique();
+    if (player === null) throw new ConvexError("You are not in this game");
+    if (player.seat !== game.currentSeat) throw new ConvexError("Not your turn");
+
+    const chosen = [...new Set(args.indices)];
+    if (chosen.length === 0) throw new ConvexError("Choose at least one tile");
+    if (chosen.some((i) => i < 0 || i >= player.letters.length)) {
+      throw new ConvexError("You do not hold that tile");
+    }
+
+    const kept = player.letters.filter((_, i) => !chosen.includes(i));
+    const rack = refill(kept, Math.random, RACK);
+
+    await ctx.db.patch("players", player._id, {
+      letters: rack.letters,
+      blank: rack.blank,
+    });
+
+    await advanceTurn(ctx, game, 0);
+    return null;
+  },
+});
+
 /** Accept or decline an invitation to a game. */
 export const respondToInvite = mutation({
   args: { gameId: v.id("games"), accept: v.boolean() },
@@ -507,6 +550,7 @@ export const resignGame = mutation({
 async function advanceTurn(ctx: MutationCtx, game: Doc<"games">, placed: number) {
   const tileCount = game.tileCount + placed;
   const turnNumber = game.turnNumber + 1;
+  const consecutivePasses = placed === 0 ? (game.consecutivePasses ?? 0) + 1 : 0;
 
   let endsAfterTurn = game.endsAfterTurn;
   if (endsAfterTurn === undefined && tileCount >= game.endThreshold) {
@@ -514,11 +558,15 @@ async function advanceTurn(ctx: MutationCtx, game: Doc<"games">, placed: number)
     endsAfterTurn = game.turnNumber + (game.playerCount - 1 - game.currentSeat);
   }
 
-  const finished = endsAfterTurn !== undefined && game.turnNumber >= endsAfterTurn;
+  // Two full rounds where nobody places anything: the game is going nowhere.
+  const stalled = consecutivePasses >= game.playerCount * 2;
+  const finished =
+    stalled || (endsAfterTurn !== undefined && game.turnNumber >= endsAfterTurn);
 
   await ctx.db.patch("games", game._id, {
     tileCount,
     turnNumber,
+    consecutivePasses,
     currentSeat: (game.currentSeat + 1) % game.playerCount,
     ...(endsAfterTurn === undefined ? {} : { endsAfterTurn }),
   });

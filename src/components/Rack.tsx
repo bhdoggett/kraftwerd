@@ -28,6 +28,11 @@ interface RackProps {
   /** Take every staged tile back off the board. */
   onRecall: () => void;
   canRecall: boolean;
+  /** Tiles picked for trading; null when not trading. */
+  trading: readonly number[] | null;
+  onToggleTrade: (index: number) => void;
+  onStartTrade: () => void;
+  canTrade: boolean;
 }
 
 export function Rack({
@@ -45,6 +50,10 @@ export function Rack({
   onShuffle,
   onRecall,
   canRecall,
+  trading,
+  onToggleTrade,
+  onStartTrade,
+  canTrade,
 }: RackProps) {
   const isSelected = (s: Selection) =>
     selected !== null &&
@@ -65,11 +74,21 @@ export function Rack({
     "aria-pressed": isSelected(sel),
     onPointerDown: (e: ReactPointerEvent) => {
       if (disabled) return;
+      // While trading, a tile is a choice rather than something to play.
+      if (trading !== null) {
+        if (sel.kind === "letter") onToggleTrade(sel.index);
+        return;
+      }
       onSelect(sel);
       onGrab(sel, e);
     },
     onClick: (e: { detail: number }) => {
-      if (e.detail === 0) onSelect(isSelected(sel) ? null : sel);
+      if (e.detail !== 0) return;
+      if (trading !== null) {
+        if (sel.kind === "letter") onToggleTrade(sel.index);
+        return;
+      }
+      onSelect(isSelected(sel) ? null : sel);
     },
   });
 
@@ -106,6 +125,7 @@ export function Rack({
               styles.tile,
               isSelected(sel) ? styles.selected : "",
               draggedIndex === index ? styles.lifted : "",
+              trading?.includes(index) ? styles.trading : "",
             ].join(" ")}
             // The letter's real index, not its position: staged tiles leave
             // the rack, so positions shift but indices do not.
@@ -147,6 +167,16 @@ export function Rack({
           title="Recall tiles"
         >
           ↩
+        </button>
+        <button
+          type="button"
+          className={styles.action}
+          onClick={onStartTrade}
+          disabled={!canTrade}
+          aria-label="Trade tiles in for new ones"
+          title="Trade tiles"
+        >
+          ⇅
         </button>
         <button
           type="button"
