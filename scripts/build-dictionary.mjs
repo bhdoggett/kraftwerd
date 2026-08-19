@@ -37,6 +37,53 @@ for (const tier of TIERS.filter((t) => t <= cut)) {
 // only if it spells something.
 for (const letter of "BCDEFGHJKLMNOPQRSTUVWXYZ") words.delete(letter);
 
+/**
+ * The two-letter list, curated by hand.
+ *
+ * It is the highest-leverage file in the game: a 2x2 is four two-letter words,
+ * so this list alone decides how many squares exist at all. SCOWL is a
+ * spellchecker lexicon and is wrong for the job in both directions -- it omits
+ * words every word-game player expects (QI, JO, ZA, XI) while including
+ * plurals of letter names (CS, GS, TS) that nobody would accept on a board.
+ *
+ * Leaving J/Q/Z out matters especially: with no two-letter word containing
+ * them, those letters could never enter a 2x2 at all.
+ */
+const TWO_LETTER = `
+  aa ab ad ae ag ah ai al am an ar as at aw ax ay
+  ba be bi bo by
+  da de do
+  ed ef eh el em en er es et ex
+  fa fe
+  go
+  ha he hi hm ho
+  id if in is it
+  jo
+  ka ki
+  la li lo
+  ma me mi mm mo mu my
+  na ne no nu
+  od oe of oh oi ok om on op or os ow ox oy
+  pa pe pi po
+  qi
+  re
+  sh si so
+  ta te ti to
+  uh um un up us ut
+  we wo
+  xi xu
+  ya ye yo
+  za
+`
+  .split(/\s+/)
+  .filter(Boolean)
+  .map((w) => w.toUpperCase());
+
+// Replace SCOWL's two-letter entries wholesale rather than merging, so the
+// junk goes and the list is exactly what is written above.
+for (const word of [...words]) if (word.length === 2) words.delete(word);
+for (const word of TWO_LETTER) words.add(word);
+
 const sorted = [...words].sort();
 const outDir = join(ROOT, "shared", "data");
 mkdirSync(outDir, { recursive: true });

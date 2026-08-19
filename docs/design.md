@@ -265,10 +265,29 @@ no player recognizes, the mechanic reads as a lottery rather than a puzzle.
 Alternative: **ENABLE** (~172k, explicit public domain) as a straight drop-in
 if tiering isn't wanted.
 
-**Hand-curate the 2-letter list.** It's ~100 entries, it is the single
-highest-leverage file in the game — it determines whether a 2×2 is trivial or
-hard — and an hour of curation makes it a tuned game asset rather than an
-inherited one.
+**The 2-letter list is hand-curated** (`TWO_LETTER` in the build script), and
+replaces SCOWL's entirely rather than merging with it. SCOWL is a spellchecker
+lexicon and is wrong for this job in both directions: it omitted words every
+word-game player expects (`QI`, `JO`, `ZA`, `XI`) while including plurals of
+letter names (`CS`, `GS`, `TS`) that nobody would accept on a board.
+
+Omitting J/Q/Z mattered most: with no two-letter word containing them, those
+letters could never enter a 2×2 at all — which collided with the rare-letter
+floor that had just made them more common.
+
+| list | words | 2×2 squares | rack can build one | without a blank | dead letters |
+|------|-------|-------------|--------------------|-----------------|--------------|
+| SCOWL as-is | 60 | 393 | 96% | 52% | J Q V Z |
+| **curated** | **105** | **2,509** | **100%** | **94%** | C V |
+
+This makes 2×2s easy, which is a deliberate trade: a short list rejects words
+players will certainly try (`TA`, `BO`, `PE`, `OK`), and being told a real word
+is not a word is the most irritating failure a word game has. Only `C` and `V`
+now appear in no two-letter word, so only they are barred from a 2×2.
+
+If 2×2s ever need to be scarce again, the lever is not this list — it is the
+blank. Stopping a blank from completing a square takes buildability from 94%
+to 52% in one step, without ever rejecting a real word.
 
 ## 6. Game end
 
