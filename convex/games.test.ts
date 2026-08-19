@@ -55,7 +55,7 @@ async function twoPlayerGame(letters: string[]) {
       blank: true,
       status: "joined",
     });
-    await ctx.db.patch("games", gameId, { status: "active", layout: "Pinwheel" });
+    await ctx.db.patch("games", gameId, { status: "active", layout: "Bars" });
 
     const players = await ctx.db
       .query("players")
@@ -687,11 +687,11 @@ describe("the board", () => {
   test("a blocked square cannot be played on", async () => {
     const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
 
-    // Pinwheel blocks (3,1); the opening word covers the centre and runs into it.
+    // Bars blocks (6,2); the opening word covers the centre and runs into it.
     await expect(
       asAlice.mutation(api.games.placeTiles, {
         gameId,
-        placements: [at(0, 0, "A"), { x: 3, y: 1, letter: "D", isBlank: false }],
+        placements: [at(0, 0, "A"), { x: 6, y: 2, letter: "D", isBlank: false }],
       }),
     ).rejects.toThrow("cannot be played on");
   });
@@ -700,7 +700,7 @@ describe("the board", () => {
     const { t, gameId } = await twoPlayerGame(["A", "D"]);
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
 
-    expect(["Pinwheel", "Lattice", "Keyhole"]).toContain(game?.layout);
+    expect(["Bars", "Steps", "Frame"]).toContain(game?.layout);
     expect(game?.boardSize).toBe(15);
   });
 });
