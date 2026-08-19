@@ -101,6 +101,42 @@ function rackSlotUnder(
 }
 
 /**
+ * Placed squares that do not reach the rest of the board.
+ *
+ * Floods orthogonally from a tile that was already on the board — or from the
+ * first placement when the board was empty — and reports whichever placements
+ * the flood never reached.
+ */
+function disconnectedCells(
+  board: ReturnType<typeof makeBoard>,
+  placements: readonly Placement[],
+): Set<string> {
+  const orphans = new Set<string>();
+  const placedKeys = new Set(placements.map((p) => `${p.x},${p.y}`));
+
+  const existing = [...board.keys()].find((key) => !placedKeys.has(key));
+  const first = placements[0];
+  const start = existing ?? (first ? `${first.x},${first.y}` : undefined);
+  if (start === undefined) return orphans;
+
+  const seen = new Set([start]);
+  const queue = [start];
+
+  while (queue.length > 0) {
+    const [x, y] = queue.pop()!.split(",").map(Number);
+    for (const [dx, dy] of NEIGHBOURS) {
+      const key = `${x! + dx},${y! + dy}`;
+      if (!board.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      queue.push(key);
+    }
+  }
+
+  for (const key of placedKeys) if (!seen.has(key)) orphans.add(key);
+  return orphans;
+}
+
+/**
  * Move `value` to `position` among the tiles on show, keeping staged tiles
  * (which are hidden) after them. Positions are what the player is aiming at;
  * doing this in terms of the full order would count hidden tiles the player
@@ -122,6 +158,13 @@ function moveToPosition(
 
   return [...next, ...order.filter((i) => hidden.includes(i))];
 }
+
+const NEIGHBOURS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+] as const;
 
 /** Where a drag started: the rack, or a tile already staged on the board. */
 type Origin = { kind: "rack"; selection: Selection } | { kind: "cell"; x: number; y: number };
@@ -239,11 +282,29 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     }
 
     const validity = new Map(checked.map((entry) => [entry.word, entry.valid]));
+    const inSomeRun = new Set<string>();
 
     for (const run of runsThrough(boards.after, placements)) {
       const target = validity.get(run.word) === true ? good : bad;
-      for (const cell of run.cells) target.add(`${cell.x},${cell.y}`);
+      for (const cell of run.cells) {
+        target.add(`${cell.x},${cell.y}`);
+        inSomeRun.add(`${cell.x},${cell.y}`);
+      }
     }
+
+    // A tile touching nothing forms no run, so the loop above never saw it.
+    // On its own it has to be a word in its own right — only A and I are.
+    for (const p of placements) {
+      const key = `${p.x},${p.y}`;
+      if (inSomeRun.has(key)) continue;
+      if (validity.get(p.letter.toUpperCase()) === true) good.add(key);
+      else bad.add(key);
+    }
+
+    // Connectivity is separate from spelling: a perfectly good word that does
+    // not reach the rest of the board is still an illegal play, and the board
+    // should say so rather than leaving it to the message underneath.
+    for (const key of disconnectedCells(boards.after, placements)) bad.add(key);
 
     // A square can sit in a good word one way and a bad one the other; the
     // problem is what needs pointing at.
