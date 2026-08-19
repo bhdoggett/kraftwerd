@@ -26,16 +26,13 @@ function breakdownOf(score: TurnScore) {
   const bySize = new Map<number, number>();
   for (const size of score.squares) bySize.set(size, (bySize.get(size) ?? 0) + 1);
 
-  const lines = [
-    { label: "1×1", count: score.tilePoints, each: 1, total: score.tilePoints },
-  ];
+  // Each row reads as one sum: the square's own value times how many of them.
+  const lines = [{ label: `1×1 · ${score.tilePoints}`, total: score.tilePoints }];
 
   for (const size of [...bySize.keys()].sort((a, b) => a - b)) {
     const count = bySize.get(size)!;
     lines.push({
-      label: `${size}×${size}`,
-      count,
-      each: size * size,
+      label: `${size}×${size} · ${count}`,
       total: count * size * size,
     });
   }
@@ -901,15 +898,11 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
               {breakdownOf(preview).map((line) => (
                 <tr key={line.label}>
                   <th scope="row">{line.label}</th>
-                  <td>
-                    {line.count} × {line.each}
-                  </td>
                   <td className={styles.amount}>{line.total}</td>
                 </tr>
               ))}
               <tr className={styles.totalRow}>
                 <th scope="row">Total</th>
-                <td />
                 <td className={styles.amount}>{preview.total}</td>
               </tr>
             </tbody>
