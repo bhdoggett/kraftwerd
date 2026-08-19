@@ -52,36 +52,56 @@ interface Staged extends Placement {
  * stable. A tile also has to be crossed past its middle before it counts,
  * which stops a tremble on the boundary from flapping the order.
  */
-function rackSlotUnder(clientX: number, clientY: number): number | null {
+function rackSlotUnder(
+  clientX: number,
+  clientY: number,
+): { overRack: boolean; position: number | null } {
+  const miss = { overRack: false, position: null };
   const rack = document.querySelector("[data-rack]");
-  if (!(rack instanceof HTMLElement)) return null;
+  if (!(rack instanceof HTMLElement)) return miss;
 
   const bounds = rack.getBoundingClientRect();
   const generous = 24; // keep the preview alive just outside the rack
-  if (clientY < bounds.top - generous || clientY > bounds.bottom + generous) return null;
+  if (clientY < bounds.top - generous || clientY > bounds.bottom + generous) return miss;
+  if (clientX < bounds.left || clientX > bounds.right) return miss;
 
   const localX = clientX - bounds.left + rack.scrollLeft;
+  const tiles = [...rack.querySelectorAll("[data-rack-slot]")].filter(
+    (el): el is HTMLElement => el instanceof HTMLElement,
+  );
 
-  for (const el of rack.querySelectorAll("[data-rack-slot]")) {
-    if (!(el instanceof HTMLElement)) continue;
-    const left = el.offsetLeft;
-    if (localX >= left && localX <= left + el.offsetWidth) {
-      return Number(el.dataset.rackSlot);
-    }
+  // Position, not identity. The tiles are visually shifted by the preview
+  // while their layout boxes stay put, so asking "which letter is under the
+  // pointer" gives an answer that disagrees with what the player sees — that
+  // mismatch is what made a drag skip past letters. Asking "which slot is the
+  // pointer in" is the same question in both frames.
+  for (const [position, el] of tiles.entries()) {
+    if (localX < el.offsetLeft + el.offsetWidth) return { overRack: true, position };
   }
-  return null;
+  return { overRack: true, position: tiles.length === 0 ? null : tiles.length - 1 };
 }
 
-/** Move `value` to sit where `target` currently is. */
-function moveWithin(order: readonly number[], value: number, target: number): number[] {
-  const from = order.indexOf(value);
-  const to = order.indexOf(target);
-  if (from < 0 || to < 0 || from === to) return [...order];
+/**
+ * Move `value` to `position` among the tiles on show, keeping staged tiles
+ * (which are hidden) after them. Positions are what the player is aiming at;
+ * doing this in terms of the full order would count hidden tiles the player
+ * cannot see.
+ */
+function moveToPosition(
+  order: readonly number[],
+  hidden: readonly number[],
+  value: number,
+  position: number,
+): number[] {
+  const visible = order.filter((i) => !hidden.includes(i));
+  const from = visible.indexOf(value);
+  if (from < 0) return [...order];
 
-  const next = [...order];
-  const [moved] = next.splice(from, 1);
-  next.splice(to, 0, moved!);
-  return next;
+  const next = [...visible];
+  next.splice(from, 1);
+  next.splice(Math.max(0, Math.min(position, next.length)), 0, value);
+
+  return [...next, ...order.filter((i) => hidden.includes(i))];
 }
 
 /** Where a drag started: the rack, or a tile already staged on the board. */
@@ -219,9 +239,30 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
     });
   }
 
-  /** Drop a dragged rack tile onto another, sliding the rest along. */
-  function reorderRack(fromIndex: number, overIndex: number) {
-    setRackOrder((current) => moveWithin(current, fromIndex, overIndex));
+  /** Drop a dragged rack tile into a position, sliding the rest along. */
+  function reorderRack(fromIndex: number, position: number | null) {
+    if (position === null) return;
+    setRackOrder((current) => moveToPosition(current, spentIndices, fromIndex, position));
+  }
+
+  /**
+   * Drag a staged tile off the board and back into the rack, landing where it
+   * was dropped. The letter never left `rackOrder` — staged tiles are only
+   * hidden from the rack — so this unstages it and moves it into position.
+   */
+  function recallToRack(from: { x: number; y: number }, position: number | null) {
+    const tile = pending.find((p) => p.x === from.x && p.y === from.y);
+    if (tile === undefined) return;
+
+    setPending((current) => current.filter((p) => p !== tile));
+    setError(null);
+
+    if (tile.from.kind === "letter" && position !== null) {
+      const index = tile.from.index;
+      // The tile is no longer staged, so it is visible again for the move.
+      const stillHidden = spentIndices.filter((i) => i !== index);
+      setRackOrder((current) => moveToPosition(current, stillHidden, index, position));
+    }
   }
 
   /**
@@ -229,20 +270,38 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
    * the order it *would* become, so the gap follows the pointer instead of
    * appearing only on release.
    */
+  /** Rack letters currently staged on the board, so hidden from the rack. */
+  const spentIndices = useMemo(
+    () =>
+      pending
+        .filter((p) => p.from.kind === "letter")
+        .map((p) => (p.from as { kind: "letter"; index: number }).index),
+    [pending],
+  );
+
+  /**
+   * The rack letter a drag concerns, whether it started in the rack or is a
+   * staged tile heading back. Blanks have no rack slot to move.
+   */
+  const draggedLetterIndex = useMemo(() => {
+    if (drag === undefined || drag === null) return null;
+    if (drag.origin.kind === "rack") {
+      return drag.origin.selection.kind === "letter" ? drag.origin.selection.index : null;
+    }
+    const cell = drag.origin;
+    const staged = pending.find((p) => p.x === cell.x && p.y === cell.y);
+    return staged?.from.kind === "letter" ? staged.from.index : null;
+  }, [drag, pending]);
+
   const previewOrder = useMemo(() => {
-    const dragged =
-      drag?.origin.kind === "rack" && drag.origin.selection.kind === "letter"
-        ? drag.origin.selection.index
-        : null;
-    if (dragged === null || rackHover === null) return rackOrder;
+    if (draggedLetterIndex === null || rackHover === null) return rackOrder;
+    const dragged = draggedLetterIndex;
 
-    return moveWithin(rackOrder, dragged, rackHover);
-  }, [drag, rackHover, rackOrder]);
+    const stillHidden = spentIndices.filter((i) => i !== dragged);
+    return moveToPosition(rackOrder, stillHidden, dragged, rackHover);
+  }, [draggedLetterIndex, rackHover, rackOrder, spentIndices]);
 
-  const draggedIndex =
-    drag?.origin.kind === "rack" && drag.origin.selection.kind === "letter"
-      ? drag.origin.selection.index
-      : null;
+
 
   const turnNumber = view?.game.turnNumber;
 
@@ -261,8 +320,13 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
 
   // Kept in a ref so the pointer listeners below can call the current
   // `place` without re-subscribing on every mouse move.
-  const reorderRef = useRef<(fromIndex: number, toSlot: number) => void>(() => {});
+  const reorderRef = useRef<(fromIndex: number, over: number | null) => void>(() => {});
   reorderRef.current = reorderRack;
+
+  const recallRef = useRef<(from: { x: number; y: number }, over: number | null) => void>(
+    () => {},
+  );
+  recallRef.current = recallToRack;
 
   const dropRef = useRef<(x: number, y: number, origin: Origin) => void>(() => {});
   dropRef.current = (x, y, origin) => {
@@ -280,7 +344,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
       if (dragRef.current) dragRef.current.moved = true;
       setDrag((d) => (d === null ? null : { ...d, x: e.clientX, y: e.clientY }));
 
-      setRackHover(rackSlotUnder(e.clientX, e.clientY));
+      setRackHover(rackSlotUnder(e.clientX, e.clientY).position);
     };
 
     const onUp = (e: PointerEvent) => {
@@ -294,12 +358,14 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
       // selected so tap-then-tap still works.
       if (!moved) return;
 
-      // Dropped back onto the rack: reorder rather than place. Same geometry
-      // as the preview, so releasing lands where the gap was shown.
+      // Dropped onto the rack. Same geometry as the preview, so releasing
+      // lands where the gap was shown.
       const over = rackSlotUnder(e.clientX, e.clientY);
-      if (over !== null) {
-        if (origin?.kind === "rack" && origin.selection.kind === "letter") {
-          reorderRef.current(origin.selection.index, over);
+      if (over.overRack) {
+        if (origin === undefined) return;
+        if (origin.kind === "cell") recallRef.current(origin, over.position);
+        else if (origin.selection.kind === "letter") {
+          reorderRef.current(origin.selection.index, over.position);
         }
         return;
       }
@@ -336,9 +402,6 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
   const seatOf = (userId: string) =>
     view.players.find((p) => p.userId === userId)?.seat ?? 0;
 
-  const spentIndices = pending
-    .filter((p) => p.from.kind === "letter")
-    .map((p) => (p.from as { kind: "letter"; index: number }).index);
   const blankSpent = pending.some((p) => p.from.kind === "blank");
 
   /**
@@ -478,7 +541,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             onGrab={grab}
             order={rackOrder}
             previewOrder={previewOrder}
-            draggedIndex={draggedIndex}
+            draggedIndex={draggedLetterIndex}
             onShuffle={shuffleRack}
             onRecall={clear}
             canRecall={pending.length > 0}

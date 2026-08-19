@@ -85,7 +85,8 @@ export function Rack({
         // movement animates; reordering the DOM would jump. Both orders are
         // compared with staged tiles removed, so the gaps line up.
         const shift =
-          previewOrder.filter((i) => !spent.includes(i)).indexOf(index) - slot;
+          previewOrder.filter((i) => !spent.includes(i) || i === draggedIndex).indexOf(index) -
+          slot;
 
         return (
           <button
