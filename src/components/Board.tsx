@@ -71,9 +71,9 @@ export function Board({
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
 
-  // The floor is close in: below about 80% of the base size a 15x15 board is
-  // small enough that letters stop being readable, which helps nobody.
-  const clamp = (value: number) => Math.min(2.5, Math.max(0.8, value));
+  // Zoom is for looking closer. The board already fits at its base size, so
+  // shrinking it only costs legibility -- the floor barely goes below 1.
+  const clamp = (value: number) => Math.min(2.5, Math.max(0.95, value));
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
