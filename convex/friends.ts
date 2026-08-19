@@ -94,7 +94,7 @@ export const requestFriend = mutation({
     // Deliberately explicit rather than a vague "request sent": there is no
     // invitation email, so a silent no-op would look like a bug.
     if (them === null) {
-      throw new ConvexError("Nobody with that address has signed in to Word Craft yet");
+      throw new ConvexError("Nobody with that address has signed in to kraftwerd yet");
     }
 
     // A pair can already be linked from either direction.

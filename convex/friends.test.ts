@@ -87,7 +87,7 @@ describe("friends", () => {
 
     await expect(
       asAna.mutation(api.friends.requestFriend, { email: "nobody@example.com" }),
-    ).rejects.toThrow("signed in to Word Craft yet");
+    ).rejects.toThrow("signed in to kraftwerd yet");
   });
 
   test("you cannot befriend yourself", async () => {
