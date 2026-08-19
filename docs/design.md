@@ -155,8 +155,8 @@ is a risk.
 
 ## 5. Rack and letter generation
 
-- Rack is **7 letters + 1 blank**. Place up to all 8 in a turn.
-- Letters refill to 7 after your turn.
+- Rack is **6 letters + 1 blank**. Place up to all 7 in a turn.
+- Letters refill to 6 after your turn.
 - **Blank cadence: one blank slot, never more.** If you use it, you get a new
   one next turn. If you don't, you still have exactly one — blanks do not
   accumulate. Max one blank placed per turn, always.
@@ -206,18 +206,23 @@ blur together. `RARE_FLOOR` in the build script lifts any letter to at least
 in twelve. Every rack can still spell a short word and the vowel share is
 unchanged.
 
-**Measured over 5,000 generated racks:**
+**Measured over 4,000 generated racks** (6 letters, vowel floor 2):
 
 | metric | value |
 |--------|-------|
-| can spell at least one 2- or 3-letter word | **99.9%** |
-| vowel share (corpus is 34.7%) | **45.8%** |
-| J/Q/X/Z combined | 1.0% |
+| can spell a 2- or 3-letter word | **100%** |
+| can build a 2×2 outright | 99% (82% without the blank) |
+| vowel share (corpus is 34.7%) | **40%** |
+| rack holding a J/Q/X/Z | 27% |
 
-The vowel floor is what lifts 34.7% to 45.8% — close to Scrabble's ~43%, and
-appropriate here since word squares are vowel-hungry. Known tuning knob: `S`
-is inflated by plurals (8.4% of drawn tiles). If racks feel S-heavy in play,
-damp it in the config rather than in the generator.
+The vowel floor is what lifts 34.7% to 40%. It is 2 rather than 3 because at
+3 a six-letter rack would be over half vowels.
+
+Rack size is mostly a pacing lever, not a difficulty one: going 7 → 6 barely
+moved 2×2 buildability (100% → 99%) but stretches a game from roughly 17 turns
+to 20 and leaves less to work with each turn. Known tuning knob: `S` is
+inflated by plurals. If racks feel S-heavy in play, damp it in the config
+rather than in the generator.
 
 ### 5.2 Dictionary
 

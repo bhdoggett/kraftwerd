@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
+import { RACK } from "../shared/config";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
@@ -85,7 +86,7 @@ describe("placeTiles", () => {
         .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
         .unique(),
     );
-    expect(player?.letters).toHaveLength(7);
+    expect(player?.letters).toHaveLength(RACK.size);
     expect(player?.blank).toBe(true);
   });
 
