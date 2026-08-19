@@ -111,6 +111,21 @@
   box-sizing: border-box;
 }
 
+/*
+ * Touch screens: no grey flash on tap, no magnifier or callout on a long
+ * press. The board and rack are dragged, and a long press there means "pick
+ * this tile up", not "select this text".
+ */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+[role="button"] {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
 html,
 body,
 #root {

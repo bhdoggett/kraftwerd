@@ -103,7 +103,10 @@ function SignInForm() {
             .signIn
             .social({
               provider: "google",
-              callbackURL: window.location.origin,
+              // Back to the page they were on, not the root: someone opening
+              // an invite link signs in first, and sending them to the lobby
+              // afterwards loses the game they were invited to.
+              callbackURL: window.location.href,
             })
             .catch((err: unknown) => {
               setError(err instanceof Error ? err.message : String(err));
