@@ -69,10 +69,23 @@ for (const word of short) {
   }
 }
 
+/**
+ * Floor for any single letter, per 10,000.
+ *
+ * Raw short-word frequency puts J/Q/X/Z near 1.4% combined, so a player can go
+ * a dozen racks without meeting one and every turn plays much like the last.
+ * At this floor they turn up in roughly a third of racks, which is often
+ * enough to be interesting without crowding out the letters that build words.
+ *
+ * Measured at 150: racks holding a J/Q/X/Z rise from 8% to 28%, every rack can
+ * still spell a short word, and the vowel share is unchanged at 45.9%.
+ */
+const RARE_FLOOR = 150;
+
 const weights = {};
 for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
-  // per-10,000, rounded, floored at 1 so no letter is unreachable
-  weights[letter] = Math.max(1, Math.round(((counts[letter] ?? 0) / totalLetters) * 10_000));
+  const raw = Math.round(((counts[letter] ?? 0) / totalLetters) * 10_000);
+  weights[letter] = Math.max(RARE_FLOOR, raw);
 }
 writeFileSync(join(outDir, "letter-weights.json"), JSON.stringify(weights, null, 2) + "\n");
 

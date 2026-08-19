@@ -125,10 +125,20 @@ describe("racks drawn from the real letter weights", () => {
     expect(share).toBeLessThan(0.55);
   });
 
-  test("the hostile letters stay rare", () => {
+  test("the awkward letters turn up often enough to notice, without crowding", () => {
     const letters = racks.flat();
     const hostile = letters.filter((l) => "JQXZ".includes(l)).length;
+    const share = hostile / letters.length;
 
-    expect(hostile / letters.length).toBeLessThan(0.03);
+    // RARE_FLOOR lifts these above their natural ~1.4%: rare enough to stay
+    // interesting, common enough that a player actually meets them.
+    expect(share).toBeGreaterThan(0.03);
+    expect(share).toBeLessThan(0.09);
+  });
+
+  test("a rack can still spell something despite the awkward letters", () => {
+    const playable = racks.filter((r) => short.some((w) => canSpell(r, w))).length;
+
+    expect(playable / racks.length).toBeGreaterThan(0.95);
   });
 });

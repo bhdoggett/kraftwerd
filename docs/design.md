@@ -199,6 +199,13 @@ J/Q/V/X/Z fall out near zero on their own, so the "dead letter suppression"
 step needs no separate mechanism — the data already handles it, and those
 letters stay playable in longer words where they belong.
 
+**Rare-letter floor.** Left at their raw frequency those letters appear so
+seldom (1.4% of tiles combined) that most players never meet one and turns
+blur together. `RARE_FLOOR` in the build script lifts any letter to at least
+150 per 10,000, which puts a J/Q/X/Z in about a third of racks instead of one
+in twelve. Every rack can still spell a short word and the vowel share is
+unchanged.
+
 **Measured over 5,000 generated racks:**
 
 | metric | value |
