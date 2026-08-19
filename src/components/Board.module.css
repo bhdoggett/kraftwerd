@@ -16,6 +16,11 @@
    */
   touch-action: none;
   overscroll-behavior: contain;
+  /*
+   * Hidden, not disabled: panning moves the scroll position, so the board
+   * still has to scroll -- it just does not need bars to say so.
+   */
+  scrollbar-width: none;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -38,6 +43,10 @@
  * Hairline gaps and a surrounding border, so the board reads as one printed
  * grid rather than a field of separate buttons.
  */
+.viewport::-webkit-scrollbar {
+  display: none;
+}
+
 .grid {
   display: grid;
   gap: 1px;
