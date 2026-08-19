@@ -86,6 +86,20 @@ npm run build:dictionary
 npx convex import --prod --table words --replace shared/data/words.jsonl
 ```
 
+## Seeding a dev deployment
+
+Every deployment needs its own dictionary, dev included. An empty `words`
+table is not an obvious failure: the game loads, tiles place, and then every
+single word is reported as invalid — including obvious ones — because nothing
+is in the table to match.
+
+```bash
+npm run build:dictionary
+npx convex import -y --table words --replace shared/data/words.jsonl
+```
+
+(Without `--prod` this targets your dev deployment.)
+
 ## Google OAuth for production
 
 Add a **second** redirect URI to the same Google OAuth client, pointing at the
