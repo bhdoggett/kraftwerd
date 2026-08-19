@@ -121,12 +121,6 @@
   background: var(--accent-soft);
 }
 
-.centre::after {
-  content: "★";
-  color: var(--accent);
-  font-size: 0.9rem;
-  line-height: 1;
-}
 
 .open:hover {
   background: var(--accent-soft);
