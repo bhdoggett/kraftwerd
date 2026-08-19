@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Secrets never belong in the repo. Convex deployment vars are set with
+# `npx convex env set`; Vite build vars are set on the host.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
