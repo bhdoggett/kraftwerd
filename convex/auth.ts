@@ -9,7 +9,18 @@ import authConfig from "./auth.config";
 // Declared in convex.config.ts, so these are typed rather than read as bare
 // strings off process.env. They are optional so the app still pushes before a
 // Google OAuth client exists; sign-in is what fails, not the deploy.
-const siteUrl = env.SITE_URL ?? "http://localhost:5173";
+/**
+ * Origins allowed to complete an OAuth callback. Comma-separated, so one
+ * deployment can serve both local development and a deployed frontend; the
+ * first entry is the canonical site URL. The default matches the port
+ * vite.config.ts pins.
+ */
+const siteUrls = (env.SITE_URL ?? "http://localhost:5175")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const siteUrl = siteUrls[0]!;
 
 /**
  * Whether a Google OAuth client has been configured.
@@ -67,7 +78,7 @@ export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi();
 export const createAuth = (ctx: GenericCtx<DataModel>) =>
   betterAuth({
     baseURL: env.CONVEX_SITE_URL,
-    trustedOrigins: [siteUrl],
+    trustedOrigins: siteUrls,
     database: authComponent.adapter(ctx),
     // Google only. No password flow means no password storage, no reset
     // emails, and nothing to phish.
