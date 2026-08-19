@@ -4,7 +4,8 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { makeBoard } from "../../shared/engine/board";
-import { applyPlacements } from "../../shared/engine/legality";
+import { makeDictionary } from "../../shared/engine/dictionary";
+import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
 import { scoreTurn, type Placement } from "../../shared/engine/score";
 import { Board } from "./Board";
 import styles from "./Game.module.css";
@@ -12,6 +13,28 @@ import { Rack, type Selection } from "./Rack";
 import { Scoreboard } from "./Scoreboard";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+/** Why a staged play is not yet legal, in words a player can act on. */
+function describeLegality(
+  legality: Exclude<ReturnType<typeof validateTurn>, { ok: true }>,
+): string {
+  switch (legality.reason) {
+    case "empty-turn":
+      return "Place at least one tile.";
+    case "out-of-bounds":
+      return "That square is off the board.";
+    case "occupied":
+      return "There is already a tile there.";
+    case "duplicate-cell":
+      return "Two tiles on the same square.";
+    case "disconnected":
+      return "Every tile must connect to the tiles already on the board.";
+    case "invalid-words":
+      return legality.words.length === 1
+        ? `${legality.words[0]} is not a word.`
+        : `Not words: ${legality.words.join(", ")}.`;
+  }
+}
 
 /** A staged placement, plus which rack slot it came from. */
 interface Staged extends Placement {
@@ -22,6 +45,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
   const view = useQuery(api.games.getGame, { gameId });
   const placeTiles = useMutation(api.games.placeTiles);
   const joinGame = useMutation(api.games.joinGame);
+  const resignGame = useMutation(api.games.resignGame);
   const [copied, setCopied] = useState(false);
 
   const [pending, setPending] = useState<Staged[]>([]);
@@ -36,17 +60,54 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
 
   const me = view?.players.find((p) => p.letters !== null);
 
-  const preview = useMemo(() => {
-    if (!view || pending.length === 0) return null;
+  const placements: Placement[] = useMemo(
+    () => pending.map(({ x, y, letter, isBlank }) => ({ x, y, letter, isBlank })),
+    [pending],
+  );
+
+  const boards = useMemo(() => {
+    if (!view) return null;
     const before = makeBoard(view.tiles);
-    const placements: Placement[] = pending.map(({ x, y, letter, isBlank }) => ({
-      x,
-      y,
-      letter,
-      isBlank,
-    }));
-    return scoreTurn(applyPlacements(before, placements), placements);
-  }, [view, pending]);
+    return { before, after: applyPlacements(before, placements) };
+  }, [view, placements]);
+
+  const preview = useMemo(
+    () => (boards && placements.length > 0 ? scoreTurn(boards.after, placements) : null),
+    [boards, placements],
+  );
+
+  // The words this play would put on the board. Computed locally by the same
+  // engine the server uses, so only these few words need checking.
+  const candidateWords = useMemo(
+    () => (boards && placements.length > 0 ? wordsFormed(boards.after, placements) : []),
+    [boards, placements],
+  );
+
+  // Joined so the query argument is stable across renders with equal contents.
+  const wordsKey = candidateWords.join(",");
+  const checked = useQuery(
+    api.games.checkWords,
+    wordsKey === "" ? "skip" : { words: wordsKey.split(",") },
+  );
+
+  /**
+   * Full legality, run client-side against the words the server just
+   * confirmed. Catches "not a word", but also disconnection and overlaps —
+   * before the play is ever submitted.
+   */
+  const legality = useMemo(() => {
+    if (!view || !boards || placements.length === 0) return null;
+    if (checked === undefined) return null;
+
+    const dictionary = makeDictionary(
+      checked.filter((entry) => entry.valid).map((entry) => entry.word),
+    );
+
+    return validateTurn(boards.before, placements, dictionary, {
+      width: view.game.boardSize,
+      height: view.game.boardSize,
+    });
+  }, [view, boards, placements, checked]);
 
   // Kept in a ref so the pointer listeners below can call the current
   // `place` without re-subscribing on every mouse move.
@@ -237,12 +298,30 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
 
         {game.status === "active" && !myTurn && (
           <p className={styles.hint}>
-            Waiting for seat {game.currentSeat + 1} to play.
+            Waiting for{" "}
+            {view.players.find((p) => p.seat === game.currentSeat)?.name ??
+              `seat ${game.currentSeat + 1}`}{" "}
+            to play.
           </p>
         )}
 
         {game.status === "finished" && (
-          <p className={styles.hint}>This game is over.</p>
+          <p className={styles.hint}>
+            {(() => {
+              const winners = game.winnerIds ?? [];
+              const names = view.players
+                .filter((p) => winners.includes(p.userId))
+                .map((p) => p.name);
+              const youWon = view.players.some(
+                (p) => p.letters !== null && winners.includes(p.userId),
+              );
+              if (names.length === 0) return "Game over.";
+              if (youWon && names.length === 1) return "Game over — you win.";
+              return names.length === 1
+                ? `Game over — ${names[0]} wins.`
+                : `Game over — ${names.join(" and ")} tie.`;
+            })()}
+          </p>
         )}
 
         {myTurn && (
@@ -259,7 +338,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
           <button
             type="button"
             className={styles.button}
-            disabled={!myTurn || pending.length === 0 || submitting}
+            disabled={!myTurn || pending.length === 0 || submitting || !legality?.ok}
             onClick={() => void submit()}
           >
             {submitting ? "Playing…" : "Play"}
@@ -273,7 +352,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             Clear
           </button>
 
-          {preview && (
+          {preview && legality?.ok && (
             <span className={styles.preview}>
               This play scores <span className={styles.previewScore}>{preview.total}</span>
               {preview.squares.length > 0 &&
@@ -294,6 +373,22 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             {copied ? "Link copied" : "Copy invite link"}
           </button>
 
+          {game.status !== "finished" && view.yourSeat !== null && (
+            <button
+              type="button"
+              className={styles.quit}
+              onClick={() => {
+                const others = game.playerCount > 1;
+                const warning = others
+                  ? "Quit this game? The other player wins it."
+                  : "Quit this game?";
+                if (window.confirm(warning)) void resignGame({ gameId });
+              }}
+            >
+              Quit
+            </button>
+          )}
+
           {view.canJoin && (
             <button
               type="button"
@@ -304,6 +399,28 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             </button>
           )}
         </div>
+
+        {pending.length > 0 && (
+          <div className={styles.words}>
+            {checked === undefined ? (
+              <span className={styles.checking}>Checking words…</span>
+            ) : (
+              checked.map((entry) => (
+                <span
+                  key={entry.word}
+                  className={[styles.word, entry.valid ? styles.valid : styles.invalid].join(
+                    " ",
+                  )}
+                >
+                  {entry.word}
+                </span>
+              ))
+            )}
+            {legality !== null && !legality.ok && (
+              <span className={styles.reason}>{describeLegality(legality)}</span>
+            )}
+          </div>
+        )}
 
         {error && <div className={styles.error}>{error}</div>}
 
@@ -323,6 +440,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
           userId: p.userId,
           seat: p.seat,
           score: p.score,
+          name: p.name,
           isYou: p.letters !== null,
         }))}
         currentSeat={game.currentSeat}

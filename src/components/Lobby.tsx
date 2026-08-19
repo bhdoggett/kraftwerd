@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { Friends } from "./Friends";
 import styles from "./Lobby.module.css";
 
 export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
@@ -13,8 +14,36 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     (g) => !(mine ?? []).some((m) => m.gameId === g.gameId),
   );
 
+  const viewer = useQuery(api.users.viewer);
+
   return (
     <div className={styles.lobby}>
+      {viewer?.stats && (
+        <section className={styles.section}>
+          <h2 className={styles.heading}>Your record</h2>
+          <div className={styles.stats}>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.wins}</strong>
+              wins
+            </span>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.gamesPlayed}</strong>
+              games
+            </span>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.bestGameScore}</strong>
+              best game
+            </span>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.bestTurnScore}</strong>
+              best play
+            </span>
+          </div>
+        </section>
+      )}
+
+      <Friends onOpen={onOpen} />
+
       <section className={styles.section}>
         <h2 className={styles.heading}>New game</h2>
         <div className={styles.create}>

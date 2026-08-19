@@ -289,3 +289,95 @@ describe("solo games", () => {
     expect(game?.status).toBe("lobby");
   });
 });
+
+describe("resigning and stats", () => {
+  test("quitting hands the win to the other player", async () => {
+    const { t, gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D"]);
+
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("finished");
+    expect(game?.winnerIds).toEqual([bob]);
+    expect(game?.resignedBy).toEqual([alice]);
+  });
+
+  test("a resigner cannot win even while ahead", async () => {
+    const { t, gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D", "D", "O"]);
+
+    // Alice scores 8, then quits anyway.
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
+    });
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.winnerIds).toEqual([bob]);
+
+    const users = await t.run(async (ctx) => ({
+      alice: await ctx.db.get("users", alice),
+      bob: await ctx.db.get("users", bob),
+    }));
+    expect(users.alice?.wins ?? 0).toBe(0);
+    expect(users.bob?.wins).toBe(1);
+    // The score still counts toward personal bests.
+    expect(users.alice?.bestGameScore).toBe(8);
+  });
+
+  test("records the best single turn as it happens", async () => {
+    const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "D", "D", "O"]);
+
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
+    });
+
+    const user = await t.run(async (ctx) => ctx.db.get("users", alice));
+    expect(user?.bestTurnScore).toBe(8);
+  });
+
+  test("counts a game for everyone who played, won or not", async () => {
+    const { t, gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D"]);
+
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    const users = await t.run(async (ctx) => ({
+      alice: await ctx.db.get("users", alice),
+      bob: await ctx.db.get("users", bob),
+    }));
+    expect(users.alice?.gamesPlayed).toBe(1);
+    expect(users.bob?.gamesPlayed).toBe(1);
+  });
+
+  test("a finished game cannot be resigned again", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    await expect(
+      asAlice.mutation(api.games.resignGame, { gameId }),
+    ).rejects.toThrow("already over");
+  });
+
+  test("reaching the tile threshold records a winner", async () => {
+    const { t, gameId, asAlice, asBob, alice } = await twoPlayerGame(["A", "D", "T", "O"]);
+    await t.run(async (ctx) => {
+      await ctx.db.patch("games", gameId, { endThreshold: 2 });
+    });
+
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+    await asBob.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 1, "D"), at(1, 1, "O")],
+    });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("finished");
+    // Bob closed the 2x2 for 5; Alice took 2.
+    expect(game?.winnerIds).toHaveLength(1);
+    expect(game?.winnerIds?.[0]).not.toBe(alice);
+  });
+});

@@ -116,6 +116,64 @@ async function joinSeat(
   });
 }
 
+/**
+ * Create a game and seat the given friends immediately, so nobody has to pass
+ * a link around. Only accepted friends may be seated -- otherwise anyone could
+ * drag a stranger into a game.
+ */
+export const createGameWithFriends = mutation({
+  args: { friendIds: v.array(v.id("users")) },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+
+    const playerCount = args.friendIds.length + 1;
+    if (playerCount < 2 || playerCount > GAME.maxPlayers) {
+      throw new Error(`Games take up to ${GAME.maxPlayers} players`);
+    }
+    if (new Set(args.friendIds).size !== args.friendIds.length) {
+      throw new Error("Duplicate player");
+    }
+    if (args.friendIds.includes(userId)) throw new Error("You are already seated");
+
+    for (const friendId of args.friendIds) {
+      const [a, b] = await Promise.all([
+        ctx.db
+          .query("friendships")
+          .withIndex("by_pair", (q) =>
+            q.eq("requesterId", userId).eq("addresseeId", friendId),
+          )
+          .unique(),
+        ctx.db
+          .query("friendships")
+          .withIndex("by_pair", (q) =>
+            q.eq("requesterId", friendId).eq("addresseeId", userId),
+          )
+          .unique(),
+      ]);
+      const accepted = [a, b].some((edge) => edge?.status === "accepted");
+      if (!accepted) throw new Error("You are not friends with that player");
+    }
+
+    const gameId = await ctx.db.insert("games", {
+      status: "active",
+      boardSize: GAME.boardSize,
+      endThreshold: GAME.endThreshold,
+      playerCount,
+      currentSeat: 0,
+      turnNumber: 0,
+      tileCount: 0,
+      createdBy: userId,
+    });
+
+    await joinSeat(ctx, gameId, userId, 0);
+    for (const [i, friendId] of args.friendIds.entries()) {
+      await joinSeat(ctx, gameId, friendId, i + 1);
+    }
+
+    return gameId;
+  },
+});
+
 export const joinGame = mutation({
   args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
@@ -213,6 +271,11 @@ export const placeTiles = mutation({
       blank: rack.blank,
     });
 
+    const user = await ctx.db.get("users", userId);
+    if (user !== null && score.total > (user.bestTurnScore ?? 0)) {
+      await ctx.db.patch("users", userId, { bestTurnScore: score.total });
+    }
+
     await advanceTurn(ctx, game, placements.length);
 
     return { score: score.total, squares: score.squares };
@@ -239,6 +302,67 @@ function spendRack(player: Doc<"players">, placements: readonly Placement[]): st
 }
 
 /**
+ * Settle a finished game: decide the winners, then fold the result into every
+ * player's lifetime stats.
+ *
+ * Players who resigned forfeit — they cannot win regardless of score. A tie
+ * among the remaining leaders gives each of them a win.
+ */
+async function finishGame(ctx: MutationCtx, game: Doc<"games">) {
+  const players = await ctx.db
+    .query("players")
+    .withIndex("by_game", (q) => q.eq("gameId", game._id))
+    .take(GAME.maxPlayers);
+
+  const resigned = new Set(game.resignedBy ?? []);
+  const eligible = players.filter((p) => !resigned.has(p.userId));
+
+  const best = eligible.reduce((max, p) => Math.max(max, p.score), -Infinity);
+  const winners = eligible.filter((p) => p.score === best).map((p) => p.userId);
+
+  await ctx.db.patch("games", game._id, { status: "finished", winnerIds: winners });
+
+  for (const player of players) {
+    const user = await ctx.db.get("users", player.userId);
+    if (user === null) continue;
+
+    await ctx.db.patch("users", user._id, {
+      gamesPlayed: (user.gamesPlayed ?? 0) + 1,
+      wins: (user.wins ?? 0) + (winners.includes(player.userId) ? 1 : 0),
+      bestGameScore: Math.max(user.bestGameScore ?? 0, player.score),
+    });
+  }
+}
+
+/**
+ * Quit a game. Any remaining player wins it; in a solo game this just ends it.
+ */
+export const resignGame = mutation({
+  args: { gameId: v.id("games") },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+
+    const game = await ctx.db.get("games", args.gameId);
+    if (game === null) throw new Error("No such game");
+    if (game.status === "finished") throw new Error("Game is already over");
+
+    const player = await ctx.db
+      .query("players")
+      .withIndex("by_game_and_user", (q) =>
+        q.eq("gameId", args.gameId).eq("userId", userId),
+      )
+      .unique();
+    if (player === null) throw new Error("You are not in this game");
+
+    const resignedBy = [...new Set([...(game.resignedBy ?? []), userId])];
+    await ctx.db.patch("games", args.gameId, { resignedBy });
+
+    await finishGame(ctx, { ...game, resignedBy });
+    return null;
+  },
+});
+
+/**
  * Rotate the seat and apply the end condition. Crossing the tile threshold
  * schedules the finish for the end of the current round rather than ending
  * immediately, so every player gets the same number of turns (§6).
@@ -260,8 +384,9 @@ async function advanceTurn(ctx: MutationCtx, game: Doc<"games">, placed: number)
     turnNumber,
     currentSeat: (game.currentSeat + 1) % game.playerCount,
     ...(endsAfterTurn === undefined ? {} : { endsAfterTurn }),
-    ...(finished ? { status: "finished" as const } : {}),
   });
+
+  if (finished) await finishGame(ctx, { ...game, tileCount, endsAfterTurn });
 }
 
 function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true }>): string {
@@ -280,6 +405,40 @@ function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true 
       return `Not a word: ${legality.words.join(", ")}`;
   }
 }
+
+/** Prefer a real name, fall back to the local part of the email. */
+function displayName(user: Doc<"users"> | null): string {
+  if (user === null) return "Unknown";
+  if (user.name && user.name.trim() !== "") return user.name;
+  if (user.email) return user.email.split("@")[0]!;
+  return "Player";
+}
+
+/**
+ * Which of these words are in the dictionary.
+ *
+ * Lets the client validate a play before it is submitted, without shipping
+ * 59k words to the browser. The client works out which words its staged tiles
+ * form and asks about just those — a handful per turn.
+ */
+export const checkWords = query({
+  args: { words: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    await requireUser(ctx);
+
+    const unique = [...new Set(args.words.map((w) => w.toUpperCase()))].slice(0, 32);
+
+    return await Promise.all(
+      unique.map(async (word) => {
+        const row = await ctx.db
+          .query("words")
+          .withIndex("by_word", (q) => q.eq("word", word))
+          .unique();
+        return { word, valid: row !== null };
+      }),
+    );
+  },
+});
 
 export const getGame = query({
   args: { gameId: v.id("games") },
@@ -313,14 +472,20 @@ export const getGame = query({
       })),
       // Racks are private: every player sees their own letters and only the
       // count of everyone else's.
-      players: players.map((p) => ({
-        userId: p.userId,
-        seat: p.seat,
-        score: p.score,
-        letters: p.userId === userId ? p.letters : null,
-        letterCount: p.letters.length,
-        blank: p.blank,
-      })),
+      players: await Promise.all(
+        players.map(async (p) => {
+          const user = await ctx.db.get("users", p.userId);
+          return {
+            userId: p.userId,
+            seat: p.seat,
+            score: p.score,
+            name: displayName(user),
+            letters: p.userId === userId ? p.letters : null,
+            letterCount: p.letters.length,
+            blank: p.blank,
+          };
+        }),
+      ),
     };
   },
 });

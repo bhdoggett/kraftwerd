@@ -21,50 +21,53 @@ interface BoardProps {
   onPickUp: (x: number, y: number) => void;
 }
 
-/** Cells of empty board kept visible around the played area. */
-const MARGIN = 3;
-const MIN_SPAN = 12;
+const NEIGHBOURS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+] as const;
+
+const key = (x: number, y: number) => `${x},${y}`;
 
 /**
- * The board is 40x40 but a game only ever places ~100 tiles, and connectivity
- * keeps them in one clump. Rendering all 1600 cells would be mostly empty
- * space to scroll through, so the view crops to the played area plus a margin.
+ * The empty squares worth drawing: those touching an occupied square.
+ *
+ * The board is far larger than any game uses, and connectivity (design.md §3)
+ * means a tile may only be placed against the existing mass — so the squares
+ * next to it are exactly the legal moves. Drawing the full grid would be a
+ * field of identical cells where almost none can be played. An empty board
+ * offers a single square at the centre, and the playable edge grows outward
+ * from there.
+ *
+ * This costs no legal play: any connected shape can be built by adding
+ * squares one at a time, so every placement stays reachable as the frontier
+ * expands with each staged tile.
  */
-function windowFor(
+function frontierOf(
   boardSize: number,
-  tiles: readonly { x: number; y: number }[],
-  pending: readonly { x: number; y: number }[],
-) {
-  const all = [...tiles, ...pending];
-  if (all.length === 0) {
+  occupied: ReadonlySet<string>,
+  coords: readonly { x: number; y: number }[],
+): Set<string> {
+  const frontier = new Set<string>();
+
+  if (coords.length === 0) {
     const mid = Math.floor(boardSize / 2);
-    const half = Math.floor(MIN_SPAN / 2);
-    return { x0: mid - half, y0: mid - half, x1: mid + half, y1: mid + half };
+    frontier.add(key(mid, mid));
+    return frontier;
   }
 
-  const xs = all.map((t) => t.x);
-  const ys = all.map((t) => t.y);
-  let x0 = Math.min(...xs) - MARGIN;
-  let y0 = Math.min(...ys) - MARGIN;
-  let x1 = Math.max(...xs) + MARGIN;
-  let y1 = Math.max(...ys) + MARGIN;
+  for (const { x, y } of coords) {
+    for (const [dx, dy] of NEIGHBOURS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= boardSize || ny >= boardSize) continue;
+      if (occupied.has(key(nx, ny))) continue;
+      frontier.add(key(nx, ny));
+    }
+  }
 
-  // Keep the view from collapsing around a tiny opening play.
-  const grow = (a: number, b: number) => {
-    const short = MIN_SPAN - (b - a + 1);
-    if (short <= 0) return [a, b] as const;
-    const half = Math.ceil(short / 2);
-    return [a - half, b + half] as const;
-  };
-  [x0, x1] = grow(x0, x1);
-  [y0, y1] = grow(y0, y1);
-
-  return {
-    x0: Math.max(0, x0),
-    y0: Math.max(0, y0),
-    x1: Math.min(boardSize - 1, x1),
-    y1: Math.min(boardSize - 1, y1),
-  };
+  return frontier;
 }
 
 export function Board({
@@ -76,84 +79,105 @@ export function Board({
   onPlace,
   onPickUp,
 }: BoardProps) {
-  const view = useMemo(
-    () => windowFor(boardSize, tiles, pending),
-    [boardSize, tiles, pending],
-  );
-
   const committed = useMemo(() => {
     const map = new Map<string, BoardTile>();
-    for (const t of tiles) map.set(`${t.x},${t.y}`, t);
+    for (const t of tiles) map.set(key(t.x, t.y), t);
     return map;
   }, [tiles]);
 
   const staged = useMemo(() => {
     const map = new Map<string, Placement>();
-    for (const p of pending) map.set(`${p.x},${p.y}`, p);
+    for (const p of pending) map.set(key(p.x, p.y), p);
     return map;
   }, [pending]);
 
-  const columns = view.x1 - view.x0 + 1;
-  const rows: React.ReactNode[] = [];
+  const { cells, x0, y0, columns, rows, frontier } = useMemo(() => {
+    const occupiedKeys = new Set([...committed.keys(), ...staged.keys()]);
+    const coords = [
+      ...[...committed.values()].map(({ x, y }) => ({ x, y })),
+      ...[...staged.values()].map(({ x, y }) => ({ x, y })),
+    ];
+    const open = frontierOf(boardSize, occupiedKeys, coords);
 
-  for (let y = view.y0; y <= view.y1; y++) {
-    for (let x = view.x0; x <= view.x1; x++) {
-      const key = `${x},${y}`;
-      const tile = committed.get(key);
-      const stage = staged.get(key);
+    const all = [
+      ...coords,
+      ...[...open].map((k) => {
+        const [x, y] = k.split(",").map(Number);
+        return { x: x!, y: y! };
+      }),
+    ];
 
-      const classes = [styles.cell];
-      if (tile) classes.push(styles.tile);
-      if (tile?.isBlank) classes.push(styles.blank);
-      if (stage) classes.push(styles.pending, styles.tile);
-      if (stage?.isBlank) classes.push(styles.blank);
-      if (!tile && !stage) {
-        classes.push(styles.empty);
-        if (canPlace) classes.push(styles.playable, styles.armed);
-      }
+    const xs = all.map((c) => c.x);
+    const ys = all.map((c) => c.y);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
 
-      rows.push(
-        <button
-          key={key}
-          type="button"
-          className={classes.join(" ")}
-          // `data-cell` is how a pointer drag resolves its drop target: on
-          // release the layer hit-tests with elementFromPoint and reads this.
-          data-cell={tile === undefined ? key : undefined}
-          // Deliberately not `disabled`: a disabled control receives no
-          // pointer events and is skipped by elementFromPoint, which would
-          // make it invisible to the drag layer. The guard lives in onClick.
-          aria-disabled={tile !== undefined || (!stage && !canPlace)}
-          aria-label={
-            tile || stage
-              ? `${(tile ?? stage)!.letter} at column ${x + 1}, row ${y + 1}`
-              : `empty square, column ${x + 1}, row ${y + 1}`
-          }
-          onClick={() => {
-            if (tile) return;
-            if (stage) onPickUp(x, y);
-            else if (canPlace) onPlace(x, y);
-          }}
-        >
-          {(tile ?? stage)?.letter ?? "·"}
-          {tile && (
-            <span
-              className={styles.seat}
-              style={{ background: `var(--seat-${seatOf(tile.placedBy) % 4})` }}
-            />
-          )}
-        </button>,
-      );
-    }
-  }
+    return {
+      cells: all,
+      frontier: open,
+      x0: minX,
+      y0: minY,
+      columns: Math.max(...xs) - minX + 1,
+      rows: Math.max(...ys) - minY + 1,
+    };
+  }, [boardSize, committed, staged]);
 
   return (
     <div className={styles.viewport}>
       <div
         className={styles.grid}
-        style={{ gridTemplateColumns: `repeat(${columns}, var(--cell-size))` }}
+        style={{
+          gridTemplateColumns: `repeat(${columns}, var(--cell-size))`,
+          gridTemplateRows: `repeat(${rows}, var(--cell-size))`,
+        }}
       >
-        {rows}
+        {cells.map(({ x, y }) => {
+          const k = key(x, y);
+          const tile = committed.get(k);
+          const stage = staged.get(k);
+          const isOpen = frontier.has(k);
+
+          const classes = [styles.cell];
+          if (tile) classes.push(styles.tile);
+          if (tile?.isBlank) classes.push(styles.blank);
+          if (stage) classes.push(styles.pending, styles.tile);
+          if (stage?.isBlank) classes.push(styles.blank);
+          if (isOpen) {
+            classes.push(styles.open);
+            if (canPlace) classes.push(styles.playable, styles.armed);
+          }
+
+          return (
+            <button
+              key={k}
+              type="button"
+              className={classes.join(" ")}
+              // Every cell is positioned explicitly, so only the played area
+              // and its edge exist in the DOM -- not the squares between them.
+              style={{ gridColumn: x - x0 + 1, gridRow: y - y0 + 1 }}
+              data-cell={tile === undefined ? k : undefined}
+              aria-disabled={tile !== undefined || (!stage && !canPlace)}
+              aria-label={
+                tile || stage
+                  ? `${(tile ?? stage)!.letter} at column ${x + 1}, row ${y + 1}`
+                  : `open square, column ${x + 1}, row ${y + 1}`
+              }
+              onClick={() => {
+                if (tile) return;
+                if (stage) onPickUp(x, y);
+                else if (canPlace) onPlace(x, y);
+              }}
+            >
+              {(tile ?? stage)?.letter ?? ""}
+              {tile && (
+                <span
+                  className={styles.seat}
+                  style={{ background: `var(--seat-${seatOf(tile.placedBy) % 4})` }}
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

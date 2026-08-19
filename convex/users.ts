@@ -14,7 +14,17 @@ export const viewer = query({
 
     return user === null
       ? null
-      : { id: user._id, name: user.name ?? user.email ?? null, image: user.image ?? null };
+      : {
+          id: user._id,
+          name: user.name ?? user.email ?? null,
+          image: user.image ?? null,
+          stats: {
+            wins: user.wins ?? 0,
+            gamesPlayed: user.gamesPlayed ?? 0,
+            bestGameScore: user.bestGameScore ?? 0,
+            bestTurnScore: user.bestTurnScore ?? 0,
+          },
+        };
   },
 });
 

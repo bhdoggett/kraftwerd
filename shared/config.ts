@@ -21,8 +21,12 @@ export const RACK: RackConfig = {
 };
 
 export const GAME = {
-  /** Board is square. Large enough not to constrain a 100-tile game. */
-  boardSize: 40,
+  /**
+   * Board is square. Only the played area and its edge are ever rendered
+   * (see Board.tsx), so this is a bound rather than something drawn -- big
+   * enough that a game never feels walled in.
+   */
+  boardSize: 256,
   /** Game ends once this many tiles are on the board (design.md §6). */
   endThreshold: 100,
   /** 1 is a solo practice game: it starts immediately with no one to wait for. */

@@ -4,6 +4,7 @@ export interface Standing {
   userId: string;
   seat: number;
   score: number;
+  name: string;
   isYou: boolean;
 }
 
@@ -35,7 +36,7 @@ export function Scoreboard({
           <span
             className={[styles.name, p.seat === currentSeat ? styles.turn : ""].join(" ")}
           >
-            Seat {p.seat + 1}
+            {p.name}
             {p.isYou && <span className={styles.you}> (you)</span>}
           </span>
           <span className={styles.score}>{p.score}</span>

@@ -26,7 +26,19 @@ export default defineSchema({
     email: v.optional(v.string()),
     name: v.optional(v.string()),
     image: v.optional(v.string()),
-  }).index("by_authId", ["authId"]),
+    /**
+     * Lifetime stats. Optional because rows created before stats existed have
+     * none, and an absent count reads the same as zero.
+     */
+    wins: v.optional(v.number()),
+    gamesPlayed: v.optional(v.number()),
+    /** Best final score in a single game. */
+    bestGameScore: v.optional(v.number()),
+    /** Best score from one turn. */
+    bestTurnScore: v.optional(v.number()),
+  })
+    .index("by_authId", ["authId"])
+    .index("by_email", ["email"]),
 
   games: defineTable({
     status: gameStatus,
@@ -46,6 +58,10 @@ export default defineSchema({
      * equal number of turns (design.md §6).
      */
     endsAfterTurn: v.optional(v.number()),
+    /** Set when the game finishes; ties give every leader a win. */
+    winnerIds: v.optional(v.array(v.id("users"))),
+    /** Players who quit. They forfeit and cannot win. */
+    resignedBy: v.optional(v.array(v.id("users"))),
     createdBy: v.id("users"),
   }).index("by_status", ["status"]),
 
@@ -63,6 +79,20 @@ export default defineSchema({
     .index("by_game_and_user", ["gameId", "userId"])
     .index("by_game_and_seat", ["gameId", "seat"])
     .index("by_user", ["userId"]),
+
+  /**
+   * A friendship, stored as a single row rather than one per direction.
+   * `requesterId` sent it, `addresseeId` accepts or declines. Both ids are
+   * indexed so either side can list their own.
+   */
+  friendships: defineTable({
+    requesterId: v.id("users"),
+    addresseeId: v.id("users"),
+    status: v.union(v.literal("pending"), v.literal("accepted")),
+  })
+    .index("by_requester", ["requesterId"])
+    .index("by_addressee", ["addresseeId"])
+    .index("by_pair", ["requesterId", "addresseeId"]),
 
   /**
    * One row per placed tile. A tiles array on the game document would hit the
