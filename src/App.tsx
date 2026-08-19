@@ -19,17 +19,21 @@ export default function App() {
           className={styles.brandButton}
           onClick={() => navigate({ name: "lobby" })}
         >
-          <h1 className={styles.brand}>Word Craft</h1>
+          <h1 className={styles.brand}>kraftwerd</h1>
         </button>
-        {route.name === "game" && (
-          <button
-            type="button"
-            className={styles.link}
-            onClick={() => navigate({ name: "lobby" })}
-          >
-            Back to lobby
-          </button>
-        )}
+        {/* Signed out there is no lobby to go back to, and the route is
+            about to be irrelevant anyway. */}
+        <Authenticated>
+          {route.name === "game" && (
+            <button
+              type="button"
+              className={styles.link}
+              onClick={() => navigate({ name: "lobby" })}
+            >
+              Back to lobby
+            </button>
+          )}
+        </Authenticated>
         <span className={styles.spacer} />
         <SignOutButton />
       </header>
@@ -65,7 +69,11 @@ function SignOutButton() {
       <button
         type="button"
         className={styles.signOut}
-        onClick={() => void authClient.signOut()}
+        onClick={() => {
+          // Leave the game route behind, so signing back in lands in the lobby
+          // rather than a game the next person may not be in.
+          void authClient.signOut().then(() => navigate({ name: "lobby" }));
+        }}
       >
         Sign out
       </button>
