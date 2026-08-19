@@ -19,6 +19,9 @@ interface RackProps {
    */
   order: readonly number[];
   onShuffle: () => void;
+  /** Take every staged tile back off the board. */
+  onRecall: () => void;
+  canRecall: boolean;
 }
 
 export function Rack({
@@ -31,6 +34,8 @@ export function Rack({
   onGrab,
   order,
   onShuffle,
+  onRecall,
+  canRecall,
 }: RackProps) {
   const isSelected = (s: Selection) =>
     selected !== null &&
@@ -100,15 +105,27 @@ export function Rack({
         />
       )}
 
-      <button
-        type="button"
-        className={styles.shuffle}
-        onClick={onShuffle}
-        aria-label="Shuffle your tiles"
-        title="Shuffle"
-      >
-        ⇄
-      </button>
+      <div className={styles.actions}>
+        <button
+          type="button"
+          className={styles.action}
+          onClick={onRecall}
+          disabled={!canRecall}
+          aria-label="Take every tile back off the board"
+          title="Recall tiles"
+        >
+          ↩
+        </button>
+        <button
+          type="button"
+          className={styles.action}
+          onClick={onShuffle}
+          aria-label="Shuffle your tiles"
+          title="Shuffle"
+        >
+          ⇄
+        </button>
+      </div>
     </div>
   );
 }

@@ -74,6 +74,11 @@ export default defineSchema({
     letters: v.array(v.string()),
     /** The single blank slot, refilled every turn (design.md §5). */
     blank: v.boolean(),
+    /**
+     * "invited" until the player accepts. Optional because rows created before
+     * invitations existed are all seated players; absent reads as "joined".
+     */
+    status: v.optional(v.union(v.literal("invited"), v.literal("joined"))),
   })
     .index("by_game", ["gameId"])
     .index("by_game_and_user", ["gameId", "userId"])

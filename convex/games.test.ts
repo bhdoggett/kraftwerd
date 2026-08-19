@@ -382,3 +382,92 @@ describe("resigning and stats", () => {
     expect(game?.winnerIds?.[0]).not.toBe(alice);
   });
 });
+
+describe("game invitations", () => {
+  async function invitedGame() {
+    const t = convexTest(schema, modules);
+    const [ana, bo] = await t.run(async (ctx) => {
+      for (const word of WORDS) await ctx.db.insert("words", { word });
+      const a = await ctx.db.insert("users", {
+        authId: "auth|ana",
+        name: "Ana",
+        email: "ana@example.com",
+      });
+      const b = await ctx.db.insert("users", {
+        authId: "auth|bo",
+        name: "Bo",
+        email: "bo@example.com",
+      });
+      await ctx.db.insert("friendships", {
+        requesterId: a,
+        addresseeId: b,
+        status: "accepted",
+      });
+      return [a, b];
+    });
+
+    const asAna = t.withIdentity({ subject: "auth|ana" });
+    const asBo = t.withIdentity({ subject: "auth|bo" });
+    const gameId = await asAna.mutation(api.games.createGameWithFriends, {
+      friendIds: [bo],
+    });
+    return { t, gameId, asAna, asBo, ana, bo };
+  }
+
+  test("an invited game waits in the lobby rather than starting", async () => {
+    const { t, gameId } = await invitedGame();
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("lobby");
+  });
+
+  test("the invitee sees an invitation, not a game to enter", async () => {
+    const { asBo, asAna } = await invitedGame();
+
+    const bo = await asBo.query(api.games.listMyGames);
+    expect(bo.invitations).toHaveLength(1);
+    expect(bo.games).toHaveLength(0);
+    expect(bo.invitations[0]?.invitedBy).toBe("Ana");
+
+    // The inviter is already in, so it is a game for them, not an invitation.
+    const ana = await asAna.query(api.games.listMyGames);
+    expect(ana.invitations).toHaveLength(0);
+    expect(ana.games).toHaveLength(1);
+  });
+
+  test("accepting starts the game", async () => {
+    const { t, gameId, asBo } = await invitedGame();
+
+    await asBo.mutation(api.games.respondToInvite, { gameId, accept: true });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("active");
+    expect((await asBo.query(api.games.listMyGames)).games).toHaveLength(1);
+  });
+
+  test("declining ends the game rather than leaving a lobby nobody can fill", async () => {
+    const { t, gameId, asBo } = await invitedGame();
+
+    await asBo.mutation(api.games.respondToInvite, { gameId, accept: false });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("finished");
+  });
+
+  test("an invitation cannot be answered twice", async () => {
+    const { gameId, asBo } = await invitedGame();
+    await asBo.mutation(api.games.respondToInvite, { gameId, accept: true });
+
+    await expect(
+      asBo.mutation(api.games.respondToInvite, { gameId, accept: true }),
+    ).rejects.toThrow("already answered");
+  });
+
+  test("an uninvited player cannot answer", async () => {
+    const { gameId, asAna } = await invitedGame();
+
+    await expect(
+      asAna.mutation(api.games.respondToInvite, { gameId, accept: true }),
+    ).rejects.toThrow("already answered");
+  });
+});

@@ -81,7 +81,6 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
   const placeTiles = useMutation(api.games.placeTiles);
   const joinGame = useMutation(api.games.joinGame);
   const resignGame = useMutation(api.games.resignGame);
-  const [copied, setCopied] = useState(false);
 
   const [pending, setPending] = useState<Staged[]>([]);
   const [selected, setSelected] = useState<Selection | null>(null);
@@ -416,6 +415,8 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             onGrab={grab}
             order={rackOrder}
             onShuffle={shuffleRack}
+            onRecall={clear}
+            canRecall={pending.length > 0}
           />
         )}
 
@@ -496,16 +497,6 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
           >
             {submitting ? "Playing…" : "Play"}
           </button>
-          <button
-            type="button"
-            className={styles.secondary}
-            disabled={pending.length === 0}
-            onClick={clear}
-            title="Take every tile back off the board"
-          >
-            Recall
-          </button>
-
           {preview && legality?.ok && (
             <span className={styles.preview}>
               This play scores <span className={styles.previewScore}>{preview.total}</span>
@@ -514,18 +505,6 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             </span>
           )}
 
-          <button
-            type="button"
-            className={styles.secondary}
-            onClick={() => {
-              void navigator.clipboard.writeText(window.location.href).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              });
-            }}
-          >
-            {copied ? "Link copied" : "Copy invite link"}
-          </button>
 
           {game.status !== "finished" && view.yourSeat !== null && (
             <button

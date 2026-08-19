@@ -102,6 +102,7 @@ async function joinSeat(
   gameId: Id<"games">,
   userId: Id<"users">,
   seat: number,
+  status: "invited" | "joined" = "joined",
 ) {
   // A fresh rack, drawn server-side: the client never sees the generator.
   const rack = refill([], Math.random, RACK);
@@ -113,6 +114,7 @@ async function joinSeat(
     score: 0,
     letters: rack.letters,
     blank: rack.blank,
+    status,
   });
 }
 
@@ -154,8 +156,9 @@ export const createGameWithFriends = mutation({
       if (!accepted) throw new ConvexError("You are not friends with that player");
     }
 
+    // Starts in the lobby: an invitation is an offer, not a seating.
     const gameId = await ctx.db.insert("games", {
-      status: "active",
+      status: "lobby",
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
       playerCount,
@@ -165,9 +168,9 @@ export const createGameWithFriends = mutation({
       createdBy: userId,
     });
 
-    await joinSeat(ctx, gameId, userId, 0);
+    await joinSeat(ctx, gameId, userId, 0, "joined");
     for (const [i, friendId] of args.friendIds.entries()) {
-      await joinSeat(ctx, gameId, friendId, i + 1);
+      await joinSeat(ctx, gameId, friendId, i + 1, "invited");
     }
 
     return gameId;
@@ -195,6 +198,48 @@ export const joinGame = mutation({
 
     // Last seat filled: the game starts.
     if (players.length + 1 === game.playerCount) {
+      await ctx.db.patch("games", args.gameId, { status: "active" });
+    }
+    return null;
+  },
+});
+
+/** Accept or decline an invitation to a game. */
+export const respondToInvite = mutation({
+  args: { gameId: v.id("games"), accept: v.boolean() },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+
+    const game = await ctx.db.get("games", args.gameId);
+    if (game === null) throw new ConvexError("No such game");
+
+    const me = await ctx.db
+      .query("players")
+      .withIndex("by_game_and_user", (q) =>
+        q.eq("gameId", args.gameId).eq("userId", userId),
+      )
+      .unique();
+    if (me === null) throw new ConvexError("You were not invited to this game");
+    if (me.status !== "invited") throw new ConvexError("You have already answered");
+
+    if (!args.accept) {
+      // The game can never fill now, so it ends rather than lingering as a
+      // lobby nobody can enter.
+      await ctx.db.delete("players", me._id);
+      await ctx.db.patch("games", args.gameId, { status: "finished", winnerIds: [] });
+      return null;
+    }
+
+    await ctx.db.patch("players", me._id, { status: "joined" });
+
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
+      .take(GAME.maxPlayers);
+
+    // Everyone in: the game starts.
+    const waiting = players.filter((p) => p.status === "invited");
+    if (waiting.length === 0 && players.length === game.playerCount) {
       await ctx.db.patch("games", args.gameId, { status: "active" });
     }
     return null;
@@ -500,22 +545,33 @@ export const listMyGames = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .take(50);
 
-    return await Promise.all(
+    const rows = await Promise.all(
       mine.map(async (p) => {
         const game = await ctx.db.get("games", p.gameId);
-        return game === null
-          ? null
-          : {
-              gameId: game._id,
-              status: game.status,
-              playerCount: game.playerCount,
-              tileCount: game.tileCount,
-              yourSeat: p.seat,
-              yourScore: p.score,
-              yourTurn: game.status === "active" && game.currentSeat === p.seat,
-            };
+        if (game === null) return null;
+
+        const creator = await ctx.db.get("users", game.createdBy);
+        return {
+          gameId: game._id,
+          status: game.status,
+          playerCount: game.playerCount,
+          tileCount: game.tileCount,
+          yourSeat: p.seat,
+          yourScore: p.score,
+          yourTurn: game.status === "active" && game.currentSeat === p.seat,
+          invited: p.status === "invited",
+          invitedBy: displayName(creator),
+        };
       }),
-    ).then((rows) => rows.filter((r) => r !== null));
+    );
+
+    const visible = rows.filter((r) => r !== null);
+    return {
+      // An invitation is not a game you are in yet, so it is kept separate:
+      // the lobby offers accept/decline rather than a way in.
+      invitations: visible.filter((r) => r.invited && r.status === "lobby"),
+      games: visible.filter((r) => !r.invited),
+    };
   },
 });
 

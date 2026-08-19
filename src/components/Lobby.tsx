@@ -6,12 +6,16 @@ import styles from "./Lobby.module.css";
 
 export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const mine = useQuery(api.games.listMyGames);
+  const respondToInvite = useMutation(api.games.respondToInvite);
   const open = useQuery(api.games.listOpenGames);
   const createGame = useMutation(api.games.createGame);
   const joinGame = useMutation(api.games.joinGame);
 
+  const myGames = mine?.games ?? [];
+  const invitations = mine?.invitations ?? [];
+
   const joinable = (open ?? []).filter(
-    (g) => !(mine ?? []).some((m) => m.gameId === g.gameId),
+    (g) => !myGames.some((m) => m.gameId === g.gameId),
   );
 
   const viewer = useQuery(api.users.viewer);
@@ -72,11 +76,44 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         </p>
       </section>
 
+      {invitations.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.heading}>Invitations</h2>
+          {invitations.map((g) => (
+            <div key={g.gameId} className={styles.row}>
+              <span className={styles.grow}>
+                {g.invitedBy} invited you
+                <br />
+                <span className={styles.meta}>{g.playerCount} players</span>
+              </span>
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() =>
+                  void respondToInvite({ gameId: g.gameId, accept: true })
+                }
+              >
+                Accept
+              </button>
+              <button
+                type="button"
+                className={styles.secondary}
+                onClick={() =>
+                  void respondToInvite({ gameId: g.gameId, accept: false })
+                }
+              >
+                Decline
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
+
       <section className={styles.section}>
         <h2 className={styles.heading}>Your games</h2>
         {mine === undefined && <p className={styles.empty}>Loading…</p>}
-        {mine?.length === 0 && <p className={styles.empty}>No games yet.</p>}
-        {mine?.map((g) => (
+        {mine && myGames.length === 0 && <p className={styles.empty}>No games yet.</p>}
+        {myGames.map((g) => (
           <div key={g.gameId} className={styles.row}>
             <span className={styles.grow}>
               Seat {g.yourSeat + 1} · {g.yourScore} pts

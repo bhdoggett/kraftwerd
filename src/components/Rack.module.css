@@ -59,8 +59,13 @@
   letter-spacing: 0.06em;
 }
 
-.shuffle {
+.actions {
   margin-left: auto;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.action {
   width: 34px;
   height: 34px;
   border: 1px solid var(--border-strong);
@@ -76,10 +81,14 @@
     transform 200ms ease;
 }
 
-.shuffle:hover {
+.action:hover:not(:disabled) {
   background: var(--surface-sunken);
   color: var(--text);
-  transform: rotate(180deg);
+}
+
+.action:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 /* Tiles are drag handles for reordering, so a drag must not scroll the page. */
