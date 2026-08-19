@@ -88,13 +88,23 @@ function rackSlotUnder(
   const tiles = [...rack.querySelectorAll("[data-rack-slot]")].filter(
     (el): el is HTMLElement => el instanceof HTMLElement,
   );
-  if (tiles.length === 0) return miss;
 
-  // Strictly over the tiles themselves, not the rack panel: the label and the
-  // shuffle/recall buttons share that box, and drifting over them should not
-  // rearrange anything. Nothing in the rack moves until the pointer is
-  // genuinely on it.
   const bounds = rack.getBoundingClientRect();
+  const insideRack =
+    clientY >= bounds.top &&
+    clientY <= bounds.bottom &&
+    clientX >= bounds.left &&
+    clientX <= bounds.right;
+
+  // Every tile is out on the board, so there is nothing to measure against and
+  // nothing that could be disturbed: the whole rack takes the tile back.
+  if (tiles.length === 0) {
+    return insideRack ? { overRack: true, position: 0 } : miss;
+  }
+
+  // Otherwise strictly over the tiles themselves, not the rack panel: the
+  // label and the shuffle/recall buttons share that box, and drifting over
+  // them should not rearrange anything.
   if (clientY < bounds.top || clientY > bounds.bottom) return miss;
 
   // The blank sits after the letters and is not a drop position itself, but

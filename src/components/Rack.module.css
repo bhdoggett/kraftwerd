@@ -58,10 +58,6 @@
   border-color: var(--tile-blank-edge);
 }
 
-.spent {
-  opacity: 0.28;
-  pointer-events: none;
-}
 
 .label {
   color: var(--text-muted);

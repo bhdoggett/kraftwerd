@@ -142,16 +142,15 @@ export function Rack({
         );
       })}
 
-      {blank && (
+      {blank && !blankSpent && (
         <button
           type="button"
           className={[
             styles.tile,
             styles.blank,
-            blankSpent ? styles.spent : "",
             isSelected({ kind: "blank" }) ? styles.selected : "",
           ].join(" ")}
-          {...tileProps({ kind: "blank" }, blankSpent)}
+          {...tileProps({ kind: "blank" }, false)}
           data-rack-blank=""
           aria-label="Blank tile"
         />
