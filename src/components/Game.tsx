@@ -89,6 +89,13 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  /**
+   * Rack display order, as indices into the dealt letters. Purely cosmetic:
+   * selections and staged tiles always travel by real index, so reordering can
+   * never change which tile a placement came from.
+   */
+  const [rackOrder, setRackOrder] = useState<number[]>([]);
+
   /** Live pointer drag: the tile that follows the finger/cursor. */
   const [drag, setDrag] = useState<{
     letter: string;
@@ -149,6 +156,37 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
     });
   }, [view, boards, placements, checked]);
 
+  const rackSignature = (view?.players.find((p) => p.letters !== null)?.letters ?? []).join(
+    ",",
+  );
+  useEffect(() => {
+    const count = rackSignature === "" ? 0 : rackSignature.split(",").length;
+    setRackOrder(Array.from({ length: count }, (_, i) => i));
+  }, [rackSignature]);
+
+  function shuffleRack() {
+    setRackOrder((current) => {
+      const next = [...current];
+      for (let i = next.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [next[i], next[j]] = [next[j]!, next[i]!];
+      }
+      return next;
+    });
+  }
+
+  /** Drop a dragged rack tile onto another slot, sliding the rest along. */
+  function reorderRack(fromIndex: number, toSlot: number) {
+    setRackOrder((current) => {
+      const from = current.indexOf(fromIndex);
+      if (from < 0 || toSlot < 0 || toSlot >= current.length) return current;
+      const next = [...current];
+      const [moved] = next.splice(from, 1);
+      next.splice(toSlot, 0, moved!);
+      return next;
+    });
+  }
+
   const turnNumber = view?.game.turnNumber;
 
   // Load the draft for this turn, and drop it when the turn moves on.
@@ -166,6 +204,9 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
 
   // Kept in a ref so the pointer listeners below can call the current
   // `place` without re-subscribing on every mouse move.
+  const reorderRef = useRef<(fromIndex: number, toSlot: number) => void>(() => {});
+  reorderRef.current = reorderRack;
+
   const dropRef = useRef<(x: number, y: number, origin: Origin) => void>(() => {});
   dropRef.current = (x, y, origin) => {
     if (origin.kind === "cell") moveStaged(origin, x, y);
@@ -193,10 +234,18 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
       // selected so tap-then-tap still works.
       if (!moved) return;
 
-      const target = document
-        .elementFromPoint(e.clientX, e.clientY)
-        ?.closest("[data-cell]");
-      const cell = target?.getAttribute("data-cell");
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+
+      // Dropped back onto the rack: reorder rather than place.
+      const slot = under?.closest("[data-rack-slot]")?.getAttribute("data-rack-slot");
+      if (slot !== null && slot !== undefined) {
+        if (origin?.kind === "rack" && origin.selection.kind === "letter") {
+          reorderRef.current(origin.selection.index, Number(slot));
+        }
+        return;
+      }
+
+      const cell = under?.closest("[data-cell]")?.getAttribute("data-cell");
       if (!cell) return;
 
       const [cx, cy] = cell.split(",").map(Number);
@@ -365,6 +414,8 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
               setBlankLetter(null);
             }}
             onGrab={grab}
+            order={rackOrder}
+            onShuffle={shuffleRack}
           />
         )}
 
@@ -450,8 +501,9 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             className={styles.secondary}
             disabled={pending.length === 0}
             onClick={clear}
+            title="Take every tile back off the board"
           >
-            Clear
+            Recall
           </button>
 
           {preview && legality?.ok && (

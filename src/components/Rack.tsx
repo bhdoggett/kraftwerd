@@ -13,6 +13,12 @@ interface RackProps {
   onSelect: (selection: Selection | null) => void;
   /** Begin a pointer drag from this tile. */
   onGrab: (selection: Selection, event: ReactPointerEvent) => void;
+  /**
+   * Display order, as indices into `letters`. Owned by the parent because the
+   * drag layer lives there and dropping one tile onto another reorders it.
+   */
+  order: readonly number[];
+  onShuffle: () => void;
 }
 
 export function Rack({
@@ -23,6 +29,8 @@ export function Rack({
   selected,
   onSelect,
   onGrab,
+  order,
+  onShuffle,
 }: RackProps) {
   const isSelected = (s: Selection) =>
     selected !== null &&
@@ -55,9 +63,12 @@ export function Rack({
     <div className={styles.rack}>
       <span className={styles.label}>Rack</span>
 
-      {letters.map((letter, index) => {
+      {order.map((index, slot) => {
+        const letter = letters[index];
+        if (letter === undefined) return null;
         const used = spent.includes(index);
         const sel: Selection = { kind: "letter", index };
+
         return (
           <button
             key={index}
@@ -67,6 +78,7 @@ export function Rack({
               used ? styles.spent : "",
               isSelected(sel) ? styles.selected : "",
             ].join(" ")}
+            data-rack-slot={slot}
             {...tileProps(sel, used)}
           >
             {letter}
@@ -87,6 +99,16 @@ export function Rack({
           aria-label="Blank tile"
         />
       )}
+
+      <button
+        type="button"
+        className={styles.shuffle}
+        onClick={onShuffle}
+        aria-label="Shuffle your tiles"
+        title="Shuffle"
+      >
+        ⇄
+      </button>
     </div>
   );
 }

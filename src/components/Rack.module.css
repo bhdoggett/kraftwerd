@@ -58,3 +58,31 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+
+.shuffle {
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  transition:
+    background-color 90ms ease,
+    transform 200ms ease;
+}
+
+.shuffle:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+  transform: rotate(180deg);
+}
+
+/* Tiles are drag handles for reordering, so a drag must not scroll the page. */
+.tile {
+  touch-action: none;
+}

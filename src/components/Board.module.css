@@ -19,6 +19,7 @@
 }
 
 .cell {
+  position: relative;
   width: var(--cell-size);
   height: var(--cell-size);
   padding: 0;
@@ -61,9 +62,27 @@
   position: relative;
 }
 
+/*
+ * A blank keeps showing the letter it stands for -- the word has to be
+ * readable -- but must never be mistaken for that actual tile, since it scores
+ * nothing. Grey face plus a corner mark, in both staged and played states.
+ */
 .blank {
   background: var(--tile-blank-face);
   border-color: var(--tile-blank-edge);
+  color: var(--tile-text);
+  font-style: italic;
+}
+
+.blank::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--tile-blank-edge);
 }
 
 /* Placed this turn, not yet submitted. */
@@ -87,6 +106,16 @@
   inset: auto 3px 2px 3px;
   height: 2px;
   border-radius: 1px;
+}
+
+.pending.blank {
+  background: var(--tile-blank-face);
+  border-color: var(--pending);
+  color: var(--tile-text);
+}
+
+.pending.blank::before {
+  background: var(--pending);
 }
 
 /* An empty square adjacent to the played mass: a legal target. Dashed so it
