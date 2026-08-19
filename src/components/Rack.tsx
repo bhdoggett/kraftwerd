@@ -22,6 +22,8 @@ interface RackProps {
   previewOrder: readonly number[];
   /** Letter being dragged, rendered as a gap it has left behind. */
   draggedIndex: number | null;
+  /** Whether the pointer is over the rack, so a gap should be made for it. */
+  dragOverRack: boolean;
   onShuffle: () => void;
   /** Take every staged tile back off the board. */
   onRecall: () => void;
@@ -39,6 +41,7 @@ export function Rack({
   order,
   previewOrder,
   draggedIndex,
+  dragOverRack,
   onShuffle,
   onRecall,
   canRecall,
@@ -75,10 +78,13 @@ export function Rack({
       <span className={styles.label}>Rack</span>
 
       {order
-        // A tile being dragged back from the board is still staged, but it is
-        // shown as a placeholder so the rack opens a gap for it instead of
-        // letting the dragged tile land on top of a neighbour.
-        .filter((index) => !spent.includes(index) || index === draggedIndex)
+        // A tile dragged back from the board is still staged. It appears as a
+        // placeholder only once the pointer is over the rack, so the gap opens
+        // where it is heading rather than sitting empty where it came from.
+        .filter(
+          (index) =>
+            !spent.includes(index) || (index === draggedIndex && dragOverRack),
+        )
         .map((index, slot) => {
         const letter = letters[index];
         if (letter === undefined) return null;
@@ -88,8 +94,9 @@ export function Rack({
         // movement animates; reordering the DOM would jump. Both orders are
         // compared with staged tiles removed, so the gaps line up.
         const shift =
-          previewOrder.filter((i) => !spent.includes(i) || i === draggedIndex).indexOf(index) -
-          slot;
+          previewOrder
+            .filter((i) => !spent.includes(i) || (i === draggedIndex && dragOverRack))
+            .indexOf(index) - slot;
 
         return (
           <button

@@ -60,15 +60,23 @@ function rackSlotUnder(
   const rack = document.querySelector("[data-rack]");
   if (!(rack instanceof HTMLElement)) return miss;
 
-  const bounds = rack.getBoundingClientRect();
-  const generous = 24; // keep the preview alive just outside the rack
-  if (clientY < bounds.top - generous || clientY > bounds.bottom + generous) return miss;
-  if (clientX < bounds.left || clientX > bounds.right) return miss;
-
-  const localX = clientX - bounds.left + rack.scrollLeft;
   const tiles = [...rack.querySelectorAll("[data-rack-slot]")].filter(
     (el): el is HTMLElement => el instanceof HTMLElement,
   );
+  if (tiles.length === 0) return miss;
+
+  // Strictly over the tiles themselves, not the rack panel: the label and the
+  // shuffle/recall buttons share that box, and drifting over them should not
+  // rearrange anything. Nothing in the rack moves until the pointer is
+  // genuinely on it.
+  const bounds = rack.getBoundingClientRect();
+  if (clientY < bounds.top || clientY > bounds.bottom) return miss;
+
+  const first = tiles[0]!.getBoundingClientRect();
+  const last = tiles[tiles.length - 1]!.getBoundingClientRect();
+  if (clientX < first.left || clientX > last.right) return miss;
+
+  const localX = clientX - bounds.left + rack.scrollLeft;
 
   // Position, not identity. The tiles are visually shifted by the preview
   // while their layout boxes stay put, so asking "which letter is under the
@@ -78,7 +86,7 @@ function rackSlotUnder(
   for (const [position, el] of tiles.entries()) {
     if (localX < el.offsetLeft + el.offsetWidth) return { overRack: true, position };
   }
-  return { overRack: true, position: tiles.length === 0 ? null : tiles.length - 1 };
+  return { overRack: true, position: tiles.length - 1 };
 }
 
 /**
@@ -542,6 +550,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             order={rackOrder}
             previewOrder={previewOrder}
             draggedIndex={draggedLetterIndex}
+            dragOverRack={rackHover !== null}
             onShuffle={shuffleRack}
             onRecall={clear}
             canRecall={pending.length > 0}
