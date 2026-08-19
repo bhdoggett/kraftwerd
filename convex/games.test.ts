@@ -528,3 +528,25 @@ describe("joining by link", () => {
     ).rejects.toThrow("Already joined");
   });
 });
+
+describe("the lobby's game lists", () => {
+  test("a finished game moves out of your games and into past games", async () => {
+    const { gameId, asAlice, asBob } = await twoPlayerGame(["A", "D"]);
+
+    let alice = await asAlice.query(api.games.listMyGames);
+    expect(alice.games).toHaveLength(1);
+    expect(alice.past).toHaveLength(0);
+
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    alice = await asAlice.query(api.games.listMyGames);
+    expect(alice.games).toHaveLength(0);
+    expect(alice.past).toHaveLength(1);
+    expect(alice.past[0]?.youWon).toBe(false);
+    expect(alice.past[0]?.abandoned).toBe(true);
+
+    // The winner sees the same game, from the other side.
+    const bob = await asBob.query(api.games.listMyGames);
+    expect(bob.past[0]?.youWon).toBe(true);
+  });
+});

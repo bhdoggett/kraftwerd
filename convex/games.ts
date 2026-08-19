@@ -575,16 +575,23 @@ export const listMyGames = query({
           yourTurn: game.status === "active" && game.currentSeat === p.seat,
           invited: p.status === "invited",
           invitedBy: displayName(creator),
+          youWon: (game.winnerIds ?? []).includes(p.userId),
+          /** True when the game ended because someone quit. */
+          abandoned: (game.resignedBy ?? []).length > 0,
         };
       }),
     );
 
     const visible = rows.filter((r) => r !== null);
+    const mineOnly = visible.filter((r) => !r.invited);
+
     return {
       // An invitation is not a game you are in yet, so it is kept separate:
       // the lobby offers accept/decline rather than a way in.
       invitations: visible.filter((r) => r.invited && r.status === "lobby"),
-      games: visible.filter((r) => !r.invited),
+      games: mineOnly.filter((r) => r.status !== "finished"),
+      // Finished games are history: kept, but out of the way.
+      past: mineOnly.filter((r) => r.status === "finished"),
     };
   },
 });

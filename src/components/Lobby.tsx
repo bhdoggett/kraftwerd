@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
+import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { Friends } from "./Friends";
@@ -11,6 +12,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
   const myGames = mine?.games ?? [];
   const invitations = mine?.invitations ?? [];
+  const past = mine?.past ?? [];
+  const [showPast, setShowPast] = useState(false);
 
   const viewer = useQuery(api.users.viewer);
 
@@ -124,6 +127,38 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         ))}
       </section>
 
+      {past.length > 0 && (
+        <section className={styles.section}>
+          <button
+            type="button"
+            className={styles.disclosure}
+            onClick={() => setShowPast((open) => !open)}
+            aria-expanded={showPast}
+          >
+            {showPast ? "▾" : "▸"} Past games ({past.length})
+          </button>
+
+          {showPast &&
+            past.map((g) => (
+              <div key={g.gameId} className={styles.row}>
+                <span className={styles.grow}>
+                  {g.youWon ? "Won" : "Lost"} · {g.yourScore} pts
+                  <br />
+                  <span className={styles.meta}>
+                    {g.abandoned ? "someone quit" : `${g.tileCount} tiles`}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className={styles.secondary}
+                  onClick={() => onOpen(g.gameId)}
+                >
+                  View
+                </button>
+              </div>
+            ))}
+        </section>
+      )}
     </div>
   );
 }
