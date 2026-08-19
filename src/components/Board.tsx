@@ -23,6 +23,9 @@ interface BoardProps {
   onPickUp: (x: number, y: number) => void;
   /** Square holding a blank that has not been told its letter yet. */
   awaitingBlankAt?: { x: number; y: number } | null;
+  /** Squares in a word that checks out, and in one that does not. */
+  goodCells?: ReadonlySet<string>;
+  badCells?: ReadonlySet<string>;
   /** Begin dragging a tile staged this turn to another square. */
   onGrabStaged?: (x: number, y: number, event: React.PointerEvent) => void;
 }
@@ -96,6 +99,8 @@ export function Board({
   canPlace,
   showOwnership,
   awaitingBlankAt,
+  goodCells,
+  badCells,
   onPlace,
   onPickUp,
   onGrabStaged,
@@ -165,6 +170,8 @@ export function Board({
           if (tile?.isBlank) classes.push(styles.blank);
           if (stage) classes.push(styles.pending, styles.tile);
           if (stage?.isBlank) classes.push(styles.blank);
+          if (goodCells?.has(k)) classes.push(styles.inWord);
+          if (badCells?.has(k)) classes.push(styles.inBadWord);
           if (awaiting) classes.push(styles.tile, styles.blank, styles.awaiting);
           if (isOpen && !awaiting) {
             classes.push(styles.open);

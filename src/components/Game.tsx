@@ -6,6 +6,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { makeBoard } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
+import { runsThrough } from "../../shared/engine/runs";
 import { scoreTurn, type Placement } from "../../shared/engine/score";
 import { Board } from "./Board";
 import styles from "./Game.module.css";
@@ -155,7 +156,7 @@ function writeDraft(gameId: string, turnNumber: number, pending: Staged[]) {
   }
 }
 
-export function Game({ gameId }: { gameId: Id<"games"> }) {
+export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => void }) {
   const view = useQuery(api.games.getGame, { gameId });
   const placeTiles = useMutation(api.games.placeTiles);
   const resignGame = useMutation(api.games.resignGame);
@@ -223,6 +224,31 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
     api.games.checkWords,
     wordsKey === "" ? "skip" : { words: wordsKey.split(",") },
   );
+
+  /**
+   * Which squares belong to a word that checks out, and which to one that does
+   * not. Whole runs are marked, existing tiles included, because the word is
+   * what is valid or not -- not the tiles you happened to add to it.
+   */
+  const wordCells = useMemo(() => {
+    const good = new Set<string>();
+    const bad = new Set<string>();
+    if (!boards || placements.length === 0 || checked === undefined) {
+      return { good, bad };
+    }
+
+    const validity = new Map(checked.map((entry) => [entry.word, entry.valid]));
+
+    for (const run of runsThrough(boards.after, placements)) {
+      const target = validity.get(run.word) === true ? good : bad;
+      for (const cell of run.cells) target.add(`${cell.x},${cell.y}`);
+    }
+
+    // A square can sit in a good word one way and a bad one the other; the
+    // problem is what needs pointing at.
+    for (const key of bad) good.delete(key);
+    return { good, bad };
+  }, [boards, placements, checked]);
 
   /**
    * Full legality, run client-side against the words the server just
@@ -557,6 +583,8 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
           onPlace={place}
           onPickUp={pickUp}
           awaitingBlankAt={blankAt}
+          goodCells={wordCells.good}
+          badCells={wordCells.bad}
           onGrabStaged={myTurn ? grabStaged : undefined}
         />
 
@@ -706,7 +734,9 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
                 const warning = others
                   ? "Quit this game? The other player wins it."
                   : "Quit this game?";
-                if (window.confirm(warning)) void resignGame({ gameId });
+                if (window.confirm(warning)) {
+                  void resignGame({ gameId }).then(onLeave);
+                }
               }}
             >
               Quit

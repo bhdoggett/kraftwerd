@@ -37,7 +37,10 @@ export default function App() {
       <main className={styles.main}>
         <Authenticated>
           {route.name === "game" ? (
-            <Game gameId={route.gameId as Id<"games">} />
+            <Game
+              gameId={route.gameId as Id<"games">}
+              onLeave={() => navigate({ name: "lobby" })}
+            />
           ) : (
             <Lobby onOpen={(gameId) => navigate({ name: "game", gameId })} />
           )}

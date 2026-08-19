@@ -519,6 +519,42 @@ describe("joining by link", () => {
     ).rejects.toThrow("already started");
   });
 
+  test("joining by link makes everyone at the table friends", async () => {
+    const { gameId, asHost, asGuest, asThird } = await lobbyGame(3);
+
+    await asGuest.mutation(api.games.joinGame, { gameId });
+    await asThird.mutation(api.games.joinGame, { gameId });
+
+    // All three can now start a game with each other without another link.
+    for (const who of [asHost, asGuest, asThird]) {
+      const list = await who.query(api.friends.listFriends);
+      expect(list.friends).toHaveLength(2);
+      expect(list.incoming).toHaveLength(0);
+      expect(list.outgoing).toHaveLength(0);
+    }
+  });
+
+  test("joining someone you already asked accepts, rather than duplicating", async () => {
+    const { t, gameId, asHost, asGuest } = await lobbyGame(2);
+    const [host, guest] = await t.run(async (ctx) => {
+      const rows = await ctx.db.query("users").take(5);
+      return [rows[0]!._id, rows[1]!._id];
+    });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("friendships", {
+        requesterId: host,
+        addresseeId: guest,
+        status: "pending",
+      });
+    });
+
+    await asGuest.mutation(api.games.joinGame, { gameId });
+
+    const list = await asHost.query(api.friends.listFriends);
+    expect(list.friends).toHaveLength(1);
+    expect(list.outgoing).toHaveLength(0);
+  });
+
   test("you cannot take two seats", async () => {
     const { gameId, asGuest } = await lobbyGame(3);
     await asGuest.mutation(api.games.joinGame, { gameId });

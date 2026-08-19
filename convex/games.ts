@@ -204,6 +204,13 @@ export const joinGame = mutation({
 
     await joinSeat(ctx, args.gameId, userId, players.length, "joined");
 
+    // Sitting down together is itself the introduction, so no request is
+    // needed: everyone already at the table becomes a friend, which is what
+    // makes a second game possible without passing another link around.
+    for (const other of players) {
+      await befriend(ctx, userId, other.userId);
+    }
+
     // Last seat taken: the game starts.
     if (players.length + 1 === game.playerCount) {
       await ctx.db.patch("games", args.gameId, { status: "active" });
@@ -211,6 +218,40 @@ export const joinGame = mutation({
     return null;
   },
 });
+
+/**
+ * Link the two players as friends, unless they already are. Idempotent, and
+ * safe in either direction: a pending request from either side is accepted
+ * rather than duplicated.
+ */
+async function befriend(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
+  if (a === b) return;
+
+  const [forward, back] = await Promise.all([
+    ctx.db
+      .query("friendships")
+      .withIndex("by_pair", (q) => q.eq("requesterId", a).eq("addresseeId", b))
+      .unique(),
+    ctx.db
+      .query("friendships")
+      .withIndex("by_pair", (q) => q.eq("requesterId", b).eq("addresseeId", a))
+      .unique(),
+  ]);
+
+  const existing = forward ?? back;
+  if (existing !== null) {
+    if (existing.status !== "accepted") {
+      await ctx.db.patch("friendships", existing._id, { status: "accepted" });
+    }
+    return;
+  }
+
+  await ctx.db.insert("friendships", {
+    requesterId: a,
+    addresseeId: b,
+    status: "accepted",
+  });
+}
 
 /** Accept or decline an invitation to a game. */
 export const respondToInvite = mutation({
