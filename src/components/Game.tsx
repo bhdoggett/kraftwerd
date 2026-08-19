@@ -103,15 +103,15 @@ function rackSlotUnder(
     return insideRack ? { overRack: true, position: 0 } : miss;
   }
 
-  // Otherwise strictly over the tiles themselves, not the rack panel: the
-  // label and the shuffle/recall buttons share that box, and drifting over
-  // them should not rearrange anything.
-  if (clientY < bounds.top || clientY > bounds.bottom) return miss;
+  // Has to be over the rack at all: outside it the pointer is on the board,
+  // and nothing in the rack should stir.
+  if (!insideRack) return miss;
 
-  // From the first tile to the end of the rack: dropping past the last tile
-  // has to mean something, and what it means is "put it on the end".
+  // The tiles are centred, so there is empty rack either side of them. Both
+  // sides are drop targets: left of the tiles means the start, right of them
+  // means the end.
   const first = tiles[0]!.getBoundingClientRect();
-  if (clientX < first.left || clientX > bounds.right) return miss;
+  if (clientX < first.left) return { overRack: true, position: 0 };
 
   const localX = clientX - bounds.left + rack.scrollLeft;
 

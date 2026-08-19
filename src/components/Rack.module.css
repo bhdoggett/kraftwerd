@@ -54,7 +54,8 @@
   width: var(--rack-tile-width);
   height: var(--rack-tile-height);
   border: 1px solid var(--tile-edge);
-  border-radius: var(--radius);
+  /* Square, matching the board's squares. */
+  border-radius: 0;
   background: var(--tile-face);
   color: var(--tile-text);
   font-size: 1.6rem;
