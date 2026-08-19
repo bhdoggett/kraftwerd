@@ -3,6 +3,8 @@ import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { Friends } from "./Friends";
+import { DevTools } from "./DevTools";
+import { NewGame } from "./NewGame";
 import styles from "./Lobby.module.css";
 
 export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
@@ -14,11 +16,30 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const invitations = mine?.invitations ?? [];
   const past = mine?.past ?? [];
   const [showPast, setShowPast] = useState(false);
+  /** The game just created, still choosing who fills its seats. */
+  const [setup, setSetup] = useState<{
+    gameId: Id<"games">;
+    name: string;
+    playerCount: number;
+  } | null>(null);
 
   const viewer = useQuery(api.users.viewer);
 
   return (
     <div className={styles.lobby}>
+      {setup && (
+        <NewGame
+          gameId={setup.gameId}
+          name={setup.name}
+          playerCount={setup.playerCount}
+          onOpen={(id) => {
+            setSetup(null);
+            onOpen(id);
+          }}
+          onClose={() => setSetup(null)}
+        />
+      )}
+
       {viewer?.stats && (
         <section className={styles.section}>
           <h2 className={styles.heading}>Your record</h2>
@@ -43,6 +64,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         </section>
       )}
 
+      <DevTools />
+
       <Friends onOpen={onOpen} />
 
       <section className={styles.section}>
@@ -51,7 +74,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           <button
             type="button"
             className={styles.button}
-            onClick={() => void createGame({ playerCount: 1 }).then(onOpen)}
+            onClick={() =>
+              void createGame({ playerCount: 1 }).then((game) => onOpen(game.gameId))
+            }
           >
             Solo
           </button>
@@ -60,7 +85,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               key={n}
               type="button"
               className={styles.secondary}
-              onClick={() => void createGame({ playerCount: n }).then(onOpen)}
+              // A multiplayer game needs people before it needs a board, so
+              // creating one opens the invite step rather than the game.
+              onClick={() => void createGame({ playerCount: n }).then(setSetup)}
             >
               {n} players
             </button>
@@ -79,7 +106,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           {invitations.map((g) => (
             <div key={g.gameId} className={styles.row}>
               <span className={styles.grow}>
-                {g.invitedBy} invited you
+                {g.invitedBy} invited you to {g.name}
                 <br />
                 <span className={styles.meta}>{g.playerCount} players</span>
               </span>
@@ -113,10 +140,11 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         {myGames.map((g) => (
           <div key={g.gameId} className={styles.row}>
             <span className={styles.grow}>
-              Seat {g.yourSeat + 1} · {g.yourScore} pts
+              {g.name}
               <br />
               <span className={styles.meta}>
-                {g.status} · {g.tileCount} tiles
+                {g.status === "lobby" ? "waiting for players" : `${g.yourScore} pts`} ·{" "}
+                {g.tileCount} tiles
               </span>
             </span>
             {g.yourTurn && <span className={styles.badge}>Your turn</span>}
@@ -142,7 +170,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
             past.map((g) => (
               <div key={g.gameId} className={styles.row}>
                 <span className={styles.grow}>
-                  {g.youWon ? "Won" : "Lost"} · {g.yourScore} pts
+                  {g.name} — {g.youWon ? "won" : "lost"} · {g.yourScore} pts
                   <br />
                   <span className={styles.meta}>
                     {g.abandoned ? "someone quit" : `${g.tileCount} tiles`}

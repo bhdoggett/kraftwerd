@@ -9,6 +9,7 @@ import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/
 import { runsThrough } from "../../shared/engine/runs";
 import { scoreTurn, type Placement } from "../../shared/engine/score";
 import { Board } from "./Board";
+import { DevTools } from "./DevTools";
 import styles from "./Game.module.css";
 import { Rack, type Selection } from "./Rack";
 import { userMessage } from "../lib/errors";
@@ -768,6 +769,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
         )}
 
         {error && <div className={styles.error}>{error}</div>}
+
+        <DevTools gameId={gameId} />
 
         {drag && (
           <div

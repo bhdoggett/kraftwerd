@@ -16,6 +16,11 @@ const app = defineApp({
      */
     GOOGLE_CLIENT_ID: v.optional(v.string()),
     GOOGLE_CLIENT_SECRET: v.optional(v.string()),
+    /**
+     * Set to "1" on a development deployment to expose the helpers in dev.ts.
+     * Absent everywhere else, so production cannot be seeded or fast-forwarded.
+     */
+    DEV_TOOLS: v.optional(v.string()),
   },
 });
 

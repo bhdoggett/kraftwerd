@@ -35,7 +35,7 @@ async function twoPlayerGame(letters: string[]) {
   const asAlice = t.withIdentity({ subject: "auth|alice" });
   const asBob = t.withIdentity({ subject: "auth|bob" });
 
-  const gameId = await asAlice.mutation(api.games.createGame, { playerCount: 2 });
+  const { gameId } = await asAlice.mutation(api.games.createGame, { playerCount: 2 });
 
   // Seat Bob directly and start the game. These tests are about placement
   // rules; the invitation flow that normally seats a second player has its
@@ -284,7 +284,7 @@ describe("solo games", () => {
     void alice;
 
     const asAlice = t.withIdentity({ subject: "auth|solo" });
-    const gameId = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
+    const { gameId } = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("active");
@@ -294,7 +294,7 @@ describe("solo games", () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => ctx.db.insert("users", { authId: "auth|a", name: "A" }));
 
-    const gameId = await t
+    const { gameId } = await t
       .withIdentity({ subject: "auth|a" })
       .mutation(api.games.createGame, { playerCount: 2 });
 
@@ -493,7 +493,7 @@ describe("joining by link", () => {
       await ctx.db.insert("users", { authId: "auth|third", name: "Third" });
     });
     const asHost = t.withIdentity({ subject: "auth|host" });
-    const gameId = await asHost.mutation(api.games.createGame, { playerCount });
+    const { gameId } = await asHost.mutation(api.games.createGame, { playerCount });
     return { t, gameId, asHost, asGuest: t.withIdentity({ subject: "auth|guest" }),
       asThird: t.withIdentity({ subject: "auth|third" }) };
   }

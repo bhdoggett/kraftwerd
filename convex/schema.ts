@@ -41,6 +41,8 @@ export default defineSchema({
     .index("by_email", ["email"]),
 
   games: defineTable({
+    /** A generated name, so games are tellable apart at a glance. */
+    name: v.optional(v.string()),
     status: gameStatus,
     boardSize: v.number(),
     /** Game ends once this many tiles are on the board (design.md §6). */

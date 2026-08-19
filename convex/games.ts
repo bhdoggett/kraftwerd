@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { GAME, RACK } from "../shared/config.js";
+import { gameName } from "../shared/gameNames.js";
 import { makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
 import { applyPlacements, validateTurn, wordsFormed } from "../shared/engine/legality.js";
@@ -75,7 +76,9 @@ export const createGame = mutation({
       throw new ConvexError(`Games take ${GAME.minPlayers}-${GAME.maxPlayers} players`);
     }
 
+    const name = gameName(Math.random);
     const gameId = await ctx.db.insert("games", {
+      name,
       status: "lobby",
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
@@ -93,7 +96,7 @@ export const createGame = mutation({
       await ctx.db.patch("games", gameId, { status: "active" });
     }
 
-    return gameId;
+    return { gameId, name, playerCount: args.playerCount };
   },
 });
 
@@ -138,26 +141,12 @@ export const createGameWithFriends = mutation({
     if (args.friendIds.includes(userId)) throw new ConvexError("You are already seated");
 
     for (const friendId of args.friendIds) {
-      const [a, b] = await Promise.all([
-        ctx.db
-          .query("friendships")
-          .withIndex("by_pair", (q) =>
-            q.eq("requesterId", userId).eq("addresseeId", friendId),
-          )
-          .unique(),
-        ctx.db
-          .query("friendships")
-          .withIndex("by_pair", (q) =>
-            q.eq("requesterId", friendId).eq("addresseeId", userId),
-          )
-          .unique(),
-      ]);
-      const accepted = [a, b].some((edge) => edge?.status === "accepted");
-      if (!accepted) throw new ConvexError("You are not friends with that player");
+      await requireFriendship(ctx, userId, friendId);
     }
 
     // Starts in the lobby: an invitation is an offer, not a seating.
     const gameId = await ctx.db.insert("games", {
+      name: gameName(Math.random),
       status: "lobby",
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
@@ -219,6 +208,24 @@ export const joinGame = mutation({
   },
 });
 
+/** Throw unless these two have an accepted friendship. */
+async function requireFriendship(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
+  const [forward, back] = await Promise.all([
+    ctx.db
+      .query("friendships")
+      .withIndex("by_pair", (q) => q.eq("requesterId", a).eq("addresseeId", b))
+      .unique(),
+    ctx.db
+      .query("friendships")
+      .withIndex("by_pair", (q) => q.eq("requesterId", b).eq("addresseeId", a))
+      .unique(),
+  ]);
+
+  if (![forward, back].some((edge) => edge?.status === "accepted")) {
+    throw new ConvexError("You are not friends with that player");
+  }
+}
+
 /**
  * Link the two players as friends, unless they already are. Idempotent, and
  * safe in either direction: a pending request from either side is accepted
@@ -252,6 +259,42 @@ async function befriend(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
     status: "accepted",
   });
 }
+
+/**
+ * Invite friends to a game that is still filling. Separate from creation so a
+ * game can be made first and its seats offered afterwards -- by link, by
+ * invitation, or a mix of the two.
+ */
+export const inviteToGame = mutation({
+  args: { gameId: v.id("games"), friendIds: v.array(v.id("users")) },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+
+    const game = await ctx.db.get("games", args.gameId);
+    if (game === null) throw new ConvexError("No such game");
+    if (game.status !== "lobby") throw new ConvexError("That game has already started");
+
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
+      .take(GAME.maxPlayers);
+
+    if (!players.some((p) => p.userId === userId)) {
+      throw new ConvexError("You are not in this game");
+    }
+
+    let seat = players.length;
+    for (const friendId of args.friendIds) {
+      if (seat >= game.playerCount) throw new ConvexError("No seats left");
+      if (players.some((p) => p.userId === friendId)) continue;
+      await requireFriendship(ctx, userId, friendId);
+
+      await joinSeat(ctx, args.gameId, friendId, seat, "invited");
+      seat++;
+    }
+    return null;
+  },
+});
 
 /** Accept or decline an invitation to a game. */
 export const respondToInvite = mutation({
@@ -608,6 +651,7 @@ export const listMyGames = query({
         const creator = await ctx.db.get("users", game.createdBy);
         return {
           gameId: game._id,
+          name: game.name ?? "Game",
           status: game.status,
           playerCount: game.playerCount,
           tileCount: game.tileCount,
