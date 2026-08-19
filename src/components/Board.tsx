@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import type { Placement } from "../../shared/engine/score";
 import styles from "./Board.module.css";
 
@@ -117,18 +117,6 @@ export function Board({
     return map;
   }, [pending]);
 
-  /**
-   * The drawn window only ever grows.
-   *
-   * Recomputing it from scratch each turn meant the origin could move — a
-   * frontier square appearing or disappearing at the top shifts every tile
-   * below it. Keeping the widest extent seen so far holds the played area
-   * still while the game grows around it.
-   */
-  const windowRef = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(
-    null,
-  );
-
   const { cells, x0, y0, columns, rows, frontier } = useMemo(() => {
     const occupiedKeys = new Set([...committed.keys(), ...staged.keys()]);
     const coords = [
@@ -147,23 +135,16 @@ export function Board({
 
     const xs = all.map((c) => c.x);
     const ys = all.map((c) => c.y);
-    const seen = windowRef.current;
-
-    const bounds = {
-      x0: Math.min(...xs, seen?.x0 ?? Infinity),
-      y0: Math.min(...ys, seen?.y0 ?? Infinity),
-      x1: Math.max(...xs, seen?.x1 ?? -Infinity),
-      y1: Math.max(...ys, seen?.y1 ?? -Infinity),
-    };
-    windowRef.current = bounds;
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
 
     return {
       cells: all,
       frontier: open,
-      x0: bounds.x0,
-      y0: bounds.y0,
-      columns: bounds.x1 - bounds.x0 + 1,
-      rows: bounds.y1 - bounds.y0 + 1,
+      x0: minX,
+      y0: minY,
+      columns: Math.max(...xs) - minX + 1,
+      rows: Math.max(...ys) - minY + 1,
     };
   }, [boardSize, committed, staged]);
 
