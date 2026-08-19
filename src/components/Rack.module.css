@@ -44,7 +44,6 @@
 .blank {
   background: var(--tile-blank-face);
   border-color: var(--tile-blank-edge);
-  border-style: dashed;
 }
 
 .spent {
