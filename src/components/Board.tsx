@@ -202,7 +202,7 @@ export function Board({
                 else if (canPlace) onPlace(x, y);
               }}
             >
-              {(tile ?? stage)?.letter ?? ""}
+              <span className={styles.glyph}>{(tile ?? stage)?.letter ?? ""}</span>
               {tile && showOwnership && (
                 <span
                   className={styles.seat}

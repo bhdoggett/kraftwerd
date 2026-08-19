@@ -20,6 +20,13 @@
 
 .cell {
   position: relative;
+  /*
+   * Everything inside a cell is stacked in the same grid area, so the letter
+   * sits dead centre whether or not the tile also carries an ownership stripe.
+   * Laying them out as siblings would move the letter when a staged tile
+   * becomes a played one.
+   */
+  grid-template-areas: "cell";
   width: var(--cell-size);
   height: var(--cell-size);
   padding: 0;
