@@ -18,6 +18,13 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
       <section className={styles.section}>
         <h2 className={styles.heading}>New game</h2>
         <div className={styles.create}>
+          <button
+            type="button"
+            className={styles.button}
+            onClick={() => void createGame({ playerCount: 1 }).then(onOpen)}
+          >
+            Solo
+          </button>
           {[2, 3, 4].map((n) => (
             <button
               key={n}
@@ -29,6 +36,11 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
             </button>
           ))}
         </div>
+        <p className={styles.empty}>
+          A solo game starts straight away. Multiplayer games wait in the lobby
+          until every seat is filled — share the invite link from inside the
+          game.
+        </p>
       </section>
 
       <section className={styles.section}>

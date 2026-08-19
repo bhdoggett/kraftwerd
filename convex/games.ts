@@ -87,6 +87,12 @@ export const createGame = mutation({
     });
 
     await joinSeat(ctx, gameId, userId, 0);
+
+    // A solo game has nobody to wait for, so it is playable at once.
+    if (args.playerCount === 1) {
+      await ctx.db.patch("games", gameId, { status: "active" });
+    }
+
     return gameId;
   },
 });

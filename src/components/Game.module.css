@@ -143,3 +143,12 @@
   pointer-events: none;
   opacity: 0.92;
 }
+
+.waiting {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--pending-soft);
+  border: 1px solid var(--pending);
+  color: var(--pending);
+  font-size: 0.9rem;
+}

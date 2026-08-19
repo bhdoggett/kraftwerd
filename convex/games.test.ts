@@ -260,3 +260,32 @@ describe("end of game", () => {
     ).rejects.toThrow("not active");
   });
 });
+
+describe("solo games", () => {
+  test("a one-player game is active immediately, with nobody to wait for", async () => {
+    const t = convexTest(schema, modules);
+    const alice = await t.run(async (ctx) => {
+      for (const word of WORDS) await ctx.db.insert("words", { word });
+      return await ctx.db.insert("users", { authId: "auth|solo", name: "Solo" });
+    });
+    void alice;
+
+    const asAlice = t.withIdentity({ subject: "auth|solo" });
+    const gameId = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("active");
+  });
+
+  test("a two-player game still waits in the lobby", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => ctx.db.insert("users", { authId: "auth|a", name: "A" }));
+
+    const gameId = await t
+      .withIdentity({ subject: "auth|a" })
+      .mutation(api.games.createGame, { playerCount: 2 });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("lobby");
+  });
+});

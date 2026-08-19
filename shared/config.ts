@@ -25,6 +25,7 @@ export const GAME = {
   boardSize: 40,
   /** Game ends once this many tiles are on the board (design.md §6). */
   endThreshold: 100,
-  minPlayers: 2,
+  /** 1 is a solo practice game: it starts immediately with no one to wait for. */
+  minPlayers: 1,
   maxPlayers: 4,
 } as const;

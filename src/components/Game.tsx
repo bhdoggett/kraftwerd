@@ -227,6 +227,24 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
           </div>
         )}
 
+        {game.status === "lobby" && (
+          <div className={styles.waiting}>
+            <strong>Waiting for players.</strong> {view.players.length} of{" "}
+            {game.playerCount} seats filled — nobody can place tiles until the
+            game is full. Send someone the invite link below.
+          </div>
+        )}
+
+        {game.status === "active" && !myTurn && (
+          <p className={styles.hint}>
+            Waiting for seat {game.currentSeat + 1} to play.
+          </p>
+        )}
+
+        {game.status === "finished" && (
+          <p className={styles.hint}>This game is over.</p>
+        )}
+
         {myTurn && (
           <p className={styles.hint}>
             {selected === null
@@ -260,15 +278,6 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
               This play scores <span className={styles.previewScore}>{preview.total}</span>
               {preview.squares.length > 0 &&
                 ` · squares ${preview.squares.map((k) => `${k}×${k}`).join(", ")}`}
-            </span>
-          )}
-
-          {game.status === "active" && !myTurn && (
-            <span className={styles.preview}>Waiting for seat {game.currentSeat + 1}</span>
-          )}
-          {game.status === "lobby" && (
-            <span className={styles.preview}>
-              Waiting for players · {view.players.length} of {game.playerCount} seats
             </span>
           )}
 
