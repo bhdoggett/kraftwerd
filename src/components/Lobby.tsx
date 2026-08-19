@@ -7,16 +7,10 @@ import styles from "./Lobby.module.css";
 export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const mine = useQuery(api.games.listMyGames);
   const respondToInvite = useMutation(api.games.respondToInvite);
-  const open = useQuery(api.games.listOpenGames);
   const createGame = useMutation(api.games.createGame);
-  const joinGame = useMutation(api.games.joinGame);
 
   const myGames = mine?.games ?? [];
   const invitations = mine?.invitations ?? [];
-
-  const joinable = (open ?? []).filter(
-    (g) => !myGames.some((m) => m.gameId === g.gameId),
-  );
 
   const viewer = useQuery(api.users.viewer);
 
@@ -130,26 +124,6 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         ))}
       </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.heading}>Open games</h2>
-        {joinable.length === 0 && <p className={styles.empty}>Nothing waiting.</p>}
-        {joinable.map((g) => (
-          <div key={g.gameId} className={styles.row}>
-            <span className={styles.grow}>
-              <span className={styles.meta}>
-                {g.joined} of {g.playerCount} seats filled
-              </span>
-            </span>
-            <button
-              type="button"
-              className={styles.button}
-              onClick={() => void joinGame({ gameId: g.gameId }).then(() => onOpen(g.gameId))}
-            >
-              Join
-            </button>
-          </div>
-        ))}
-      </section>
     </div>
   );
 }

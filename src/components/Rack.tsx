@@ -18,6 +18,10 @@ interface RackProps {
    * drag layer lives there and dropping one tile onto another reorders it.
    */
   order: readonly number[];
+  /** Order to show right now — differs from `order` mid-drag. */
+  previewOrder: readonly number[];
+  /** Letter being dragged, rendered as a gap it has left behind. */
+  draggedIndex: number | null;
   onShuffle: () => void;
   /** Take every staged tile back off the board. */
   onRecall: () => void;
@@ -33,6 +37,8 @@ export function Rack({
   onSelect,
   onGrab,
   order,
+  previewOrder,
+  draggedIndex,
   onShuffle,
   onRecall,
   canRecall,
@@ -65,14 +71,21 @@ export function Rack({
   });
 
   return (
-    <div className={styles.rack}>
+    <div className={styles.rack} data-rack="">
       <span className={styles.label}>Rack</span>
 
-      {order.map((index, slot) => {
+      {order
+        .filter((index) => !spent.includes(index))
+        .map((index, slot) => {
         const letter = letters[index];
         if (letter === undefined) return null;
-        const used = spent.includes(index);
         const sel: Selection = { kind: "letter", index };
+
+        // DOM order stays put and tiles slide by transform instead, so the
+        // movement animates; reordering the DOM would jump. Both orders are
+        // compared with staged tiles removed, so the gaps line up.
+        const shift =
+          previewOrder.filter((i) => !spent.includes(i)).indexOf(index) - slot;
 
         return (
           <button
@@ -80,11 +93,18 @@ export function Rack({
             type="button"
             className={[
               styles.tile,
-              used ? styles.spent : "",
               isSelected(sel) ? styles.selected : "",
+              draggedIndex === index ? styles.lifted : "",
             ].join(" ")}
-            data-rack-slot={slot}
-            {...tileProps(sel, used)}
+            // The letter's real index, not its position: staged tiles leave
+            // the rack, so positions shift but indices do not.
+            data-rack-slot={index}
+            style={
+              shift === 0
+                ? undefined
+                : { transform: `translateX(calc(var(--rack-step) * ${shift}))` }
+            }
+            {...tileProps(sel, false)}
           >
             {letter}
           </button>

@@ -36,10 +36,22 @@ async function twoPlayerGame(letters: string[]) {
   const asBob = t.withIdentity({ subject: "auth|bob" });
 
   const gameId = await asAlice.mutation(api.games.createGame, { playerCount: 2 });
-  await asBob.mutation(api.games.joinGame, { gameId });
 
-  // Hand both players a known rack so tests are about rules, not luck.
+  // Seat Bob directly and start the game. These tests are about placement
+  // rules; the invitation flow that normally seats a second player has its
+  // own tests below.
   await t.run(async (ctx) => {
+    await ctx.db.insert("players", {
+      gameId,
+      userId: bob,
+      seat: 1,
+      score: 0,
+      letters: [...letters],
+      blank: true,
+      status: "joined",
+    });
+    await ctx.db.patch("games", gameId, { status: "active" });
+
     const players = await ctx.db
       .query("players")
       .withIndex("by_game", (q) => q.eq("gameId", gameId))
@@ -469,5 +481,50 @@ describe("game invitations", () => {
     await expect(
       asAna.mutation(api.games.respondToInvite, { gameId, accept: true }),
     ).rejects.toThrow("already answered");
+  });
+});
+
+describe("joining by link", () => {
+  async function lobbyGame(playerCount: number) {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
+      await ctx.db.insert("users", { authId: "auth|guest", name: "Guest" });
+      await ctx.db.insert("users", { authId: "auth|third", name: "Third" });
+    });
+    const asHost = t.withIdentity({ subject: "auth|host" });
+    const gameId = await asHost.mutation(api.games.createGame, { playerCount });
+    return { t, gameId, asHost, asGuest: t.withIdentity({ subject: "auth|guest" }),
+      asThird: t.withIdentity({ subject: "auth|third" }) };
+  }
+
+  test("the game starts only once every seat is taken", async () => {
+    const { t, gameId, asGuest, asThird } = await lobbyGame(3);
+
+    await asGuest.mutation(api.games.joinGame, { gameId });
+    let game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("lobby");
+
+    await asThird.mutation(api.games.joinGame, { gameId });
+    game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("active");
+  });
+
+  test("a full game cannot be joined", async () => {
+    const { gameId, asGuest, asThird } = await lobbyGame(2);
+    await asGuest.mutation(api.games.joinGame, { gameId });
+
+    await expect(
+      asThird.mutation(api.games.joinGame, { gameId }),
+    ).rejects.toThrow("already started");
+  });
+
+  test("you cannot take two seats", async () => {
+    const { gameId, asGuest } = await lobbyGame(3);
+    await asGuest.mutation(api.games.joinGame, { gameId });
+
+    await expect(
+      asGuest.mutation(api.games.joinGame, { gameId }),
+    ).rejects.toThrow("Already joined");
   });
 });

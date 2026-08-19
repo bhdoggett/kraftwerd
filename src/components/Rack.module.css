@@ -1,4 +1,6 @@
 .rack {
+  /* One tile plus the gap: how far a tile travels to swap places. */
+  --rack-step: calc(42px + var(--space-2));
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -25,8 +27,14 @@
   place-items: center;
   box-shadow: var(--shadow);
   transition:
-    transform 90ms ease,
-    box-shadow 90ms ease;
+    transform 140ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 90ms ease,
+    opacity 90ms ease;
+}
+
+/* The tile under the pointer is drawn by the drag layer instead. */
+.lifted {
+  opacity: 0.25;
 }
 
 .tile:hover:not(:disabled) {

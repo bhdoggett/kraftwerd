@@ -177,6 +177,14 @@ export const createGameWithFriends = mutation({
   },
 });
 
+
+/**
+ * Take a free seat in a game you have the link to.
+ *
+ * Games made with `createGame` are filled this way: there is no public list,
+ * so holding the link is the permission. Games made from the friends list use
+ * invitations instead and have no free seats to take.
+ */
 export const joinGame = mutation({
   args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
@@ -184,7 +192,7 @@ export const joinGame = mutation({
 
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) throw new ConvexError("No such game");
-    if (game.status !== "lobby") throw new ConvexError("Game already started");
+    if (game.status !== "lobby") throw new ConvexError("That game has already started");
 
     const players = await ctx.db
       .query("players")
@@ -194,9 +202,9 @@ export const joinGame = mutation({
     if (players.some((p) => p.userId === userId)) throw new ConvexError("Already joined");
     if (players.length >= game.playerCount) throw new ConvexError("Game is full");
 
-    await joinSeat(ctx, args.gameId, userId, players.length);
+    await joinSeat(ctx, args.gameId, userId, players.length, "joined");
 
-    // Last seat filled: the game starts.
+    // Last seat taken: the game starts.
     if (players.length + 1 === game.playerCount) {
       await ctx.db.patch("games", args.gameId, { status: "active" });
     }
@@ -501,13 +509,19 @@ export const getGame = query({
     const tiles = await loadTiles(ctx, args.gameId);
 
     const you = players.find((p) => p.userId === userId);
+    const seated = players.filter((p) => p.status !== "invited");
 
     return {
+      /** A free seat, in a game filled by link rather than by invitation. */
+      canJoin:
+        you === undefined &&
+        game.status === "lobby" &&
+        players.length < game.playerCount,
+      seatsFilled: seated.length,
       game,
       viewerUserId: userId,
       /** Null when the viewer is looking at a game they have not joined. */
       yourSeat: you?.seat ?? null,
-      canJoin: you === undefined && game.status === "lobby" && players.length < game.playerCount,
       tiles: tiles.map((t) => ({
         x: t.x,
         y: t.y,
@@ -575,29 +589,3 @@ export const listMyGames = query({
   },
 });
 
-export const listOpenGames = query({
-  args: {},
-  handler: async (ctx) => {
-    await requireUser(ctx);
-
-    const games = await ctx.db
-      .query("games")
-      .withIndex("by_status", (q) => q.eq("status", "lobby"))
-      .take(50);
-
-    return await Promise.all(
-      games.map(async (game) => {
-        const players = await ctx.db
-          .query("players")
-          .withIndex("by_game", (q) => q.eq("gameId", game._id))
-          .take(GAME.maxPlayers);
-        return {
-          gameId: game._id,
-          playerCount: game.playerCount,
-          joined: players.length,
-          seats: players.map((p) => p.userId),
-        };
-      }),
-    );
-  },
-});

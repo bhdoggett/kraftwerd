@@ -42,6 +42,48 @@ interface Staged extends Placement {
   from: Selection;
 }
 
+/**
+ * Which rack tile the pointer is over, by the tile's real letter index.
+ *
+ * Deliberately geometric rather than `elementFromPoint`: tiles slide by
+ * transform during a drag, so hit-testing would see them in their shifted
+ * positions, reorder, shift them again, and oscillate. `offsetLeft` is layout
+ * position and does not move while only transforms change, so the answer is
+ * stable. A tile also has to be crossed past its middle before it counts,
+ * which stops a tremble on the boundary from flapping the order.
+ */
+function rackSlotUnder(clientX: number, clientY: number): number | null {
+  const rack = document.querySelector("[data-rack]");
+  if (!(rack instanceof HTMLElement)) return null;
+
+  const bounds = rack.getBoundingClientRect();
+  const generous = 24; // keep the preview alive just outside the rack
+  if (clientY < bounds.top - generous || clientY > bounds.bottom + generous) return null;
+
+  const localX = clientX - bounds.left + rack.scrollLeft;
+
+  for (const el of rack.querySelectorAll("[data-rack-slot]")) {
+    if (!(el instanceof HTMLElement)) continue;
+    const left = el.offsetLeft;
+    if (localX >= left && localX <= left + el.offsetWidth) {
+      return Number(el.dataset.rackSlot);
+    }
+  }
+  return null;
+}
+
+/** Move `value` to sit where `target` currently is. */
+function moveWithin(order: readonly number[], value: number, target: number): number[] {
+  const from = order.indexOf(value);
+  const to = order.indexOf(target);
+  if (from < 0 || to < 0 || from === to) return [...order];
+
+  const next = [...order];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved!);
+  return next;
+}
+
 /** Where a drag started: the rack, or a tile already staged on the board. */
 type Origin = { kind: "rack"; selection: Selection } | { kind: "cell"; x: number; y: number };
 
@@ -79,8 +121,9 @@ function writeDraft(gameId: string, turnNumber: number, pending: Staged[]) {
 export function Game({ gameId }: { gameId: Id<"games"> }) {
   const view = useQuery(api.games.getGame, { gameId });
   const placeTiles = useMutation(api.games.placeTiles);
-  const joinGame = useMutation(api.games.joinGame);
   const resignGame = useMutation(api.games.resignGame);
+  const joinGame = useMutation(api.games.joinGame);
+  const [copied, setCopied] = useState(false);
 
   const [pending, setPending] = useState<Staged[]>([]);
   const [selected, setSelected] = useState<Selection | null>(null);
@@ -94,6 +137,8 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
    * never change which tile a placement came from.
    */
   const [rackOrder, setRackOrder] = useState<number[]>([]);
+  /** Letter index the pointer is over while dragging a rack tile. */
+  const [rackHover, setRackHover] = useState<number | null>(null);
 
   /** Live pointer drag: the tile that follows the finger/cursor. */
   const [drag, setDrag] = useState<{
@@ -174,17 +219,30 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
     });
   }
 
-  /** Drop a dragged rack tile onto another slot, sliding the rest along. */
-  function reorderRack(fromIndex: number, toSlot: number) {
-    setRackOrder((current) => {
-      const from = current.indexOf(fromIndex);
-      if (from < 0 || toSlot < 0 || toSlot >= current.length) return current;
-      const next = [...current];
-      const [moved] = next.splice(from, 1);
-      next.splice(toSlot, 0, moved!);
-      return next;
-    });
+  /** Drop a dragged rack tile onto another, sliding the rest along. */
+  function reorderRack(fromIndex: number, overIndex: number) {
+    setRackOrder((current) => moveWithin(current, fromIndex, overIndex));
   }
+
+  /**
+   * Order to render right now. While a rack tile is over another slot this is
+   * the order it *would* become, so the gap follows the pointer instead of
+   * appearing only on release.
+   */
+  const previewOrder = useMemo(() => {
+    const dragged =
+      drag?.origin.kind === "rack" && drag.origin.selection.kind === "letter"
+        ? drag.origin.selection.index
+        : null;
+    if (dragged === null || rackHover === null) return rackOrder;
+
+    return moveWithin(rackOrder, dragged, rackHover);
+  }, [drag, rackHover, rackOrder]);
+
+  const draggedIndex =
+    drag?.origin.kind === "rack" && drag.origin.selection.kind === "letter"
+      ? drag.origin.selection.index
+      : null;
 
   const turnNumber = view?.game.turnNumber;
 
@@ -221,6 +279,8 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
     const onMove = (e: PointerEvent) => {
       if (dragRef.current) dragRef.current.moved = true;
       setDrag((d) => (d === null ? null : { ...d, x: e.clientX, y: e.clientY }));
+
+      setRackHover(rackSlotUnder(e.clientX, e.clientY));
     };
 
     const onUp = (e: PointerEvent) => {
@@ -228,23 +288,26 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
       const origin = drag?.origin;
       dragRef.current = null;
       setDrag(null);
+      setRackHover(null);
 
       // A press without movement is a selection, not a drag: leave the tile
       // selected so tap-then-tap still works.
       if (!moved) return;
 
-      const under = document.elementFromPoint(e.clientX, e.clientY);
-
-      // Dropped back onto the rack: reorder rather than place.
-      const slot = under?.closest("[data-rack-slot]")?.getAttribute("data-rack-slot");
-      if (slot !== null && slot !== undefined) {
+      // Dropped back onto the rack: reorder rather than place. Same geometry
+      // as the preview, so releasing lands where the gap was shown.
+      const over = rackSlotUnder(e.clientX, e.clientY);
+      if (over !== null) {
         if (origin?.kind === "rack" && origin.selection.kind === "letter") {
-          reorderRef.current(origin.selection.index, Number(slot));
+          reorderRef.current(origin.selection.index, over);
         }
         return;
       }
 
-      const cell = under?.closest("[data-cell]")?.getAttribute("data-cell");
+      const cell = document
+        .elementFromPoint(e.clientX, e.clientY)
+        ?.closest("[data-cell]")
+        ?.getAttribute("data-cell");
       if (!cell) return;
 
       const [cx, cy] = cell.split(",").map(Number);
@@ -414,6 +477,8 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             }}
             onGrab={grab}
             order={rackOrder}
+            previewOrder={previewOrder}
+            draggedIndex={draggedIndex}
             onShuffle={shuffleRack}
             onRecall={clear}
             canRecall={pending.length > 0}
@@ -444,9 +509,37 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
 
         {game.status === "lobby" && (
           <div className={styles.waiting}>
-            <strong>Waiting for players.</strong> {view.players.length} of{" "}
+            <strong>Waiting for players.</strong> {view.seatsFilled} of{" "}
             {game.playerCount} seats filled — nobody can place tiles until the
-            game is full. Send someone the invite link below.
+            game is full.
+            {view.canJoin ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className={styles.inline}
+                  onClick={() => void joinGame({ gameId })}
+                >
+                  Take a seat
+                </button>
+              </>
+            ) : (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className={styles.inline}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(window.location.href).then(() => {
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    });
+                  }}
+                >
+                  {copied ? "Link copied" : "Copy the link to invite someone"}
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -522,15 +615,6 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             </button>
           )}
 
-          {view.canJoin && (
-            <button
-              type="button"
-              className={styles.button}
-              onClick={() => void joinGame({ gameId })}
-            >
-              Join this game
-            </button>
-          )}
         </div>
 
         {pending.length > 0 && (
