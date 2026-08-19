@@ -873,20 +873,23 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                 {checked === undefined ? (
                   <span className={styles.checking}>Checking words…</span>
                 ) : (
-                  checked.map((entry) => {
-                    const scored = preview?.words.find((w) => w.word === entry.word);
+                  // Every occurrence, not every distinct word: a letter at a
+                  // crossing belongs to two words and is paid for in each, so
+                  // showing AT once when it was formed twice would make the
+                  // chips fail to add up to the total.
+                  (preview?.words ?? []).map((scored, i) => {
+                    const valid =
+                      checked.find((e) => e.word === scored.word)?.valid ?? false;
                     return (
                       <span
-                        key={entry.word}
+                        key={`${scored.word}-${i}`}
                         className={[
                           styles.word,
-                          entry.valid ? styles.valid : styles.invalid,
+                          valid ? styles.valid : styles.invalid,
                         ].join(" ")}
                       >
-                        {entry.word}
-                        {entry.valid && scored && (
-                          <span className={styles.wordPoints}>{scored.points}</span>
-                        )}
+                        {scored.word}
+                        {valid && <span className={styles.wordPoints}>{scored.points}</span>}
                       </span>
                     );
                   })
