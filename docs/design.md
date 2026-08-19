@@ -1,6 +1,6 @@
-# Word Craft — Design Spec (draft)
+# kraftwerd — Design Spec (draft)
 
-Working name: **Word Craft**.
+Working name: **kraftwerd**.
 
 Async turn-based word-square builder. Convex + React/Vite. Multi-account.
 
@@ -81,15 +81,35 @@ hard — which is what justifies the payouts in §4.
 
 ## 4. Scoring
 
-### 4.1 Tile points
+### 4.1 Word points
 
-**1 point per tile you placed this turn.** No per-letter values. A Q scores
-exactly what an E scores.
+**Every letter of every word the play forms**, counting letters already on the
+board. A letter in both an across and a down word counts in each, as in
+Scrabble.
 
-**Blanks score 0.** A placed blank still occupies a cell and counts fully
-toward square formation (§4.2) — it just earns no tile point. A blank that
-completes a 2×2 still pays the full 4. Net cost of using a blank is exactly
-1 point.
+**Blanks are worth nothing**, wherever they sit — they still complete words and
+squares, they just contribute no letter to the score.
+
+This is what makes reading the board matter. One tile added to `RISE` scores
+`RISEN` in full: five points for one tile.
+
+*This replaced an earlier rule of 1 point per tile you placed.* Under that rule
+extending an existing word was worth exactly as much as playing in empty space,
+so there was no reason to look at what was already there.
+
+**The obvious objection, and why it does not hold.** Paying for existing
+letters seems to reward building a word one tile at a time, re-scoring its
+length each turn. In solo play it does. Against an opponent it inverts, because
+they take every other turn — and the last, longest one:
+
+| building `ATE` | you | them |
+|----------------|-----|------|
+| `ATE` in one turn | 3 | 0 |
+| `AT`, they add `E` | 2 | **3** |
+
+So a word left extendable is a liability, exactly like an open corner in a 2×2.
+About 77% of two-letter words in our list can be extended by appending a single
+letter, so this is most of the board rather than an edge case.
 
 ### 4.2 Square bonus — nested
 
@@ -148,10 +168,19 @@ is a risk.
 ### 4.5 Order of operations
 
 ```
-1. count tiles placed         -> +1 each
-2. diff square sets           -> + Σ k² for new squares
-3. sum                        -> turn score
+1. sum every letter of every word formed  -> word points (blanks count 0)
+2. diff square sets                       -> + Σ k² for new squares
+3. sum                                    -> turn score
 ```
+
+An n×n block is 2n words of n letters, so the two halves of the score grow at
+different rates:
+
+| build | word points | square bonus | total |
+|-------|-------------|--------------|-------|
+| 2×2 | 8 | 4 | **12** |
+| 3×3 | 18 | 25 | **43** |
+| 4×4 | 32 | 88 | **120** |
 
 ## 5. Rack and letter generation
 
@@ -355,4 +384,3 @@ Steps 1–3 are where the game is won or lost. The rest is plumbing.
 - **SCOWL cut size.** Which frequency tier. Needs playtesting.
 - **N.** Tile-count threshold for game end. Needs playtesting; 400 (25% of a
   40×40) is a starting guess.
-- **`package.json` rename.** Still says `zabble`; should be `word-craft`.

@@ -73,7 +73,8 @@ describe("placeTiles", () => {
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
     });
 
-    expect(result).toEqual({ score: 8, squares: [2] });
+    // Four 2-letter words (8) plus the square (4).
+    expect(result).toEqual({ score: 12, squares: [2] });
 
     const player = await t.run(async (ctx) =>
       ctx.db
@@ -81,7 +82,7 @@ describe("placeTiles", () => {
         .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
         .unique(),
     );
-    expect(player?.score).toBe(8);
+    expect(player?.score).toBe(12);
   });
 
   test("refills the rack back to full after a play", async () => {
@@ -165,7 +166,8 @@ describe("placeTiles", () => {
       gameId,
       placements: [at(1, 1, "O")],
     });
-    expect(result).toEqual({ score: 5, squares: [2] });
+    // The closing tile takes both 2-letter words and the square.
+    expect(result).toEqual({ score: 8, squares: [2] });
 
     const player = await t.run(async (ctx) =>
       ctx.db
@@ -173,7 +175,7 @@ describe("placeTiles", () => {
         .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", bob))
         .unique(),
     );
-    expect(player?.score).toBe(5);
+    expect(player?.score).toBe(8);
   });
 
   test("rotates the turn to the next seat", async () => {
@@ -209,8 +211,9 @@ describe("placeTiles", () => {
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O", true)],
     });
 
-    // 3 tile points (the blank scores 0) + 4 for the 2x2
-    expect(result).toEqual({ score: 7, squares: [2] });
+    // Four 2-letter words, less the blank's letter in the two it sits in,
+    // plus 4 for the square.
+    expect(result).toEqual({ score: 10, squares: [2] });
   });
 });
 
@@ -335,7 +338,7 @@ describe("resigning and stats", () => {
     expect(users.alice?.wins ?? 0).toBe(0);
     expect(users.bob?.wins).toBe(1);
     // The score still counts toward personal bests.
-    expect(users.alice?.bestGameScore).toBe(8);
+    expect(users.alice?.bestGameScore).toBe(12);
   });
 
   test("records the best single turn as it happens", async () => {
@@ -347,7 +350,7 @@ describe("resigning and stats", () => {
     });
 
     const user = await t.run(async (ctx) => ctx.db.get("users", alice));
-    expect(user?.bestTurnScore).toBe(8);
+    expect(user?.bestTurnScore).toBe(12);
   });
 
   test("counts a game for everyone who played, won or not", async () => {

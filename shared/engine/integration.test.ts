@@ -30,11 +30,12 @@ describe("engine against the real tier-50 dictionary", () => {
     expect(dict.has("ZZZZQ")).toBe(false);
   });
 
-  test("a real 2x2 word square is legal and scores 8", () => {
+  test("a real 2x2 word square is legal and scores 12", () => {
     const before = makeBoard([]);
 
     expect(validateTurn(before, SQUARE, dict, bounds)).toEqual({ ok: true });
-    expect(scoreTurn(applyPlacements(before, SQUARE), SQUARE).total).toBe(8);
+    // Four 2-letter words (8) plus the square itself (4).
+    expect(scoreTurn(applyPlacements(before, SQUARE), SQUARE).total).toBe(12);
   });
 
   test("the same block with one letter changed is rejected", () => {
@@ -53,10 +54,11 @@ describe("engine against the real tier-50 dictionary", () => {
     const mine = [at(1, 1, "O")];
 
     expect(validateTurn(before, mine, dict, bounds)).toEqual({ ok: true });
-    expect(scoreTurn(applyPlacements(before, mine), mine).total).toBe(5);
+    // The tile closes AD down and DO across as well as the square.
+    expect(scoreTurn(applyPlacements(before, mine), mine).total).toBe(8);
   });
 
-  test("a 3x3 built over two turns scores 34 in total", () => {
+  test("a 3x3 built over two turns scores 43 in total", () => {
     //   A C E      rows:    ACE, CAM, EMU
     //   C A M      columns: ACE, CAM, EMU
     //   E M U
@@ -72,21 +74,24 @@ describe("engine against the real tier-50 dictionary", () => {
     const empty = makeBoard([]);
     expect(validateTurn(empty, turn1, dict, bounds)).toEqual({ ok: true });
 
-    // 8 tiles + the three 2x2 blocks that are already complete
+    // Words so far: ACE, CAM, EM across; ACE, CAM, EM down = 16 letters.
+    // Plus the three 2x2 blocks already complete.
     const after1 = applyPlacements(empty, turn1);
     const first = scoreTurn(after1, turn1);
-    expect(first.total).toBe(8 + 12);
+    expect(first.total).toBe(16 + 12);
 
     // Turn 2: the last corner completes EMU across and down.
     const turn2 = [at(2, 2, "U")];
     expect(validateTurn(after1, turn2, dict, bounds)).toEqual({ ok: true });
 
-    // 1 tile + the final 2x2 (4) + the 3x3 itself (9)
+    // The last corner completes EMU across and down (6 letters), the final
+    // 2x2 (4) and the 3x3 itself (9).
     const second = scoreTurn(applyPlacements(after1, turn2), turn2);
-    expect(second.total).toBe(1 + 4 + 9);
+    expect(second.total).toBe(6 + 4 + 9);
 
-    // and the two turns together pay the 34 that design.md §4.2 quotes
-    expect(first.total + second.total).toBe(34);
+    // Together they pay more than the 43 a 3x3 scores in one go: the partial
+    // words on the way were paid for too.
+    expect(first.total + second.total).toBe(47);
   });
 });
 
