@@ -10,12 +10,33 @@ static bundle served from Coolify.
 | Build Pack | Nixpacks |
 | Base Directory | `/` |
 | Install Command | `npm ci` |
+| Node | pinned via `.nvmrc` / `engines` (see below) |
 | Build Command | `npm run build` |
 | Start Command | `npm start` |
 | Port | `3000` |
 
 Base Directory is `/` because this is not a monorepo — `package.json`,
 `index.html`, and `vite.config.ts` are all at the repo root.
+
+### Node version
+
+Nixpacks defaults to Node 18 when nothing pins a version, and the build dies
+with:
+
+```
+SyntaxError: The requested module 'node:util' does not provide an export named 'styleText'
+```
+
+Vite 8 depends on rolldown, which needs `styleText` — added in Node 20.12/22.
+The `EBADENGINE` warnings earlier in the log are the real signal.
+
+The version is pinned two ways so Nixpacks cannot fall back:
+
+- `engines.node` (`>=22.12`) in `package.json` — the floor vite 8 requires
+- `.nvmrc` (`24`) — matches local development
+
+If a build still comes up on the wrong version, set `NIXPACKS_NODE_VERSION=24`
+as a Coolify environment variable, which overrides detection outright.
 
 Coolify's **Static** build pack does not fit: it serves files already
 committed to the repo and runs no build, and `dist/` is gitignored.
