@@ -49,7 +49,7 @@
 }
 
 .tile {
-  /* Stop the browser treating a drag off a tile as a scroll gesture. */
+  /* Tiles are drag handles, so a drag must not scroll the page instead. */
   touch-action: none;
   width: var(--rack-tile-width);
   height: var(--rack-tile-height);
@@ -126,11 +126,6 @@
 .action:disabled {
   opacity: 0.35;
   cursor: default;
-}
-
-/* Tiles are drag handles for reordering, so a drag must not scroll the page. */
-.tile {
-  touch-action: none;
 }
 
 /* Picked for trading: dimmed and outlined, so the choice reads as removal. */

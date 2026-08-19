@@ -84,10 +84,6 @@
   border-color: var(--accent);
 }
 
-.dragBlank {
-  background: var(--tile-blank-face);
-  border-color: var(--tile-blank-edge);
-}
 
 
 .hint {
@@ -118,6 +114,13 @@
   box-shadow: var(--shadow-lift);
   pointer-events: none;
   opacity: 0.92;
+}
+
+/* Declared after .dragTile deliberately: same specificity, so order decides. */
+.dragBlank {
+  background: var(--tile-blank-face);
+  border-color: var(--tile-blank-edge);
+  color: var(--tile-text);
 }
 
 .waiting {
