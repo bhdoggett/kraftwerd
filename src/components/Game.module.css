@@ -108,7 +108,15 @@
   border-color: var(--accent);
 }
 
+.dragBlank {
+  background: var(--tile-blank-face);
+  border-color: var(--tile-blank-edge);
+}
+
 .blankPrompt {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
   width: 100%;
   margin: 0 0 var(--space-1);
   font-size: 0.8rem;

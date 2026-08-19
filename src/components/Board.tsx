@@ -21,6 +21,8 @@ interface BoardProps {
   showOwnership: boolean;
   onPlace: (x: number, y: number) => void;
   onPickUp: (x: number, y: number) => void;
+  /** Square holding a blank that has not been told its letter yet. */
+  awaitingBlankAt?: { x: number; y: number } | null;
   /** Begin dragging a tile staged this turn to another square. */
   onGrabStaged?: (x: number, y: number, event: React.PointerEvent) => void;
 }
@@ -93,6 +95,7 @@ export function Board({
   seatOf,
   canPlace,
   showOwnership,
+  awaitingBlankAt,
   onPlace,
   onPickUp,
   onGrabStaged,
@@ -154,13 +157,16 @@ export function Board({
           const tile = committed.get(k);
           const stage = staged.get(k);
           const isOpen = frontier.has(k);
+          const awaiting =
+            awaitingBlankAt?.x === x && awaitingBlankAt?.y === y;
 
           const classes = [styles.cell];
           if (tile) classes.push(styles.tile);
           if (tile?.isBlank) classes.push(styles.blank);
           if (stage) classes.push(styles.pending, styles.tile);
           if (stage?.isBlank) classes.push(styles.blank);
-          if (isOpen) {
+          if (awaiting) classes.push(styles.tile, styles.blank, styles.awaiting);
+          if (isOpen && !awaiting) {
             classes.push(styles.open);
             if (canPlace) classes.push(styles.playable, styles.armed);
           }

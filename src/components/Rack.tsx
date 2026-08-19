@@ -132,6 +132,7 @@ export function Rack({
             isSelected({ kind: "blank" }) ? styles.selected : "",
           ].join(" ")}
           {...tileProps({ kind: "blank" }, blankSpent)}
+          data-rack-blank=""
           aria-label="Blank tile"
         />
       )}

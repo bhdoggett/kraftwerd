@@ -72,9 +72,18 @@ function rackSlotUnder(
   const bounds = rack.getBoundingClientRect();
   if (clientY < bounds.top || clientY > bounds.bottom) return miss;
 
+  // The blank sits after the letters and is not a drop position itself, but
+  // the gap before it is: without including it, the space between the last
+  // letter and the blank fell outside the rack entirely and could not be
+  // dropped into.
+  const blank = rack.querySelector("[data-rack-blank]");
+  const rightEdge =
+    blank instanceof HTMLElement
+      ? blank.getBoundingClientRect().right
+      : tiles[tiles.length - 1]!.getBoundingClientRect().right;
+
   const first = tiles[0]!.getBoundingClientRect();
-  const last = tiles[tiles.length - 1]!.getBoundingClientRect();
-  if (clientX < first.left || clientX > last.right) return miss;
+  if (clientX < first.left || clientX > rightEdge) return miss;
 
   const localX = clientX - bounds.left + rack.scrollLeft;
 
@@ -155,7 +164,12 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
 
   const [pending, setPending] = useState<Staged[]>([]);
   const [selected, setSelected] = useState<Selection | null>(null);
-  const [blankLetter, setBlankLetter] = useState<string | null>(null);
+  /**
+   * A blank has been dropped on this square and is waiting to be told what
+   * letter it stands for. Asking on release rather than beforehand means the
+   * blank drags like any other tile.
+   */
+  const [blankAt, setBlankAt] = useState<{ x: number; y: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -171,6 +185,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
   /** Live pointer drag: the tile that follows the finger/cursor. */
   const [drag, setDrag] = useState<{
     letter: string;
+    isBlank: boolean;
     x: number;
     y: number;
     origin: Origin;
@@ -318,7 +333,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
     if (turnNumber === undefined) return;
     setPending(readDraft(gameId, turnNumber));
     setSelected(null);
-    setBlankLetter(null);
+    setBlankAt(null);
   }, [gameId, turnNumber]);
 
   useEffect(() => {
@@ -410,7 +425,8 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
   const seatOf = (userId: string) =>
     view.players.find((p) => p.userId === userId)?.seat ?? 0;
 
-  const blankSpent = pending.some((p) => p.from.kind === "blank");
+  // Also spent while the dropped blank is still being named.
+  const blankSpent = pending.some((p) => p.from.kind === "blank") || blankAt !== null;
 
   /**
    * Pointer-based dragging, deliberately not HTML5 drag-and-drop: `draggable`
@@ -418,38 +434,37 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
    * events do not exist on touch at all. Pointer events behave identically for
    * mouse, trackpad and finger.
    */
-  function startDrag(letter: string, origin: Origin, event: ReactPointerEvent) {
+  function startDrag(
+    letter: string,
+    isBlank: boolean,
+    origin: Origin,
+    event: ReactPointerEvent,
+  ) {
     dragRef.current = { moved: false };
-    setDrag({ letter, x: event.clientX, y: event.clientY, origin });
+    setDrag({ letter, isBlank, x: event.clientX, y: event.clientY, origin });
   }
 
-  /** Drag a letter out of the rack. */
+  /** Drag a tile out of the rack. The blank drags blank; it is asked about
+   * only once it lands somewhere. */
   function grab(selection: Selection, event: ReactPointerEvent) {
     if (!myTurn || me === undefined) return;
 
-    // A blank has no letter until one is chosen, so dragging it straight from
-    // the rack would carry nothing; the alphabet tiles are the drag source.
-    if (selection.kind === "blank") return;
+    if (selection.kind === "blank") {
+      startDrag("", true, { kind: "rack", selection }, event);
+      return;
+    }
 
     const letter = me.letters?.[selection.index];
     if (letter === undefined) return;
 
-    startDrag(letter, { kind: "rack", selection }, event);
-  }
-
-  /** Drag straight off the alphabet picker, carrying the chosen letter. */
-  function grabBlankLetter(letter: string, event: ReactPointerEvent) {
-    if (!myTurn) return;
-    setSelected({ kind: "blank" });
-    setBlankLetter(letter);
-    startDrag(letter, { kind: "rack", selection: { kind: "blank" } }, event);
+    startDrag(letter, false, { kind: "rack", selection }, event);
   }
 
   /** Drag a tile already staged this turn to a different square. */
   function grabStaged(x: number, y: number, event: ReactPointerEvent) {
     const tile = pending.find((p) => p.x === x && p.y === y);
     if (tile === undefined) return;
-    startDrag(tile.letter, { kind: "cell", x, y }, event);
+    startDrag(tile.letter, tile.isBlank, { kind: "cell", x, y }, event);
   }
 
   /** Move a staged tile, keeping the rack slot it came from. */
@@ -469,12 +484,11 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
     if (!myTurn || selected === null || me === undefined) return;
 
     if (selected.kind === "blank") {
-      if (blankLetter === null) return; // still choosing which letter it stands for
-      setPending((p) => [
-        ...p,
-        { x, y, letter: blankLetter, isBlank: true, from: { kind: "blank" } },
-      ]);
-      setBlankLetter(null);
+      // Landed, but nameless: ask now.
+      setBlankAt({ x, y });
+      setSelected(null);
+      setError(null);
+      return;
     } else {
       const letter = me.letters?.[selected.index];
       if (letter === undefined) return;
@@ -493,8 +507,18 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
   function clear() {
     setPending([]);
     setSelected(null);
-    setBlankLetter(null);
+    setBlankAt(null);
     setError(null);
+  }
+
+  /** Answer the question the dropped blank is asking. */
+  function nameBlank(letter: string) {
+    if (blankAt === null) return;
+    setPending((current) => [
+      ...current,
+      { x: blankAt.x, y: blankAt.y, letter, isBlank: true, from: { kind: "blank" } },
+    ]);
+    setBlankAt(null);
   }
 
   async function submit() {
@@ -518,7 +542,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
     }
   }
 
-  const choosingBlank = selected?.kind === "blank" && blankLetter === null;
+  const choosingBlank = blankAt !== null;
 
   return (
     <div className={styles.layout}>
@@ -532,6 +556,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
           canPlace={myTurn && selected !== null && !choosingBlank}
           onPlace={place}
           onPickUp={pickUp}
+          awaitingBlankAt={blankAt}
           onGrabStaged={myTurn ? grabStaged : undefined}
         />
 
@@ -542,10 +567,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
             spent={spentIndices}
             blankSpent={blankSpent}
             selected={selected}
-            onSelect={(s) => {
-              setSelected(s);
-              setBlankLetter(null);
-            }}
+            onSelect={setSelected}
             onGrab={grab}
             order={rackOrder}
             previewOrder={previewOrder}
@@ -557,21 +579,25 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
           />
         )}
 
-        {choosingBlank && (
+        {blankAt !== null && (
           <div className={styles.blankPicker}>
             <p className={styles.blankPrompt}>
-              Which letter does the blank stand for?
+              What does this blank stand for?
+              <button
+                type="button"
+                className={styles.inline}
+                onClick={() => setBlankAt(null)}
+              >
+                Cancel
+              </button>
             </p>
             {ALPHABET.map((letter) => (
               <button
                 key={letter}
                 type="button"
                 className={styles.blankLetter}
-                onPointerDown={(e) => grabBlankLetter(letter, e)}
-                onClick={(e) => {
-                  // Keyboard activation has no pointerdown to piggyback on.
-                  if (e.detail === 0) setBlankLetter(letter);
-                }}
+                onClick={() => nameBlank(letter)}
+                autoFocus={letter === "A"}
               >
                 {letter}
               </button>
@@ -715,7 +741,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
 
         {drag && (
           <div
-            className={styles.dragTile}
+            className={[styles.dragTile, drag.isBlank ? styles.dragBlank : ""].join(" ")}
             style={{ left: drag.x, top: drag.y }}
             aria-hidden="true"
           >

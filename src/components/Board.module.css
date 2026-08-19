@@ -131,3 +131,16 @@
   border-color: var(--accent);
   background: var(--accent-soft);
 }
+
+/* A blank that has landed but has not been told its letter yet. */
+.awaiting {
+  border-style: dashed;
+  border-color: var(--pending);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
