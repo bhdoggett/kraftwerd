@@ -7,18 +7,13 @@ export interface BoardTile {
   y: number;
   letter: string;
   isBlank: boolean;
-  placedBy: string;
 }
 
 interface BoardProps {
   boardSize: number;
   tiles: readonly BoardTile[];
   pending: readonly Placement[];
-  /** Seat index per user id, for the ownership stripe. */
-  seatOf: (userId: string) => number;
   canPlace: boolean;
-  /** Ownership stripes only mean something with an opponent to distinguish. */
-  showOwnership: boolean;
   onPlace: (x: number, y: number) => void;
   onPickUp: (x: number, y: number) => void;
   /** Square holding a blank that has not been told its letter yet. */
@@ -95,9 +90,7 @@ export function Board({
   boardSize,
   tiles,
   pending,
-  seatOf,
   canPlace,
-  showOwnership,
   awaitingBlankAt,
   goodCells,
   badCells,
@@ -203,12 +196,6 @@ export function Board({
               }}
             >
               <span className={styles.glyph}>{(tile ?? stage)?.letter ?? ""}</span>
-              {tile && showOwnership && (
-                <span
-                  className={styles.seat}
-                  style={{ background: `var(--seat-${seatOf(tile.placedBy) % 4})` }}
-                />
-              )}
             </button>
           );
         })}

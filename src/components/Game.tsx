@@ -510,8 +510,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const myTurn =
     me !== undefined && game.status === "active" && me.seat === game.currentSeat;
 
-  const seatOf = (userId: string) =>
-    view.players.find((p) => p.userId === userId)?.seat ?? 0;
 
   // Also spent while the dropped blank is still being named.
   const blankSpent = pending.some((p) => p.from.kind === "blank") || blankAt !== null;
@@ -639,8 +637,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           boardSize={game.boardSize}
           tiles={view.tiles}
           pending={pending}
-          seatOf={seatOf}
-          showOwnership={game.playerCount > 1}
           canPlace={myTurn && selected !== null && !choosingBlank}
           onPlace={place}
           onPickUp={pickUp}

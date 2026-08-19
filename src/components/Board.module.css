@@ -20,12 +20,7 @@
 
 .cell {
   position: relative;
-  /*
-   * Everything inside a cell is stacked in the same grid area, so the letter
-   * sits dead centre whether or not the tile also carries an ownership stripe.
-   * Laying them out as siblings would move the letter when a staged tile
-   * becomes a played one.
-   */
+  /* One named area: anything in a cell stacks rather than pushing the letter. */
   grid-template-areas: "cell";
   width: var(--cell-size);
   height: var(--cell-size);
@@ -73,27 +68,13 @@
  * A blank keeps showing the letter it stands for -- the word has to be
  * readable -- and is told apart by its grey face, which scores nothing.
  */
-/*
- * The letter and the ownership stripe share one grid area, so the letter is
- * centred whether or not the stripe is there. As ordinary grid items they
- * would stack, and the letter would jump upward the moment a staged tile
- * became a played one.
- */
+/* Centred in its own grid area, so nothing added to a cell can displace it. */
 .glyph {
   grid-area: cell;
   place-self: center;
   line-height: 1;
 }
 
-/* Ownership stripe along the bottom edge of a played tile. */
-.seat {
-  grid-area: cell;
-  align-self: end;
-  justify-self: stretch;
-  margin: 0 3px 2px;
-  height: 2px;
-  border-radius: 1px;
-}
 
 .blank {
   background: var(--tile-blank-face);
