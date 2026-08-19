@@ -3,12 +3,13 @@ import styles from "./Rack.module.css";
 
 export type Selection = { kind: "letter"; index: number } | { kind: "blank" };
 
+/** Stands for the blank in the rack order, alongside the letters' indices. */
+const BLANK = -1;
+
 interface RackProps {
   letters: readonly string[];
-  blank: boolean;
-  /** Indices of rack letters already staged on the board this turn. */
+  /** Rack entries already staged on the board this turn, blank included. */
   spent: readonly number[];
-  blankSpent: boolean;
   selected: Selection | null;
   onSelect: (selection: Selection | null) => void;
   /** Begin a pointer drag from this tile. */
@@ -33,13 +34,14 @@ interface RackProps {
   onToggleTrade: (index: number) => void;
   onStartTrade: () => void;
   canTrade: boolean;
+  onPlay: () => void;
+  canPlay: boolean;
+  playing: boolean;
 }
 
 export function Rack({
   letters,
-  blank,
   spent,
-  blankSpent,
   selected,
   onSelect,
   onGrab,
@@ -54,6 +56,9 @@ export function Rack({
   onToggleTrade,
   onStartTrade,
   canTrade,
+  onPlay,
+  canPlay,
+  playing,
 }: RackProps) {
   const isSelected = (s: Selection) =>
     selected !== null &&
@@ -94,67 +99,58 @@ export function Rack({
 
   return (
     <div className={styles.rack} data-rack="">
-      <span className={styles.label}>Rack</span>
+      <div className={styles.tiles}>
+        {order
+          // A staged tile leaves the rack. One being dragged back appears as a
+          // placeholder once the pointer is over the rack, so the gap opens
+          // where it is heading rather than sitting empty where it came from.
+          .filter(
+            (index) =>
+              !spent.includes(index) || (index === draggedIndex && dragOverRack),
+          )
+          .map((index, slot) => {
+            const isBlank = index === BLANK;
+            const letter = isBlank ? "" : letters[index];
+            if (letter === undefined) return null;
 
-      {order
-        // A tile dragged back from the board is still staged. It appears as a
-        // placeholder only once the pointer is over the rack, so the gap opens
-        // where it is heading rather than sitting empty where it came from.
-        .filter(
-          (index) =>
-            !spent.includes(index) || (index === draggedIndex && dragOverRack),
-        )
-        .map((index, slot) => {
-        const letter = letters[index];
-        if (letter === undefined) return null;
-        const sel: Selection = { kind: "letter", index };
+            const sel: Selection = isBlank
+              ? { kind: "blank" }
+              : { kind: "letter", index };
 
-        // DOM order stays put and tiles slide by transform instead, so the
-        // movement animates; reordering the DOM would jump. Both orders are
-        // compared with staged tiles removed, so the gaps line up.
-        const shift =
-          previewOrder
-            .filter((i) => !spent.includes(i) || (i === draggedIndex && dragOverRack))
-            .indexOf(index) - slot;
+            // DOM order stays put and tiles slide by transform instead, so the
+            // movement animates; reordering the DOM would jump.
+            const shift =
+              previewOrder
+                .filter((i) => !spent.includes(i) || (i === draggedIndex && dragOverRack))
+                .indexOf(index) - slot;
 
-        return (
-          <button
-            key={index}
-            type="button"
-            className={[
-              styles.tile,
-              isSelected(sel) ? styles.selected : "",
-              draggedIndex === index ? styles.lifted : "",
-              trading?.includes(index) ? styles.trading : "",
-            ].join(" ")}
-            // The letter's real index, not its position: staged tiles leave
-            // the rack, so positions shift but indices do not.
-            data-rack-slot={index}
-            style={
-              shift === 0
-                ? undefined
-                : { transform: `translateX(calc(var(--rack-step) * ${shift}))` }
-            }
-            {...tileProps(sel, false)}
-          >
-            {letter}
-          </button>
-        );
-      })}
-
-      {blank && !blankSpent && (
-        <button
-          type="button"
-          className={[
-            styles.tile,
-            styles.blank,
-            isSelected({ kind: "blank" }) ? styles.selected : "",
-          ].join(" ")}
-          {...tileProps({ kind: "blank" }, false)}
-          data-rack-blank=""
-          aria-label="Blank tile"
-        />
-      )}
+            return (
+              <button
+                key={index}
+                type="button"
+                className={[
+                  styles.tile,
+                  isBlank ? styles.blank : "",
+                  isSelected(sel) ? styles.selected : "",
+                  draggedIndex === index ? styles.lifted : "",
+                  trading?.includes(index) ? styles.trading : "",
+                ].join(" ")}
+                // The entry's own identity, not its position: staged tiles
+                // leave the rack, so positions shift but identities do not.
+                data-rack-slot={index}
+                style={
+                  shift === 0
+                    ? undefined
+                    : { transform: `translateX(calc(var(--rack-step) * ${shift}))` }
+                }
+                aria-label={isBlank ? "Blank tile" : undefined}
+                {...tileProps(sel, false)}
+              >
+                {letter}
+              </button>
+            );
+          })}
+      </div>
 
       <div className={styles.actions}>
         <button
@@ -186,6 +182,14 @@ export function Rack({
           title="Shuffle"
         >
           ⇄
+        </button>
+        <button
+          type="button"
+          className={styles.play}
+          onClick={onPlay}
+          disabled={!canPlay}
+        >
+          {playing ? "Playing…" : "Play"}
         </button>
       </div>
     </div>

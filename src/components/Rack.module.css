@@ -4,21 +4,48 @@
   /* One tile plus the gap: how far a tile travels to swap places. */
   --rack-step: calc(var(--rack-tile-width) + var(--space-2));
   /*
-   * Height fixed by the tiles it can hold rather than the tiles it does hold.
-   * Left to shrink-wrap, an empty rack grew the moment a placeholder appeared
-   * for an incoming tile, which pushed its own edge past the pointer, removed
-   * the placeholder and shrank it back — flickering at the boundary.
+   * Three columns: an empty one, the tiles, then the buttons. The empty column
+   * balances the buttons, so the tiles are centred in the rack rather than in
+   * the space the buttons leave over.
    */
-  min-height: calc(var(--rack-tile-height) + var(--space-3) * 2);
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
   padding: var(--space-3);
+  justify-items: center;
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
+}
+
+/*
+ * A strut as tall as a tile, so the rack is the same height whether or not it
+ * holds any. Without it an empty rack collapsed to the height of its buttons,
+ * then grew the moment a placeholder appeared for an incoming tile — pushing
+ * its own edge past the pointer, removing the placeholder, and shrinking back.
+ * min-height alone was not enough: it fixes the box, not the flex line the
+ * items are centred on.
+ */
+.tiles {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  /*
+   * Holds its height with no tiles in it. An empty rack that grew when a
+   * placeholder appeared would push its own edge past the pointer, remove the
+   * placeholder and shrink back, flickering at the boundary.
+   */
+  min-height: var(--rack-tile-height);
+}
+
+.rack::before {
+  content: "";
+  width: 0;
+  height: var(--rack-tile-height);
 }
 
 .tile {
@@ -68,17 +95,10 @@
 }
 
 
-.label {
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  margin-right: var(--space-1);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
 
 .actions {
-  margin-left: auto;
   display: flex;
+  justify-self: end;
   gap: var(--space-2);
 }
 
@@ -125,4 +145,41 @@
   background: var(--danger-soft);
   border-color: var(--danger);
   color: var(--danger);
+}
+
+.play {
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--text-inverse);
+  padding: var(--space-2) var(--space-4);
+  font-weight: 700;
+}
+
+.play:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.play:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/*
+ * Narrow screens: tiles on their own row, buttons underneath. The balancing
+ * column only exists to centre the tiles against the buttons, so it goes with
+ * them.
+ */
+@media (max-width: 640px) {
+  .rack {
+    grid-template-columns: 1fr;
+  }
+
+  .rack::before {
+    display: none;
+  }
+
+  .actions {
+    justify-self: center;
+  }
 }
