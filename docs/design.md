@@ -212,11 +212,20 @@ unchanged.
 |--------|-------|
 | can spell a 2- or 3-letter word | **100%** |
 | can build a 2×2 outright | 99% (82% without the blank) |
-| vowel share (corpus is 34.7%) | **40%** |
+| vowel share (corpus is 34.7%) | **34%** |
 | rack holding a J/Q/X/Z | 27% |
 
-The vowel floor is what lifts 34.7% to 40%. It is 2 rather than 3 because at
-3 a six-letter rack would be over half vowels.
+The vowel floor is **1**. The blank can always stand in for a vowel, so a
+higher floor was guaranteeing spare vowels rather than playability:
+
+| floor | vowels | 0-vowel racks | can play | 2×2 | 2×2 without the blank |
+|-------|--------|---------------|----------|-----|-----------------------|
+| 2 | 40% | 0% | 100% | 99% | 82% |
+| **1** | **34%** | **0%** | **100%** | **98%** | **55%** |
+| 0 | 33% | 9% | 100% | 90% | 55% |
+
+At 1 the blank becomes a real decision — spend it to close a square now, or
+hold it — while a vowel-less rack stays vanishingly rare at six letters.
 
 Rack size is mostly a pacing lever, not a difficulty one: going 7 → 6 barely
 moved 2×2 buildability (100% → 99%) but stretches a game from roughly 17 turns

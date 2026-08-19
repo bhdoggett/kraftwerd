@@ -15,10 +15,16 @@ export const RACK: RackConfig = {
   // plurals; if racks feel S-heavy in play, damp it here rather than in code.
   weights,
   vowels: "AEIOU",
-  // Short words run ~35% vowels, so 6 letters average ~2.1. The floor stops
-  // the all-consonant racks that independent draws otherwise produce; at 3 it
-  // would force over half a 6-letter rack to be vowels, so 2 it is.
-  minVowels: 2,
+  /**
+   * One, not two or three.
+   *
+   * The blank can always stand in for a vowel, so a high floor mostly served
+   * to guarantee spare vowels rather than playability. Dropping to 1 takes
+   * "can build a 2x2 without spending the blank" from 82% to 55%, which makes
+   * the blank a real decision instead of a spare tile, while a vowel-less rack
+   * remains vanishingly rare at this size.
+   */
+  minVowels: 1,
   maxDuplicates: 2,
 };
 

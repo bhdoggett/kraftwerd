@@ -116,13 +116,21 @@ describe("racks drawn from the real letter weights", () => {
     expect(playable / racks.length).toBeGreaterThan(0.95);
   });
 
-  test("the vowel floor lifts racks well above the corpus vowel rate", () => {
+  test("racks track the corpus vowel rate without drowning in vowels", () => {
     const letters = racks.flat();
     const share = letters.filter((l) => "AEIOU".includes(l)).length / letters.length;
 
-    // short words run ~35% vowels; the floor should push racks past 40%
-    expect(share).toBeGreaterThan(0.4);
-    expect(share).toBeLessThan(0.55);
+    // Short words run ~35% vowels. With the floor at 1 the draw is close to
+    // that naturally; a much higher share would mean the floor is doing the
+    // dealing rather than the weights.
+    expect(share).toBeGreaterThan(0.28);
+    expect(share).toBeLessThan(0.45);
+  });
+
+  test("a rack is never dealt without a vowel", () => {
+    for (const rack of racks) {
+      expect(rack.some((l) => "AEIOU".includes(l))).toBe(true);
+    }
   });
 
   test("the awkward letters turn up often enough to notice, without crowding", () => {
