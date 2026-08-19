@@ -75,7 +75,10 @@ export function Rack({
       <span className={styles.label}>Rack</span>
 
       {order
-        .filter((index) => !spent.includes(index))
+        // A tile being dragged back from the board is still staged, but it is
+        // shown as a placeholder so the rack opens a gap for it instead of
+        // letting the dragged tile land on top of a neighbour.
+        .filter((index) => !spent.includes(index) || index === draggedIndex)
         .map((index, slot) => {
         const letter = letters[index];
         if (letter === undefined) return null;

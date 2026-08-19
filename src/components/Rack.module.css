@@ -32,9 +32,13 @@
     opacity 90ms ease;
 }
 
-/* The tile under the pointer is drawn by the drag layer instead. */
+/*
+ * The tile itself is drawn by the drag layer under the pointer, so what is
+ * left here is only the space it will occupy on release.
+ */
 .lifted {
-  opacity: 0.25;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .tile:hover:not(:disabled) {
