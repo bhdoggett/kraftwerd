@@ -18,33 +18,9 @@
   min-width: 0;
 }
 
-.controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
 
-.preview {
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
 
 /* The running total, called out rather than repeated as a row in the table. */
-.previewScore {
-  display: inline-block;
-  min-width: 2.2em;
-  padding: 2px var(--space-2);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 800;
-  font-size: 1.05rem;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
 
 .button {
   border: 1px solid var(--accent);
@@ -91,20 +67,11 @@
   margin: 0;
 }
 
-.blankPicker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  padding: var(--space-3);
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-}
 
 .blankLetter {
-  touch-action: none;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
+  font-weight: 700;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
@@ -122,15 +89,6 @@
   border-color: var(--tile-blank-edge);
 }
 
-.blankPrompt {
-  display: flex;
-  gap: var(--space-3);
-  align-items: baseline;
-  width: 100%;
-  margin: 0 0 var(--space-1);
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
 
 .hint {
   margin: 0;
@@ -171,50 +129,13 @@
   font-size: 0.9rem;
 }
 
-.words {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: center;
-}
 
-.word {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  letter-spacing: 0.04em;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius);
-  border: 1px solid transparent;
-}
 
-.valid {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-color: var(--accent);
-}
 
-.invalid {
-  background: var(--danger-soft);
-  color: var(--danger);
-  border-color: var(--danger);
-  text-decoration: line-through;
-}
 
 .checking,
-.reason {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
 
-.reason {
-  color: var(--danger);
-}
 
-.quit {
-  composes: secondary;
-  color: var(--danger);
-  border-color: var(--danger);
-}
 
 .inline {
   background: none;
@@ -245,32 +166,220 @@
 
 
 /* Sized to its contents and centred, rather than stretched across the row. */
-.breakdown {
-  margin: 0 auto;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
+
+
+
+
+
+
+.popoverBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(0 0 0 / 0.4);
 }
 
-.breakdown th,
-.breakdown td {
-  padding: var(--space-1) var(--space-4);
-  text-align: center;
+.popover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5, var(--space-4));
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
 }
 
-.breakdown thead th {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.popoverTitle {
+  margin: 0;
+  font-size: 0.9rem;
   color: var(--text-muted);
-  font-weight: 600;
 }
 
-.breakdown tbody td {
+/* Twenty letters in four rows, then the remaining six on one line. */
+.letterGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
+}
+
+.letterGridLast {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-2);
+}
+
+.popoverBack {
+  margin-top: var(--space-2);
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.popoverBack:hover {
+  background: var(--surface-sunken);
   color: var(--text);
 }
 
-.size {
-  font-family: var(--font-mono);
+/* --- the play in progress: what it spells, what it scores --- */
+
+.play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
 }
 
+.words {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.word {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  padding: 3px var(--space-3);
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.valid {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.invalid {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger);
+  text-decoration: line-through;
+}
+
+/* What the word itself is worth: every letter in it, blanks aside. */
+.wordPoints {
+  min-width: 1.4em;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.bonus {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  width: 100%;
+}
+
+.bonusHeading {
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.checking {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.reason {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--danger);
+  text-align: center;
+}
+
+.scoreLine {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.previewScore {
+  min-width: 2.4em;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-weight: 800;
+  font-size: 1.1rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown th {
+  padding: 0 var(--space-4) var(--space-1);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.breakdown td {
+  padding: var(--space-1) var(--space-4);
+  text-align: center;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+/* The square that earned the points, drawn like the tile it describes. */
+.size {
+  display: inline-block;
+  min-width: 3.2em;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.rowTotal {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}

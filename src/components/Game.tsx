@@ -22,22 +22,18 @@ const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
  * square. Every tile is a 1×1 worth 1, and a k×k is worth k², so the whole
  * scoring rule is legible from the table.
  */
+/** Squares only: the words carry their own points beside each word. */
 function breakdownOf(score: TurnScore) {
   const bySize = new Map<number, number>();
   for (const size of score.squares) bySize.set(size, (bySize.get(size) ?? 0) + 1);
 
-  const lines = [{ size: "1×1", count: score.tilePoints, total: score.tilePoints }];
-
-  for (const size of [...bySize.keys()].sort((a, b) => a - b)) {
-    const count = bySize.get(size)!;
-    lines.push({
+  return [...bySize.keys()]
+    .sort((a, b) => a - b)
+    .map((size) => ({
       size: `${size}×${size}`,
-      count,
-      total: count * size * size,
-    });
-  }
-
-  return lines;
+      count: bySize.get(size)!,
+      total: bySize.get(size)! * size * size,
+    }));
 }
 
 /** Why a staged play is not yet legal, in words a player can act on. */
@@ -107,18 +103,10 @@ function rackSlotUnder(
   // them should not rearrange anything.
   if (clientY < bounds.top || clientY > bounds.bottom) return miss;
 
-  // The blank sits after the letters and is not a drop position itself, but
-  // the gap before it is: without including it, the space between the last
-  // letter and the blank fell outside the rack entirely and could not be
-  // dropped into.
-  const blank = rack.querySelector("[data-rack-blank]");
-  const rightEdge =
-    blank instanceof HTMLElement
-      ? blank.getBoundingClientRect().right
-      : tiles[tiles.length - 1]!.getBoundingClientRect().right;
-
+  // From the first tile to the end of the rack: dropping past the last tile
+  // has to mean something, and what it means is "put it on the end".
   const first = tiles[0]!.getBoundingClientRect();
-  if (clientX < first.left || clientX > rightEdge) return miss;
+  if (clientX < first.left || clientX > bounds.right) return miss;
 
   const localX = clientX - bounds.left + rack.scrollLeft;
 
@@ -130,7 +118,8 @@ function rackSlotUnder(
   for (const [position, el] of tiles.entries()) {
     if (localX < el.offsetLeft + el.offsetWidth) return { overRack: true, position };
   }
-  return { overRack: true, position: tiles.length - 1 };
+  // Past every tile: append.
+  return { overRack: true, position: tiles.length };
 }
 
 /**
@@ -191,6 +180,9 @@ function moveToPosition(
 
   return [...next, ...order.filter((i) => hidden.includes(i))];
 }
+
+/** Stands for the blank in the rack order, alongside the letters' indices. */
+const BLANK = -1;
 
 const NEIGHBOURS = [
   [1, 0],
@@ -253,7 +245,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const [submitting, setSubmitting] = useState(false);
 
   /**
-   * Rack display order, as indices into the dealt letters. Purely cosmetic:
+   * Rack display order, as indices into the dealt letters, with BLANK for the
+   * blank so it can be moved like anything else. Purely cosmetic:
    * selections and staged tiles always travel by real index, so reordering can
    * never change which tile a placement came from.
    */
@@ -376,7 +369,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   );
   useEffect(() => {
     const count = rackSignature === "" ? 0 : rackSignature.split(",").length;
-    setRackOrder(Array.from({ length: count }, (_, i) => i));
+    setRackOrder([...Array.from({ length: count }, (_, i) => i), BLANK]);
   }, [rackSignature]);
 
   function shuffleRack() {
@@ -408,8 +401,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     setPending((current) => current.filter((p) => p !== tile));
     setError(null);
 
-    if (tile.from.kind === "letter" && position !== null) {
-      const index = tile.from.index;
+    if (position !== null) {
+      const index = tile.from.kind === "letter" ? tile.from.index : BLANK;
       // The tile is no longer staged, so it is visible again for the move.
       const stillHidden = spentIndices.filter((i) => i !== index);
       setRackOrder((current) => moveToPosition(current, stillHidden, index, position));
@@ -421,14 +414,16 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * the order it *would* become, so the gap follows the pointer instead of
    * appearing only on release.
    */
-  /** Rack letters currently staged on the board, so hidden from the rack. */
-  const spentIndices = useMemo(
-    () =>
-      pending
-        .filter((p) => p.from.kind === "letter")
-        .map((p) => (p.from as { kind: "letter"; index: number }).index),
-    [pending],
-  );
+  /** Rack entries currently staged on the board, so hidden from the rack. */
+  const spentIndices = useMemo(() => {
+    const spent = pending
+      .filter((p) => p.from.kind === "letter")
+      .map((p) => (p.from as { kind: "letter"; index: number }).index);
+    if (pending.some((p) => p.from.kind === "blank") || blankAt !== null) {
+      spent.push(BLANK);
+    }
+    return spent;
+  }, [pending, blankAt]);
 
   /**
    * The rack letter a drag concerns, whether it started in the rack or is a
@@ -437,11 +432,14 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const draggedLetterIndex = useMemo(() => {
     if (drag === undefined || drag === null) return null;
     if (drag.origin.kind === "rack") {
-      return drag.origin.selection.kind === "letter" ? drag.origin.selection.index : null;
+      return drag.origin.selection.kind === "letter"
+        ? drag.origin.selection.index
+        : BLANK;
     }
     const cell = drag.origin;
     const staged = pending.find((p) => p.x === cell.x && p.y === cell.y);
-    return staged?.from.kind === "letter" ? staged.from.index : null;
+    if (staged === undefined) return null;
+    return staged.from.kind === "letter" ? staged.from.index : BLANK;
   }, [drag, pending]);
 
   const previewOrder = useMemo(() => {
@@ -551,8 +549,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     me !== undefined && game.status === "active" && me.seat === game.currentSeat;
 
 
-  // Also spent while the dropped blank is still being named.
-  const blankSpent = pending.some((p) => p.from.kind === "blank") || blankAt !== null;
 
   /**
    * Pointer-based dragging, deliberately not HTML5 drag-and-drop: `draggable`
@@ -574,6 +570,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * only once it lands somewhere. */
   function grab(selection: Selection, event: ReactPointerEvent) {
     if (!myTurn || me === undefined) return;
+    // The blank has to be answered before anything else can be moved.
+    if (blankAt !== null) return;
 
     if (selection.kind === "blank") {
       startDrag("", true, { kind: "rack", selection }, event);
@@ -626,8 +624,13 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   }
 
   function pickUp(x: number, y: number) {
+    const tile = pending.find((p) => p.x === x && p.y === y);
     setPending((p) => p.filter((s) => !(s.x === x && s.y === y)));
     setError(null);
+
+    // A blank's letter is a decision, so tapping it reopens that decision
+    // rather than throwing the tile back to the rack.
+    if (tile?.isBlank === true) setBlankAt({ x, y });
   }
 
   function clear() {
@@ -659,6 +662,15 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     } catch (e) {
       setError(userMessage(e));
     }
+  }
+
+
+  function quit() {
+    const warning =
+      game.playerCount > 1
+        ? "Quit this game? The other player wins it."
+        : "Quit this game?";
+    if (window.confirm(warning)) void resignGame({ gameId }).then(onLeave);
   }
 
   /** Answer the question the dropped blank is asking. */
@@ -713,9 +725,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
         {me?.letters && (
           <Rack
             letters={me.letters}
-            blank={me.blank}
             spent={spentIndices}
-            blankSpent={blankSpent}
             selected={selected}
             onSelect={setSelected}
             onGrab={grab}
@@ -738,32 +748,50 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             }
             onStartTrade={toggleTrade}
             canTrade={myTurn}
+            onPlay={() => void submit()}
+            canPlay={myTurn && pending.length > 0 && !submitting && legality?.ok === true}
+            playing={submitting}
           />
         )}
 
         {blankAt !== null && (
-          <div className={styles.blankPicker}>
-            <p className={styles.blankPrompt}>
-              What does this blank stand for?
+          <div className={styles.popoverBackdrop} role="dialog" aria-modal="true">
+            <div className={styles.popover}>
+              <p className={styles.popoverTitle}>What does this blank stand for?</p>
+
+              <div className={styles.letterGrid}>
+                {ALPHABET.slice(0, 20).map((letter) => (
+                  <button
+                    key={letter}
+                    type="button"
+                    className={styles.blankLetter}
+                    onClick={() => nameBlank(letter)}
+                  >
+                    {letter}
+                  </button>
+                ))}
+              </div>
+              <div className={styles.letterGridLast}>
+                {ALPHABET.slice(20).map((letter) => (
+                  <button
+                    key={letter}
+                    type="button"
+                    className={styles.blankLetter}
+                    onClick={() => nameBlank(letter)}
+                  >
+                    {letter}
+                  </button>
+                ))}
+              </div>
+
               <button
                 type="button"
-                className={styles.inline}
+                className={styles.popoverBack}
                 onClick={() => setBlankAt(null)}
               >
-                Cancel
+                Put the blank back on the rack
               </button>
-            </p>
-            {ALPHABET.map((letter) => (
-              <button
-                key={letter}
-                type="button"
-                className={styles.blankLetter}
-                onClick={() => nameBlank(letter)}
-                autoFocus={letter === "A"}
-              >
-                {letter}
-              </button>
-            ))}
+            </div>
           </div>
         )}
 
@@ -803,34 +831,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           </div>
         )}
 
-        {game.status === "active" && !myTurn && (
-          <p className={styles.hint}>
-            Waiting for{" "}
-            {view.players.find((p) => p.seat === game.currentSeat)?.name ??
-              `seat ${game.currentSeat + 1}`}{" "}
-            to play.
-          </p>
-        )}
-
-        {game.status === "finished" && (
-          <p className={styles.hint}>
-            {(() => {
-              const winners = game.winnerIds ?? [];
-              const names = view.players
-                .filter((p) => winners.includes(p.userId))
-                .map((p) => p.name);
-              const youWon = view.players.some(
-                (p) => p.letters !== null && winners.includes(p.userId),
-              );
-              if (names.length === 0) return "Game over.";
-              if (youWon && names.length === 1) return "Game over — you win.";
-              return names.length === 1
-                ? `Game over — ${names[0]} wins.`
-                : `Game over — ${names.join(" and ")} tie.`;
-            })()}
-          </p>
-        )}
-
         {trading !== null && (
           <div className={styles.tradeBar}>
             <span>
@@ -856,93 +856,72 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           </div>
         )}
 
-        {myTurn && trading === null && (
-          <p className={styles.hint}>
-            {selected === null
-              ? "Pick a letter from your rack, then drag it onto the board or tap a highlighted square."
-              : choosingBlank
-                ? "Choose the letter your blank stands for."
-                : "Now drop it on a highlighted square. Tap a placed tile to take it back."}
-          </p>
-        )}
 
-        <div className={styles.controls}>
-          <button
-            type="button"
-            className={styles.button}
-            disabled={!myTurn || pending.length === 0 || submitting || !legality?.ok}
-            onClick={() => void submit()}
-          >
-            {submitting ? "Playing…" : "Play"}
-          </button>
-          {preview && legality?.ok && (
-            <span className={styles.preview}>
-              This play scores <span className={styles.previewScore}>{preview.total}</span>
-            </span>
-          )}
-
-
-          {game.status !== "finished" && view.yourSeat !== null && (
-            <button
-              type="button"
-              className={styles.quit}
-              onClick={() => {
-                const others = game.playerCount > 1;
-                const warning = others
-                  ? "Quit this game? The other player wins it."
-                  : "Quit this game?";
-                if (window.confirm(warning)) {
-                  void resignGame({ gameId }).then(onLeave);
-                }
-              }}
-            >
-              Quit
-            </button>
-          )}
-
-        </div>
-
-        {preview && legality?.ok && (
-          <table className={styles.breakdown}>
-            <thead>
-              <tr>
-                <th scope="col">Size</th>
-                <th scope="col">Number</th>
-                <th scope="col">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {breakdownOf(preview).map((line) => (
-                <tr key={line.size}>
-                  <td className={styles.size}>{line.size}</td>
-                  <td>{line.count}</td>
-                  <td>{line.total}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {pending.length > 0 && (
-          <div className={styles.words}>
-            {checked === undefined ? (
-              <span className={styles.checking}>Checking words…</span>
-            ) : (
-              checked.map((entry) => (
-                <span
-                  key={entry.word}
-                  className={[styles.word, entry.valid ? styles.valid : styles.invalid].join(
-                    " ",
-                  )}
-                >
-                  {entry.word}
-                </span>
-              ))
+        {(pending.length > 0 || (preview && legality?.ok)) && (
+          <section className={styles.play}>
+            {pending.length > 0 && (
+              <div className={styles.words}>
+                {checked === undefined ? (
+                  <span className={styles.checking}>Checking words…</span>
+                ) : (
+                  checked.map((entry) => {
+                    const scored = preview?.words.find((w) => w.word === entry.word);
+                    return (
+                      <span
+                        key={entry.word}
+                        className={[
+                          styles.word,
+                          entry.valid ? styles.valid : styles.invalid,
+                        ].join(" ")}
+                      >
+                        {entry.word}
+                        {entry.valid && scored && (
+                          <span className={styles.wordPoints}>{scored.points}</span>
+                        )}
+                      </span>
+                    );
+                  })
+                )}
+              </div>
             )}
+
             {legality !== null && !legality.ok && (
-              <span className={styles.reason}>{describeLegality(legality)}</span>
+              <p className={styles.reason}>{describeLegality(legality)}</p>
             )}
-          </div>
+
+            {preview && legality?.ok && breakdownOf(preview).length > 0 && (
+              <div className={styles.bonus}>
+                <h3 className={styles.bonusHeading}>Square bonus</h3>
+                <table className={styles.breakdown}>
+                  <thead>
+                    <tr>
+                      <th scope="col">Size</th>
+                      <th scope="col">Number</th>
+                      <th scope="col">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {breakdownOf(preview).map((line) => (
+                      <tr key={line.size}>
+                        <td>
+                          <span className={styles.size}>{line.size}</span>
+                        </td>
+                        <td>{line.count}</td>
+                        <td className={styles.rowTotal}>{line.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {preview && legality?.ok && (
+              <p className={styles.scoreLine}>
+                This play scores{" "}
+                <span className={styles.previewScore}>{preview.total}</span>
+              </p>
+            )}
+          </section>
         )}
 
         {error && <div className={styles.error}>{error}</div>}
@@ -961,6 +940,9 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
       </div>
 
       <Scoreboard
+        onQuit={
+          game.status !== "finished" && view.yourSeat !== null ? quit : undefined
+        }
         players={view.players.map((p) => ({
           userId: p.userId,
           seat: p.seat,
