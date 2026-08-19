@@ -233,3 +233,34 @@
   color: var(--danger);
   font-size: 0.9rem;
 }
+
+.breakdown {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.breakdown th,
+.breakdown td {
+  padding: 2px var(--space-3) 2px 0;
+  text-align: left;
+  font-weight: 500;
+}
+
+.breakdown th {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.amount {
+  text-align: right;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.totalRow th,
+.totalRow td {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-1);
+}

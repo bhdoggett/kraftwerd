@@ -114,3 +114,10 @@
   outline-offset: 2px;
   opacity: 0.6;
 }
+
+/* The swap button stays live while trading, so pressing it again backs out. */
+.actionOn {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger);
+}

@@ -170,9 +170,10 @@ export function Rack({
         </button>
         <button
           type="button"
-          className={styles.action}
           onClick={onStartTrade}
           disabled={!canTrade}
+          aria-pressed={trading !== null}
+          className={[styles.action, trading !== null ? styles.actionOn : ""].join(" ")}
           aria-label="Trade tiles in for new ones"
           title="Trade tiles"
         >

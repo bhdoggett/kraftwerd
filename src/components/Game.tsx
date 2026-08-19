@@ -7,7 +7,7 @@ import { makeBoard } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
 import { runsThrough } from "../../shared/engine/runs";
-import { scoreTurn, type Placement } from "../../shared/engine/score";
+import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { Board } from "./Board";
 import { DevTools } from "./DevTools";
 import styles from "./Game.module.css";
@@ -16,6 +16,32 @@ import { userMessage } from "../lib/errors";
 import { Scoreboard } from "./Scoreboard";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+/**
+ * The score split by what earned it: the tiles themselves, then each size of
+ * square. Every tile is a 1×1 worth 1, and a k×k is worth k², so the whole
+ * scoring rule is legible from the table.
+ */
+function breakdownOf(score: TurnScore) {
+  const bySize = new Map<number, number>();
+  for (const size of score.squares) bySize.set(size, (bySize.get(size) ?? 0) + 1);
+
+  const lines = [
+    { label: "1×1", count: score.tilePoints, each: 1, total: score.tilePoints },
+  ];
+
+  for (const size of [...bySize.keys()].sort((a, b) => a - b)) {
+    const count = bySize.get(size)!;
+    lines.push({
+      label: `${size}×${size}`,
+      count,
+      each: size * size,
+      total: count * size * size,
+    });
+  }
+
+  return lines;
+}
 
 /** Why a staged play is not yet legal, in words a player can act on. */
 function describeLegality(
@@ -285,13 +311,17 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     }
 
     const validity = new Map(checked.map((entry) => [entry.word, entry.valid]));
+    const staged = new Set(placements.map((p) => `${p.x},${p.y}`));
     const inSomeRun = new Set<string>();
 
     for (const run of runsThrough(boards.after, placements)) {
       const target = validity.get(run.word) === true ? good : bad;
       for (const cell of run.cells) {
-        target.add(`${cell.x},${cell.y}`);
-        inSomeRun.add(`${cell.x},${cell.y}`);
+        const key = `${cell.x},${cell.y}`;
+        inSomeRun.add(key);
+        // The run's verdict, but shown only on the tiles you just placed —
+        // already-played tiles are not part of this turn.
+        if (staged.has(key)) target.add(key);
       }
     }
 
@@ -600,7 +630,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     setError(null);
   }
 
-  function startTrade() {
+  /** The rack's swap button toggles: press again to back out. */
+  function toggleTrade() {
+    if (trading !== null) {
+      setTrading(null);
+      return;
+    }
     // Trading forfeits the turn, so anything staged has to come back first.
     setPending([]);
     setSelected(null);
@@ -694,8 +729,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                     : [...current, index],
               )
             }
-            onStartTrade={startTrade}
-            canTrade={myTurn && trading === null}
+            onStartTrade={toggleTrade}
+            canTrade={myTurn}
           />
         )}
 
@@ -811,13 +846,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             >
               Trade
             </button>
-            <button
-              type="button"
-              className={styles.secondary}
-              onClick={() => setTrading(null)}
-            >
-              Cancel
-            </button>
           </div>
         )}
 
@@ -843,8 +871,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           {preview && legality?.ok && (
             <span className={styles.preview}>
               This play scores <span className={styles.previewScore}>{preview.total}</span>
-              {preview.squares.length > 0 &&
-                ` · squares ${preview.squares.map((k) => `${k}×${k}`).join(", ")}`}
             </span>
           )}
 
@@ -868,6 +894,27 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           )}
 
         </div>
+
+        {preview && legality?.ok && (
+          <table className={styles.breakdown}>
+            <tbody>
+              {breakdownOf(preview).map((line) => (
+                <tr key={line.label}>
+                  <th scope="row">{line.label}</th>
+                  <td>
+                    {line.count} × {line.each}
+                  </td>
+                  <td className={styles.amount}>{line.total}</td>
+                </tr>
+              ))}
+              <tr className={styles.totalRow}>
+                <th scope="row">Total</th>
+                <td />
+                <td className={styles.amount}>{preview.total}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
 
         {pending.length > 0 && (
           <div className={styles.words}>
