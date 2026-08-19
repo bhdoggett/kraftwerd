@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { layoutByName, shapeOf } from "../../shared/boards";
 import type { Placement } from "../../shared/engine/score";
 import styles from "./Board.module.css";
@@ -53,21 +53,32 @@ export function Board({
   const shape = useMemo(() => shapeOf(layoutByName(layout)), [layout]);
 
   /**
-   * Dragging empty board pans it. Only for a mouse: touch already scrolls the
-   * container natively, and hijacking that would fight the browser.
+   * One pointer drags the board, two pinch it.
    *
-   * A drag that moves past a few pixels also swallows the click that follows,
-   * so panning away from a square does not drop a tile on it.
+   * Native scrolling is off here (touch-action: none) so that two fingers zoom
+   * the board rather than the page — which means a single finger has to pan
+   * explicitly rather than being left to the browser.
+   *
+   * A drag that moves past a few pixels swallows the click that follows, so
+   * panning away from a square does not drop a tile on it.
    */
   const viewport = useRef<HTMLDivElement>(null);
   const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const panned = useRef(false);
+
+  /** Zoom factor applied to the cell size, not to the page. */
+  const [zoom, setZoom] = useState(1);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ distance: number; zoom: number } | null>(null);
+
+  const clamp = (value: number) => Math.min(2.5, Math.max(0.5, value));
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       const start = pan.current;
       const el = viewport.current;
       if (start === null || el === null) return;
+      if (pointers.current.size > 1) return; // pinching, not panning
 
       const dx = e.clientX - start.x;
       const dy = e.clientY - start.y;
@@ -90,6 +101,62 @@ export function Board({
       window.removeEventListener("pointercancel", onUp);
     };
   }, []);
+
+  /**
+   * Wheel-zoom, bound natively so it can be non-passive.
+   *
+   * A trackpad pinch arrives as a wheel event with ctrlKey set, and the
+   * browser would zoom the whole page unless the event is cancelled. Zooming
+   * the board alone is what is wanted, so it is cancelled and the factor
+   * applied here instead. A plain wheel still scrolls.
+   */
+  useEffect(() => {
+    const el = viewport.current;
+    if (el === null) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setZoom((current) => clamp(current * (1 - e.deltaY * 0.01)));
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  /** Two fingers on the board: pinch to zoom the board, not the page. */
+  useEffect(() => {
+    const track = (e: PointerEvent) => {
+      if (!pointers.current.has(e.pointerId)) return;
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      const [a, b] = [...pointers.current.values()];
+      if (a === undefined || b === undefined) return;
+
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch.current === null) {
+        pinch.current = { distance, zoom };
+        return;
+      }
+      // Two fingers means zooming, never panning.
+      pan.current = null;
+      setZoom(clamp(pinch.current.zoom * (distance / pinch.current.distance)));
+    };
+
+    const drop = (e: PointerEvent) => {
+      pointers.current.delete(e.pointerId);
+      if (pointers.current.size < 2) pinch.current = null;
+    };
+
+    window.addEventListener("pointermove", track);
+    window.addEventListener("pointerup", drop);
+    window.addEventListener("pointercancel", drop);
+    return () => {
+      window.removeEventListener("pointermove", track);
+      window.removeEventListener("pointerup", drop);
+      window.removeEventListener("pointercancel", drop);
+    };
+  }, [zoom]);
 
   const committed = useMemo(() => {
     const map = new Map<string, BoardTile>();
@@ -166,10 +233,12 @@ export function Board({
     <div
       ref={viewport}
       className={styles.viewport}
+      style={{ "--cell-scale": zoom } as React.CSSProperties}
       onPointerDown={(e) => {
-        if (e.pointerType !== "mouse") return;
+        pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
         // A staged tile is dragged, not panned from.
         if ((e.target as HTMLElement).closest("[data-staged]") !== null) return;
+        if (pointers.current.size > 1) return;
 
         panned.current = false;
         const el = viewport.current;

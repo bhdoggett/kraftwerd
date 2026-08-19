@@ -1,8 +1,21 @@
 .viewport {
+  /*
+   * Cell size is a base times a zoom factor, so pinch and wheel can set the
+   * factor without clobbering the smaller base a narrow screen picks.
+   */
+  --cell-base: 36px;
+  --cell-scale: 1;
+  --cell-size: calc(var(--cell-base) * var(--cell-scale));
   overflow: auto;
   /* Dragging empty board pans it, so a drag must not select text as well. */
   user-select: none;
   cursor: grab;
+  /*
+   * The browser must not take two fingers here as a page zoom or a scroll:
+   * pinching this area zooms the board, and panning is handled above.
+   */
+  touch-action: none;
+  overscroll-behavior: contain;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -16,7 +29,7 @@
 /* 15 columns at full size overflow a phone, so the squares shrink instead. */
 @media (max-width: 640px) {
   .viewport {
-    --cell-size: 22px;
+    --cell-base: 22px;
     padding: var(--space-2);
   }
 
