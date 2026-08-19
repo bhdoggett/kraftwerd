@@ -234,33 +234,40 @@
   font-size: 0.9rem;
 }
 
+
+/* Sized to its contents and centred, rather than stretched across the row. */
 .breakdown {
+  margin: 0 auto;
   border-collapse: collapse;
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
 }
 
 .breakdown th,
 .breakdown td {
-  padding: 2px var(--space-3) 2px 0;
-  text-align: left;
-  font-weight: 500;
+  padding: var(--space-1) var(--space-4);
+  text-align: center;
 }
 
-.breakdown th {
+.breakdown thead th {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.breakdown tbody td {
+  color: var(--text);
+}
+
+.size {
   font-family: var(--font-mono);
-  color: var(--text);
 }
 
-.amount {
-  text-align: right;
-  color: var(--text);
-  font-weight: 700;
-}
-
-.totalRow th,
-.totalRow td {
+.breakdown tfoot th,
+.breakdown tfoot td {
   border-top: 1px solid var(--border);
-  padding-top: var(--space-1);
+  font-weight: 700;
+  color: var(--text);
 }
