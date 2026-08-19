@@ -40,11 +40,11 @@
   transform: translateY(-3px);
 }
 
+/* Deliberately no glyph: a blank is blank. The face colour distinguishes it. */
 .blank {
   background: var(--tile-blank-face);
   border-color: var(--tile-blank-edge);
-  color: var(--text-muted);
-  font-style: italic;
+  border-style: dashed;
 }
 
 .spent {

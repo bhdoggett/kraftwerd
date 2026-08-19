@@ -19,6 +19,8 @@ interface BoardProps {
   canPlace: boolean;
   onPlace: (x: number, y: number) => void;
   onPickUp: (x: number, y: number) => void;
+  /** Begin dragging a tile staged this turn to another square. */
+  onGrabStaged?: (x: number, y: number, event: React.PointerEvent) => void;
 }
 
 const NEIGHBOURS = [
@@ -78,6 +80,7 @@ export function Board({
   canPlace,
   onPlace,
   onPickUp,
+  onGrabStaged,
 }: BoardProps) {
   const committed = useMemo(() => {
     const map = new Map<string, BoardTile>();
@@ -162,6 +165,9 @@ export function Board({
                   ? `${(tile ?? stage)!.letter} at column ${x + 1}, row ${y + 1}`
                   : `open square, column ${x + 1}, row ${y + 1}`
               }
+              onPointerDown={(e) => {
+                if (stage && onGrabStaged) onGrabStaged(x, y, e);
+              }}
               onClick={() => {
                 if (tile) return;
                 if (stage) onPickUp(x, y);

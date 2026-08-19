@@ -68,6 +68,8 @@
 
 /* Placed this turn, not yet submitted. */
 .pending {
+  touch-action: none;
+  cursor: grab;
   background: var(--pending-soft);
   border-color: var(--pending);
   border-style: dashed;

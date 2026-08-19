@@ -41,6 +41,40 @@ interface Staged extends Placement {
   from: Selection;
 }
 
+/** Where a drag started: the rack, or a tile already staged on the board. */
+type Origin = { kind: "rack"; selection: Selection } | { kind: "cell"; x: number; y: number };
+
+/**
+ * Drafts survive a reload, and a re-mount. Keyed by turn so a draft is
+ * discarded the moment the turn moves on rather than reappearing later.
+ */
+const draftKey = (gameId: string) => `wordcraft:draft:${gameId}`;
+
+function readDraft(gameId: string, turnNumber: number): Staged[] {
+  try {
+    const raw = window.localStorage.getItem(draftKey(gameId));
+    if (raw === null) return [];
+    const parsed = JSON.parse(raw) as { turnNumber: number; pending: Staged[] };
+    return parsed.turnNumber === turnNumber ? parsed.pending : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDraft(gameId: string, turnNumber: number, pending: Staged[]) {
+  try {
+    if (pending.length === 0) window.localStorage.removeItem(draftKey(gameId));
+    else {
+      window.localStorage.setItem(
+        draftKey(gameId),
+        JSON.stringify({ turnNumber, pending }),
+      );
+    }
+  } catch {
+    // Private browsing or a full quota: a lost draft is not worth failing over.
+  }
+}
+
 export function Game({ gameId }: { gameId: Id<"games"> }) {
   const view = useQuery(api.games.getGame, { gameId });
   const placeTiles = useMutation(api.games.placeTiles);
@@ -55,7 +89,12 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
   const [submitting, setSubmitting] = useState(false);
 
   /** Live pointer drag: the tile that follows the finger/cursor. */
-  const [drag, setDrag] = useState<{ letter: string; x: number; y: number } | null>(null);
+  const [drag, setDrag] = useState<{
+    letter: string;
+    x: number;
+    y: number;
+    origin: Origin;
+  } | null>(null);
   const dragRef = useRef<{ moved: boolean } | null>(null);
 
   const me = view?.players.find((p) => p.letters !== null);
@@ -109,10 +148,28 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
     });
   }, [view, boards, placements, checked]);
 
+  const turnNumber = view?.game.turnNumber;
+
+  // Load the draft for this turn, and drop it when the turn moves on.
+  useEffect(() => {
+    if (turnNumber === undefined) return;
+    setPending(readDraft(gameId, turnNumber));
+    setSelected(null);
+    setBlankLetter(null);
+  }, [gameId, turnNumber]);
+
+  useEffect(() => {
+    if (turnNumber === undefined) return;
+    writeDraft(gameId, turnNumber, pending);
+  }, [gameId, turnNumber, pending]);
+
   // Kept in a ref so the pointer listeners below can call the current
   // `place` without re-subscribing on every mouse move.
-  const placeRef = useRef<(x: number, y: number) => void>(() => {});
-  placeRef.current = (x, y) => place(x, y);
+  const dropRef = useRef<(x: number, y: number, origin: Origin) => void>(() => {});
+  dropRef.current = (x, y, origin) => {
+    if (origin.kind === "cell") moveStaged(origin, x, y);
+    else place(x, y);
+  };
 
   // Window-level so the drag survives leaving the rack, and so releasing
   // anywhere ends it.
@@ -127,6 +184,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
 
     const onUp = (e: PointerEvent) => {
       const moved = dragRef.current?.moved ?? false;
+      const origin = drag?.origin;
       dragRef.current = null;
       setDrag(null);
 
@@ -141,7 +199,9 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
       if (!cell) return;
 
       const [cx, cy] = cell.split(",").map(Number);
-      if (cx !== undefined && cy !== undefined) placeRef.current(cx, cy);
+      if (cx !== undefined && cy !== undefined && origin !== undefined) {
+        dropRef.current(cx, cy, origin);
+      }
     };
 
     window.addEventListener("pointermove", onMove);
@@ -152,7 +212,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [dragging]);
+  }, [dragging, drag?.origin]);
 
   if (view === undefined) return <p className={styles.notice}>Loading game…</p>;
   if (view === null) return <p className={styles.notice}>Game not found.</p>;
@@ -175,14 +235,51 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
    * events do not exist on touch at all. Pointer events behave identically for
    * mouse, trackpad and finger.
    */
+  function startDrag(letter: string, origin: Origin, event: ReactPointerEvent) {
+    dragRef.current = { moved: false };
+    setDrag({ letter, x: event.clientX, y: event.clientY, origin });
+  }
+
+  /** Drag a letter out of the rack. */
   function grab(selection: Selection, event: ReactPointerEvent) {
     if (!myTurn || me === undefined) return;
 
-    const letter =
-      selection.kind === "blank" ? "?" : (me.letters?.[selection.index] ?? "");
+    // A blank has no letter until one is chosen, so dragging it straight from
+    // the rack would carry nothing; the alphabet tiles are the drag source.
+    if (selection.kind === "blank") return;
 
-    dragRef.current = { moved: false };
-    setDrag({ letter, x: event.clientX, y: event.clientY });
+    const letter = me.letters?.[selection.index];
+    if (letter === undefined) return;
+
+    startDrag(letter, { kind: "rack", selection }, event);
+  }
+
+  /** Drag straight off the alphabet picker, carrying the chosen letter. */
+  function grabBlankLetter(letter: string, event: ReactPointerEvent) {
+    if (!myTurn) return;
+    setSelected({ kind: "blank" });
+    setBlankLetter(letter);
+    startDrag(letter, { kind: "rack", selection: { kind: "blank" } }, event);
+  }
+
+  /** Drag a tile already staged this turn to a different square. */
+  function grabStaged(x: number, y: number, event: ReactPointerEvent) {
+    const tile = pending.find((p) => p.x === x && p.y === y);
+    if (tile === undefined) return;
+    startDrag(tile.letter, { kind: "cell", x, y }, event);
+  }
+
+  /** Move a staged tile, keeping the rack slot it came from. */
+  function moveStaged(origin: { x: number; y: number }, x: number, y: number) {
+    setPending((current) => {
+      const tile = current.find((p) => p.x === origin.x && p.y === origin.y);
+      if (tile === undefined) return current;
+      // Refuse to stack two staged tiles on one square.
+      if (current.some((p) => p.x === x && p.y === y)) return current;
+
+      return current.map((p) => (p === tile ? { ...p, x, y } : p));
+    });
+    setError(null);
   }
 
   function place(x: number, y: number) {
@@ -253,6 +350,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
           canPlace={myTurn && selected !== null && !choosingBlank}
           onPlace={place}
           onPickUp={pickUp}
+          onGrabStaged={myTurn ? grabStaged : undefined}
         />
 
         {me?.letters && (
@@ -280,7 +378,11 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
                 key={letter}
                 type="button"
                 className={styles.blankLetter}
-                onClick={() => setBlankLetter(letter)}
+                onPointerDown={(e) => grabBlankLetter(letter, e)}
+                onClick={(e) => {
+                  // Keyboard activation has no pointerdown to piggyback on.
+                  if (e.detail === 0) setBlankLetter(letter);
+                }}
               >
                 {letter}
               </button>

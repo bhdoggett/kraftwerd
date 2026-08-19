@@ -84,9 +84,8 @@ export function Rack({
             isSelected({ kind: "blank" }) ? styles.selected : "",
           ].join(" ")}
           {...tileProps({ kind: "blank" }, blankSpent)}
-        >
-          ?
-        </button>
+          aria-label="Blank tile"
+        />
       )}
     </div>
   );
