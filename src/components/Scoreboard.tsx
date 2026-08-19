@@ -14,6 +14,8 @@ interface ScoreboardProps {
   tileCount: number;
   endThreshold: number;
   status: "lobby" | "active" | "finished";
+  /** Absent when there is nothing to quit — a finished game, or a spectator. */
+  onQuit?: () => void;
 }
 
 export function Scoreboard({
@@ -22,13 +24,21 @@ export function Scoreboard({
   tileCount,
   endThreshold,
   status,
+  onQuit,
 }: ScoreboardProps) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const pct = Math.min(100, Math.round((tileCount / endThreshold) * 100));
 
   return (
     <aside className={styles.panel}>
-      <h2 className={styles.heading}>Scores</h2>
+      <div className={styles.header}>
+        <h2 className={styles.heading}>Scores</h2>
+        {onQuit && (
+          <button type="button" className={styles.quit} onClick={onQuit}>
+            Quit
+          </button>
+        )}
+      </div>
 
       {ordered.map((p) => (
         <div key={p.userId} className={styles.row}>
