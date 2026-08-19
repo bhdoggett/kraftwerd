@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 
@@ -7,13 +7,13 @@ const MAX_FRIENDS = 200;
 
 async function requireUser(ctx: QueryCtx | MutationCtx): Promise<Doc<"users">> {
   const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) throw new Error("Not signed in");
+  if (identity === null) throw new ConvexError("Not signed in");
 
   const user = await ctx.db
     .query("users")
     .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
     .unique();
-  if (user === null) throw new Error("No user record for this identity");
+  if (user === null) throw new ConvexError("No user record for this identity");
 
   return user;
 }
@@ -83,8 +83,8 @@ export const requestFriend = mutation({
     const me = await requireUser(ctx);
     const email = args.email.trim().toLowerCase();
 
-    if (email === "") throw new Error("Enter an email address");
-    if (email === me.email?.toLowerCase()) throw new Error("That is your own address");
+    if (email === "") throw new ConvexError("Enter an email address");
+    if (email === me.email?.toLowerCase()) throw new ConvexError("That is your own address");
 
     const them = await ctx.db
       .query("users")
@@ -94,7 +94,7 @@ export const requestFriend = mutation({
     // Deliberately explicit rather than a vague "request sent": there is no
     // invitation email, so a silent no-op would look like a bug.
     if (them === null) {
-      throw new Error("Nobody with that address has signed in to Word Craft yet");
+      throw new ConvexError("Nobody with that address has signed in to Word Craft yet");
     }
 
     // A pair can already be linked from either direction.
@@ -113,7 +113,7 @@ export const requestFriend = mutation({
         .unique(),
     ]);
 
-    if (mine !== null) throw new Error("You have already asked them");
+    if (mine !== null) throw new ConvexError("You have already asked them");
 
     // They asked you first: treat this as accepting rather than creating a
     // second row pointing the other way.
@@ -139,9 +139,9 @@ export const respondToRequest = mutation({
     const me = await requireUser(ctx);
 
     const edge = await ctx.db.get("friendships", args.friendshipId);
-    if (edge === null) throw new Error("No such request");
+    if (edge === null) throw new ConvexError("No such request");
     // Only the addressee may answer, or anyone could accept on your behalf.
-    if (edge.addresseeId !== me._id) throw new Error("That request is not yours");
+    if (edge.addresseeId !== me._id) throw new ConvexError("That request is not yours");
 
     if (args.accept) {
       await ctx.db.patch("friendships", args.friendshipId, { status: "accepted" });
@@ -160,7 +160,7 @@ export const removeFriend = mutation({
     const edge = await ctx.db.get("friendships", args.friendshipId);
     if (edge === null) return null;
     if (edge.requesterId !== me._id && edge.addresseeId !== me._id) {
-      throw new Error("That friendship is not yours");
+      throw new ConvexError("That friendship is not yours");
     }
 
     await ctx.db.delete("friendships", args.friendshipId);

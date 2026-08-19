@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { userMessage } from "../lib/errors";
 import styles from "./Friends.module.css";
 
 export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
@@ -32,8 +33,7 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
       await requestFriend({ email });
       setEmail("");
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message.replace(/^.*Error:\s*/s, "").split("\n")[0]!);
+      setError(userMessage(err));
     }
   }
 
@@ -43,8 +43,7 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
       onOpen(await createWithFriends({ friendIds: picked }));
       setPicked([]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message.replace(/^.*Error:\s*/s, "").split("\n")[0]!);
+      setError(userMessage(err));
     }
   }
 

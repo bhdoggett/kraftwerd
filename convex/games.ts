@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { GAME, RACK } from "../shared/config.js";
 import { makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
@@ -23,13 +23,13 @@ const MAX_TILES = 512;
  */
 async function requireUser(ctx: QueryCtx | MutationCtx): Promise<Id<"users">> {
   const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) throw new Error("Not signed in");
+  if (identity === null) throw new ConvexError("Not signed in");
 
   const user = await ctx.db
     .query("users")
     .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
     .unique();
-  if (user === null) throw new Error("No user record for this identity");
+  if (user === null) throw new ConvexError("No user record for this identity");
 
   return user._id;
 }
@@ -72,7 +72,7 @@ export const createGame = mutation({
     const userId = await requireUser(ctx);
 
     if (args.playerCount < GAME.minPlayers || args.playerCount > GAME.maxPlayers) {
-      throw new Error(`Games take ${GAME.minPlayers}-${GAME.maxPlayers} players`);
+      throw new ConvexError(`Games take ${GAME.minPlayers}-${GAME.maxPlayers} players`);
     }
 
     const gameId = await ctx.db.insert("games", {
@@ -128,12 +128,12 @@ export const createGameWithFriends = mutation({
 
     const playerCount = args.friendIds.length + 1;
     if (playerCount < 2 || playerCount > GAME.maxPlayers) {
-      throw new Error(`Games take up to ${GAME.maxPlayers} players`);
+      throw new ConvexError(`Games take up to ${GAME.maxPlayers} players`);
     }
     if (new Set(args.friendIds).size !== args.friendIds.length) {
-      throw new Error("Duplicate player");
+      throw new ConvexError("Duplicate player");
     }
-    if (args.friendIds.includes(userId)) throw new Error("You are already seated");
+    if (args.friendIds.includes(userId)) throw new ConvexError("You are already seated");
 
     for (const friendId of args.friendIds) {
       const [a, b] = await Promise.all([
@@ -151,7 +151,7 @@ export const createGameWithFriends = mutation({
           .unique(),
       ]);
       const accepted = [a, b].some((edge) => edge?.status === "accepted");
-      if (!accepted) throw new Error("You are not friends with that player");
+      if (!accepted) throw new ConvexError("You are not friends with that player");
     }
 
     const gameId = await ctx.db.insert("games", {
@@ -180,16 +180,16 @@ export const joinGame = mutation({
     const userId = await requireUser(ctx);
 
     const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new Error("No such game");
-    if (game.status !== "lobby") throw new Error("Game already started");
+    if (game === null) throw new ConvexError("No such game");
+    if (game.status !== "lobby") throw new ConvexError("Game already started");
 
     const players = await ctx.db
       .query("players")
       .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
       .take(GAME.maxPlayers);
 
-    if (players.some((p) => p.userId === userId)) throw new Error("Already joined");
-    if (players.length >= game.playerCount) throw new Error("Game is full");
+    if (players.some((p) => p.userId === userId)) throw new ConvexError("Already joined");
+    if (players.length >= game.playerCount) throw new ConvexError("Game is full");
 
     await joinSeat(ctx, args.gameId, userId, players.length);
 
@@ -210,8 +210,8 @@ export const placeTiles = mutation({
     const userId = await requireUser(ctx);
 
     const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new Error("No such game");
-    if (game.status !== "active") throw new Error("Game is not active");
+    if (game === null) throw new ConvexError("No such game");
+    if (game.status !== "active") throw new ConvexError("Game is not active");
 
     const player = await ctx.db
       .query("players")
@@ -219,8 +219,8 @@ export const placeTiles = mutation({
         q.eq("gameId", args.gameId).eq("userId", userId),
       )
       .unique();
-    if (player === null) throw new Error("You are not in this game");
-    if (player.seat !== game.currentSeat) throw new Error("Not your turn");
+    if (player === null) throw new ConvexError("You are not in this game");
+    if (player.seat !== game.currentSeat) throw new ConvexError("Not your turn");
 
     const placements: Placement[] = args.placements.map((p) => ({
       ...p,
@@ -237,7 +237,7 @@ export const placeTiles = mutation({
       width: game.boardSize,
       height: game.boardSize,
     });
-    if (!legality.ok) throw new Error(describe(legality));
+    if (!legality.ok) throw new ConvexError(describe(legality));
 
     const score = scoreTurn(after, placements);
 
@@ -288,14 +288,14 @@ export const placeTiles = mutation({
  */
 function spendRack(player: Doc<"players">, placements: readonly Placement[]): string[] {
   const blanks = placements.filter((p) => p.isBlank).length;
-  if (blanks > 1) throw new Error("Only one blank per turn");
-  if (blanks === 1 && !player.blank) throw new Error("You have no blank");
+  if (blanks > 1) throw new ConvexError("Only one blank per turn");
+  if (blanks === 1 && !player.blank) throw new ConvexError("You have no blank");
 
   const remaining = [...player.letters];
   for (const p of placements) {
     if (p.isBlank) continue;
     const i = remaining.indexOf(p.letter);
-    if (i < 0) throw new Error(`You do not hold the letter ${p.letter}`);
+    if (i < 0) throw new ConvexError(`You do not hold the letter ${p.letter}`);
     remaining.splice(i, 1);
   }
   return remaining;
@@ -343,8 +343,8 @@ export const resignGame = mutation({
     const userId = await requireUser(ctx);
 
     const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new Error("No such game");
-    if (game.status === "finished") throw new Error("Game is already over");
+    if (game === null) throw new ConvexError("No such game");
+    if (game.status === "finished") throw new ConvexError("Game is already over");
 
     const player = await ctx.db
       .query("players")
@@ -352,7 +352,7 @@ export const resignGame = mutation({
         q.eq("gameId", args.gameId).eq("userId", userId),
       )
       .unique();
-    if (player === null) throw new Error("You are not in this game");
+    if (player === null) throw new ConvexError("You are not in this game");
 
     const resignedBy = [...new Set([...(game.resignedBy ?? []), userId])];
     await ctx.db.patch("games", args.gameId, { resignedBy });

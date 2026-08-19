@@ -10,6 +10,7 @@ import { scoreTurn, type Placement } from "../../shared/engine/score";
 import { Board } from "./Board";
 import styles from "./Game.module.css";
 import { Rack, type Selection } from "./Rack";
+import { userMessage } from "../lib/errors";
 import { Scoreboard } from "./Scoreboard";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -329,9 +330,7 @@ export function Game({ gameId }: { gameId: Id<"games"> }) {
       });
       clear();
     } catch (e) {
-      // Convex wraps server errors; show the message the mutation threw.
-      const message = e instanceof Error ? e.message : String(e);
-      setError(message.replace(/^.*Error:\s*/s, "").split("\n")[0]!);
+      setError(userMessage(e));
     } finally {
       setSubmitting(false);
     }
