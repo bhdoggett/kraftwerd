@@ -176,3 +176,52 @@ describe("wordsFormed", () => {
     expect(wordsFormed(after, [at(4, 4, "A")])).toEqual(["A"]);
   });
 });
+
+describe("a board with blocked squares and a centre", () => {
+  const shaped: Bounds = {
+    width: 5,
+    height: 5,
+    blocked: new Set(["1,1"]),
+    centre: { x: 2, y: 2 },
+  };
+
+  test("rejects a tile on a blocked square", () => {
+    expect(validateTurn(makeBoard([]), [at(1, 1, "A")], dict("A"), shaped)).toEqual({
+      ok: false,
+      reason: "blocked",
+      at: { x: 1, y: 1 },
+    });
+  });
+
+  test("rejects an opening play that misses the centre", () => {
+    expect(
+      validateTurn(makeBoard([]), [at(0, 0, "A"), at(1, 0, "T")], dict("AT"), shaped),
+    ).toEqual({ ok: false, reason: "missing-centre" });
+  });
+
+  test("accepts an opening play that covers the centre", () => {
+    expect(
+      validateTurn(makeBoard([]), [at(2, 2, "A"), at(3, 2, "T")], dict("AT"), shaped),
+    ).toEqual({ ok: true });
+  });
+
+  test("only the opening play must reach the centre", () => {
+    const board = makeBoard([
+      { x: 2, y: 2, letter: "A" },
+      { x: 3, y: 2, letter: "T" },
+    ]);
+
+    expect(validateTurn(board, [at(4, 2, "E")], dict("ATE"), shaped)).toEqual({
+      ok: true,
+    });
+  });
+
+  test("a blocked square cannot be bridged across", () => {
+    // (1,1) is blocked, so a word cannot run through it.
+    const board = makeBoard([{ x: 2, y: 2, letter: "A" }]);
+
+    expect(validateTurn(board, [at(0, 1, "A"), at(2, 1, "T")], dict("AT", "A"), shaped)).toEqual(
+      { ok: false, reason: "disconnected" },
+    );
+  });
+});

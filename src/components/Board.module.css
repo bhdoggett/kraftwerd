@@ -4,17 +4,34 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.06);
-  max-height: 70vh;
-  min-height: 320px;
+  max-height: 72vh;
   display: grid;
   place-items: center;
+  padding: var(--space-3);
 }
 
+/* 15 columns at full size overflow a phone, so the squares shrink instead. */
+@media (max-width: 640px) {
+  .viewport {
+    --cell-size: 22px;
+    padding: var(--space-2);
+  }
+
+  .cell {
+    font-size: 0.9rem;
+  }
+}
+
+/*
+ * Hairline gaps and a surrounding border, so the board reads as one printed
+ * grid rather than a field of separate buttons.
+ */
 .grid {
   display: grid;
-  gap: 2px;
-  padding: var(--space-2);
-  background: transparent;
+  gap: 1px;
+  padding: 1px;
+  background: var(--border-strong);
+  border: 1px solid var(--border-strong);
   width: max-content;
 }
 
@@ -25,8 +42,8 @@
   width: var(--cell-size);
   height: var(--cell-size);
   padding: 0;
-  border: 1px solid var(--cell-line);
-  border-radius: 3px;
+  border: none;
+  border-radius: 0;
   background: var(--cell-empty);
   display: grid;
   place-items: center;
@@ -59,8 +76,6 @@
 
 .tile {
   background: var(--tile-face);
-  border: 1px solid var(--tile-edge);
-  box-shadow: var(--shadow);
   position: relative;
 }
 
@@ -91,13 +106,29 @@
 /* An empty square adjacent to the played mass: a legal target. Dashed so it
    reads as a possibility rather than a tile. */
 .open {
-  background: transparent;
-  border-color: var(--border);
+  background: var(--cell-empty);
   color: transparent;
 }
 
+/* Blocked squares are the grid's shape, drawn solid as in a crossword. */
+.blocked {
+  background: var(--text);
+  cursor: default;
+}
+
+/* Where the first word has to start. */
+.centre {
+  background: var(--accent-soft);
+}
+
+.centre::after {
+  content: "★";
+  color: var(--accent);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
 .open:hover {
-  border-color: var(--accent);
   background: var(--accent-soft);
 }
 

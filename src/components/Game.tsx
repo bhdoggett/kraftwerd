@@ -7,6 +7,7 @@ import { makeBoard } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
 import { runsThrough } from "../../shared/engine/runs";
+import { layoutByName, shapeOf } from "../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { Board } from "./Board";
 import { DevTools } from "./DevTools";
@@ -49,6 +50,10 @@ function describeLegality(
       return "There is already a tile there.";
     case "duplicate-cell":
       return "Two tiles on the same square.";
+    case "blocked":
+      return "That square cannot be played on.";
+    case "missing-centre":
+      return "The first word has to cover the centre square.";
     case "disconnected":
       return "Every tile must connect to the tiles already on the board.";
     case "invalid-words":
@@ -358,9 +363,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
       checked.filter((entry) => entry.valid).map((entry) => entry.word),
     );
 
+    const shape = shapeOf(layoutByName(view.layout));
     return validateTurn(boards.before, placements, dictionary, {
       width: view.game.boardSize,
       height: view.game.boardSize,
+      blocked: shape.blocked,
+      centre: shape.centre,
     });
   }, [view, boards, placements, checked]);
 
@@ -711,6 +719,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
       <div className={styles.main}>
         <Board
           boardSize={game.boardSize}
+          layout={view.layout}
           tiles={view.tiles}
           pending={pending}
           canPlace={myTurn && selected !== null && !choosingBlank}

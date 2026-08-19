@@ -11,9 +11,14 @@ const modules = import.meta.glob("./**/*.ts");
 /** Only the words these tests actually need. */
 const WORDS = ["AD", "DO", "AT", "TO", "A", "I", "ACE", "CAM", "EMU", "EM"];
 
+/**
+ * Coordinates are given relative to the centre, since the opening word has to
+ * cover it. `at(0, 0, ...)` is the centre square itself.
+ */
+const CENTRE = 7;
 const at = (x: number, y: number, letter: string, isBlank = false) => ({
-  x,
-  y,
+  x: x + CENTRE,
+  y: y + CENTRE,
   letter,
   isBlank,
 });
@@ -50,7 +55,7 @@ async function twoPlayerGame(letters: string[]) {
       blank: true,
       status: "joined",
     });
-    await ctx.db.patch("games", gameId, { status: "active" });
+    await ctx.db.patch("games", gameId, { status: "active", layout: "Pinwheel" });
 
     const players = await ctx.db
       .query("players")
@@ -147,7 +152,7 @@ describe("placeTiles", () => {
     await expect(
       asBob.mutation(api.games.placeTiles, {
         gameId,
-        placements: [at(20, 20, "T"), at(21, 20, "O")],
+        placements: [at(4, 4, "T"), at(5, 4, "O")],
       }),
     ).rejects.toThrow("connect to the tiles already on the board");
   });
@@ -661,5 +666,41 @@ describe("trading tiles", () => {
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.consecutivePasses).toBe(0);
     expect(game?.status).toBe("active");
+  });
+});
+
+describe("the board", () => {
+  test("the opening word must cover the centre", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+
+    await expect(
+      asAlice.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [
+          { x: 1, y: 1, letter: "A", isBlank: false },
+          { x: 2, y: 1, letter: "D", isBlank: false },
+        ],
+      }),
+    ).rejects.toThrow("cover the centre");
+  });
+
+  test("a blocked square cannot be played on", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+
+    // Pinwheel blocks (3,1); the opening word covers the centre and runs into it.
+    await expect(
+      asAlice.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(0, 0, "A"), { x: 3, y: 1, letter: "D", isBlank: false }],
+      }),
+    ).rejects.toThrow("cannot be played on");
+  });
+
+  test("every game is dealt one of the hand-drawn layouts", async () => {
+    const { t, gameId } = await twoPlayerGame(["A", "D"]);
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+
+    expect(["Pinwheel", "Lattice", "Keyhole"]).toContain(game?.layout);
+    expect(game?.boardSize).toBe(15);
   });
 });

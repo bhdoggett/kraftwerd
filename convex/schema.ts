@@ -45,6 +45,8 @@ export default defineSchema({
     name: v.optional(v.string()),
     status: gameStatus,
     boardSize: v.number(),
+    /** Which hand-drawn layout this game is played on (shared/boards.ts). */
+    layout: v.optional(v.string()),
     /** Game ends once this many tiles are on the board (design.md §6). */
     endThreshold: v.number(),
     playerCount: v.number(),

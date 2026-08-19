@@ -6,9 +6,14 @@ export interface Dictionary {
   has(word: string): boolean;
 }
 
+/** The board a turn is played on: its size, its blocked squares, its centre. */
 export interface Bounds {
   width: number;
   height: number;
+  /** Squares no tile may occupy, as `cellKey` strings. */
+  blocked?: ReadonlySet<string>;
+  /** The opening play must cover this square. */
+  centre?: { x: number; y: number };
 }
 
 export type Legality =
@@ -17,6 +22,8 @@ export type Legality =
   | { ok: false; reason: "out-of-bounds"; at: { x: number; y: number } }
   | { ok: false; reason: "occupied"; at: { x: number; y: number } }
   | { ok: false; reason: "duplicate-cell"; at: { x: number; y: number } }
+  | { ok: false; reason: "blocked"; at: { x: number; y: number } }
+  | { ok: false; reason: "missing-centre" }
   | { ok: false; reason: "disconnected" }
   | { ok: false; reason: "invalid-words"; words: string[] };
 
@@ -94,12 +101,24 @@ export function validateTurn(
     if (p.x < 0 || p.y < 0 || p.x >= bounds.width || p.y >= bounds.height) {
       return { ok: false, reason: "out-of-bounds", at };
     }
+    if (bounds.blocked?.has(key) === true) {
+      return { ok: false, reason: "blocked", at };
+    }
     if (before.has(key)) return { ok: false, reason: "occupied", at };
     if (claimed.has(key)) return { ok: false, reason: "duplicate-cell", at };
     claimed.add(key);
   }
 
   const after = applyPlacements(before, placements);
+
+  // The opening word starts at the centre, as in a crossword. Everything after
+  // it is anchored by connectivity to that first word.
+  if (before.size === 0 && bounds.centre !== undefined) {
+    const centre = cellKey(bounds.centre.x, bounds.centre.y);
+    if (!placements.some((p) => cellKey(p.x, p.y) === centre)) {
+      return { ok: false, reason: "missing-centre" };
+    }
+  }
 
   if (!isOneMass(after)) return { ok: false, reason: "disconnected" };
 

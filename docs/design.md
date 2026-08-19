@@ -23,12 +23,25 @@ construction) does not exist in Scrabble. IP exposure is limited to the name.
 
 ## 2. Board
 
-- **Large finite grid.** 40×40 baseline. Rejected: infinite plane (pan/zoom,
-  sparse storage, "where am I" navigation — largest single frontend cost in
-  the project, and it removes late-game space competition).
-- Storage: dense representation is fine at this size. `tiles` as a flat array
-  or a per-cell document set — see §7.
-- No center-start rule. No connectivity rule.
+- **15×15, hand-drawn, crossword-style.** Odd-sided so there is a true centre.
+  Blocked squares are part of the board, arranged with 180° rotational
+  symmetry as a crossword grid is.
+- **The opening word must cover the centre square.** Everything after it is
+  anchored by connectivity (§3) back to that first word.
+- **Layouts live in `shared/boards.ts`, written as pictures** — `#` blocked,
+  `.` open — so a new one is drawn by editing the art rather than listing
+  coordinates. Each game is dealt one at random.
+- `boards.test.ts` holds every layout to the rules: square and odd-sided,
+  rotationally symmetric, centre open and its neighbours open, 5–20% blocked,
+  and every open square reachable from every other. That last one matters —
+  an unreachable pocket is a region nobody could ever play in.
+- **The whole board is drawn.** Blocked squares can only be planned around if
+  they are visible, and a finite board's edges matter before you reach them.
+
+*This replaced an unbounded board.* Rendering only the played area made size
+irrelevant, which quietly removed the space competition a finite board was
+chosen for in the first place. Obstacles bring back the spatial puzzle: they
+break up the open plane, and a 2×2 cannot span one.
 
 ## 3. Placement legality
 

@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { GAME, RACK } from "../shared/config.js";
+import { BOARD_LAYOUTS, layoutByName, shapeOf } from "../shared/boards.js";
 import { gameName } from "../shared/gameNames.js";
 import { makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
@@ -9,6 +10,21 @@ import { scoreTurn, type Placement } from "../shared/engine/score.js";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { placement } from "./schema";
+
+function pickLayout(): string {
+  return BOARD_LAYOUTS[Math.floor(Math.random() * BOARD_LAYOUTS.length)]!.name;
+}
+
+/** The board a game is played on, as the rules need it. */
+function boardShape(game: Doc<"games">) {
+  const shape = shapeOf(layoutByName(game.layout ?? ""));
+  return {
+    width: game.boardSize,
+    height: game.boardSize,
+    blocked: shape.blocked,
+    centre: shape.centre,
+  };
+}
 
 /** Upper bound on tiles we ever read: the game ends at `endThreshold`. */
 const MAX_TILES = 512;
@@ -79,6 +95,7 @@ export const createGame = mutation({
     const name = gameName(Math.random);
     const gameId = await ctx.db.insert("games", {
       name,
+      layout: pickLayout(),
       status: "lobby",
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
@@ -147,6 +164,7 @@ export const createGameWithFriends = mutation({
     // Starts in the lobby: an invitation is an offer, not a seating.
     const gameId = await ctx.db.insert("games", {
       name: gameName(Math.random),
+      layout: pickLayout(),
       status: "lobby",
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
@@ -413,10 +431,7 @@ export const placeTiles = mutation({
     const after = applyPlacements(before, placements);
     const dictionary = await lookUp(ctx, wordsFormed(after, placements));
 
-    const legality = validateTurn(before, placements, dictionary, {
-      width: game.boardSize,
-      height: game.boardSize,
-    });
+    const legality = validateTurn(before, placements, dictionary, boardShape(game));
     if (!legality.ok) throw new ConvexError(describe(legality));
 
     const score = scoreTurn(after, placements);
@@ -584,6 +599,10 @@ function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true 
       return `There is already a tile at (${legality.at.x}, ${legality.at.y})`;
     case "duplicate-cell":
       return `Two tiles on the same square (${legality.at.x}, ${legality.at.y})`;
+    case "blocked":
+      return `That square cannot be played on (${legality.at.x}, ${legality.at.y})`;
+    case "missing-centre":
+      return "The first word has to cover the centre square";
     case "disconnected":
       return "Every tile must connect to the tiles already on the board";
     case "invalid-words":
@@ -644,6 +663,7 @@ export const getGame = query({
     const seated = players.filter((p) => p.status !== "invited");
 
     return {
+      layout: game.layout ?? BOARD_LAYOUTS[0]!.name,
       /** A free seat, in a game filled by link rather than by invitation. */
       canJoin:
         you === undefined &&

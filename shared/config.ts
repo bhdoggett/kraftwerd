@@ -30,11 +30,11 @@ export const RACK: RackConfig = {
 
 export const GAME = {
   /**
-   * Board is square. Only the played area and its edge are ever rendered
-   * (see Board.tsx), so this is a bound rather than something drawn -- big
-   * enough that a game never feels walled in.
+   * Odd-sided, so there is a true centre for the opening word to cover. The
+   * whole board is drawn, blocked squares included: they can only be planned
+   * around if they can be seen.
    */
-  boardSize: 256,
+  boardSize: 15,
   /** Game ends once this many tiles are on the board (design.md §6). */
   endThreshold: 100,
   /** 1 is a solo practice game: it starts immediately with no one to wait for. */
