@@ -75,6 +75,19 @@ describe("evaluateCommand", () => {
     expect(evaluateCommand("git push -u origin ben/work", { branch: "main" })).toBeNull();
   });
 
+  test("blocks a push naming only the remote while sitting on main", () => {
+    expect(evaluateCommand("git push origin", { branch: "main" })?.id).toBe("push-to-main");
+    expect(evaluateCommand("git push origin ben/work", { branch: "main" })).toBeNull();
+    expect(evaluateCommand("git push origin HEAD:ben/work", { branch: "main" })).toBeNull();
+    expect(evaluateCommand("git push origin", { branch: "ben/work" })).toBeNull();
+  });
+
+  test("blocks clustered short flags on a force branch delete", () => {
+    expect(evaluateCommand("git branch -Df ben/work")?.id).toBe("force-delete-branch");
+    expect(evaluateCommand("git branch -fd ben/work")?.id).toBe("force-delete-branch");
+    expect(evaluateCommand("git branch -d ben/work")).toBeNull();
+  });
+
   test("blocks merging and deleting through the GitHub CLI", () => {
     expect(evaluateCommand("gh pr merge 4 --squash")?.id).toBe("pr-merge");
     expect(evaluateCommand("gh api repos/x/y/rulesets/1 -X DELETE")?.id).toBe("gh-delete");

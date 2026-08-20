@@ -27,18 +27,24 @@ const RULES = [
     id: "push-to-main",
     matches: (command, context) => {
       if (/git\s+push\b[^&|;]*\bmain\b/.test(command)) return true;
-      // A bare `git push` (no explicit remote/branch argument) pushes the
-      // current branch to its upstream. If that current branch is main,
-      // this is just as much a push-to-main as spelling it out literally.
+      // A `git push` with no branch actually spelled out pushes the current
+      // branch to its upstream (push.default=simple). If that current
+      // branch is main, this is just as much a push-to-main as spelling it
+      // out literally — whether the command is bare (`git push`) or names
+      // only a remote (`git push origin`), since a lone remote name is not
+      // a branch. A second positional token, or a refspec (`HEAD:branch`)
+      // packed into the first, is what makes the destination explicit.
       if (context?.branch !== "main") return false;
       const pushArgs = /git\s+push\b([^&|;]*)/.exec(command);
       if (!pushArgs) return false;
-      const hasExplicitArgument = pushArgs[1]
+      const positional = pushArgs[1]
         .trim()
         .split(/\s+/)
         .filter(Boolean)
-        .some((token) => !token.startsWith("-"));
-      return !hasExplicitArgument;
+        .filter((token) => !token.startsWith("-"));
+      if (positional.length === 0) return true;
+      if (positional.length === 1 && !positional[0].includes(":")) return true;
+      return false;
     },
     reason:
       "That would send code straight to the main branch, which is the version everyone else uses. " +
@@ -75,17 +81,32 @@ const RULES = [
     matches: (command) => {
       const branchArgs = /git\s+branch\b([^&|;]*)/.exec(command);
       if (!branchArgs) return false;
-      const args = branchArgs[1];
-      if (/\s-D\b/.test(args)) return true;
-      // `--delete --force` (in either order) is the long-form spelling of
-      // -D; short `-f` for `--force` is accepted too. `--delete`/`-d` alone,
-      // without a force flag, stays allowed — that's the safe delete.
-      const hasForce = /--force\b/.test(args) || /\s-f\b/.test(args);
-      const hasDelete = /--delete\b/.test(args) || /\s-d\b/.test(args);
+      const tokens = branchArgs[1].trim().split(/\s+/).filter(Boolean);
+      // Force and delete can arrive as separate long flags (--force
+      // --delete, either order), separate short flags (-f -d, either
+      // order), or clustered into one short token in any order and any
+      // case (-D, -Df, -fd, -fD, ...) — capital D alone already means
+      // "delete, forced". `--delete`/`-d` alone, with no force anywhere,
+      // stays allowed — that's the safe delete.
+      let hasForce = false;
+      let hasDelete = false;
+      for (const token of tokens) {
+        if (token === "--force") hasForce = true;
+        else if (token === "--delete") hasDelete = true;
+        else if (/^-[A-Za-z]+$/.test(token)) {
+          const letters = token.slice(1);
+          if (letters.includes("D")) {
+            hasForce = true;
+            hasDelete = true;
+          }
+          if (letters.includes("d")) hasDelete = true;
+          if (letters.toLowerCase().includes("f")) hasForce = true;
+        }
+      }
       return hasForce && hasDelete;
     },
     reason:
-      "Capital -D deletes a branch even when it holds work that was never sent to GitHub. " +
+      "Deleting a branch with force removes it even when it holds work that was never sent to GitHub. " +
       "Instead: use `git branch -d`, which refuses to delete anything that would be lost.",
   },
   {
