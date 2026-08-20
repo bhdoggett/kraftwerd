@@ -25,7 +25,13 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.06);
-  max-height: 72vh;
+  /*
+   * A fixed box, not one that grows to fit. Zooming has to change what is
+   * inside the board, never the space the board takes: a container that grew
+   * with the zoom pushed the rack down the page and left you scrolling the
+   * document to get back to it.
+   */
+  height: min(72vh, 620px);
   display: grid;
   place-items: center;
   padding: var(--space-3);
@@ -35,6 +41,8 @@
 @media (max-width: 640px) {
   .viewport {
     --cell-base: 22px;
+    /* Leaves room for the rack and the play panel without scrolling. */
+    height: 46vh;
     padding: var(--space-2);
   }
 }
