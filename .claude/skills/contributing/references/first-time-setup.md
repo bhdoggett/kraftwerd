@@ -4,28 +4,41 @@ Run these for him, one at a time, saying what each one is for. Stop at the
 first failure and read `troubleshooting.md` rather than improvising.
 
 Before starting, confirm Ben has already: added him as a collaborator on the
-GitHub repo, and invited him to the Convex team. Without the second one, step 4
+GitHub repo, and invited him to the Convex team. Without the second one, step 5
 silently sets up a project Ben cannot see.
 
-## 1. Install Node
+## 1. Authenticate to GitHub
+
+```bash
+gh auth login
+```
+
+Follow its prompts (browser or token). This also configures git's own
+credential helper, so both `gh pr create` later and the plain `git push`
+before it work without a separate password prompt. Without this step, the
+very first push in "Starting work" fails with a credential prompt neither of
+you can answer, or `gh` reports `command not found` if it needs installing
+first.
+
+## 2. Install Node
 
 ```bash
 nvm use              # Node 24. If nvm is missing, he needs Node 24 installed.
 ```
 
-## 2. Install dependencies
+## 3. Install dependencies
 
 ```bash
 npm install
 ```
 
-## 3. Install the Convex skills
+## 4. Install the Convex skills
 
 ```bash
 npx convex ai-files install   # the Convex skills, pinned by skills-lock.json
 ```
 
-## 4. Connect to the backend
+## 5. Connect to the backend
 
 ```bash
 npx convex login
@@ -43,7 +56,7 @@ each other.
 
 Stop `convex dev` once it reports it is ready.
 
-## 5. Set up sign-in
+## 6. Set up sign-in
 
 Four settings, on his own backend. Ben supplies the last two privately; they
 are the same Google credentials the project already uses.
@@ -65,7 +78,7 @@ https://<his-deployment>.convex.site/api/auth/callback/google
 His deployment name is in `.env.local` as `CONVEX_DEPLOYMENT`. Until Ben adds
 it, signing in fails with `redirect_uri_mismatch`. Everything else works.
 
-## 6. Fill the dictionary
+## 7. Fill the dictionary
 
 ```bash
 npm run build:dictionary
@@ -75,15 +88,20 @@ npx convex import -y --table words --replace shared/data/words.jsonl
 Not optional. Skipping it does not produce an error — the game loads, tiles
 place, and then every word is rejected as invalid, including obvious ones.
 
-## 7. Run it
+## 8. Run it
 
 ```bash
 npm run dev
 ```
 
+The first time only, this pauses partway through with its own interactive
+prompts, from a setup script that piggybacks on `npm run dev`. The sign-in
+values from step 6 are already in place, so just accept the defaults or let it
+run through — it writes a marker afterward so this never happens again.
+
 The app opens at `http://localhost:5175`.
 
-## 8. Check the tests still pass
+## 9. Check the tests still pass
 
 ```bash
 npm test

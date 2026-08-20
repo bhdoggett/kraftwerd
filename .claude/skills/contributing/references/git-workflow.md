@@ -78,3 +78,8 @@ git branch -d <name>/<topic>
 
 The next piece of work starts a fresh branch from the updated `origin/main`.
 `-d` refuses to delete anything unmerged; `-D`, which does not, is blocked.
+
+If Ben merged the pull request as a **squash merge**, `-d` will refuse anyway
+— GitHub's squash commit is not the same commit object, so git does not
+recognise the branch as merged. This is expected. Leave the branch alone and
+tell him Ben will tidy it up; do not reach for `-D`.

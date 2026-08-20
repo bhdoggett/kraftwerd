@@ -22,6 +22,10 @@ read this file.
    `GOOGLE_CLIENT_SECRET`, the same pair the project already uses. He sets them
    on his own backend; they never enter the repo.
 
+4. **Nothing else to do for GitHub auth** — his first-time setup has him run
+   `gh auth login` himself, which also configures git's credential helper. You
+   do not need to send him a token or a password.
+
 ## Once his backend exists
 
 He sends you a `CONVEX_DEPLOYMENT` name. Add its callback address to the

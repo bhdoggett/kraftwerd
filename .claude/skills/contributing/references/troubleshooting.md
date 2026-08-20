@@ -35,6 +35,22 @@ crash.
 Wrong Node version. Run `nvm use` — this project needs Node 24. If `nvm` is not
 installed, he needs to install Node 24 directly.
 
+## The push asks for a password, or `gh` says command not found
+
+GitHub auth was never set up. Run the first step of first-time setup, then
+retry the push:
+
+```bash
+gh auth login
+```
+
+## `npm run dev` stops and asks questions the first time
+
+Expected, not broken — see step 8 of first-time setup. `predev` runs a
+setup script once, and it is interactive. Answer its prompts (the sign-in
+values from step 6 are already correct) and let it finish; it will not ask
+again.
+
 ## A push is rejected
 
 `origin/main` moved on. Bring it in and push again:
