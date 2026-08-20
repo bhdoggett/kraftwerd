@@ -18,14 +18,6 @@
   box-shadow: var(--shadow);
 }
 
-/*
- * A strut as tall as a tile, so the rack is the same height whether or not it
- * holds any. Without it an empty rack collapsed to the height of its buttons,
- * then grew the moment a placeholder appeared for an incoming tile — pushing
- * its own edge past the pointer, removing the placeholder, and shrinking back.
- * min-height alone was not enough: it fixes the box, not the flex line the
- * items are centred on.
- */
 .tiles {
   display: flex;
   align-items: center;
@@ -40,6 +32,8 @@
   min-height: var(--rack-tile-height);
 }
 
+/* Balances the buttons, so the tiles centre on the rack rather than on what
+   the buttons leave over. */
 .rack::before {
   content: "";
   width: 0;
@@ -49,6 +43,12 @@
 .tile {
   /* Tiles are drag handles, so a drag must not scroll the page instead. */
   touch-action: none;
+  /*
+   * Never shrink. Flex items shrink by default, so a tight row squeezed every
+   * tile — and the blank worst of all, since a letter holds a tile open and an
+   * empty one has nothing to hold it.
+   */
+  flex: none;
   width: var(--rack-tile-width);
   height: var(--rack-tile-height);
   border: 1px solid var(--tile-edge);
