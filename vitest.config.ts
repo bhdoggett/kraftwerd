@@ -20,6 +20,13 @@ export default defineConfig({
           server: { deps: { inline: ["convex-test"] } },
         },
       },
+      {
+        test: {
+          name: "hooks",
+          environment: "node",
+          include: [".claude/hooks/**/*.test.mjs"],
+        },
+      },
     ],
   },
 });
