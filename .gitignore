@@ -33,6 +33,15 @@ dist-ssr
 shared/data/words.jsonl
 
 .agents/
-.claude/
+# Only the hand-written contributor tooling is tracked. The vendored convex
+# skills are generated from the tracked skills-lock.json by
+# `npx convex ai-files install`, so committing them would only add merge
+# conflicts on every update.
+.claude/*
+!.claude/hooks/
+!.claude/settings.json
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/contributing/
 .cursor/
 .fallow/
