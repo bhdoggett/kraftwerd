@@ -21,7 +21,7 @@ export function Rules() {
         aria-label="How to play"
         title="How to play"
       >
-        <HelpIcon />
+        <HelpIcon size={13} />
       </button>
 
       {open && (

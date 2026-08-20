@@ -1,6 +1,9 @@
 .button {
   width: 26px;
   height: 26px;
+  /* A flex item shrinks below its width by default, so in a narrow header the
+     ring squashed into an oval while its height stayed put. */
+  flex: none;
   /* Browsers pad a button by default, which shrinks the content box and
      shoves the icon off centre. */
   padding: 0;

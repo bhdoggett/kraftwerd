@@ -1,21 +1,25 @@
+/*
+ * No ring around this one: the three icons already read as a set, and beside
+ * the ringed help button a second circle made the header look like a toolbar.
+ * The box stays 26px so both icons sit on the same line.
+ */
 .button {
   width: 26px;
   height: 26px;
+  /* A flex item shrinks below its width by default, which deformed the icon
+     in a narrow header. */
+  flex: none;
   /* Browsers pad a button by default, which shrinks the content box and
      shoves the icon off centre. */
   padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--border-strong);
+  border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.8rem;
   line-height: 1;
   display: grid;
   place-items: center;
 }
 
 .button:hover {
-  background: var(--surface-sunken);
   color: var(--text);
-  border-color: var(--text-muted);
 }

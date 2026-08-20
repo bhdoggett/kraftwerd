@@ -80,16 +80,16 @@ export function MoonIcon({ size = 16 }: IconProps) {
 }
 
 /**
- * Follow the system: half sun, half moon. A half-filled circle would be the
- * usual drawing, but inside a round button it is another ring in a ring.
+ * Follow the system: a circle, half filled. Squeezing a sun and a moon into
+ * one 24px box made both illegible; this reads at any size.
  */
 export function SystemIcon({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>
-      <path d="M12 4v16" />
-      <path d="M12 8a4 4 0 0 1 0 8" fill="currentColor" stroke="none" />
-      <path d="M6.5 12H4M7.9 7.9 6.2 6.2M7.9 16.1l-1.7 1.7" />
-      <path d="M20 12a4.5 4.5 0 0 1-5.6 4.4A5.6 5.6 0 0 0 14.4 7.6 4.5 4.5 0 0 1 20 12Z" />
+      <circle cx="12" cy="12" r="8" />
+      {/* The filled half is drawn as its own arc rather than clipped, so it
+          lands exactly on the circle it fills. */}
+      <path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" stroke="none" />
     </svg>
   );
 }
