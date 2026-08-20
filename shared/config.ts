@@ -8,37 +8,39 @@ import type { RackConfig } from "./engine/rack.js";
  */
 
 export const RACK: RackConfig = {
-  /** 6 letters plus the blank slot, so 7 tiles are placeable per turn. */
-  size: 6,
+  /** Letters held at the start of a turn, refilled after every play. */
+  size: 7,
   // Derived from letter frequency in 2-5 letter dictionary words by
   // scripts/build-dictionary.mjs -- see design.md §5.1. Note S is inflated by
   // plurals; if racks feel S-heavy in play, damp it here rather than in code.
   weights,
   vowels: "AEIOU",
   /**
-   * Two.
-   *
-   * At a floor of one, 35% of racks arrived with a single vowel and five
-   * consonants, which is barely playable on a six-letter rack. Two removes
-   * that case without stuffing the rack: the average only moves from 2.06 to
-   * 2.41, since most racks already had two or more.
-   *
-   * The blank can always stand in for a vowel as well, so this is about how
-   * the rack reads rather than whether a play exists at all.
+   * Two. At a floor of one, a third of racks arrived with a single vowel,
+   * which is barely playable. The blank can also stand in for a vowel, so this
+   * is about how a rack reads rather than whether a play exists.
    */
   minVowels: 2,
   maxDuplicates: 2,
 };
 
+/**
+ * Blanks are a whole-game allowance rather than a per-turn one: three each,
+ * and once spent they are gone. That makes each one a decision about when to
+ * spend it rather than something to use or waste every turn.
+ */
+export const BLANKS_PER_GAME = 3;
+
 export const GAME = {
   /**
-   * Odd-sided, so there is a true centre for the opening word to cover. The
-   * whole board is drawn, blocked squares included: they can only be planned
-   * around if they can be seen.
+   * Odd-sided, so there is a true centre for the opening word to cover.
+   *
+   * The board is open: the drawn layouts in shared/boards.ts are kept, and the
+   * rules still understand blocked squares, but no new game is dealt one.
    */
   boardSize: 15,
   /** Game ends once this many tiles are on the board (design.md §6). */
-  endThreshold: 100,
+  endThreshold: 50,
   /** 1 is a solo practice game: it starts immediately with no one to wait for. */
   minPlayers: 1,
   maxPlayers: 4,

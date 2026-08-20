@@ -20,6 +20,9 @@ const base = (size: number) => ({
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
   "aria-hidden": true,
+  // An svg is an inline element by default, so it sits on the text baseline
+  // and rides high inside a button. Blockifying it lets the button centre it.
+  style: { display: "block" },
 });
 
 /** Take the tiles back off the board: an arrow returning to where it began. */
@@ -59,8 +62,11 @@ export function ShuffleIcon({ size = 16 }: IconProps) {
 export function SunIcon({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+      <circle cx="12" cy="12" r="4.5" />
+      {/* Eight rays, each the same length and the same distance out, so the
+          drawing is symmetric about the centre of the box. */}
+      <path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" />
+      <path d="M4.6 4.6 6.7 6.7M17.3 17.3l2.1 2.1M19.4 4.6 17.3 6.7M6.7 17.3l-2.1 2.1" />
     </svg>
   );
 }
