@@ -101,8 +101,10 @@ export function SystemIcon({ size = 16 }: IconProps) {
 export function HelpIcon({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>
-      <path d="M8.5 8.6a3.6 3.6 0 1 1 5 3.3c-.9.4-1.5 1.2-1.5 2.2v.6" />
-      <path d="M12 18.4h.01" />
+      {/* Drawn to sit centred in the box: the hook and the dot together span
+          y 6.2 to 17.6, and the hook spans x 9 to 15. */}
+      <path d="M9 9.2a3 3 0 1 1 3 3.4v1.4" />
+      <path d="M12 17.6h.01" />
     </svg>
   );
 }

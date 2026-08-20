@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
-import { GAME, RACK } from "../shared/config.js";
-import { BOARD_LAYOUTS, layoutByName, shapeOf } from "../shared/boards.js";
+import { BLANKS_PER_GAME, GAME, RACK } from "../shared/config.js";
+import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
 import { gameName } from "../shared/gameNames.js";
 import { makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
@@ -12,13 +12,19 @@ import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/s
 import { displayName, requireUser } from "./auth_helpers";
 import { placement } from "./schema";
 
+/**
+ * New games are played on an open board.
+ *
+ * The drawn layouts in shared/boards.ts and the blocked-square rules are both
+ * kept — games already dealt one still work — but nothing hands one out.
+ */
 function pickLayout(): string {
-  return BOARD_LAYOUTS[Math.floor(Math.random() * BOARD_LAYOUTS.length)]!.name;
+  return OPEN_BOARD;
 }
 
 /** The board a game is played on, as the rules need it. */
 function boardShape(game: Doc<"games">) {
-  const shape = shapeOf(layoutByName(game.layout ?? ""));
+  const shape = boardShapeNamed(game.layout, game.boardSize);
   return {
     width: game.boardSize,
     height: game.boardSize,
@@ -112,7 +118,8 @@ async function joinSeat(
     seat,
     score: 0,
     letters: rack.letters,
-    blank: rack.blank,
+    blanks: BLANKS_PER_GAME,
+    blank: true,
     status,
   });
 }
@@ -320,10 +327,7 @@ export const tradeTiles = mutation({
     const kept = player.letters.filter((_, i) => !chosen.includes(i));
     const rack = refill(kept, Math.random, RACK);
 
-    await ctx.db.patch("players", player._id, {
-      letters: rack.letters,
-      blank: rack.blank,
-    });
+    await ctx.db.patch("players", player._id, { letters: rack.letters });
 
     await advanceTurn(ctx, game, 0);
     return null;
@@ -431,12 +435,12 @@ export const placeTiles = mutation({
       score: score.total,
     });
 
-    // The blank slot refills every turn whether or not it was used (§5).
+    // Letters refill; blanks do not -- they are a whole-game allowance (§5).
     const rack = refill(remaining, Math.random, RACK);
     await ctx.db.patch("players", player._id, {
       score: player.score + score.total,
       letters: rack.letters,
-      blank: rack.blank,
+      blanks: blanksLeft(player) - placements.filter((p) => p.isBlank).length,
     });
 
     const user = await ctx.db.get("users", userId);
@@ -450,14 +454,23 @@ export const placeTiles = mutation({
   },
 });
 
+/** Blanks a player has left, reading rows made before they became a count. */
+function blanksLeft(player: Doc<"players">): number {
+  return player.blanks ?? (player.blank ? 1 : 0);
+}
+
 /**
  * Remove the played letters from the rack, or throw if the player does not
- * hold them. At most one blank per turn, since the rack holds one slot (§5).
+ * hold them. Blanks are spent from a whole-game allowance (§5).
  */
 function spendRack(player: Doc<"players">, placements: readonly Placement[]): string[] {
-  const blanks = placements.filter((p) => p.isBlank).length;
-  if (blanks > 1) throw new ConvexError("Only one blank per turn");
-  if (blanks === 1 && !player.blank) throw new ConvexError("You have no blank");
+  const used = placements.filter((p) => p.isBlank).length;
+  const held = blanksLeft(player);
+  if (used > held) {
+    throw new ConvexError(
+      held === 0 ? "You have no blanks left" : `You have only ${held} blanks left`,
+    );
+  }
 
   const remaining = [...player.letters];
   for (const p of placements) {
@@ -628,7 +641,7 @@ export const getGame = query({
     const seated = players.filter((p) => p.status !== "invited");
 
     return {
-      layout: game.layout ?? BOARD_LAYOUTS[0]!.name,
+      layout: game.layout ?? OPEN_BOARD,
       /** A free seat, in a game filled by link rather than by invitation. */
       canJoin:
         you === undefined &&
@@ -658,7 +671,7 @@ export const getGame = query({
             name: displayName(user),
             letters: p.userId === userId ? p.letters : null,
             letterCount: p.letters.length,
-            blank: p.blank,
+            blanks: blanksLeft(p),
           };
         }),
       ),

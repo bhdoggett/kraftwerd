@@ -103,3 +103,26 @@ export function shapeOf(layout: BoardLayout): BoardShape {
 export function layoutByName(name: string): BoardLayout {
   return BOARD_LAYOUTS.find((l) => l.name === name) ?? BOARD_LAYOUTS[0]!;
 }
+
+/** The name new games use: a board with nothing blocked out. */
+export const OPEN_BOARD = "Open";
+
+/**
+ * The shape a game is played on.
+ *
+ * An unknown name — including the open board — gives a board with no blocked
+ * squares. The drawn layouts stay available to anything that asks for one by
+ * name, so games already dealt one keep their board.
+ */
+export function boardShapeNamed(name: string | undefined, size: number): BoardShape {
+  const drawn = BOARD_LAYOUTS.find((l) => l.name === name);
+  if (drawn !== undefined) return shapeOf(drawn);
+
+  const middle = (size - 1) / 2;
+  return {
+    name: OPEN_BOARD,
+    size,
+    blocked: new Set<string>(),
+    centre: { x: middle, y: middle },
+  };
+}

@@ -82,7 +82,13 @@ export default defineSchema({
     seat: v.number(),
     score: v.number(),
     letters: v.array(v.string()),
-    /** The single blank slot, refilled every turn (design.md §5). */
+    /**
+     * Blanks left for the whole game (design.md §5). Optional because rows
+     * created before blanks became an allowance carry the old single-slot
+     * boolean instead.
+     */
+    blanks: v.optional(v.number()),
+    /** @deprecated the per-turn blank slot, kept so old rows still validate. */
     blank: v.boolean(),
     /**
      * "invited" until the player accepts. Optional because rows created before
