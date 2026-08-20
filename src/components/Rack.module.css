@@ -39,14 +39,6 @@
   min-height: var(--rack-tile-height);
 }
 
-/* Balances the buttons, so the tiles centre on the rack rather than on what
-   the buttons leave over. */
-.rack::before {
-  content: "";
-  width: 0;
-  height: var(--rack-tile-height);
-}
-
 .tile {
   /* Tiles are drag handles, so a drag must not scroll the page instead. */
   touch-action: none;
