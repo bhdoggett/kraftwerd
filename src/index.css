@@ -64,9 +64,9 @@
    * follows the pointer during a drag is a sibling of the rack and has to
    * match whatever size it is using.
    */
-  --rack-tile-width: 48px;
-  --rack-tile-height: 54px;
-  --rack-gap: 0.5rem;
+  --rack-tile-width: 42px;
+  --rack-tile-height: 48px;
+  --rack-gap: 0.375rem;
 
   --shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 8px rgb(0 0 0 / 0.04);
   --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.14), 0 6px 16px rgb(0 0 0 / 0.1);
@@ -186,10 +186,10 @@ body,
 
 @media (max-width: 640px) {
   :root {
-    /* Small enough that a full rack of seven still fits on one row. */
-    --rack-tile-width: 40px;
-    --rack-tile-height: 46px;
-    --rack-gap: 5px;
+    /* Small enough that a full rack still fits on one row. */
+    --rack-tile-width: 36px;
+    --rack-tile-height: 42px;
+    --rack-gap: 4px;
   }
 }
 

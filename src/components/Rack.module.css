@@ -103,6 +103,12 @@
 
 
 
+.count {
+  font-size: calc(var(--rack-tile-width) * 0.4);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
 .blanks {
   grid-area: blanks;
   justify-self: start;

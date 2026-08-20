@@ -145,25 +145,24 @@ export function Rack({
       </div>
 
       {/*
-        Blanks sit apart from the letters: they are an allowance for the whole
-        game rather than tiles to arrange, so they do not reorder and they
-        never come back. The group disappears once they are spent.
+        One tile carrying a count, not a tile each: they are interchangeable,
+        and three of them took up as much rack as three letters for no reason.
+        The count is dropped at one, where a bare tile says the same thing.
       */}
       {blanks > 0 && (
         <div className={styles.blanks}>
-          {Array.from({ length: blanks }, (_, i) => (
-            <button
-              key={i}
-              type="button"
-              className={[
-                styles.tile,
-                styles.blank,
-                isSelected({ kind: "blank" }) && i === 0 ? styles.selected : "",
-              ].join(" ")}
-              aria-label={`Blank tile, ${blanks} left`}
-              {...tileProps({ kind: "blank" })}
-            />
-          ))}
+          <button
+            type="button"
+            className={[
+              styles.tile,
+              styles.blank,
+              isSelected({ kind: "blank" }) ? styles.selected : "",
+            ].join(" ")}
+            aria-label={`Blank tile, ${blanks} left`}
+            {...tileProps({ kind: "blank" })}
+          >
+            {blanks > 1 && <span className={styles.count}>{blanks}</span>}
+          </button>
         </div>
       )}
 
