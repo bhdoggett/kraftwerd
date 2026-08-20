@@ -30,6 +30,36 @@ export function isOwner(email) {
 const GIT_PREFIX = String.raw`git(?:\s+-C\s+\S+|\s+-c\s+\S+)*\s+`;
 
 /**
+ * Every occurrence of `git <verb>` in the command, each with its own
+ * argument run. A single `.exec()` only ever finds the FIRST occurrence,
+ * which would let an innocent invocation early in a chained or multi-line
+ * command (`git push origin sam/topic && git push origin main`) hide a
+ * dangerous one later in the same string. `matchAll` walks all of them.
+ */
+function allOccurrences(command, verb) {
+  const re = new RegExp(GIT_PREFIX + verb + "\\b([^&|;\\n]*)", "g");
+  return [...command.matchAll(re)].map((match) => match[1]);
+}
+
+// Strips one layer of matching quotes so `git push origin "main"` reads the
+// same as `git push origin main`.
+function stripQuotes(token) {
+  if (
+    token.length >= 2 &&
+    ((token[0] === '"' && token[token.length - 1] === '"') ||
+      (token[0] === "'" && token[token.length - 1] === "'"))
+  ) {
+    return token.slice(1, -1);
+  }
+  return token;
+}
+
+// `main`, and the same ref spelled as `heads/main` or `refs/heads/main`.
+function isMainRef(ref) {
+  return ref === "main" || ref === "heads/main" || ref === "refs/heads/main";
+}
+
+/**
  * Rules are scanned against the whole command string rather than a parsed
  * argv, so `npm test && git push origin main` is caught as readily as the
  * bare push. False positives are acceptable here; a missed force-push is not.
@@ -42,35 +72,42 @@ const RULES = [
       // command separators — otherwise a multi-line heredoc block (push on
       // line one, an unrelated `main` on line two, e.g. `gh pr create
       // --base main`) gets scanned as one command and denied for a `main`
-      // that was never the push's own destination.
-      const pushArgs = new RegExp(GIT_PREFIX + "push\\b([^&|;\\n]*)").exec(command);
-      if (!pushArgs) return false;
-      const positional = pushArgs[1]
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean)
-        .filter((token) => !token.startsWith("-"));
+      // that was never the push's own destination. Each `git push` in the
+      // command is then inspected on its own, so a later push can't hide
+      // behind an earlier innocent one in the same chained/multi-line command.
+      const occurrences = allOccurrences(command, "push");
+      for (const argString of occurrences) {
+        const positional = argString
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .filter((token) => !token.startsWith("-"));
 
-      // An explicit destination: a positional argument that names `main` as
-      // a whole ref, either bare or as the destination side of a `src:dst`
-      // refspec. This is checked by token rather than `\bmain\b` against the
-      // raw string so a branch name that merely contains "main" —eg.
-      // `sam/fix-main-menu` — is never caught.
-      for (const token of positional) {
-        const dst = token.includes(":") ? token.slice(token.indexOf(":") + 1) : token;
-        if (dst === "main" || dst === "refs/heads/main") return true;
+        // An explicit destination: a positional argument that names `main`
+        // as a whole ref — bare, quoted, `heads/main`, `refs/heads/main`,
+        // or as the destination side of a `src:dst` refspec. This is
+        // checked token-by-token rather than `\bmain\b` against the raw
+        // string so a branch name that merely contains "main" — eg.
+        // `sam/fix-main-menu` — is never caught.
+        for (const rawToken of positional) {
+          const token = stripQuotes(rawToken);
+          const dst = token.includes(":") ? token.slice(token.indexOf(":") + 1) : token;
+          if (isMainRef(dst)) return true;
+        }
+
+        // A `git push` with no branch actually spelled out pushes the
+        // current branch to its upstream (push.default=simple). If that
+        // current branch is main, this is just as much a push-to-main as
+        // spelling it out literally — whether the command is bare
+        // (`git push`) or names only a remote (`git push origin`), since a
+        // lone remote name is not a branch. A second positional token, or a
+        // refspec (`HEAD:branch`) packed into the first, is what makes the
+        // destination explicit.
+        if (context?.branch === "main") {
+          if (positional.length === 0) return true;
+          if (positional.length === 1 && !positional[0].includes(":")) return true;
+        }
       }
-
-      // A `git push` with no branch actually spelled out pushes the current
-      // branch to its upstream (push.default=simple). If that current
-      // branch is main, this is just as much a push-to-main as spelling it
-      // out literally — whether the command is bare (`git push`) or names
-      // only a remote (`git push origin`), since a lone remote name is not
-      // a branch. A second positional token, or a refspec (`HEAD:branch`)
-      // packed into the first, is what makes the destination explicit.
-      if (context?.branch !== "main") return false;
-      if (positional.length === 0) return true;
-      if (positional.length === 1 && !positional[0].includes(":")) return true;
       return false;
     },
     reason:
@@ -81,16 +118,20 @@ const RULES = [
   {
     id: "force-push",
     matches: (command) => {
-      const pushArgs = new RegExp(GIT_PREFIX + "push\\b([^&|;\\n]*)").exec(command);
-      if (!pushArgs) return false;
-      const tokens = pushArgs[1].trim().split(/\s+/).filter(Boolean);
-      for (const token of tokens) {
-        if (token === "--force" || token === "--force-with-lease") return true;
-        if (token.startsWith("--force-with-lease=")) return true;
-        if (token.startsWith("+")) return true; // a `+refspec` forces on its own
-        // Clustered short flags, e.g. `-uf` or `-fu`, force just as much as
-        // a lone `-f` — the branch-delete rule below handles the same shape.
-        if (/^-[A-Za-z]+$/.test(token) && token.slice(1).includes("f")) return true;
+      // Every `git push` in the command is checked on its own — an
+      // innocent first push (`git push origin ben/x && git push -f ...`)
+      // must not hide a forced one later in the same command.
+      for (const argString of allOccurrences(command, "push")) {
+        const tokens = argString.trim().split(/\s+/).filter(Boolean);
+        for (const token of tokens) {
+          if (token === "--force" || token === "--force-with-lease") return true;
+          if (token.startsWith("--force-with-lease=")) return true;
+          if (token.startsWith("+")) return true; // a `+refspec` forces on its own
+          // Clustered short flags, e.g. `-uf` or `-fu`, force just as much
+          // as a lone `-f` — the branch-delete rule below handles the same
+          // shape.
+          if (/^-[A-Za-z]+$/.test(token) && token.slice(1).includes("f")) return true;
+        }
       }
       return false;
     },
@@ -177,22 +218,22 @@ const RULES = [
   {
     id: "discard-work",
     matches: (command) => {
-      const cleanArgs = new RegExp(GIT_PREFIX + "clean\\b([^&|;\\n]*)").exec(command);
-      if (cleanArgs) {
-        const tokens = cleanArgs[1].trim().split(/\s+/).filter(Boolean);
+      // Every occurrence of each verb is checked independently — the same
+      // "first innocent call hides a later dangerous one" gap that applied
+      // to push also applies here (`git clean -n && git clean -fdx`).
+      for (const argString of allOccurrences(command, "clean")) {
+        const tokens = argString.trim().split(/\s+/).filter(Boolean);
         for (const token of tokens) {
           if (token === "--force") return true;
           if (/^-[A-Za-z]+$/.test(token) && token.slice(1).includes("f")) return true;
         }
       }
-      const checkoutArgs = new RegExp(GIT_PREFIX + "checkout\\b([^&|;\\n]*)").exec(command);
-      if (checkoutArgs) {
-        const tokens = checkoutArgs[1].trim().split(/\s+/).filter(Boolean);
+      for (const argString of allOccurrences(command, "checkout")) {
+        const tokens = argString.trim().split(/\s+/).filter(Boolean);
         if (tokens.includes("--")) return true;
       }
-      const restoreArgs = new RegExp(GIT_PREFIX + "restore\\b([^&|;\\n]*)").exec(command);
-      if (restoreArgs) {
-        const tokens = restoreArgs[1].trim().split(/\s+/).filter(Boolean);
+      for (const argString of allOccurrences(command, "restore")) {
+        const tokens = argString.trim().split(/\s+/).filter(Boolean);
         const hasWorktree = tokens.includes("--worktree");
         const hasStaged = tokens.includes("--staged");
         // A pure `--staged` restore only unstages — it never touches the

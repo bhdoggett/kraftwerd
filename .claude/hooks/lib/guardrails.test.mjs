@@ -184,6 +184,48 @@ describe("evaluateCommand", () => {
     );
   });
 
+  test("blocks a dangerous push even when it is not the first push in the command", () => {
+    for (const command of [
+      "git push origin sam/topic && git push origin main",
+      "git push origin ben/x\ngit push origin main",
+      "git push origin ben/x; git push origin main",
+    ]) {
+      expect(evaluateCommand(command, { branch: "ben/x" })?.id).toBe("push-to-main");
+    }
+    expect(
+      evaluateCommand("git push origin ben/x && git push -f origin ben/x", { branch: "ben/x" })
+        ?.id,
+    ).toBe("force-push");
+  });
+
+  test("blocks a dangerous clean even when it is not the first clean in the command", () => {
+    expect(evaluateCommand("git clean -n && git clean -fdx")?.id).toBe("discard-work");
+  });
+
+  test("still allows innocent commands with multiple pushes/cleans, none of them dangerous", () => {
+    expect(
+      evaluateCommand("git push origin sam/topic && git push origin sam/topic2", {
+        branch: "ben/x",
+      }),
+    ).toBeNull();
+    expect(evaluateCommand("git clean -n && git clean -ndx")).toBeNull();
+  });
+
+  test("catches quoted and partially-qualified spellings of main", () => {
+    for (const command of ['git push origin "main"', "git push origin 'main'", "git push origin heads/main"]) {
+      expect(evaluateCommand(command)?.id).toBe("push-to-main");
+    }
+  });
+
+  test("quote-stripping does not reintroduce the branch-name false positive", () => {
+    expect(evaluateCommand("git push -u origin sam/fix-main-menu")).toBeNull();
+    const block = [
+      "git push -u origin ben/tile-colours",
+      'gh pr create --draft --base main --title "x" --body "y"',
+    ].join("\n");
+    expect(evaluateCommand(block)).toBeNull();
+  });
+
   test("blocks commands prefixed with a production env var assignment", () => {
     expect(evaluateCommand("CONVEX_DEPLOY_KEY=prod:abc npx convex env list")?.id).toBe(
       "prod-flag",
