@@ -87,14 +87,6 @@
 
 
 
-.hint {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius);
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 0.88rem;
-}
 
 /* The tile that follows the pointer during a drag. Centred on the pointer and
    click-through so elementFromPoint resolves the board cell underneath. */
@@ -381,9 +373,3 @@
   font-weight: 700;
 }
 
-.controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}

@@ -6,7 +6,9 @@ import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
-const modules = import.meta.glob("./**/*.ts");
+// Excludes test files: globbing them made each test module import the
+// others, which reads as a dependency cycle and loads them needlessly.
+const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
 
 /** Only the words these tests actually need. */
 const WORDS = ["AD", "DO", "AT", "TO", "A", "I", "ACE", "CAM", "EMU", "EM"];

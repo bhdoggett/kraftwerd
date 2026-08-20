@@ -1,8 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import { GAME, RACK } from "../shared/config.js";
 import { refill } from "../shared/engine/rack.js";
-import type { Id } from "./_generated/dataModel";
 import { env, mutation, query, type MutationCtx } from "./_generated/server";
+import { requireUser } from "./auth_helpers";
 
 /**
  * Helpers for exercising multiplayer alone.
@@ -18,25 +18,30 @@ function requireDevTools() {
   }
 }
 
-async function requireUser(ctx: MutationCtx): Promise<Id<"users">> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) throw new ConvexError("Not signed in");
-
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-    .unique();
-  if (user === null) throw new ConvexError("No user record for this identity");
-
-  return user._id;
-}
-
 export const enabled = query({
   args: {},
   handler: async () => env.DEV_TOOLS === "1",
 });
 
 const STAND_INS = ["Robin Test", "Sam Test", "Alex Test"];
+
+/** The stand-in with this name, created on first use. */
+async function standIn(ctx: MutationCtx, name: string) {
+  const authId = `dev|${name.toLowerCase().replace(/\s+/g, "-")}`;
+
+  const existing = await ctx.db
+    .query("users")
+    .withIndex("by_authId", (q) => q.eq("authId", authId))
+    .unique();
+  if (existing !== null) return existing;
+
+  const id = await ctx.db.insert("users", {
+    authId,
+    name,
+    email: `${authId.replace("|", ".")}@example.test`,
+  });
+  return await ctx.db.get("users", id);
+}
 
 /** Create stand-in players and befriend them, so the friends list has entries. */
 export const seedFriends = mutation({
@@ -46,21 +51,7 @@ export const seedFriends = mutation({
     const me = await requireUser(ctx);
 
     for (const name of STAND_INS) {
-      const authId = `dev|${name.toLowerCase().replace(/\s+/g, "-")}`;
-
-      let user = await ctx.db
-        .query("users")
-        .withIndex("by_authId", (q) => q.eq("authId", authId))
-        .unique();
-
-      if (user === null) {
-        const id = await ctx.db.insert("users", {
-          authId,
-          name,
-          email: `${authId.replace("|", ".")}@example.test`,
-        });
-        user = await ctx.db.get("users", id);
-      }
+      const user = await standIn(ctx, name);
       if (user === null) continue;
 
       const existing = await ctx.db
@@ -136,21 +127,8 @@ export const fillSeats = mutation({
     let seat = players.length;
     for (const name of STAND_INS) {
       if (seat >= game.playerCount) break;
-      const authId = `dev|${name.toLowerCase().replace(/\s+/g, "-")}`;
-
-      let user = await ctx.db
-        .query("users")
-        .withIndex("by_authId", (q) => q.eq("authId", authId))
-        .unique();
-      if (user === null) {
-        const id = await ctx.db.insert("users", {
-          authId,
-          name,
-          email: `${authId.replace("|", ".")}@example.test`,
-        });
-        user = await ctx.db.get("users", id);
-      }
-      if (user === null || players.some((p) => p.userId === user!._id)) continue;
+      const user = await standIn(ctx, name);
+      if (user === null || players.some((p) => p.userId === user._id)) continue;
 
       const rack = refill([], Math.random, RACK);
       await ctx.db.insert("players", {

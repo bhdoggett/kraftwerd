@@ -7,12 +7,12 @@ import { useEffect, useState } from "react";
  */
 export type Route = { name: "lobby" } | { name: "game"; gameId: string };
 
-export function parseRoute(pathname: string): Route {
+function parseRoute(pathname: string): Route {
   const match = /^\/game\/([^/]+)\/?$/.exec(pathname);
   return match ? { name: "game", gameId: match[1]! } : { name: "lobby" };
 }
 
-export function routeToPath(route: Route): string {
+function routeToPath(route: Route): string {
   return route.name === "game" ? `/game/${route.gameId}` : "/";
 }
 

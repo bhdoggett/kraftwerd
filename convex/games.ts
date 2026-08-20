@@ -9,6 +9,7 @@ import { refill } from "../shared/engine/rack.js";
 import { scoreTurn, type Placement } from "../shared/engine/score.js";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { displayName, requireUser } from "./auth_helpers";
 import { placement } from "./schema";
 
 function pickLayout(): string {
@@ -28,28 +29,6 @@ function boardShape(game: Doc<"games">) {
 
 /** Upper bound on tiles we ever read: the game ends at `endThreshold`. */
 const MAX_TILES = 512;
-
-/**
- * The signed-in player's app user row.
- *
- * Better Auth puts its user id in the JWT subject, so identity resolves with
- * one indexed read instead of a round-trip into the auth component. Convex has
- * already verified the token's signature and expiry; the component's extra
- * session check would only add revoke-before-expiry precision, which this game
- * does not need.
- */
-async function requireUser(ctx: QueryCtx | MutationCtx): Promise<Id<"users">> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) throw new ConvexError("Not signed in");
-
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-    .unique();
-  if (user === null) throw new ConvexError("No user record for this identity");
-
-  return user._id;
-}
 
 async function loadTiles(ctx: QueryCtx | MutationCtx, gameId: Id<"games">) {
   return await ctx.db
@@ -226,8 +205,8 @@ export const joinGame = mutation({
   },
 });
 
-/** Throw unless these two have an accepted friendship. */
-async function requireFriendship(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
+/** The friendship row linking two people, whichever way round it was made. */
+async function friendshipBetween(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
   const [forward, back] = await Promise.all([
     ctx.db
       .query("friendships")
@@ -238,8 +217,13 @@ async function requireFriendship(ctx: MutationCtx, a: Id<"users">, b: Id<"users"
       .withIndex("by_pair", (q) => q.eq("requesterId", b).eq("addresseeId", a))
       .unique(),
   ]);
+  return forward ?? back;
+}
 
-  if (![forward, back].some((edge) => edge?.status === "accepted")) {
+/** Throw unless these two have an accepted friendship. */
+async function requireFriendship(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
+  const edge = await friendshipBetween(ctx, a, b);
+  if (edge?.status !== "accepted") {
     throw new ConvexError("You are not friends with that player");
   }
 }
@@ -252,18 +236,7 @@ async function requireFriendship(ctx: MutationCtx, a: Id<"users">, b: Id<"users"
 async function befriend(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
   if (a === b) return;
 
-  const [forward, back] = await Promise.all([
-    ctx.db
-      .query("friendships")
-      .withIndex("by_pair", (q) => q.eq("requesterId", a).eq("addresseeId", b))
-      .unique(),
-    ctx.db
-      .query("friendships")
-      .withIndex("by_pair", (q) => q.eq("requesterId", b).eq("addresseeId", a))
-      .unique(),
-  ]);
-
-  const existing = forward ?? back;
+  const existing = await friendshipBetween(ctx, a, b);
   if (existing !== null) {
     if (existing.status !== "accepted") {
       await ctx.db.patch("friendships", existing._id, { status: "accepted" });
@@ -608,14 +581,6 @@ function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true 
     case "invalid-words":
       return `Not a word: ${legality.words.join(", ")}`;
   }
-}
-
-/** Prefer a real name, fall back to the local part of the email. */
-function displayName(user: Doc<"users"> | null): string {
-  if (user === null) return "Unknown";
-  if (user.name && user.name.trim() !== "") return user.name;
-  if (user.email) return user.email.split("@")[0]!;
-  return "Player";
 }
 
 /**

@@ -1,29 +1,10 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
+import { currentUser, displayName } from "./auth_helpers";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 
 /** Most friendships anyone will have; keeps every query bounded. */
 const MAX_FRIENDS = 200;
-
-async function requireUser(ctx: QueryCtx | MutationCtx): Promise<Doc<"users">> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) throw new ConvexError("Not signed in");
-
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-    .unique();
-  if (user === null) throw new ConvexError("No user record for this identity");
-
-  return user;
-}
-
-function displayName(user: Doc<"users"> | null): string {
-  if (user === null) return "Unknown";
-  if (user.name && user.name.trim() !== "") return user.name;
-  if (user.email) return user.email.split("@")[0]!;
-  return "Player";
-}
 
 /** Every friendship row mentioning this user, in either direction. */
 async function edgesFor(ctx: QueryCtx, userId: Id<"users">) {
@@ -43,7 +24,7 @@ async function edgesFor(ctx: QueryCtx, userId: Id<"users">) {
 export const listFriends = query({
   args: {},
   handler: async (ctx) => {
-    const me = await requireUser(ctx);
+    const me = await currentUser(ctx);
     const { sent, received } = await edgesFor(ctx, me._id);
 
     const hydrate = async (edge: Doc<"friendships">, otherId: Id<"users">) => {
@@ -87,7 +68,7 @@ export const listFriends = query({
 export const requestFriend = mutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    const me = await requireUser(ctx);
+    const me = await currentUser(ctx);
     const email = args.email.trim().toLowerCase();
 
     if (email === "") throw new ConvexError("Enter an email address");
@@ -151,7 +132,7 @@ export const requestFriend = mutation({
 export const respondToRequest = mutation({
   args: { friendshipId: v.id("friendships"), accept: v.boolean() },
   handler: async (ctx, args) => {
-    const me = await requireUser(ctx);
+    const me = await currentUser(ctx);
 
     const edge = await ctx.db.get("friendships", args.friendshipId);
     if (edge === null) throw new ConvexError("No such request");
@@ -170,7 +151,7 @@ export const respondToRequest = mutation({
 export const removeFriend = mutation({
   args: { friendshipId: v.id("friendships") },
   handler: async (ctx, args) => {
-    const me = await requireUser(ctx);
+    const me = await currentUser(ctx);
 
     const edge = await ctx.db.get("friendships", args.friendshipId);
     if (edge === null) return null;
@@ -187,7 +168,7 @@ export const removeFriend = mutation({
 export const cancelInvite = mutation({
   args: { inviteId: v.id("friendInvites") },
   handler: async (ctx, args) => {
-    const me = await requireUser(ctx);
+    const me = await currentUser(ctx);
 
     const invite = await ctx.db.get("friendInvites", args.inviteId);
     if (invite === null) return null;

@@ -3,7 +3,7 @@ import { layoutByName, shapeOf } from "../../shared/boards";
 import type { Placement } from "../../shared/engine/score";
 import styles from "./Board.module.css";
 
-export interface BoardTile {
+interface BoardTile {
   x: number;
   y: number;
   letter: string;

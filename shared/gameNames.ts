@@ -24,5 +24,3 @@ export function gameName(random: () => number): string {
   const noun = NOUNS[Math.floor(random() * NOUNS.length)]!;
   return `${adjective} ${noun}`;
 }
-
-export const NAME_COMBINATIONS = ADJECTIVES.length * NOUNS.length;

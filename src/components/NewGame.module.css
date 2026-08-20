@@ -81,10 +81,6 @@
   white-space: nowrap;
 }
 
-.seats {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
 
 .actions {
   display: flex;

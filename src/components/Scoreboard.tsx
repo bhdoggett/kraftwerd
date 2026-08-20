@@ -1,6 +1,6 @@
 import styles from "./Scoreboard.module.css";
 
-export interface Standing {
+interface Standing {
   userId: string;
   seat: number;
   score: number;

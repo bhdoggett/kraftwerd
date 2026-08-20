@@ -9,7 +9,7 @@ export default defineConfig({
         test: {
           name: "engine",
           environment: "node",
-          include: ["shared/**/*.test.ts"],
+          include: ["shared/**/*.test.ts", "src/**/*.test.ts"],
         },
       },
       {

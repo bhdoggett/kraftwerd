@@ -4,7 +4,9 @@ import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 
-const modules = import.meta.glob("./**/*.ts");
+// Excludes test files: globbing them made each test module import the
+// others, which reads as a dependency cycle and loads them needlessly.
+const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
 
 async function twoUsers() {
   const t = convexTest(schema, modules);

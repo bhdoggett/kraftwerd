@@ -6,7 +6,6 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { makeBoard } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
-import { runsThrough } from "../../shared/engine/runs";
 import { layoutByName, shapeOf } from "../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { Board } from "./Board";
@@ -14,6 +13,8 @@ import { DevTools } from "./DevTools";
 import styles from "./Game.module.css";
 import { Rack, type Selection } from "./Rack";
 import { userMessage } from "../lib/errors";
+import { markCells } from "../lib/boardFeedback";
+import { BLANK, moveToPosition, rackSlotUnder, shuffled } from "../lib/rackGeometry";
 import { useWakeLock } from "../lib/useWakeLock";
 import { Scoreboard } from "./Scoreboard";
 
@@ -68,134 +69,6 @@ function describeLegality(
 interface Staged extends Placement {
   from: Selection;
 }
-
-/**
- * Which rack tile the pointer is over, by the tile's real letter index.
- *
- * Deliberately geometric rather than `elementFromPoint`: tiles slide by
- * transform during a drag, so hit-testing would see them in their shifted
- * positions, reorder, shift them again, and oscillate. `offsetLeft` is layout
- * position and does not move while only transforms change, so the answer is
- * stable. A tile also has to be crossed past its middle before it counts,
- * which stops a tremble on the boundary from flapping the order.
- */
-function rackSlotUnder(
-  clientX: number,
-  clientY: number,
-): { overRack: boolean; position: number | null } {
-  const miss = { overRack: false, position: null };
-  const rack = document.querySelector("[data-rack]");
-  if (!(rack instanceof HTMLElement)) return miss;
-
-  const tiles = [...rack.querySelectorAll("[data-rack-slot]")].filter(
-    (el): el is HTMLElement => el instanceof HTMLElement,
-  );
-
-  const bounds = rack.getBoundingClientRect();
-  const insideRack =
-    clientY >= bounds.top &&
-    clientY <= bounds.bottom &&
-    clientX >= bounds.left &&
-    clientX <= bounds.right;
-
-  // Every tile is out on the board, so there is nothing to measure against and
-  // nothing that could be disturbed: the whole rack takes the tile back.
-  if (tiles.length === 0) {
-    return insideRack ? { overRack: true, position: 0 } : miss;
-  }
-
-  // Has to be over the rack at all: outside it the pointer is on the board,
-  // and nothing in the rack should stir.
-  if (!insideRack) return miss;
-
-  // The tiles are centred, so there is empty rack either side of them. Both
-  // sides are drop targets: left of the tiles means the start, right of them
-  // means the end.
-  const first = tiles[0]!.getBoundingClientRect();
-  if (clientX < first.left) return { overRack: true, position: 0 };
-
-  const localX = clientX - bounds.left + rack.scrollLeft;
-
-  // Position, not identity. The tiles are visually shifted by the preview
-  // while their layout boxes stay put, so asking "which letter is under the
-  // pointer" gives an answer that disagrees with what the player sees — that
-  // mismatch is what made a drag skip past letters. Asking "which slot is the
-  // pointer in" is the same question in both frames.
-  for (const [position, el] of tiles.entries()) {
-    if (localX < el.offsetLeft + el.offsetWidth) return { overRack: true, position };
-  }
-  // Past every tile: append.
-  return { overRack: true, position: tiles.length };
-}
-
-/**
- * Placed squares that do not reach the rest of the board.
- *
- * Floods orthogonally from a tile that was already on the board — or from the
- * first placement when the board was empty — and reports whichever placements
- * the flood never reached.
- */
-function disconnectedCells(
-  board: ReturnType<typeof makeBoard>,
-  placements: readonly Placement[],
-): Set<string> {
-  const orphans = new Set<string>();
-  const placedKeys = new Set(placements.map((p) => `${p.x},${p.y}`));
-
-  const existing = [...board.keys()].find((key) => !placedKeys.has(key));
-  const first = placements[0];
-  const start = existing ?? (first ? `${first.x},${first.y}` : undefined);
-  if (start === undefined) return orphans;
-
-  const seen = new Set([start]);
-  const queue = [start];
-
-  while (queue.length > 0) {
-    const [x, y] = queue.pop()!.split(",").map(Number);
-    for (const [dx, dy] of NEIGHBOURS) {
-      const key = `${x! + dx},${y! + dy}`;
-      if (!board.has(key) || seen.has(key)) continue;
-      seen.add(key);
-      queue.push(key);
-    }
-  }
-
-  for (const key of placedKeys) if (!seen.has(key)) orphans.add(key);
-  return orphans;
-}
-
-/**
- * Move `value` to `position` among the tiles on show, keeping staged tiles
- * (which are hidden) after them. Positions are what the player is aiming at;
- * doing this in terms of the full order would count hidden tiles the player
- * cannot see.
- */
-function moveToPosition(
-  order: readonly number[],
-  hidden: readonly number[],
-  value: number,
-  position: number,
-): number[] {
-  const visible = order.filter((i) => !hidden.includes(i));
-  const from = visible.indexOf(value);
-  if (from < 0) return [...order];
-
-  const next = [...visible];
-  next.splice(from, 1);
-  next.splice(Math.max(0, Math.min(position, next.length)), 0, value);
-
-  return [...next, ...order.filter((i) => hidden.includes(i))];
-}
-
-/** Stands for the blank in the rack order, alongside the letters' indices. */
-const BLANK = -1;
-
-const NEIGHBOURS = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-] as const;
 
 /** Where a drag started: the rack, or a tile already staged on the board. */
 type Origin = { kind: "rack"; selection: Selection } | { kind: "cell"; x: number; y: number };
@@ -310,45 +183,14 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * what is valid or not -- not the tiles you happened to add to it.
    */
   const wordCells = useMemo(() => {
-    const good = new Set<string>();
-    const bad = new Set<string>();
     if (!boards || placements.length === 0 || checked === undefined) {
-      return { good, bad };
+      return { good: new Set<string>(), bad: new Set<string>() };
     }
-
-    const validity = new Map(checked.map((entry) => [entry.word, entry.valid]));
-    const staged = new Set(placements.map((p) => `${p.x},${p.y}`));
-    const inSomeRun = new Set<string>();
-
-    for (const run of runsThrough(boards.after, placements)) {
-      const target = validity.get(run.word) === true ? good : bad;
-      for (const cell of run.cells) {
-        const key = `${cell.x},${cell.y}`;
-        inSomeRun.add(key);
-        // The run's verdict, but shown only on the tiles you just placed —
-        // already-played tiles are not part of this turn.
-        if (staged.has(key)) target.add(key);
-      }
-    }
-
-    // A tile touching nothing forms no run, so the loop above never saw it.
-    // On its own it has to be a word in its own right — only A and I are.
-    for (const p of placements) {
-      const key = `${p.x},${p.y}`;
-      if (inSomeRun.has(key)) continue;
-      if (validity.get(p.letter.toUpperCase()) === true) good.add(key);
-      else bad.add(key);
-    }
-
-    // Connectivity is separate from spelling: a perfectly good word that does
-    // not reach the rest of the board is still an illegal play, and the board
-    // should say so rather than leaving it to the message underneath.
-    for (const key of disconnectedCells(boards.after, placements)) bad.add(key);
-
-    // A square can sit in a good word one way and a bad one the other; the
-    // problem is what needs pointing at.
-    for (const key of bad) good.delete(key);
-    return { good, bad };
+    return markCells(
+      boards.after,
+      placements,
+      new Map(checked.map((entry) => [entry.word, entry.valid])),
+    );
   }, [boards, placements, checked]);
 
   /**
@@ -382,14 +224,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   }, [rackSignature]);
 
   function shuffleRack() {
-    setRackOrder((current) => {
-      const next = [...current];
-      for (let i = next.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [next[i], next[j]] = [next[j]!, next[i]!];
-      }
-      return next;
-    });
+    setRackOrder(shuffled);
   }
 
   /** Drop a dragged rack tile into a position, sliding the rest along. */
