@@ -100,9 +100,7 @@ export function shapeOf(layout: BoardLayout): BoardShape {
   return { name: layout.name, size, blocked, centre: { x: middle, y: middle } };
 }
 
-export function layoutByName(name: string): BoardLayout {
-  return BOARD_LAYOUTS.find((l) => l.name === name) ?? BOARD_LAYOUTS[0]!;
-}
+
 
 /** The name new games use: a board with nothing blocked out. */
 export const OPEN_BOARD = "Open";

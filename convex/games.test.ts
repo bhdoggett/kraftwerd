@@ -717,19 +717,8 @@ describe("the board", () => {
     ).rejects.toThrow("cover the centre");
   });
 
-  // New games are open boards; the drawn layouts and the rule enforcing them
-  // are kept, so a game already dealt one still behaves.
-  test("a blocked square cannot be played on", async () => {
-    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
-
-    // Bars blocks (6,2); the opening word covers the centre and runs into it.
-    await expect(
-      asAlice.mutation(api.games.placeTiles, {
-        gameId,
-        placements: [at(0, 0, "A"), { x: 6, y: 2, letter: "D", isBlank: false }],
-      }),
-    ).rejects.toThrow("cannot be played on");
-  });
+  // Blocked squares are still a rule the engine enforces — see
+  // shared/engine/legality.test.ts — but no board carries them now.
 
   test("new games are played on an open board", async () => {
     // The harness pins a drawn layout so the test above has a blocked square

@@ -22,9 +22,15 @@ function pickLayout(): string {
   return OPEN_BOARD;
 }
 
-/** The board a game is played on, as the rules need it. */
+/**
+ * The board a game is played on.
+ *
+ * Every game is open, including ones dealt a drawn layout before boards
+ * stopped carrying blocked squares — otherwise those games would keep
+ * enforcing a shape the board no longer draws.
+ */
 function boardShape(game: Doc<"games">) {
-  const shape = boardShapeNamed(game.layout, game.boardSize);
+  const shape = boardShapeNamed(OPEN_BOARD, game.boardSize);
   return {
     width: game.boardSize,
     height: game.boardSize,
@@ -641,7 +647,7 @@ export const getGame = query({
     const seated = players.filter((p) => p.status !== "invited");
 
     return {
-      layout: game.layout ?? OPEN_BOARD,
+      layout: OPEN_BOARD,
       /** A free seat, in a game filled by link rather than by invitation. */
       canJoin:
         you === undefined &&

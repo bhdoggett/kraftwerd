@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { BOARD_LAYOUTS, shapeOf } from "./boards.js";
+import { BOARD_LAYOUTS, boardShapeNamed, shapeOf } from "./boards.js";
 
 describe.each(BOARD_LAYOUTS)("$name", (layout) => {
   const shape = shapeOf(layout);
@@ -68,5 +68,20 @@ describe.each(BOARD_LAYOUTS)("$name", (layout) => {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       expect(blocked(x + dx!, y + dy!)).toBe(false);
     }
+  });
+});
+
+describe("boardShapeNamed", () => {
+  test("an unknown name means an open board, not the first drawn one", () => {
+    // Falling back to a drawn layout is what painted blocked squares onto a
+    // board that has none.
+    const shape = boardShapeNamed("Open", 15);
+    expect(shape.blocked.size).toBe(0);
+    expect(shape.centre).toEqual({ x: 7, y: 7 });
+  });
+
+  test("a name that is drawn still resolves to that board", () => {
+    const shape = boardShapeNamed("Bars", 15);
+    expect(shape.blocked.size).toBeGreaterThan(0);
   });
 });

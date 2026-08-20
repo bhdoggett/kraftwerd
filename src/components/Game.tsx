@@ -6,7 +6,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { makeBoard } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
-import { layoutByName, shapeOf } from "../../shared/boards";
+import { boardShapeNamed } from "../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { Board } from "./Board";
 import { DevTools } from "./DevTools";
@@ -206,7 +206,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
       checked.filter((entry) => entry.valid).map((entry) => entry.word),
     );
 
-    const shape = shapeOf(layoutByName(view.layout));
+    const shape = boardShapeNamed(view.layout, view.game.boardSize);
     return validateTurn(boards.before, placements, dictionary, {
       width: view.game.boardSize,
       height: view.game.boardSize,

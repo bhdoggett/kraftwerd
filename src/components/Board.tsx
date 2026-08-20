@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { layoutByName, shapeOf } from "../../shared/boards";
+import { boardShapeNamed } from "../../shared/boards";
 import type { Placement } from "../../shared/engine/score";
 import styles from "./Board.module.css";
 
@@ -50,7 +50,13 @@ export function Board({
   onPickUp,
   onGrabStaged,
 }: BoardProps) {
-  const shape = useMemo(() => shapeOf(layoutByName(layout)), [layout]);
+  // Resolved by name rather than looked up: an unknown name means an open
+  // board, where layoutByName would fall back to the first drawn layout and
+  // paint blocked squares onto a board that has none.
+  const shape = useMemo(
+    () => boardShapeNamed(layout, boardSize),
+    [layout, boardSize],
+  );
 
   /**
    * One pointer drags the board, two pinch it.
