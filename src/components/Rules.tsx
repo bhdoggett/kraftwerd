@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GAME, RACK } from "../../shared/config";
+import { HelpIcon } from "./Icons";
 import styles from "./Rules.module.css";
 
 /**
@@ -20,7 +21,7 @@ export function Rules() {
         aria-label="How to play"
         title="How to play"
       >
-        ?
+        <HelpIcon />
       </button>
 
       {open && (
@@ -103,7 +104,8 @@ export function Rules() {
 
             <h3 className={styles.section}>Trading</h3>
             <p>
-              Swap any tiles for new ones with the ⇅ button. Trading{" "}
+              Swap any tiles for new ones with the trade button on the rack.
+              Trading{" "}
               <strong>gives up your turn</strong>.
             </p>
 

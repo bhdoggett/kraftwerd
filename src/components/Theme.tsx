@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
+import { MoonIcon, SunIcon, SystemIcon } from "./Icons";
 import styles from "./Theme.module.css";
 
 type Choice = "light" | "dark" | "system";
 
 const KEY = "kraftwerd:theme";
 const CHOICES: Choice[] = ["light", "dark", "system"];
-const LABEL: Record<Choice, string> = { light: "☀", dark: "☾", system: "◐" };
+const ICON: Record<Choice, ComponentType> = {
+  light: SunIcon,
+  dark: MoonIcon,
+  system: SystemIcon,
+};
 
 function stored(): Choice {
   const saved = window.localStorage.getItem(KEY);
@@ -31,6 +36,7 @@ export function Theme() {
   }, [choice]);
 
   const next = () => CHOICES[(CHOICES.indexOf(choice) + 1) % CHOICES.length]!;
+  const Icon = ICON[choice];
 
   return (
     <button
@@ -40,7 +46,7 @@ export function Theme() {
       aria-label={`Theme: ${choice}. Switch to ${next()}.`}
       title={`Theme: ${choice}`}
     >
-      {LABEL[choice]}
+      <Icon />
     </button>
   );
 }

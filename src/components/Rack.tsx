@@ -1,4 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { RecallIcon, ShuffleIcon, TradeIcon } from "./Icons";
 import styles from "./Rack.module.css";
 
 export type Selection = { kind: "letter"; index: number } | { kind: "blank" };
@@ -161,7 +162,7 @@ export function Rack({
           aria-label="Take every tile back off the board"
           title="Recall tiles"
         >
-          ↩
+          <RecallIcon />
         </button>
         <button
           type="button"
@@ -172,7 +173,7 @@ export function Rack({
           aria-label="Trade tiles in for new ones"
           title="Trade tiles"
         >
-          ⇅
+          <TradeIcon />
         </button>
         <button
           type="button"
@@ -181,7 +182,7 @@ export function Rack({
           aria-label="Shuffle your tiles"
           title="Shuffle"
         >
-          ⇄
+          <ShuffleIcon />
         </button>
         <button
           type="button"
