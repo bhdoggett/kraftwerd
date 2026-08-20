@@ -226,6 +226,37 @@ describe("evaluateCommand", () => {
     expect(evaluateCommand(block)).toBeNull();
   });
 
+  test("blocks a dangerous branch delete even when it is not the first branch call", () => {
+    expect(evaluateCommand("git branch -d ben/a && git branch -D ben/b")?.id).toBe(
+      "force-delete-branch",
+    );
+  });
+
+  test("preserves safe branch deletes as the negative control", () => {
+    expect(evaluateCommand("git branch -d ben/old-work")).toBeNull();
+    expect(evaluateCommand("git branch --delete ben/old-work")).toBeNull();
+  });
+
+  test("blocks a dangerous pull --rebase even when it is not the first pull call", () => {
+    expect(evaluateCommand("git pull origin && git pull --rebase")?.id).toBe("rebase");
+  });
+
+  test("preserves a plain pull off main as the negative control", () => {
+    expect(evaluateCommand("git pull", { branch: "ben/work" })).toBeNull();
+    expect(evaluateCommand("git pull")).toBeNull();
+  });
+
+  test("blocks a config write even when preceded by an innocent read", () => {
+    expect(
+      evaluateCommand("git config user.email && git config user.email x@y.com")?.id,
+    ).toBe("set-identity");
+  });
+
+  test("preserves a bare config read as the negative control", () => {
+    expect(evaluateCommand("git config user.email")).toBeNull();
+    expect(evaluateCommand("git config --get user.email")).toBeNull();
+  });
+
   test("blocks commands prefixed with a production env var assignment", () => {
     expect(evaluateCommand("CONVEX_DEPLOY_KEY=prod:abc npx convex env list")?.id).toBe(
       "prod-flag",

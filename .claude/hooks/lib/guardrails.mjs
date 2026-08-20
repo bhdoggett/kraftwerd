@@ -156,16 +156,16 @@ const RULES = [
       // It is the single likeliest command to show up right after a
       // rejected push, and recovering from a bad one needs a force push,
       // which is also blocked — so it gets caught here too.
-      const pullArgs = new RegExp(GIT_PREFIX + "pull\\b([^&|;\\n]*)").exec(command);
-      if (!pullArgs) return false;
-      const tokens = pullArgs[1].trim().split(/\s+/).filter(Boolean);
-      return tokens.some(
-        (token) =>
-          token === "--rebase" ||
-          token.startsWith("--rebase=") ||
-          token === "-r" ||
-          (/^-[A-Za-z]+$/.test(token) && token.slice(1).includes("r")),
-      );
+      return allOccurrences(command, "pull").some((argString) => {
+        const tokens = argString.trim().split(/\s+/).filter(Boolean);
+        return tokens.some(
+          (token) =>
+            token === "--rebase" ||
+            token.startsWith("--rebase=") ||
+            token === "-r" ||
+            (/^-[A-Za-z]+$/.test(token) && token.slice(1).includes("r")),
+        );
+      });
     },
     reason:
       "Rebasing rewrites history, and recovering from a bad one needs a force push, which is also " +
@@ -185,31 +185,33 @@ const RULES = [
   {
     id: "force-delete-branch",
     matches: (command) => {
-      const branchArgs = new RegExp(GIT_PREFIX + "branch\\b([^&|;\\n]*)").exec(command);
-      if (!branchArgs) return false;
-      const tokens = branchArgs[1].trim().split(/\s+/).filter(Boolean);
       // Force and delete can arrive as separate long flags (--force
       // --delete, either order), separate short flags (-f -d, either
       // order), or clustered into one short token in any order and any
       // case (-D, -Df, -fd, -fD, ...) — capital D alone already means
       // "delete, forced". `--delete`/`-d` alone, with no force anywhere,
-      // stays allowed — that's the safe delete.
-      let hasForce = false;
-      let hasDelete = false;
-      for (const token of tokens) {
-        if (token === "--force") hasForce = true;
-        else if (token === "--delete") hasDelete = true;
-        else if (/^-[A-Za-z]+$/.test(token)) {
-          const letters = token.slice(1);
-          if (letters.includes("D")) {
-            hasForce = true;
-            hasDelete = true;
+      // stays allowed — that's the safe delete. Every `git branch` in the
+      // command is checked on its own, so a safe delete earlier in a
+      // chained command can't hide a forced one later.
+      return allOccurrences(command, "branch").some((argString) => {
+        const tokens = argString.trim().split(/\s+/).filter(Boolean);
+        let hasForce = false;
+        let hasDelete = false;
+        for (const token of tokens) {
+          if (token === "--force") hasForce = true;
+          else if (token === "--delete") hasDelete = true;
+          else if (/^-[A-Za-z]+$/.test(token)) {
+            const letters = token.slice(1);
+            if (letters.includes("D")) {
+              hasForce = true;
+              hasDelete = true;
+            }
+            if (letters.includes("d")) hasDelete = true;
+            if (letters.toLowerCase().includes("f")) hasForce = true;
           }
-          if (letters.includes("d")) hasDelete = true;
-          if (letters.toLowerCase().includes("f")) hasForce = true;
         }
-      }
-      return hasForce && hasDelete;
+        return hasForce && hasDelete;
+      });
     },
     reason:
       "Deleting a branch with force removes it even when it holds work that was never sent to GitHub. " +
@@ -253,16 +255,22 @@ const RULES = [
       // `git -c user.email=... <anything>` sets the identity inline for
       // that one call, regardless of which verb follows.
       if (/-c\s+(user\.email|user\.name)\s*=/.test(command)) return true;
-      const configArgs = new RegExp(GIT_PREFIX + "config\\b([^&|;\\n]*)").exec(command);
-      if (!configArgs) return false;
-      const tokens = configArgs[1].trim().split(/\s+/).filter(Boolean);
-      const nonFlags = tokens.filter((token) => !token.startsWith("-"));
-      const keyIndex = nonFlags.findIndex((token) => token === "user.email" || token === "user.name");
-      if (keyIndex === -1) return false;
-      // A value after the key means this call writes it. `git config
-      // user.email` with nothing after it only reads the current value —
-      // the hooks themselves rely on being able to do exactly that.
-      return keyIndex < nonFlags.length - 1;
+      // Every `git config` in the command is checked on its own — a bare
+      // read ("check it first") must not hide a write later in the same
+      // command, which is exactly the "check then set" pair an agent
+      // produces after git refuses to commit with no identity configured.
+      return allOccurrences(command, "config").some((argString) => {
+        const tokens = argString.trim().split(/\s+/).filter(Boolean);
+        const nonFlags = tokens.filter((token) => !token.startsWith("-"));
+        const keyIndex = nonFlags.findIndex(
+          (token) => token === "user.email" || token === "user.name",
+        );
+        if (keyIndex === -1) return false;
+        // A value after the key means this call writes it. `git config
+        // user.email` with nothing after it only reads the current value —
+        // the hooks themselves rely on being able to do exactly that.
+        return keyIndex < nonFlags.length - 1;
+      });
     },
     reason:
       "This rewrites the git identity the guardrails use to tell you apart from Ben, and every " +
