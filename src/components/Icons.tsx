@@ -79,23 +79,30 @@ export function MoonIcon({ size = 16 }: IconProps) {
   );
 }
 
-/** Follow the system: a circle half filled. */
+/**
+ * Follow the system: half sun, half moon. A half-filled circle would be the
+ * usual drawing, but inside a round button it is another ring in a ring.
+ */
 export function SystemIcon({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none" />
+      <path d="M12 4v16" />
+      <path d="M12 8a4 4 0 0 1 0 8" fill="currentColor" stroke="none" />
+      <path d="M6.5 12H4M7.9 7.9 6.2 6.2M7.9 16.1l-1.7 1.7" />
+      <path d="M20 12a4.5 4.5 0 0 1-5.6 4.4A5.6 5.6 0 0 0 14.4 7.6 4.5 4.5 0 0 1 20 12Z" />
     </svg>
   );
 }
 
-/** The rules. */
+/**
+ * The rules. Just the mark, no ring: the button it sits in is already a
+ * circle, and a circle drawn inside a circle reads as a mistake.
+ */
 export function HelpIcon({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.3" />
-      <path d="M12 17.2h.01" />
+      <path d="M8.5 8.6a3.6 3.6 0 1 1 5 3.3c-.9.4-1.5 1.2-1.5 2.2v.6" />
+      <path d="M12 18.4h.01" />
     </svg>
   );
 }
