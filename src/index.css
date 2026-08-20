@@ -59,6 +59,15 @@
 
   --cell-size: 36px;
 
+  /*
+   * Rack tile size. At the root rather than on the rack, because the tile that
+   * follows the pointer during a drag is a sibling of the rack and has to
+   * match whatever size it is using.
+   */
+  --rack-tile-width: 48px;
+  --rack-tile-height: 54px;
+  --rack-gap: 0.5rem;
+
   --shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 8px rgb(0 0 0 / 0.04);
   --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.14), 0 6px 16px rgb(0 0 0 / 0.1);
 
