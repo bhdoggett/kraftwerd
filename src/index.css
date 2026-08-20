@@ -66,8 +66,12 @@
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
+/*
+ * Dark values live in one block, applied either because the system asks for
+ * dark and no explicit choice overrides it, or because dark was chosen.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --surface: #17161a;
     --surface-raised: #201f24;
     --surface-sunken: #111014;
@@ -104,6 +108,45 @@
     --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.5), 0 6px 16px rgb(0 0 0 / 0.4);
   }
 }
+
+/* The same values again, for when dark is chosen on a light system. */
+:root[data-theme="dark"] {
+  --surface: #17161a;
+  --surface-raised: #201f24;
+  --surface-sunken: #111014;
+  --border: #33313a;
+  --border-strong: #4c4955;
+
+  --text: #eceaf0;
+  --text-muted: #9a95a5;
+  --text-inverse: #17161a;
+
+  --cell-empty: #1c1b21;
+  --cell-line: #2b2933;
+  --cell-blocked: #08080a;
+  --tile-face: #d8c69b;
+  --tile-edge: #a08d63;
+  --tile-text: #262010;
+  --tile-blank-face: #b9bfc9;
+  --tile-blank-edge: #8b919c;
+
+  --accent: #6aa17f;
+  --accent-hover: #7cb391;
+  --accent-soft: #24352c;
+  --pending: #d98a52;
+  --pending-soft: #3a2a1e;
+  --danger: #d97a6c;
+  --danger-soft: #3a221e;
+
+  --seat-0: #6aa17f;
+  --seat-1: #6f9fc4;
+  --seat-2: #c9975c;
+  --seat-3: #a985ad;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.3);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.5), 0 6px 16px rgb(0 0 0 / 0.4);
+}
+
 
 *,
 *::before,

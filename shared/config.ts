@@ -16,15 +16,17 @@ export const RACK: RackConfig = {
   weights,
   vowels: "AEIOU",
   /**
-   * One, not two or three.
+   * Two.
    *
-   * The blank can always stand in for a vowel, so a high floor mostly served
-   * to guarantee spare vowels rather than playability. Dropping to 1 takes
-   * "can build a 2x2 without spending the blank" from 82% to 55%, which makes
-   * the blank a real decision instead of a spare tile, while a vowel-less rack
-   * remains vanishingly rare at this size.
+   * At a floor of one, 35% of racks arrived with a single vowel and five
+   * consonants, which is barely playable on a six-letter rack. Two removes
+   * that case without stuffing the rack: the average only moves from 2.06 to
+   * 2.41, since most racks already had two or more.
+   *
+   * The blank can always stand in for a vowel as well, so this is about how
+   * the rack reads rather than whether a play exists at all.
    */
-  minVowels: 1,
+  minVowels: 2,
   maxDuplicates: 2,
 };
 

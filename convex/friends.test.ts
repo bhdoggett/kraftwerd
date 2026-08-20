@@ -82,12 +82,35 @@ describe("friends", () => {
     expect(bo.outgoing).toHaveLength(0);
   });
 
-  test("an unknown address is reported rather than silently ignored", async () => {
+  test("a request to an address nobody has used is held, not refused", async () => {
     const { asAna } = await twoUsers();
 
-    await expect(
-      asAna.mutation(api.friends.requestFriend, { email: "nobody@example.com" }),
-    ).rejects.toThrow("signed in to kraftwerd yet");
+    await asAna.mutation(api.friends.requestFriend, { email: "nobody@example.com" });
+
+    const list = await asAna.query(api.friends.listFriends);
+    expect(list.invited).toEqual([
+      expect.objectContaining({ email: "nobody@example.com" }),
+    ]);
+    expect(list.outgoing).toHaveLength(0);
+  });
+
+  test("holding the same address twice does not stack up invites", async () => {
+    const { asAna } = await twoUsers();
+
+    await asAna.mutation(api.friends.requestFriend, { email: "nobody@example.com" });
+    await asAna.mutation(api.friends.requestFriend, { email: "NOBODY@example.com" });
+
+    expect((await asAna.query(api.friends.listFriends)).invited).toHaveLength(1);
+  });
+
+  test("a held invite can be withdrawn", async () => {
+    const { asAna } = await twoUsers();
+    await asAna.mutation(api.friends.requestFriend, { email: "nobody@example.com" });
+
+    const held = (await asAna.query(api.friends.listFriends)).invited[0]!;
+    await asAna.mutation(api.friends.cancelInvite, { inviteId: held.inviteId });
+
+    expect((await asAna.query(api.friends.listFriends)).invited).toHaveLength(0);
   });
 
   test("you cannot befriend yourself", async () => {

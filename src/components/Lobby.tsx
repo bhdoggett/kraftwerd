@@ -143,8 +143,13 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               {g.name}
               <br />
               <span className={styles.meta}>
-                {g.status === "lobby" ? "waiting for players" : `${g.yourScore} pts`} ·{" "}
-                {g.tileCount} tiles
+                {g.opponents.length === 0
+                  ? "solo"
+                  : g.opponents
+                      .map((o) => (o.pending ? `${o.name} (invited)` : o.name))
+                      .join(", ")}
+                {" · "}
+                {g.status === "lobby" ? "waiting" : `${g.yourScore} pts`}
               </span>
             </span>
             {g.yourTurn && <span className={styles.badge}>Your turn</span>}
@@ -171,6 +176,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               <div key={g.gameId} className={styles.row}>
                 <span className={styles.grow}>
                   {g.name} — {g.youWon ? "won" : "lost"} · {g.yourScore} pts
+                  {g.opponents.length > 0 &&
+                    ` vs ${g.opponents.map((o) => o.name).join(", ")}`}
                   <br />
                   <span className={styles.meta}>
                     {g.abandoned ? "someone quit" : `${g.tileCount} tiles`}

@@ -14,6 +14,7 @@ import { DevTools } from "./DevTools";
 import styles from "./Game.module.css";
 import { Rack, type Selection } from "./Rack";
 import { userMessage } from "../lib/errors";
+import { useWakeLock } from "../lib/useWakeLock";
 import { Scoreboard } from "./Scoreboard";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -459,6 +460,9 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   }, [draggedLetterIndex, rackHover, rackOrder, spentIndices]);
 
 
+
+  // A turn is mostly thinking, so the screen should not dim mid-thought.
+  useWakeLock(view?.game.status === "active");
 
   const turnNumber = view?.game.turnNumber;
 

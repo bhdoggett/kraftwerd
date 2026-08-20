@@ -5,6 +5,7 @@ import { components, internal } from "./_generated/api";
 import { env } from "./_generated/server";
 import type { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
+import { claimInvites } from "./friends";
 
 // Declared in convex.config.ts, so these are typed rather than read as bare
 // strings off process.env. They are optional so the app still pushes before a
@@ -50,12 +51,14 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
     // transaction, so game documents can hold a real Id<"users">.
     user: {
       onCreate: async (ctx, doc) => {
-        await ctx.db.insert("users", {
+        const userId = await ctx.db.insert("users", {
           authId: doc._id,
           email: doc.email,
           name: doc.name ?? undefined,
           image: doc.image ?? undefined,
         });
+        // Anyone who asked to be their friend before they had an account.
+        await claimInvites(ctx, userId, doc.email);
       },
       onUpdate: async (ctx, newDoc) => {
         const user = await ctx.db

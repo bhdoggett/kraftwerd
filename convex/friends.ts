@@ -73,6 +73,13 @@ export const listFriends = query({
       outgoing: await Promise.all(
         sent.filter((e) => e.status === "pending").map((e) => hydrate(e, e.addresseeId)),
       ),
+      // Sent to an address nobody has signed in with yet.
+      invited: (
+        await ctx.db
+          .query("friendInvites")
+          .withIndex("by_requester", (q) => q.eq("requesterId", me._id))
+          .take(MAX_FRIENDS)
+      ).map((invite) => ({ inviteId: invite._id, email: invite.email })),
     };
   },
 });
@@ -91,10 +98,18 @@ export const requestFriend = mutation({
       .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
 
-    // Deliberately explicit rather than a vague "request sent": there is no
-    // invitation email, so a silent no-op would look like a bug.
+    // Nobody with that address yet: hold the request until somebody signs in
+    // with it. Otherwise you could only befriend people already playing, which
+    // is the wrong way round for inviting anyone.
     if (them === null) {
-      throw new ConvexError("Nobody with that address has signed in to kraftwerd yet");
+      const held = await ctx.db
+        .query("friendInvites")
+        .withIndex("by_pair", (q) => q.eq("requesterId", me._id).eq("email", email))
+        .unique();
+      if (held === null) {
+        await ctx.db.insert("friendInvites", { requesterId: me._id, email });
+      }
+      return null;
     }
 
     // A pair can already be linked from either direction.
@@ -167,3 +182,48 @@ export const removeFriend = mutation({
     return null;
   },
 });
+
+/** Withdraw an invitation sent to an address nobody has claimed yet. */
+export const cancelInvite = mutation({
+  args: { inviteId: v.id("friendInvites") },
+  handler: async (ctx, args) => {
+    const me = await requireUser(ctx);
+
+    const invite = await ctx.db.get("friendInvites", args.inviteId);
+    if (invite === null) return null;
+    if (invite.requesterId !== me._id) throw new ConvexError("That invite is not yours");
+
+    await ctx.db.delete("friendInvites", args.inviteId);
+    return null;
+  },
+});
+
+/**
+ * Turn any invitations addressed to this user into pending friendships.
+ *
+ * Called when a user record is created, so somebody who was invited before
+ * they had an account finds the request waiting rather than lost.
+ */
+export async function claimInvites(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  email: string | undefined,
+) {
+  if (email === undefined) return;
+
+  const invites = await ctx.db
+    .query("friendInvites")
+    .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
+    .take(MAX_FRIENDS);
+
+  for (const invite of invites) {
+    if (invite.requesterId !== userId) {
+      await ctx.db.insert("friendships", {
+        requesterId: invite.requesterId,
+        addresseeId: userId,
+        status: "pending",
+      });
+    }
+    await ctx.db.delete("friendInvites", invite._id);
+  }
+}

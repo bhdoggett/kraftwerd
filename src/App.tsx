@@ -6,6 +6,7 @@ import styles from "./App.module.css";
 import { Game } from "./components/Game";
 import { Lobby } from "./components/Lobby";
 import { Rules } from "./components/Rules";
+import { Theme } from "./components/Theme";
 import { authClient } from "./lib/auth-client";
 import { navigate, useRoute } from "./router";
 
@@ -37,6 +38,7 @@ export default function App() {
         </Authenticated>
         <span className={styles.spacer} />
         <Rules />
+        <Theme />
         <SignOutButton />
       </header>
 

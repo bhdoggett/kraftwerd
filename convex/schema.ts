@@ -110,6 +110,19 @@ export default defineSchema({
     .index("by_pair", ["requesterId", "addresseeId"]),
 
   /**
+   * A friend request sent to an address that has never signed in. Claimed when
+   * somebody signs in with that address, so an invitation can be sent to
+   * someone who has not heard of the game yet.
+   */
+  friendInvites: defineTable({
+    requesterId: v.id("users"),
+    email: v.string(),
+  })
+    .index("by_email", ["email"])
+    .index("by_requester", ["requesterId"])
+    .index("by_pair", ["requesterId", "email"]),
+
+  /**
    * One row per placed tile. A tiles array on the game document would hit the
    * 1MB limit and rewrite the whole board on every play.
    */

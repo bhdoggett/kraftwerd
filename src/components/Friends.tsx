@@ -10,6 +10,7 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const requestFriend = useMutation(api.friends.requestFriend);
   const respond = useMutation(api.friends.respondToRequest);
   const removeFriend = useMutation(api.friends.removeFriend);
+  const cancelInvite = useMutation(api.friends.cancelInvite);
   const createWithFriends = useMutation(api.games.createGameWithFriends);
 
   const [email, setEmail] = useState("");
@@ -96,8 +97,9 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         <div className={styles.section}>
           {data.friends.length === 0 && (
             <p className={styles.empty}>
-              No friends yet. Add someone by the email they signed in with — they
-              have to accept before you can start a game together.
+              No friends yet. Add anyone by email — if they have never played,
+              the request waits for them and turns up the first time they sign
+              in.
             </p>
           )}
 
@@ -125,6 +127,30 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
             </div>
           ))}
 
+        </div>
+      )}
+
+      {data && data.invited.length > 0 && (
+        <div className={styles.section}>
+          <h3 className={styles.heading}>Invited, not signed up yet</h3>
+          {data.invited.map((invite) => (
+            <div key={invite.inviteId} className={styles.row}>
+              <span className={styles.name}>
+                {invite.email}
+                <br />
+                <span className={styles.email}>
+                  becomes a friend request when they sign in
+                </span>
+              </span>
+              <button
+                type="button"
+                className={styles.secondary}
+                onClick={() => void cancelInvite({ inviteId: invite.inviteId })}
+              >
+                Cancel
+              </button>
+            </div>
+          ))}
         </div>
       )}
 

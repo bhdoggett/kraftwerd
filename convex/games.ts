@@ -717,7 +717,24 @@ export const listMyGames = query({
         if (game === null) return null;
 
         const creator = await ctx.db.get("users", game.createdBy);
+
+        // Who else is at the table, so the lobby says who a game is against
+        // rather than just naming it.
+        const seated = await ctx.db
+          .query("players")
+          .withIndex("by_game", (q) => q.eq("gameId", game._id))
+          .take(GAME.maxPlayers);
+        const others = await Promise.all(
+          seated
+            .filter((other) => other.userId !== p.userId)
+            .map(async (other) => ({
+              name: displayName(await ctx.db.get("users", other.userId)),
+              pending: other.status === "invited",
+            })),
+        );
+
         return {
+          opponents: others,
           gameId: game._id,
           name: game.name ?? "Game",
           status: game.status,
