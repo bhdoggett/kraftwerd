@@ -110,4 +110,86 @@ describe("evaluateCommand", () => {
     expect(denied.reason.length).toBeGreaterThan(40);
     expect(denied.reason).toMatch(/instead/i);
   });
+
+  test("allows the documented happy path as one multi-line block", () => {
+    const block = [
+      "git push -u origin ben/tile-colours",
+      'gh pr create --draft --base main --title "x" --body "y"',
+    ].join("\n");
+    expect(evaluateCommand(block)).toBeNull();
+    expect(evaluateCommand(block, { branch: "ben/tile-colours" })).toBeNull();
+  });
+
+  test("does not treat 'main' inside a branch name as a push to main", () => {
+    expect(evaluateCommand("git push -u origin sam/fix-main-menu")).toBeNull();
+    expect(
+      evaluateCommand("git push -u origin sam/fix-main-menu", { branch: "sam/fix-main-menu" }),
+    ).toBeNull();
+  });
+
+  test("still blocks push-to-main spelled with refs/heads", () => {
+    expect(evaluateCommand("git push origin refs/heads/main")?.id).toBe("push-to-main");
+  });
+
+  test("recognises git verbs behind a -C or -c prefix", () => {
+    expect(evaluateCommand("git -C /some/path push origin main")?.id).toBe("push-to-main");
+    expect(evaluateCommand("git -c core.pager=cat push origin main")?.id).toBe("push-to-main");
+  });
+
+  test("blocks clustered short flags on a force push", () => {
+    expect(evaluateCommand("git push -uf origin ben/work")?.id).toBe("force-push");
+  });
+
+  test("blocks git pull --rebase and git pull -r as rebases", () => {
+    expect(evaluateCommand("git pull --rebase")?.id).toBe("rebase");
+    expect(evaluateCommand("git pull --rebase origin main")?.id).toBe("rebase");
+    expect(evaluateCommand("git pull -r")?.id).toBe("rebase");
+  });
+
+  test("blocks a bare pull on main, but not elsewhere", () => {
+    expect(evaluateCommand("git pull", { branch: "main" })?.id).toBe("pull-on-main");
+    expect(evaluateCommand("git pull origin main", { branch: "main" })?.id).toBe("pull-on-main");
+    expect(evaluateCommand("git pull", { branch: "ben/work" })).toBeNull();
+    expect(evaluateCommand("git pull")).toBeNull();
+  });
+
+  test("blocks writing the git identity but allows reading it", () => {
+    expect(evaluateCommand("git config user.email bdoggett@gmail.com")?.id).toBe("set-identity");
+    expect(evaluateCommand("git config --global user.name Ben")?.id).toBe("set-identity");
+    expect(evaluateCommand("git -c user.email=bdoggett@gmail.com commit -m x")?.id).toBe(
+      "set-identity",
+    );
+    expect(evaluateCommand("git config user.email")).toBeNull();
+    expect(evaluateCommand("git config --get user.email")).toBeNull();
+  });
+
+  test("blocks merging a pull request through the GitHub API, not just gh pr merge", () => {
+    expect(evaluateCommand("gh api -X PUT repos/o/r/pulls/1/merge")?.id).toBe("pr-merge");
+    expect(evaluateCommand("gh api --method PUT repos/o/r/pulls/1/merge")?.id).toBe("pr-merge");
+  });
+
+  test("blocks commands that discard uncommitted work", () => {
+    expect(evaluateCommand("git clean -fdx")?.id).toBe("discard-work");
+    expect(evaluateCommand("git checkout -- .")?.id).toBe("discard-work");
+    expect(evaluateCommand("git restore --staged --worktree .")?.id).toBe("discard-work");
+    expect(evaluateCommand("git restore --staged file.txt")).toBeNull();
+  });
+
+  test("blocks convex commands that name an explicit deployment target", () => {
+    expect(evaluateCommand("npx convex env list --url https://x.convex.cloud")?.id).toBe(
+      "prod-flag",
+    );
+    expect(evaluateCommand("npx convex dev --once --deployment-name happy-otter-1")?.id).toBe(
+      "prod-flag",
+    );
+  });
+
+  test("blocks commands prefixed with a production env var assignment", () => {
+    expect(evaluateCommand("CONVEX_DEPLOY_KEY=prod:abc npx convex env list")?.id).toBe(
+      "prod-flag",
+    );
+    expect(evaluateCommand("CONVEX_DEPLOYMENT=happy-otter-1 npx convex data words")?.id).toBe(
+      "prod-flag",
+    );
+  });
 });

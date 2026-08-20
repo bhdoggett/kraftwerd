@@ -18,6 +18,18 @@ export function isOwner(email) {
 }
 
 /**
+ * `git` followed by an optional run of `-C <path>` / `-c <key>=<value>`
+ * prefix flags, then the mandatory whitespace before the subcommand verb.
+ * Every git-verb rule below is anchored on this instead of a bare `git\s+`,
+ * so `git -C /path push origin main` and `git -c user.email=x commit` are
+ * still recognised by the verb they actually run.
+ *
+ * A plain string (not a RegExp literal) so it can be spliced into other
+ * patterns with `new RegExp(...)`.
+ */
+const GIT_PREFIX = String.raw`git(?:\s+-C\s+\S+|\s+-c\s+\S+)*\s+`;
+
+/**
  * Rules are scanned against the whole command string rather than a parsed
  * argv, so `npm test && git push origin main` is caught as readily as the
  * bare push. False positives are acceptable here; a missed force-push is not.
@@ -26,7 +38,29 @@ const RULES = [
   {
     id: "push-to-main",
     matches: (command, context) => {
-      if (/git\s+push\b[^&|;]*\bmain\b/.test(command)) return true;
+      // `[^&|;\n]*` deliberately stops at a newline as well as the other
+      // command separators — otherwise a multi-line heredoc block (push on
+      // line one, an unrelated `main` on line two, e.g. `gh pr create
+      // --base main`) gets scanned as one command and denied for a `main`
+      // that was never the push's own destination.
+      const pushArgs = new RegExp(GIT_PREFIX + "push\\b([^&|;\\n]*)").exec(command);
+      if (!pushArgs) return false;
+      const positional = pushArgs[1]
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .filter((token) => !token.startsWith("-"));
+
+      // An explicit destination: a positional argument that names `main` as
+      // a whole ref, either bare or as the destination side of a `src:dst`
+      // refspec. This is checked by token rather than `\bmain\b` against the
+      // raw string so a branch name that merely contains "main" —eg.
+      // `sam/fix-main-menu` — is never caught.
+      for (const token of positional) {
+        const dst = token.includes(":") ? token.slice(token.indexOf(":") + 1) : token;
+        if (dst === "main" || dst === "refs/heads/main") return true;
+      }
+
       // A `git push` with no branch actually spelled out pushes the current
       // branch to its upstream (push.default=simple). If that current
       // branch is main, this is just as much a push-to-main as spelling it
@@ -35,13 +69,6 @@ const RULES = [
       // a branch. A second positional token, or a refspec (`HEAD:branch`)
       // packed into the first, is what makes the destination explicit.
       if (context?.branch !== "main") return false;
-      const pushArgs = /git\s+push\b([^&|;]*)/.exec(command);
-      if (!pushArgs) return false;
-      const positional = pushArgs[1]
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean)
-        .filter((token) => !token.startsWith("-"));
       if (positional.length === 0) return true;
       if (positional.length === 1 && !positional[0].includes(":")) return true;
       return false;
@@ -53,8 +80,20 @@ const RULES = [
   },
   {
     id: "force-push",
-    matches: (command) =>
-      /git\s+push\b[^&|;]*(--force\b|--force-with-lease\b|\s-f\b|\s\+\S)/.test(command),
+    matches: (command) => {
+      const pushArgs = new RegExp(GIT_PREFIX + "push\\b([^&|;\\n]*)").exec(command);
+      if (!pushArgs) return false;
+      const tokens = pushArgs[1].trim().split(/\s+/).filter(Boolean);
+      for (const token of tokens) {
+        if (token === "--force" || token === "--force-with-lease") return true;
+        if (token.startsWith("--force-with-lease=")) return true;
+        if (token.startsWith("+")) return true; // a `+refspec` forces on its own
+        // Clustered short flags, e.g. `-uf` or `-fu`, force just as much as
+        // a lone `-f` — the branch-delete rule below handles the same shape.
+        if (/^-[A-Za-z]+$/.test(token) && token.slice(1).includes("f")) return true;
+      }
+      return false;
+    },
     reason:
       "A force push overwrites history on GitHub and can erase work that is already saved there. " +
       "Instead: make a normal push. If it is rejected because the branch moved, bring in the latest " +
@@ -62,7 +101,7 @@ const RULES = [
   },
   {
     id: "reset-hard",
-    matches: (command) => /git\s+reset\b[^&|;]*--hard\b/.test(command),
+    matches: (command) => new RegExp(GIT_PREFIX + "reset\\b[^&|;\\n]*--hard\\b").test(command),
     reason:
       "This throws away uncommitted work permanently, with no undo. " +
       "Instead: save the work on the current branch, or say what should be undone and it can be " +
@@ -70,16 +109,42 @@ const RULES = [
   },
   {
     id: "rebase",
-    matches: (command) => /git\s+rebase\b/.test(command),
+    matches: (command) => {
+      if (new RegExp(GIT_PREFIX + "rebase\\b").test(command)) return true;
+      // `git pull --rebase` (or its `-r` shorthand) rebases under the hood.
+      // It is the single likeliest command to show up right after a
+      // rejected push, and recovering from a bad one needs a force push,
+      // which is also blocked — so it gets caught here too.
+      const pullArgs = new RegExp(GIT_PREFIX + "pull\\b([^&|;\\n]*)").exec(command);
+      if (!pullArgs) return false;
+      const tokens = pullArgs[1].trim().split(/\s+/).filter(Boolean);
+      return tokens.some(
+        (token) =>
+          token === "--rebase" ||
+          token.startsWith("--rebase=") ||
+          token === "-r" ||
+          (/^-[A-Za-z]+$/.test(token) && token.slice(1).includes("r")),
+      );
+    },
     reason:
-      "Rebasing rewrites history, and recovering from a bad one needs a force push, which is also blocked. " +
+      "Rebasing rewrites history, and recovering from a bad one needs a force push, which is also " +
+      "blocked. `git pull --rebase` does the same thing under the hood, so it is included here too. " +
       "Instead: use `git merge origin/main` to bring in the latest changes. It is additive and never " +
       "destroys work.",
   },
   {
+    id: "pull-on-main",
+    matches: (command, context) =>
+      context?.branch === "main" && new RegExp(GIT_PREFIX + "pull\\b").test(command),
+    reason:
+      "Local main is never pulled — `origin/main` is the reference, and pulling into local main is how " +
+      "it drifts and conflicts. Instead: `git fetch origin` brings the reference current without " +
+      "touching the working tree; new work branches from `origin/main` directly.",
+  },
+  {
     id: "force-delete-branch",
     matches: (command) => {
-      const branchArgs = /git\s+branch\b([^&|;]*)/.exec(command);
+      const branchArgs = new RegExp(GIT_PREFIX + "branch\\b([^&|;\\n]*)").exec(command);
       if (!branchArgs) return false;
       const tokens = branchArgs[1].trim().split(/\s+/).filter(Boolean);
       // Force and delete can arrive as separate long flags (--force
@@ -110,8 +175,64 @@ const RULES = [
       "Instead: use `git branch -d`, which refuses to delete anything that would be lost.",
   },
   {
+    id: "discard-work",
+    matches: (command) => {
+      const cleanArgs = new RegExp(GIT_PREFIX + "clean\\b([^&|;\\n]*)").exec(command);
+      if (cleanArgs) {
+        const tokens = cleanArgs[1].trim().split(/\s+/).filter(Boolean);
+        for (const token of tokens) {
+          if (token === "--force") return true;
+          if (/^-[A-Za-z]+$/.test(token) && token.slice(1).includes("f")) return true;
+        }
+      }
+      const checkoutArgs = new RegExp(GIT_PREFIX + "checkout\\b([^&|;\\n]*)").exec(command);
+      if (checkoutArgs) {
+        const tokens = checkoutArgs[1].trim().split(/\s+/).filter(Boolean);
+        if (tokens.includes("--")) return true;
+      }
+      const restoreArgs = new RegExp(GIT_PREFIX + "restore\\b([^&|;\\n]*)").exec(command);
+      if (restoreArgs) {
+        const tokens = restoreArgs[1].trim().split(/\s+/).filter(Boolean);
+        const hasWorktree = tokens.includes("--worktree");
+        const hasStaged = tokens.includes("--staged");
+        // A pure `--staged` restore only unstages — it never touches the
+        // working tree, so it is the one safe shape and stays allowed.
+        if (hasWorktree || !hasStaged) return true;
+      }
+      return false;
+    },
+    reason:
+      "This throws away uncommitted work in the working tree, with no undo. " +
+      "Instead: save it first with `git add` and `git commit` — say what should change instead and it " +
+      "can be undone with a new commit that keeps the history intact.",
+  },
+  {
+    id: "set-identity",
+    matches: (command) => {
+      // `git -c user.email=... <anything>` sets the identity inline for
+      // that one call, regardless of which verb follows.
+      if (/-c\s+(user\.email|user\.name)\s*=/.test(command)) return true;
+      const configArgs = new RegExp(GIT_PREFIX + "config\\b([^&|;\\n]*)").exec(command);
+      if (!configArgs) return false;
+      const tokens = configArgs[1].trim().split(/\s+/).filter(Boolean);
+      const nonFlags = tokens.filter((token) => !token.startsWith("-"));
+      const keyIndex = nonFlags.findIndex((token) => token === "user.email" || token === "user.name");
+      if (keyIndex === -1) return false;
+      // A value after the key means this call writes it. `git config
+      // user.email` with nothing after it only reads the current value —
+      // the hooks themselves rely on being able to do exactly that.
+      return keyIndex < nonFlags.length - 1;
+    },
+    reason:
+      "This rewrites the git identity the guardrails use to tell you apart from Ben, and every " +
+      "guardrail reads it — getting it wrong turns all of them off without any warning. " +
+      "Instead: ask Ben if the identity looks wrong. Do not set it yourself.",
+  },
+  {
     id: "pr-merge",
-    matches: (command) => /gh\s+pr\s+merge\b/.test(command),
+    matches: (command) =>
+      /gh\s+pr\s+merge\b/.test(command) ||
+      /gh\s+api\b[^&|;\n]*(-X|--method)\s+(PUT|POST)\b[^&|;\n]*\/merge\b/i.test(command),
     reason:
       "Only Ben merges pull requests. Instead: push the branch and leave the draft pull request open — " +
       "he gets an email and can review it whenever he likes.",
@@ -133,15 +254,19 @@ const RULES = [
   },
   {
     id: "prod-flag",
-    matches: (command) => /--prod\b/.test(command),
+    matches: (command) =>
+      /--prod\b/.test(command) ||
+      (/\bconvex\b/.test(command) && /--(url|deployment-name)\b/.test(command)) ||
+      /(^|[\s;&|])(CONVEX_DEPLOY_KEY|CONVEX_DEPLOYMENT)=/.test(command),
     reason:
-      "The --prod flag points at the live app that real people are using. " +
-      "Instead: run the same command without --prod and it targets your own private copy.",
+      "This points at (or could point at) the live app that real people are using — via --prod, an " +
+      "explicit --url or --deployment-name, or a CONVEX_DEPLOY_KEY / CONVEX_DEPLOYMENT environment " +
+      "variable. Instead: run the same command with no deployment target and it uses your own private copy.",
   },
   {
     id: "commit-on-main",
     matches: (command, context) =>
-      context?.branch === "main" && /git\s+commit\b/.test(command),
+      context?.branch === "main" && new RegExp(GIT_PREFIX + "commit\\b").test(command),
     reason:
       "You are on the main branch, which is the shared version of the app. " +
       "Instead: start a branch for this piece of work first, then save onto it. " +
