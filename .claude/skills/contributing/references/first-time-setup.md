@@ -7,9 +7,21 @@ Before starting, confirm Ben has already: added him as a collaborator on the
 GitHub repo, and invited him to the Convex team. Without the second one, step 4
 silently sets up a project Ben cannot see.
 
+## 1. Install Node
+
 ```bash
 nvm use              # Node 24. If nvm is missing, he needs Node 24 installed.
+```
+
+## 2. Install dependencies
+
+```bash
 npm install
+```
+
+## 3. Install the Convex skills
+
+```bash
 npx convex ai-files install   # the Convex skills, pinned by skills-lock.json
 ```
 
