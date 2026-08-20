@@ -29,10 +29,19 @@ function runFor(email) {
 }
 
 describe("contributor-mode hook", () => {
-  test("tells a contributor's agent to load the skill", () => {
+  test("tells a contributor's agent to load the skill, nested under hookSpecificOutput", () => {
     const result = runFor("brother@example.com");
-    expect(result.additionalContext).toMatch(/contributing/);
-    expect(result.additionalContext).toMatch(/branch/i);
+    expect(result.hookSpecificOutput.hookEventName).toBe("SessionStart");
+    expect(result.hookSpecificOutput.additionalContext).toMatch(/contributing/);
+    expect(result.hookSpecificOutput.additionalContext).toMatch(/branch/i);
+    // additionalContext must NOT live at the top level — this Claude Code
+    // version only reads it from inside hookSpecificOutput for SessionStart.
+    expect(result.additionalContext).toBeUndefined();
+  });
+
+  test("keeps systemMessage at the top level, which is what gets honoured", () => {
+    const result = runFor("brother@example.com");
+    expect(result.systemMessage).toMatch(/contributor mode/i);
   });
 
   test("stays silent for the owner", () => {
@@ -40,6 +49,6 @@ describe("contributor-mode hook", () => {
   });
 
   test("treats an unset email as a contributor", () => {
-    expect(runFor(null)?.additionalContext).toMatch(/contributing/);
+    expect(runFor(null)?.hookSpecificOutput.additionalContext).toMatch(/contributing/);
   });
 });

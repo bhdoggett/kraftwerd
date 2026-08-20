@@ -37,7 +37,10 @@ try {
   if (!isOwner(currentEmail(cwd))) {
     process.stdout.write(
       JSON.stringify({
-        additionalContext: CONTEXT,
+        hookSpecificOutput: {
+          hookEventName: "SessionStart",
+          additionalContext: CONTEXT,
+        },
         systemMessage: "Contributor mode: branch-only workflow and command guardrails are active.",
       }),
     );
