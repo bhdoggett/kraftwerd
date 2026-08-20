@@ -180,17 +180,18 @@
  * column only exists to centre the tiles against the buttons, so it goes with
  * them.
  */
-/* Narrow: letters, then the blanks, then the buttons, each on its own row. */
+/*
+ * Narrow: the blank stays beside the letters — one tile carrying a count
+ * takes no real room — and only the buttons drop to their own row.
+ */
 @media (max-width: 640px) {
   .rack {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto 1fr;
     grid-template-areas:
-      "tiles"
-      "blanks"
-      "actions";
+      "blanks tiles"
+      "actions actions";
   }
 
-  .blanks,
   .actions {
     justify-self: center;
   }
