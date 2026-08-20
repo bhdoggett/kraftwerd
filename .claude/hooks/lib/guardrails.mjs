@@ -25,7 +25,21 @@ export function isOwner(email) {
 const RULES = [
   {
     id: "push-to-main",
-    matches: (command) => /git\s+push\b[^&|;]*\bmain\b/.test(command),
+    matches: (command, context) => {
+      if (/git\s+push\b[^&|;]*\bmain\b/.test(command)) return true;
+      // A bare `git push` (no explicit remote/branch argument) pushes the
+      // current branch to its upstream. If that current branch is main,
+      // this is just as much a push-to-main as spelling it out literally.
+      if (context?.branch !== "main") return false;
+      const pushArgs = /git\s+push\b([^&|;]*)/.exec(command);
+      if (!pushArgs) return false;
+      const hasExplicitArgument = pushArgs[1]
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .some((token) => !token.startsWith("-"));
+      return !hasExplicitArgument;
+    },
     reason:
       "That would send code straight to the main branch, which is the version everyone else uses. " +
       "Work always goes onto its own branch first. Instead: push to the branch you are working on, " +
@@ -58,7 +72,18 @@ const RULES = [
   },
   {
     id: "force-delete-branch",
-    matches: (command) => /git\s+branch\b[^&|;]*\s-D\b/.test(command),
+    matches: (command) => {
+      const branchArgs = /git\s+branch\b([^&|;]*)/.exec(command);
+      if (!branchArgs) return false;
+      const args = branchArgs[1];
+      if (/\s-D\b/.test(args)) return true;
+      // `--delete --force` (in either order) is the long-form spelling of
+      // -D; short `-f` for `--force` is accepted too. `--delete`/`-d` alone,
+      // without a force flag, stays allowed — that's the safe delete.
+      const hasForce = /--force\b/.test(args) || /\s-f\b/.test(args);
+      const hasDelete = /--delete\b/.test(args) || /\s-d\b/.test(args);
+      return hasForce && hasDelete;
+    },
     reason:
       "Capital -D deletes a branch even when it holds work that was never sent to GitHub. " +
       "Instead: use `git branch -d`, which refuses to delete anything that would be lost.",

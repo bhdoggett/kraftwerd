@@ -59,6 +59,22 @@ describe("evaluateCommand", () => {
     expect(evaluateCommand("git branch -D ben/work")?.id).toBe("force-delete-branch");
   });
 
+  test("blocks the long-form spelling of a force branch delete", () => {
+    expect(evaluateCommand("git branch --delete --force ben/work")?.id).toBe(
+      "force-delete-branch",
+    );
+    expect(evaluateCommand("git branch --delete ben/work")).toBeNull();
+  });
+
+  test("blocks a bare push while sitting on main, but not elsewhere", () => {
+    expect(evaluateCommand("git push", { branch: "main" })?.id).toBe("push-to-main");
+    expect(evaluateCommand("git push", { branch: "ben/work" })).toBeNull();
+    expect(evaluateCommand("git push origin main", { branch: "ben/work" })?.id).toBe(
+      "push-to-main",
+    );
+    expect(evaluateCommand("git push -u origin ben/work", { branch: "main" })).toBeNull();
+  });
+
   test("blocks merging and deleting through the GitHub CLI", () => {
     expect(evaluateCommand("gh pr merge 4 --squash")?.id).toBe("pr-merge");
     expect(evaluateCommand("gh api repos/x/y/rulesets/1 -X DELETE")?.id).toBe("gh-delete");
