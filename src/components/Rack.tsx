@@ -4,13 +4,12 @@ import styles from "./Rack.module.css";
 
 export type Selection = { kind: "letter"; index: number } | { kind: "blank" };
 
-/** Stands for the blank in the rack order, alongside the letters' indices. */
-const BLANK = -1;
-
 interface RackProps {
   letters: readonly string[];
-  /** Rack entries already staged on the board this turn, blank included. */
+  /** Letter indices staged on the board this turn, so out of the rack. */
   spent: readonly number[];
+  /** Blanks still to spend, after any staged this turn. */
+  blanks: number;
   selected: Selection | null;
   onSelect: (selection: Selection | null) => void;
   /** Begin a pointer drag from this tile. */
@@ -43,6 +42,7 @@ interface RackProps {
 export function Rack({
   letters,
   spent,
+  blanks,
   selected,
   onSelect,
   onGrab,
@@ -75,11 +75,9 @@ export function Rack({
    * Keyboard-triggered clicks arrive with `detail === 0` and no preceding
    * pointerdown, so they toggle selection on their own.
    */
-  const tileProps = (sel: Selection, disabled: boolean) => ({
-    disabled,
+  const tileProps = (sel: Selection) => ({
     "aria-pressed": isSelected(sel),
     onPointerDown: (e: ReactPointerEvent) => {
-      if (disabled) return;
       // While trading, a tile is a choice rather than something to play.
       if (trading !== null) {
         if (sel.kind === "letter") onToggleTrade(sel.index);
@@ -110,13 +108,8 @@ export function Rack({
               !spent.includes(index) || (index === draggedIndex && dragOverRack),
           )
           .map((index, slot) => {
-            const isBlank = index === BLANK;
-            const letter = isBlank ? "" : letters[index];
+            const letter = letters[index];
             if (letter === undefined) return null;
-
-            const sel: Selection = isBlank
-              ? { kind: "blank" }
-              : { kind: "letter", index };
 
             // DOM order stays put and tiles slide by transform instead, so the
             // movement animates; reordering the DOM would jump.
@@ -131,27 +124,48 @@ export function Rack({
                 type="button"
                 className={[
                   styles.tile,
-                  isBlank ? styles.blank : "",
-                  isSelected(sel) ? styles.selected : "",
+                  isSelected({ kind: "letter", index }) ? styles.selected : "",
                   draggedIndex === index ? styles.lifted : "",
                   trading?.includes(index) ? styles.trading : "",
                 ].join(" ")}
-                // The entry's own identity, not its position: staged tiles
-                // leave the rack, so positions shift but identities do not.
+                // The letter's own index, not its position: staged tiles leave
+                // the rack, so positions shift but indices do not.
                 data-rack-slot={index}
                 style={
                   shift === 0
                     ? undefined
                     : { transform: `translateX(calc(var(--rack-step) * ${shift}))` }
                 }
-                aria-label={isBlank ? "Blank tile" : undefined}
-                {...tileProps(sel, false)}
+                {...tileProps({ kind: "letter", index })}
               >
                 {letter}
               </button>
             );
           })}
       </div>
+
+      {/*
+        Blanks sit apart from the letters: they are an allowance for the whole
+        game rather than tiles to arrange, so they do not reorder and they
+        never come back. The group disappears once they are spent.
+      */}
+      {blanks > 0 && (
+        <div className={styles.blanks}>
+          {Array.from({ length: blanks }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              className={[
+                styles.tile,
+                styles.blank,
+                isSelected({ kind: "blank" }) && i === 0 ? styles.selected : "",
+              ].join(" ")}
+              aria-label={`Blank tile, ${blanks} left`}
+              {...tileProps({ kind: "blank" })}
+            />
+          ))}
+        </div>
+      )}
 
       <div className={styles.actions}>
         <button

@@ -7,9 +7,6 @@
  * question in the wrong frame of reference.
  */
 
-/** Stands for the blank in the rack order, alongside the letters' indices. */
-export const BLANK = -1;
-
 export interface RackTarget {
   overRack: boolean;
   /** Position among the visible tiles, or null when not over the rack. */

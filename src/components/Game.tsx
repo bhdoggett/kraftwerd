@@ -14,7 +14,7 @@ import styles from "./Game.module.css";
 import { Rack, type Selection } from "./Rack";
 import { userMessage } from "../lib/errors";
 import { markCells } from "../lib/boardFeedback";
-import { BLANK, moveToPosition, rackSlotUnder, shuffled } from "../lib/rackGeometry";
+import { moveToPosition, rackSlotUnder, shuffled } from "../lib/rackGeometry";
 import { useWakeLock } from "../lib/useWakeLock";
 import { Scoreboard } from "./Scoreboard";
 
@@ -220,7 +220,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   );
   useEffect(() => {
     const count = rackSignature === "" ? 0 : rackSignature.split(",").length;
-    setRackOrder([...Array.from({ length: count }, (_, i) => i), BLANK]);
+    setRackOrder(Array.from({ length: count }, (_, i) => i));
   }, [rackSignature]);
 
   function shuffleRack() {
@@ -245,8 +245,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     setPending((current) => current.filter((p) => p !== tile));
     setError(null);
 
-    if (position !== null) {
-      const index = tile.from.kind === "letter" ? tile.from.index : BLANK;
+    if (position !== null && tile.from.kind === "letter") {
+      const index = tile.from.index;
       // The tile is no longer staged, so it is visible again for the move.
       const stillHidden = spentIndices.filter((i) => i !== index);
       setRackOrder((current) => moveToPosition(current, stillHidden, index, position));
@@ -258,16 +258,22 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * the order it *would* become, so the gap follows the pointer instead of
    * appearing only on release.
    */
-  /** Rack entries currently staged on the board, so hidden from the rack. */
-  const spentIndices = useMemo(() => {
-    const spent = pending
-      .filter((p) => p.from.kind === "letter")
-      .map((p) => (p.from as { kind: "letter"; index: number }).index);
-    if (pending.some((p) => p.from.kind === "blank") || blankAt !== null) {
-      spent.push(BLANK);
-    }
-    return spent;
-  }, [pending, blankAt]);
+  /** Letters currently staged on the board, so hidden from the rack. */
+  const spentIndices = useMemo(
+    () =>
+      pending
+        .filter((p) => p.from.kind === "letter")
+        .map((p) => (p.from as { kind: "letter"; index: number }).index),
+    [pending],
+  );
+
+  /** Blanks still in hand: the allowance less any staged or being named. */
+  const blanksLeft = Math.max(
+    0,
+    (me?.blanks ?? 0) -
+      pending.filter((p) => p.from.kind === "blank").length -
+      (blankAt === null ? 0 : 1),
+  );
 
   /**
    * The rack letter a drag concerns, whether it started in the rack or is a
@@ -278,12 +284,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     if (drag.origin.kind === "rack") {
       return drag.origin.selection.kind === "letter"
         ? drag.origin.selection.index
-        : BLANK;
+        : null;
     }
     const cell = drag.origin;
     const staged = pending.find((p) => p.x === cell.x && p.y === cell.y);
-    if (staged === undefined) return null;
-    return staged.from.kind === "letter" ? staged.from.index : BLANK;
+    if (staged === undefined || staged.from.kind !== "letter") return null;
+    return staged.from.index;
   }, [drag, pending]);
 
   const previewOrder = useMemo(() => {
@@ -574,6 +580,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           <Rack
             letters={me.letters}
             spent={spentIndices}
+            blanks={blanksLeft}
             selected={selected}
             onSelect={setSelected}
             onGrab={grab}

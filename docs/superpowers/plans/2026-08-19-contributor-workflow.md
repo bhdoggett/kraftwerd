@@ -50,6 +50,7 @@
 The pure core: given a command string and the current branch, decide allow or deny. No file I/O, no git calls, no process access — which is exactly what makes it testable.
 
 **Files:**
+- Modify: `.gitignore:37` (the bare `.claude/` line)
 - Create: `.claude/hooks/lib/guardrails.mjs`
 - Test: `.claude/hooks/lib/guardrails.test.mjs`
 - Modify: `vitest.config.ts:6-24` (add a third project)
@@ -61,7 +62,36 @@ The pure core: given a command string and the current branch, decide allow or de
   - `isOwner(email: string | null | undefined): boolean`
   - `evaluateCommand(command: string, context?: { branch?: string | null }): { id: string, reason: string } | null` — `null` means no objection.
 
-- [ ] **Step 1: Add the hooks test project to vitest**
+- [ ] **Step 1: Carve the contributor files out of `.gitignore`**
+
+Nothing in this plan can be committed until this is done — `.claude/` is
+currently ignored wholesale. Replace the single `.claude/` line in `.gitignore`
+with:
+
+```
+# Only the hand-written contributor tooling is tracked. The vendored convex
+# skills are generated from the tracked skills-lock.json by
+# `npx convex ai-files install`, so committing them would only add merge
+# conflicts on every update.
+.claude/*
+!.claude/hooks/
+!.claude/settings.json
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/contributing/
+```
+
+Leave `.agents/`, `.cursor/`, and `.fallow/` exactly as they are. Verify:
+
+```bash
+git check-ignore -v .claude/hooks || echo "TRACKABLE: hooks"
+git check-ignore -v .claude/skills/convex/SKILL.md && echo "IGNORED: vendored skills (correct)"
+```
+
+Expected: `TRACKABLE: hooks` and `IGNORED: vendored skills (correct)`. Order
+matters — a later negation re-includes what an earlier line excluded.
+
+- [ ] **Step 2: Add the hooks test project to vitest**
 
 Modify `vitest.config.ts`, adding a third entry to `projects`:
 
@@ -75,7 +105,7 @@ Modify `vitest.config.ts`, adding a third entry to `projects`:
       },
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [ ] **Step 3: Write the failing tests**
 
 Create `.claude/hooks/lib/guardrails.test.mjs`:
 
@@ -166,7 +196,7 @@ describe("evaluateCommand", () => {
 });
 ```
 
-- [ ] **Step 3: Run the tests and confirm they fail**
+- [ ] **Step 4: Run the tests and confirm they fail**
 
 Run: `npx vitest run --project hooks`
 
@@ -174,7 +204,7 @@ Expected: FAIL — `Failed to resolve import "./guardrails.mjs"`.
 
 **If instead it reports "No test files found"**, vitest's globbing skipped the dot-directory. Fall back to Node's built-in runner: drop the `hooks` project from `vitest.config.ts`, add `"test:hooks": "node --test .claude/hooks/**/*.test.mjs"` to `package.json` scripts, and replace the vitest import in every hook test with `import { describe, test } from "node:test"; import { expect } from "node:assert"` style — `node:assert`'s `deepStrictEqual`/`strictEqual` in place of `expect`. Record the switch in the commit message so later tasks follow suit.
 
-- [ ] **Step 4: Write the implementation**
+- [ ] **Step 5: Write the implementation**
 
 Create `.claude/hooks/lib/guardrails.mjs`:
 
@@ -296,20 +326,18 @@ export function evaluateCommand(command, context = {}) {
 }
 ```
 
-- [ ] **Step 5: Run the tests and confirm they pass**
+- [ ] **Step 6: Run the tests and confirm they pass**
 
 Run: `npx vitest run --project hooks`
 
 Expected: PASS, 9 tests.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add vitest.config.ts .claude/hooks/lib/guardrails.mjs .claude/hooks/lib/guardrails.test.mjs
+git add .gitignore vitest.config.ts .claude/hooks/lib/guardrails.mjs .claude/hooks/lib/guardrails.test.mjs
 git commit -m "feat(hooks): add contributor guardrail decision logic"
 ```
-
-Note: `.claude/` is still gitignored at this point, so `git add` needs `-f`, or run Task 4 first. **Run Task 4's Step 1 (the `.gitignore` carve-out) before this commit** — it is two lines and unblocks every subsequent commit.
 
 ---
 
@@ -582,12 +610,11 @@ git commit -m "feat(hooks): block destructive and production commands for contri
 
 ---
 
-### Task 4: Delivery — gitignore carve-out and session hook
+### Task 4: Session-start hook
 
-Two things that only matter together: the files have to reach his clone, and something has to tell his agent they exist.
+Announces contributor mode before the agent does anything else, so the workflow is loaded rather than discovered by hitting a denial.
 
 **Files:**
-- Modify: `.gitignore:37` (the bare `.claude/` line)
 - Create: `.claude/hooks/contributor-mode.mjs`
 - Test: `.claude/hooks/contributor-mode.test.mjs`
 
@@ -595,36 +622,7 @@ Two things that only matter together: the files have to reach his clone, and som
 - Consumes: `isOwner` from `./lib/guardrails.mjs`; `currentEmail` from `./lib/repo.mjs`.
 - Produces: an executable script. Input on stdin: `{ hook_event_name: "SessionStart", cwd: string }`. Output when in contributor mode: `{ additionalContext: string, systemMessage: string }`. Silence otherwise.
 
-- [ ] **Step 1: Carve the contributor files out of .gitignore**
-
-Replace the single `.claude/` line in `.gitignore` with:
-
-```
-# Only the hand-written contributor tooling is tracked. The vendored convex
-# skills are generated from the tracked skills-lock.json by
-# `npx convex ai-files install`, so committing them would only add merge
-# conflicts on every update.
-.claude/*
-!.claude/hooks/
-!.claude/settings.json
-!.claude/skills/
-.claude/skills/*
-!.claude/skills/contributing/
-```
-
-Leave `.agents/`, `.cursor/`, and `.fallow/` exactly as they are.
-
-- [ ] **Step 2: Verify the carve-out with git itself**
-
-```bash
-git check-ignore -v .claude/hooks/guardrails.mjs || echo "TRACKABLE: hooks"
-git check-ignore -v .claude/settings.json        || echo "TRACKABLE: settings"
-git check-ignore -v .claude/skills/convex/SKILL.md && echo "IGNORED: vendored skills (correct)"
-```
-
-Expected: `TRACKABLE: hooks`, `TRACKABLE: settings`, and `IGNORED: vendored skills (correct)`. If the vendored skills come out trackable, the `.claude/skills/*` line is missing or out of order — order matters, a later negation re-includes.
-
-- [ ] **Step 3: Write the failing test**
+- [ ] **Step 1: Write the failing test**
 
 Create `.claude/hooks/contributor-mode.test.mjs`:
 
@@ -666,13 +664,13 @@ describe("contributor-mode hook", () => {
 });
 ```
 
-- [ ] **Step 4: Run it and confirm it fails**
+- [ ] **Step 2: Run it and confirm it fails**
 
 Run: `npx vitest run --project hooks .claude/hooks/contributor-mode.test.mjs`
 
 Expected: FAIL — module not found.
 
-- [ ] **Step 5: Write the implementation**
+- [ ] **Step 3: Write the implementation**
 
 Create `.claude/hooks/contributor-mode.mjs`:
 
@@ -728,16 +726,16 @@ try {
 process.exit(0);
 ```
 
-- [ ] **Step 6: Run the whole hooks suite**
+- [ ] **Step 4: Run the whole hooks suite**
 
 Run: `npx vitest run --project hooks`
 
 Expected: PASS — every test from Tasks 1 through 4.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add .gitignore .claude/hooks/contributor-mode.mjs .claude/hooks/contributor-mode.test.mjs
+git add .claude/hooks/contributor-mode.mjs .claude/hooks/contributor-mode.test.mjs
 git commit -m "feat(hooks): announce contributor mode at session start"
 ```
 

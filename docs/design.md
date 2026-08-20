@@ -23,9 +23,11 @@ construction) does not exist in Scrabble. IP exposure is limited to the name.
 
 ## 2. Board
 
-- **15×15, hand-drawn, crossword-style.** Odd-sided so there is a true centre.
-  Blocked squares are part of the board, arranged with 180° rotational
-  symmetry as a crossword grid is.
+- **15×15 and open.** Odd-sided so there is a true centre.
+- **Blocked squares are supported but not dealt.** The hand-drawn layouts in
+  `shared/boards.ts` and the rules that enforce them are kept — a game already
+  dealt one still plays — but new games get an open board while the simpler
+  shape is tried out.
 - **The opening word must cover the centre square.** Everything after it is
   anchored by connectivity (§3) back to that first word.
 - **Layouts live in `shared/boards.ts`, written as pictures** — `#` blocked,
@@ -197,11 +199,10 @@ different rates:
 
 ## 5. Rack and letter generation
 
-- Rack is **6 letters + 1 blank**. Place up to all 7 in a turn.
-- Letters refill to 6 after your turn.
-- **Blank cadence: one blank slot, never more.** If you use it, you get a new
-  one next turn. If you don't, you still have exactly one — blanks do not
-  accumulate. Max one blank placed per turn, always.
+- Rack is **7 letters**, refilled after every play.
+- **3 blanks for the whole game.** They do not refill: spending one is a
+  decision about when, not something to use or waste each turn.
+- Any number of your remaining blanks may go down in one turn.
 - Blank is wild, assigned a letter permanently on placement.
 - **No finite bag.** Letters are randomly generated per draw.
 
@@ -347,7 +348,7 @@ to 52% in one step, without ever rejecting a real word.
 
 ## 6. Game end
 
-- Game ends when **total tiles on board ≥ N**.
+- Game ends when **total tiles on board ≥ 50**.
 - End triggers at the **end of the round**, not immediately, so every player
   gets equal turns. Otherwise the player who crosses the threshold takes the
   last uncontested snipe.

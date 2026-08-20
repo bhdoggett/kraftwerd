@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { RACK } from "../shared/config";
+import { BLANKS_PER_GAME, RACK } from "../shared/config";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
@@ -54,6 +54,7 @@ async function twoPlayerGame(letters: string[]) {
       seat: 1,
       score: 0,
       letters: [...letters],
+      blanks: BLANKS_PER_GAME,
       blank: true,
       status: "joined",
     });
@@ -64,7 +65,11 @@ async function twoPlayerGame(letters: string[]) {
       .withIndex("by_game", (q) => q.eq("gameId", gameId))
       .take(4);
     for (const p of players) {
-      await ctx.db.patch("players", p._id, { letters: [...letters], blank: true });
+      await ctx.db.patch("players", p._id, {
+        letters: [...letters],
+        blanks: BLANKS_PER_GAME,
+        blank: true,
+      });
     }
   });
 
@@ -199,15 +204,41 @@ describe("placeTiles", () => {
     expect(game?.tileCount).toBe(2);
   });
 
-  test("only one blank may be played per turn", async () => {
-    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+  test("blanks are an allowance for the game, not one per turn", async () => {
+    const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "D"]);
+
+    // Two of the three in one turn is fine.
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A", true), at(1, 0, "D", true)],
+    });
+
+    const player = await t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .unique(),
+    );
+    // Spent, and not handed back next turn.
+    expect(player?.blanks).toBe(BLANKS_PER_GAME - 2);
+  });
+
+  test("cannot play more blanks than are left", async () => {
+    const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "D"]);
+    await t.run(async (ctx) => {
+      const player = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .unique();
+      await ctx.db.patch("players", player!._id, { blanks: 1 });
+    });
 
     await expect(
       asAlice.mutation(api.games.placeTiles, {
         gameId,
         placements: [at(0, 0, "A", true), at(1, 0, "D", true)],
       }),
-    ).rejects.toThrow("Only one blank per turn");
+    ).rejects.toThrow("only 1 blanks left");
   });
 
   test("a blank scores no point but still counts in the square", async () => {
@@ -686,6 +717,8 @@ describe("the board", () => {
     ).rejects.toThrow("cover the centre");
   });
 
+  // New games are open boards; the drawn layouts and the rule enforcing them
+  // are kept, so a game already dealt one still behaves.
   test("a blocked square cannot be played on", async () => {
     const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
 
@@ -698,11 +731,20 @@ describe("the board", () => {
     ).rejects.toThrow("cannot be played on");
   });
 
-  test("every game is dealt one of the hand-drawn layouts", async () => {
-    const { t, gameId } = await twoPlayerGame(["A", "D"]);
-    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+  test("new games are played on an open board", async () => {
+    // The harness pins a drawn layout so the test above has a blocked square
+    // to aim at, so this one makes its own game.
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|open", name: "Open" });
+    });
+    const { gameId } = await t
+      .withIdentity({ subject: "auth|open" })
+      .mutation(api.games.createGame, { playerCount: 1 });
 
-    expect(["Bars", "Steps", "Frame"]).toContain(game?.layout);
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.layout).toBe("Open");
     expect(game?.boardSize).toBe(15);
+    expect(game?.endThreshold).toBe(50);
   });
 });

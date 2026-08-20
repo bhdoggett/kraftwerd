@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GAME, RACK } from "../../shared/config";
+import { BLANKS_PER_GAME, GAME, RACK } from "../../shared/config";
 import { HelpIcon } from "./Icons";
 import styles from "./Rules.module.css";
 
@@ -49,8 +49,9 @@ export function Rules() {
             <h3 className={styles.section}>Placing tiles</h3>
             <ul>
               <li>
-                You hold {RACK.size} letters and one blank, and may place any
-                number of them in a turn.
+                You hold {RACK.size} letters, refilled after every play, and{" "}
+                <strong>{BLANKS_PER_GAME} blanks for the whole game</strong> —
+                once spent, they are gone.
               </li>
               <li>
                 The <strong>first word must cover the centre square</strong>,
@@ -62,7 +63,7 @@ export function Rules() {
               </li>
               <li>
                 Every run of two or more tiles, across and down, has to be a
-                word. Blocked squares cannot be played on.
+                word.
               </li>
             </ul>
 
@@ -96,10 +97,10 @@ export function Rules() {
 
             <h3 className={styles.section}>Blanks</h3>
             <p>
-              You always have one blank. Drop it, then choose the letter it
-              stands for. It counts for words and squares but is{" "}
-              <strong>worth no points itself</strong>. Use it or not, you get
-              one again next turn.
+              You get {BLANKS_PER_GAME} for the whole game. Drop one, then
+              choose the letter it stands for. It counts for words and squares
+              but is <strong>worth no points itself</strong>, and it is not
+              replaced — spending one is a decision about when.
             </p>
 
             <h3 className={styles.section}>Trading</h3>
