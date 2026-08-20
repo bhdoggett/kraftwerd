@@ -11,3 +11,10 @@ Convex agent skills for common tasks can be installed by running
 `npx convex ai-files install`.
 
 <!-- convex-ai-end -->
+
+## Contributors
+
+If `git config user.email` is not `bdoggett@gmail.com`, load the `contributing`
+skill before any other work in this repo — before answering, before exploring,
+before editing. It sets a branch-only workflow that a session hook also
+enforces.
