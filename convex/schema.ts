@@ -40,6 +40,18 @@ export default defineSchema({
     .index("by_authId", ["authId"])
     .index("by_email", ["email"]),
 
+  /**
+   * A personal invite link. One row per user, replaced rather than added to,
+   * so a reset really does retire the old address.
+   */
+  friendLinks: defineTable({
+    userId: v.id("users"),
+    /** The secret half of the URL. Anyone holding it can become a friend. */
+    token: v.string(),
+  })
+    .index("by_token", ["token"])
+    .index("by_user", ["userId"]),
+
   games: defineTable({
     /** A generated name, so games are tellable apart at a glance. */
     name: v.optional(v.string()),

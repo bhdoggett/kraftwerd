@@ -180,6 +180,119 @@ export const cancelInvite = mutation({
 });
 
 /**
+ * A token for a URL: long enough that guessing one is hopeless, and made of
+ * characters that survive being pasted into a chat window.
+ */
+function newToken(): string {
+  let token = "";
+  while (token.length < 24) token += Math.random().toString(36).slice(2);
+  return token.slice(0, 24);
+}
+
+async function linkFor(ctx: QueryCtx, userId: Id<"users">) {
+  return await ctx.db
+    .query("friendLinks")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .unique();
+}
+
+export const myFriendLink = query({
+  args: {},
+  handler: async (ctx) => {
+    const me = await currentUser(ctx);
+    const link = await linkFor(ctx, me._id);
+    return link === null ? null : { token: link.token };
+  },
+});
+
+/** The link, made on first use. Asking twice gives the same one back. */
+export const createFriendLink = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const me = await currentUser(ctx);
+
+    const existing = await linkFor(ctx, me._id);
+    if (existing !== null) return existing.token;
+
+    const token = newToken();
+    await ctx.db.insert("friendLinks", { userId: me._id, token });
+    return token;
+  },
+});
+
+/** Retire the old link. Anyone still holding it is turned away. */
+export const resetFriendLink = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const me = await currentUser(ctx);
+    const token = newToken();
+
+    const existing = await linkFor(ctx, me._id);
+    if (existing === null) {
+      await ctx.db.insert("friendLinks", { userId: me._id, token });
+    } else {
+      await ctx.db.patch("friendLinks", existing._id, { token });
+    }
+    return token;
+  },
+});
+
+/**
+ * Become friends by following someone's link.
+ *
+ * Accepted outright rather than left pending: sharing the link is the consent,
+ * the same way joining a game from its link is.
+ */
+export const acceptFriendLink = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const me = await currentUser(ctx);
+
+    const link = await ctx.db
+      .query("friendLinks")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+    if (link === null) throw new ConvexError("That invite link is not valid any more");
+
+    const them = await ctx.db.get("users", link.userId);
+    if (them === null) throw new ConvexError("That invite link is not valid any more");
+    if (them._id === me._id) throw new ConvexError("That is your own invite link");
+
+    // A pair can already be linked from either direction, and either row may
+    // still be pending — following a link settles it.
+    const [mine, theirs] = await Promise.all([
+      ctx.db
+        .query("friendships")
+        .withIndex("by_pair", (q) =>
+          q.eq("requesterId", me._id).eq("addresseeId", them._id),
+        )
+        .unique(),
+      ctx.db
+        .query("friendships")
+        .withIndex("by_pair", (q) =>
+          q.eq("requesterId", them._id).eq("addresseeId", me._id),
+        )
+        .unique(),
+    ]);
+
+    const edge = mine ?? theirs;
+    if (edge !== null) {
+      if (edge.status !== "accepted") {
+        await ctx.db.patch("friendships", edge._id, { status: "accepted" });
+      }
+    } else {
+      await ctx.db.insert("friendships", {
+        requesterId: them._id,
+        addresseeId: me._id,
+        status: "accepted",
+      });
+    }
+
+    return { name: displayName(them) };
+  },
+});
+
+/**
  * Turn any invitations addressed to this user into pending friendships.
  *
  * Called when a user record is created, so somebody who was invited before

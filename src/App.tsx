@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import styles from "./App.module.css";
+import { AcceptFriend } from "./components/AcceptFriend";
 import { Game } from "./components/Game";
 import { Lobby } from "./components/Lobby";
 import { Menu } from "./components/Menu";
@@ -46,6 +47,11 @@ export default function App() {
             <Game
               gameId={route.gameId as Id<"games">}
               onLeave={() => navigate({ name: "lobby" })}
+            />
+          ) : route.name === "friend" ? (
+            <AcceptFriend
+              token={route.token}
+              onDone={() => navigate({ name: "lobby" })}
             />
           ) : (
             <Lobby onOpen={(gameId) => navigate({ name: "game", gameId })} />

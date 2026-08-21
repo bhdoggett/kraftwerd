@@ -13,8 +13,12 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const removeFriend = useMutation(api.friends.removeFriend);
   const cancelInvite = useMutation(api.friends.cancelInvite);
   const createWithFriends = useMutation(api.games.createGameWithFriends);
+  const link = useQuery(api.friends.myFriendLink);
+  const createLink = useMutation(api.friends.createFriendLink);
+  const resetLink = useMutation(api.friends.resetFriendLink);
 
   const [email, setEmail] = useState("");
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** The friend whose Play button was pressed, while the game is being set up. */
   const [opponent, setOpponent] = useState<Player | null>(null);
@@ -32,6 +36,19 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
       setStartError(userMessage(err));
     } finally {
       setStarting(false);
+    }
+  }
+
+  /** Copy the link, making one first if this is the first time. */
+  async function copyLink() {
+    setError(null);
+    try {
+      const token = link?.token ?? (await createLink({}));
+      await navigator.clipboard.writeText(`${window.location.origin}/friend/${token}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      setError(userMessage(err));
     }
   }
 
@@ -64,6 +81,33 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           error={startError}
         />
       )}
+
+      {/*
+        Anyone holding this becomes a friend on following it, which is the
+        point — it goes in a message to someone you know. Reset retires it.
+      */}
+      <div className={styles.section}>
+        <h3 className={styles.heading}>Invite by link</h3>
+        <p className={styles.hint}>
+          Send this to anyone. Following it adds them to your friends list,
+          whether or not they have played before.
+        </p>
+        <div className={styles.add}>
+          <button type="button" className={styles.button} onClick={() => void copyLink()}>
+            {copied ? "Copied" : "Copy invite link"}
+          </button>
+          {link && (
+            <button
+              type="button"
+              className={styles.secondary}
+              onClick={() => void resetLink({})}
+              title="Retire the old link, so it stops working"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
 
       <form className={styles.add} onSubmit={(e) => void add(e)}>
         <input
