@@ -347,6 +347,10 @@ describe("solo games", () => {
 describe("resigning and stats", () => {
   test("quitting hands the win to the other player", async () => {
     const { t, gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D"]);
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
 
     await asAlice.mutation(api.games.resignGame, { gameId });
 
@@ -393,6 +397,10 @@ describe("resigning and stats", () => {
 
   test("counts a game for everyone who played, won or not", async () => {
     const { t, gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D"]);
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
 
     await asAlice.mutation(api.games.resignGame, { gameId });
 
@@ -406,6 +414,10 @@ describe("resigning and stats", () => {
 
   test("a finished game cannot be resigned again", async () => {
     const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
     await asAlice.mutation(api.games.resignGame, { gameId });
 
     await expect(
@@ -609,6 +621,10 @@ describe("joining by link", () => {
 describe("the lobby's game lists", () => {
   test("a finished game moves out of your games and into past games", async () => {
     const { gameId, asAlice, asBob } = await twoPlayerGame(["A", "D"]);
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
 
     let alice = await asAlice.query(api.games.listMyGames);
     expect(alice.games).toHaveLength(1);
@@ -625,6 +641,85 @@ describe("the lobby's game lists", () => {
     // The winner sees the same game, from the other side.
     const bob = await asBob.query(api.games.listMyGames);
     expect(bob.past[0]?.youWon).toBe(true);
+  });
+
+  test("a game abandoned before it began is not counted or kept", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
+    });
+    const asHost = t.withIdentity({ subject: "auth|host" });
+    const { gameId } = await asHost.mutation(api.games.createGame, { playerCount: 2 });
+
+    await asHost.mutation(api.games.resignGame, { gameId });
+
+    // Nobody ever played, so it is not a game you have played and lost.
+    const viewer = await asHost.query(api.users.viewer);
+    expect(viewer?.stats?.gamesPlayed).toBe(0);
+    expect(viewer?.stats?.bestGameScore).toBe(0);
+
+    const lists = await asHost.query(api.games.listMyGames);
+    expect(lists.games).toHaveLength(0);
+    expect(lists.past).toHaveLength(0);
+  });
+
+  test("leaving a game that has not started frees the seat and leaves it standing", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
+      await ctx.db.insert("users", { authId: "auth|guest", name: "Guest" });
+    });
+    const asHost = t.withIdentity({ subject: "auth|host" });
+    const asGuest = t.withIdentity({ subject: "auth|guest" });
+    const { gameId } = await asHost.mutation(api.games.createGame, { playerCount: 3 });
+    await asGuest.mutation(api.games.joinGame, { gameId });
+
+    await asGuest.mutation(api.games.resignGame, { gameId });
+
+    // The host is still waiting for players, with the seat open again.
+    const host = await asHost.query(api.games.listMyGames);
+    expect(host.games).toHaveLength(1);
+    expect(host.games[0]?.opponents).toHaveLength(0);
+    expect((await asGuest.query(api.games.listMyGames)).games).toHaveLength(0);
+  });
+
+  test("quitting a game you have played in counts against your record", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    const viewer = await asAlice.query(api.users.viewer);
+    expect(viewer?.stats?.gamesPlayed).toBe(1);
+  });
+
+  test("a solo game quit before the first turn leaves no record", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|solo", name: "Solo" });
+    });
+    const asSolo = t.withIdentity({ subject: "auth|solo" });
+    const { gameId } = await asSolo.mutation(api.games.createGame, { playerCount: 1 });
+
+    await asSolo.mutation(api.games.resignGame, { gameId });
+
+    const viewer = await asSolo.query(api.users.viewer);
+    expect(viewer?.stats?.gamesPlayed).toBe(0);
+    expect((await asSolo.query(api.games.listMyGames)).past).toHaveLength(0);
+  });
+
+  test("nobody's record moves when a started game is quit before a turn", async () => {
+    const { gameId, asAlice, asBob } = await twoPlayerGame(["A", "D"]);
+
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    // Bob was handed a win over a game that never happened; that is not a win.
+    expect((await asBob.query(api.users.viewer))?.stats?.gamesPlayed).toBe(0);
+    expect((await asBob.query(api.users.viewer))?.stats?.wins).toBe(0);
+    expect((await asAlice.query(api.games.listMyGames)).past).toHaveLength(0);
   });
 });
 

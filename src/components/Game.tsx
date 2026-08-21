@@ -519,10 +519,14 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
 
   function quit() {
+    // A game still in the lobby is called off rather than lost, so promising
+    // the other player a win would be wrong.
     const warning =
-      game.playerCount > 1
-        ? "Quit this game? The other player wins it."
-        : "Quit this game?";
+      game.turnNumber === 0
+        ? "Leave this game? Nobody has played yet, so it goes no further."
+        : game.playerCount > 1
+          ? "Quit this game? The other player wins it."
+          : "Quit this game?";
     if (window.confirm(warning)) void resignGame({ gameId }).then(onLeave);
   }
 

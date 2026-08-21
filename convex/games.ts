@@ -541,6 +541,26 @@ export const resignGame = mutation({
       .unique();
     if (player === null) throw new ConvexError("You are not in this game");
 
+    // Nobody has played yet, so there is nothing to lose: quitting cancels
+    // rather than finishes. Recording it would put a game you never played
+    // into your record, and a game nobody played into your history — and
+    // would hand whoever is left a win over a game that never happened.
+    if (game.turnNumber === 0) {
+      if (game.status !== "lobby" || game.createdBy === userId) {
+        const seated = await ctx.db
+          .query("players")
+          .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
+          .take(GAME.maxPlayers);
+        for (const seat of seated) await ctx.db.delete("players", seat._id);
+        await ctx.db.delete("games", args.gameId);
+      } else {
+        // Somebody else's game, still waiting for players: give the seat back
+        // rather than calling the whole thing off.
+        await ctx.db.delete("players", player._id);
+      }
+      return null;
+    }
+
     const resignedBy = [...new Set([...(game.resignedBy ?? []), userId])];
     await ctx.db.patch("games", args.gameId, { resignedBy });
 
