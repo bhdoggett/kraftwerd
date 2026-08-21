@@ -159,7 +159,8 @@ describe("placeTiles", () => {
     await expect(
       asBob.mutation(api.games.placeTiles, {
         gameId,
-        placements: [at(4, 4, "T"), at(5, 4, "O")],
+        // Well clear of the mass, and clear of the premium corners.
+        placements: [at(2, 2, "T"), at(3, 2, "O")],
       }),
     ).rejects.toThrow("connect to the tiles already on the board");
   });

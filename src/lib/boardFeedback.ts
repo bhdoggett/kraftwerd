@@ -15,15 +15,22 @@ const NEIGHBOURS = [
  * Floods orthogonally from a tile that was already there — or from the first
  * placement when the board was empty — and reports whichever placements the
  * flood never reached.
+ *
+ * The premium corners are on the board from the start and sit alone until a
+ * play arrives, so they cannot be used as the mass to grow from: starting the
+ * flood on one marked every tile of a perfectly legal play as unreachable.
  */
 function disconnectedCells(
   board: Board,
   placements: readonly Placement[],
+  premium: ReadonlySet<string>,
 ): Set<string> {
   const orphans = new Set<string>();
   const placedKeys = new Set(placements.map((p) => `${p.x},${p.y}`));
 
-  const existing = [...board.keys()].find((key) => !placedKeys.has(key));
+  const existing = [...board.keys()].find(
+    (key) => !placedKeys.has(key) && !premium.has(key),
+  );
   const first = placements[0];
   const start = existing ?? (first ? `${first.x},${first.y}` : undefined);
   if (start === undefined) return orphans;
@@ -56,6 +63,7 @@ export function markCells(
   after: Board,
   placements: readonly Placement[],
   validity: ReadonlyMap<string, boolean>,
+  premium: ReadonlySet<string> = new Set(),
 ): { good: Set<string>; bad: Set<string> } {
   const good = new Set<string>();
   const bad = new Set<string>();
@@ -83,7 +91,7 @@ export function markCells(
   // Spelling and connectivity are separate: a good word that does not reach
   // the rest of the board is still an illegal play, and the board should say
   // so rather than leaving it to the message underneath.
-  for (const key of disconnectedCells(after, placements)) bad.add(key);
+  for (const key of disconnectedCells(after, placements, premium)) bad.add(key);
 
   for (const key of bad) good.delete(key);
   return { good, bad };

@@ -14,6 +14,14 @@ export interface Bounds {
   blocked?: ReadonlySet<string>;
   /** The opening play must cover this square. */
   centre?: { x: number; y: number };
+  /**
+   * Squares whose letters belong to the board rather than to a player: the
+   * premium corners. They are on the board from the start, so they are not
+   * evidence that anyone has played, and they are allowed to sit unreached —
+   * a letter in a corner is a destination, not an island someone may build
+   * from before their tiles get there.
+   */
+  premium?: ReadonlySet<string>;
 }
 
 export type Legality =
@@ -34,10 +42,17 @@ const NEIGHBOURS = [
   { dx: 0, dy: -1 },
 ] as const;
 
-/** Whether every tile on the board forms a single orthogonally-connected mass. */
-function isOneMass(board: Board): boolean {
-  const start = board.keys().next();
-  if (start.done) return true;
+/**
+ * Whether every tile forms a single orthogonally-connected mass, starting from
+ * `from` when given.
+ *
+ * With premium squares in play the starting point matters: growth has to be
+ * traceable back to the centre, and the premium letters that nothing has
+ * reached yet are excused rather than counted as breaks.
+ */
+function isOneMass(board: Board, from?: string, excused?: ReadonlySet<string>): boolean {
+  const start = from !== undefined && board.has(from) ? { done: false, value: from } : board.keys().next();
+  if (start.done === true) return true;
 
   const seen = new Set<string>([start.value]);
   const queue = [start.value.split(",").map(Number) as [number, number]];
@@ -52,7 +67,14 @@ function isOneMass(board: Board): boolean {
     }
   }
 
-  return seen.size === board.size;
+  // Premium letters nobody has reached are not breaks in the mass; every other
+  // tile has to be reachable from where the count started.
+  let required = 0;
+  for (const key of board.keys()) {
+    if (excused?.has(key) === true && !seen.has(key)) continue;
+    required++;
+  }
+  return seen.size === required;
 }
 
 /** The board as it stands after `placements` are applied to `before`. */
@@ -111,16 +133,23 @@ export function validateTurn(
 
   const after = applyPlacements(before, placements);
 
+  // Whether anyone has played yet: the premium letters were there from the
+  // start, so they do not count as a first move.
+  const played = [...before.keys()].filter((key) => bounds.premium?.has(key) !== true);
+
   // The opening word starts at the centre, as in a crossword. Everything after
   // it is anchored by connectivity to that first word.
-  if (before.size === 0 && bounds.centre !== undefined) {
+  if (played.length === 0 && bounds.centre !== undefined) {
     const centre = cellKey(bounds.centre.x, bounds.centre.y);
     if (!placements.some((p) => cellKey(p.x, p.y) === centre)) {
       return { ok: false, reason: "missing-centre" };
     }
   }
 
-  if (!isOneMass(after)) return { ok: false, reason: "disconnected" };
+  const from = bounds.centre === undefined ? undefined : cellKey(bounds.centre.x, bounds.centre.y);
+  if (!isOneMass(after, from, bounds.premium)) {
+    return { ok: false, reason: "disconnected" };
+  }
 
   const bad = wordsFormed(after, placements).filter((w) => !dictionary.has(w));
 

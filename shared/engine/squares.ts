@@ -18,10 +18,20 @@ function isFilled(board: Board, ox: number, oy: number, k: number): boolean {
  * add tiles, so that test is exactly equivalent to diffing the square sets of
  * the board before and after, without needing the "before" board at all.
  */
-export function newSquares(board: Board, placements: readonly Coord[]): number[] {
+export interface SquareBlock {
+  /** Side length. */
+  k: number;
+  /** Top-left corner. */
+  x: number;
+  y: number;
+}
+
+/** As `newSquares`, but saying where each block is — which is what a scorer
+ * needs to know whether a premium square falls inside one. */
+export function newSquareBlocks(board: Board, placements: readonly Coord[]): SquareBlock[] {
   // A k x k block needs k^2 tiles, so nothing larger than this can be filled.
   const maxSize = Math.floor(Math.sqrt(board.size));
-  const found: number[] = [];
+  const found: SquareBlock[] = [];
   const seen = new Set<string>();
 
   for (const p of placements) {
@@ -34,11 +44,15 @@ export function newSquares(board: Board, placements: readonly Coord[]): number[]
           const id = `${ox},${oy},${k}`;
           if (seen.has(id)) continue;
           seen.add(id);
-          if (isFilled(board, ox, oy, k)) found.push(k);
+          if (isFilled(board, ox, oy, k)) found.push({ k, x: ox, y: oy });
         }
       }
     }
   }
 
   return found;
+}
+
+export function newSquares(board: Board, placements: readonly Coord[]): number[] {
+  return newSquareBlocks(board, placements).map((block) => block.k);
 }

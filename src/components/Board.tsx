@@ -12,8 +12,16 @@ interface BoardTile {
   placedBy: string;
 }
 
+export interface PremiumCell {
+  x: number;
+  y: number;
+  letter: string;
+}
+
 interface BoardProps {
   boardSize: number;
+  /** The board's own letters, waiting in the corners for someone to reach. */
+  premium: readonly PremiumCell[];
   /** Which hand-drawn layout this game is played on. */
   layout: string;
   tiles: readonly BoardTile[];
@@ -46,6 +54,7 @@ const key = (x: number, y: number) => `${x},${y}`;
 export function Board({
   boardSize,
   layout,
+  premium,
   tiles,
   pending,
   seatOf,
@@ -186,6 +195,8 @@ export function Board({
     return map;
   }, [pending]);
 
+  const premiumAt = new Map(premium.map((c) => [key(c.x, c.y), c.letter]));
+
   const cells: React.ReactNode[] = [];
 
   for (let y = 0; y < boardSize; y++) {
@@ -195,14 +206,16 @@ export function Board({
       const tile = committed.get(k);
       const stage = staged.get(k);
       const isCentre = x === shape.centre.x && y === shape.centre.y;
+      const bonus = premiumAt.get(k);
       const awaiting = awaitingBlankAt?.x === x && awaitingBlankAt?.y === y;
-      const empty = !blocked && tile === undefined && stage === undefined;
+      const empty = !blocked && bonus === undefined && tile === undefined && stage === undefined;
 
       // Whose colour this square is lit in. A tile being staged is not on the
       // board yet, but it is the viewer's, so it takes their colour early.
       const seat = tile ? seatOf.get(tile.placedBy) : stage ? (yourSeat ?? undefined) : undefined;
 
       const classes = [styles.cell];
+      if (bonus !== undefined) classes.push(styles.premium, styles.tile);
       if (blocked) classes.push(styles.blocked);
       if (tile) classes.push(styles.tile);
       if (tile?.isBlank) classes.push(styles.blank);
@@ -222,7 +235,7 @@ export function Board({
           key={k}
           type="button"
           className={classes.join(" ")}
-          data-cell={blocked || tile !== undefined ? undefined : k}
+          data-cell={blocked || bonus !== undefined || tile !== undefined ? undefined : k}
           data-seat={seat === undefined ? undefined : seat % 4}
           data-staged={stage === undefined ? undefined : ""}
           aria-disabled={blocked || tile !== undefined || (!stage && !canPlace)}
@@ -239,12 +252,13 @@ export function Board({
           onClick={() => {
             // Swallowed if this click ended a pan rather than picking a square.
             if (panned.current) return;
-            if (blocked || tile) return;
+            if (blocked || bonus !== undefined || tile) return;
             if (stage) onPickUp(x, y);
             else if (canPlace) onPlace(x, y);
           }}
         >
-          <span className={styles.glyph}>{(tile ?? stage)?.letter ?? ""}</span>
+          <span className={styles.glyph}>{(tile ?? stage)?.letter ?? bonus ?? ""}</span>
+          {bonus !== undefined && <span className={styles.bonus}>2×</span>}
         </button>,
       );
     }

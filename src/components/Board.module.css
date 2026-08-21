@@ -173,8 +173,10 @@
 
 /* Where the first word has to start: the one lit square on an empty board. */
 .centre {
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 2px var(--accent);
+  background: color-mix(in srgb, var(--valid) 30%, var(--cell-empty));
+  box-shadow:
+    inset 0 0 0 2px var(--valid),
+    var(--cell-inset);
 }
 
 
@@ -203,4 +205,39 @@
 .inBadWord {
   outline: 2px solid var(--invalid);
   outline-offset: -2px;
+}
+
+/*
+ * A premium corner: the board's own letter, and what it is worth. Held in
+ * white rather than any player's colour, because it belongs to nobody until a
+ * word runs through it — and then it pays double for whatever it helped make.
+ */
+.cell.premium {
+  /* Doubled specificity so no state class further up can repaint it: this
+     square is the board's, not a player's, and never changes hands. */
+  --tile-face: var(--premium-face);
+  background: var(--premium-face);
+  color: var(--premium-ink);
+  box-shadow:
+    inset 0 0 0 var(--tile-stroke) var(--tile-edge),
+    var(--cell-inset);
+  cursor: default;
+}
+
+.cell .bonus {
+  grid-area: cell;
+  place-self: end end;
+  padding: 0 1px 1px 0;
+  font-size: calc(var(--cell-size) * 0.28);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--premium-ink);
+}
+
+/* The letter shifts up and left, and sets a little smaller, so the 2x has the
+   bottom-right corner to itself rather than sitting on top of it. */
+.premium .glyph {
+  place-self: center;
+  font-size: calc(var(--cell-size) * 0.5);
+  transform: translate(calc(var(--cell-size) * -0.14), calc(var(--cell-size) * -0.08));
 }

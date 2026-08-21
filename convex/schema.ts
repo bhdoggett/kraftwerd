@@ -65,6 +65,15 @@ export default defineSchema({
     boardSize: v.number(),
     /** Which hand-drawn layout this game is played on (shared/boards.ts). */
     layout: v.optional(v.string()),
+    /**
+     * The premium corners and which letter each got, dealt when the game is
+     * made. Stored rather than derived because the deal is random: a game has
+     * to keep the board it started with. Absent on games made before premium
+     * squares existed, which play on as they were.
+     */
+    premium: v.optional(
+      v.array(v.object({ x: v.number(), y: v.number(), letter: v.string() })),
+    ),
     /** Game ends once this many tiles are on the board (design.md §6). */
     endThreshold: v.number(),
     playerCount: v.number(),

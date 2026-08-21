@@ -225,3 +225,4 @@ describe("a board with blocked squares and a centre", () => {
     );
   });
 });
+
