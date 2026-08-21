@@ -109,13 +109,13 @@ export function HelpIcon({ size = 16 }: IconProps) {
   );
 }
 
-/** The menu: three dots, filled so they read at small sizes. */
+/** The menu: three squares, since everything else in this game is one. */
 export function MoreIcon({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>
-      <circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
-      <circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <rect x="2" y="9.5" width="4.5" height="5" fill="currentColor" stroke="none" />
+      <rect x="9.75" y="9.5" width="4.5" height="5" fill="currentColor" stroke="none" />
+      <rect x="17.5" y="9.5" width="4.5" height="5" fill="currentColor" stroke="none" />
     </svg>
   );
 }

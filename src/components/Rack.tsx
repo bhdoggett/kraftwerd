@@ -5,6 +5,8 @@ import styles from "./Rack.module.css";
 export type Selection = { kind: "letter"; index: number } | { kind: "blank" };
 
 interface RackProps {
+  /** The viewer's seat, which is what the tiles are lit in. */
+  seat: number | null;
   letters: readonly string[];
   /** Letter indices staged on the board this turn, so out of the rack. */
   spent: readonly number[];
@@ -40,6 +42,7 @@ interface RackProps {
 }
 
 export function Rack({
+  seat,
   letters,
   spent,
   blanks,
@@ -97,7 +100,7 @@ export function Rack({
   });
 
   return (
-    <div className={styles.rack} data-rack="">
+    <div className={styles.rack} data-rack="" data-seat={seat === null ? undefined : seat % 4}>
       <div className={styles.tiles}>
         {order
           // A staged tile leaves the rack. One being dragged back appears as a

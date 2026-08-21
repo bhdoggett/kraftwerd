@@ -98,7 +98,7 @@
   height: var(--rack-tile-height, 54px);
   display: grid;
   place-items: center;
-  border: 1px solid var(--tile-edge);
+  border: var(--tile-stroke) solid var(--tile-edge);
   border-radius: 0;
   background: var(--tile-face);
   color: var(--tile-text);
@@ -257,16 +257,17 @@
   border: 1px solid transparent;
 }
 
+/* Same green as the outline the board draws round the word itself. */
 .valid {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-color: var(--accent);
+  background: var(--valid-soft);
+  color: var(--valid);
+  border-color: var(--valid);
 }
 
 .invalid {
-  background: var(--danger-soft);
-  color: var(--danger);
-  border-color: var(--danger);
+  background: var(--invalid-soft);
+  color: var(--invalid);
+  border-color: var(--invalid);
   text-decoration: line-through;
 }
 
@@ -275,7 +276,7 @@
   min-width: 1.4em;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--valid);
   color: var(--text-inverse);
   font-size: 0.72rem;
   font-weight: 800;
@@ -322,11 +323,12 @@
   font-size: 0.9rem;
 }
 
+/* Only shown for a play that is legal, so it belongs with the green. */
 .previewScore {
   min-width: 2.4em;
   padding: 2px var(--space-2);
   border-radius: var(--radius);
-  background: var(--accent);
+  background: var(--valid);
   color: var(--text-inverse);
   font-weight: 800;
   font-size: 1.1rem;

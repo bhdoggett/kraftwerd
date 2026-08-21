@@ -8,6 +8,8 @@ interface BoardTile {
   y: number;
   letter: string;
   isBlank: boolean;
+  /** Who put it there, so the board can light it in their colour. */
+  placedBy: string;
 }
 
 interface BoardProps {
@@ -16,6 +18,10 @@ interface BoardProps {
   layout: string;
   tiles: readonly BoardTile[];
   pending: readonly Placement[];
+  /** Seat number per player id, which is what picks a tile's colour. */
+  seatOf: ReadonlyMap<string, number>;
+  /** The viewer's seat, so tiles they are still holding match their own. */
+  yourSeat: number | null;
   canPlace: boolean;
   /** Square holding a blank that has not been told its letter yet. */
   awaitingBlankAt?: { x: number; y: number } | null;
@@ -42,6 +48,8 @@ export function Board({
   layout,
   tiles,
   pending,
+  seatOf,
+  yourSeat,
   canPlace,
   awaitingBlankAt,
   goodCells,
@@ -190,6 +198,10 @@ export function Board({
       const awaiting = awaitingBlankAt?.x === x && awaitingBlankAt?.y === y;
       const empty = !blocked && tile === undefined && stage === undefined;
 
+      // Whose colour this square is lit in. A tile being staged is not on the
+      // board yet, but it is the viewer's, so it takes their colour early.
+      const seat = tile ? seatOf.get(tile.placedBy) : stage ? (yourSeat ?? undefined) : undefined;
+
       const classes = [styles.cell];
       if (blocked) classes.push(styles.blocked);
       if (tile) classes.push(styles.tile);
@@ -211,6 +223,7 @@ export function Board({
           type="button"
           className={classes.join(" ")}
           data-cell={blocked || tile !== undefined ? undefined : k}
+          data-seat={seat === undefined ? undefined : seat % 4}
           data-staged={stage === undefined ? undefined : ""}
           aria-disabled={blocked || tile !== undefined || (!stage && !canPlace)}
           aria-label={
@@ -261,6 +274,7 @@ export function Board({
     >
       <div
         className={styles.grid}
+      data-seat={yourSeat === null ? undefined : yourSeat % 4}
         style={{ gridTemplateColumns: `repeat(${boardSize}, var(--cell-size))` }}
       >
         {cells}

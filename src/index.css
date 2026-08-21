@@ -4,47 +4,88 @@
    --------------------------------------------------------------------------- */
 
 :root {
+  /*
+   * The six. Named once, in the open, because they are the identity: neon
+   * tubes over black, after the band this game is named for.
+   */
+  --neon-cyan: #00e9f2;
+  --neon-magenta: #ff2bd1;
+  --neon-lime: #b8ff2b;
+  --neon-amber: #ffd400;
+  --neon-orange: #ff7a29;
+  --neon-violet: #9d7bff;
+
   /* Surfaces, light theme */
-  --surface: #fdfcfa;
+  --surface: #f4f4f6;
   --surface-raised: #ffffff;
-  --surface-sunken: #f1efe9;
-  --border: #ddd8cc;
-  --border-strong: #bdb6a4;
+  --surface-sunken: #e6e6ea;
+  --border: #d2d2d9;
+  --border-strong: #86868f;
 
   /* Text */
-  --text: #23201a;
-  --text-muted: #6d675b;
-  --text-inverse: #fdfcfa;
+  --text: #0b0b0d;
+  --text-muted: #61616b;
+  --text-inverse: #ffffff;
 
   /* Board */
-  --cell-empty: #f7f5f0;
-  --cell-line: #e3ded1;
+  --cell-empty: #ffffff;
+  --cell-line: #7c7c86;
+  --cell-blocked: #0b0b0d;
+
   /*
-   * Blocked squares read as solid in either theme: near-black on the light
-   * board, darker still than the board on the dark one. Using the text colour
-   * inverted them, so a dark theme showed white blocks.
+   * Tiles are lit signs: a saturated face with the letter cut out of it in
+   * black. Every face clears 6.5:1 against that ink, on either theme, which is
+   * what lets the same six colours sit on a white board and a black one.
    */
-  --cell-blocked: #2b2620;
-  --tile-face: #f0e2c0;
-  --tile-edge: #cbb489;
-  --tile-text: #3a2f18;
-  --tile-blank-face: #e4e7ec;
-  --tile-blank-edge: #b9bfc9;
+  --tile-face: var(--seat-0);
+  --tile-edge: #0b0b0d;
+  --tile-text: #0b0b0d;
+  --tile-blank-face: #ffffff;
+  --tile-blank-edge: #0b0b0d;
+  /* A tube glows against black and does nothing against paper. */
+  --tile-lit: none;
+  /* Every square is sunk into the board, tiles included. */
+  --cell-inset: inset 0 2px 5px rgb(0 0 0 / 0.3);
 
   /* Accents */
-  --accent: #3f6f52;
-  --accent-hover: #345c44;
-  --accent-soft: #d9e7dd;
-  --pending: #b4632c;
-  --pending-soft: #f6e3d5;
-  --danger: #a33a2c;
-  --danger-soft: #f6dcd8;
+  --accent: #d1009b;
+  --accent-hover: #ab007e;
+  --accent-soft: #ffe0f6;
+  --pending: #b45c00;
+  --pending-soft: #ffeccc;
+  --danger: #c40036;
+  --danger-soft: #ffdfe6;
+  /*
+   * Word feedback. Its own pair, not the accent and the danger colour: the
+   * accent went magenta with the makeover, and a magenta "this word is fine"
+   * next to a red "this one is not" is two shades of the same warning.
+   */
+  /*
+   * "Your turn" needs a pill on white, where magenta text alone is quiet
+   * against a light row. On black the same magenta already glows, and the
+   * pill only adds a smudge behind it.
+   */
+  --badge-fill: var(--accent-soft);
 
-  /* Player seat colours, used for tile ownership dots */
-  --seat-0: #3f6f52;
-  --seat-1: #2f5d7c;
-  --seat-2: #8a5a2b;
-  --seat-3: #6d4370;
+  --valid: #00a63f;
+  --valid-hover: #008a34;
+  --valid-soft: #d7f6e3;
+  --invalid: #e5002e;
+  --invalid-soft: #ffdde4;
+
+  /*
+   * Player colours. A tile says whose it is by what it is lit in.
+   *
+   * Softened towards white rather than made transparent: a translucent tile
+   * would take its colour from whatever is behind it, so the same tile would
+   * read differently on the black board and the white one. Mixing keeps them
+   * opaque and identical on both. One number moves all six.
+   */
+  --tile-tint: 68%;
+  --seat-0: color-mix(in srgb, var(--neon-cyan) var(--tile-tint), #ffffff);
+  --seat-1: color-mix(in srgb, var(--neon-magenta) var(--tile-tint), #ffffff);
+  --seat-2: color-mix(in srgb, var(--neon-lime) var(--tile-tint), #ffffff);
+  --seat-3: color-mix(in srgb, var(--neon-amber) var(--tile-tint), #ffffff);
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -54,8 +95,10 @@
   --space-6: 1.5rem;
   --space-8: 2rem;
 
-  --radius: 6px;
-  --radius-lg: 10px;
+  --radius: 4px;
+  --radius-lg: 8px;
+  /* How heavy a tile's edge is drawn. One number, so board and rack agree. */
+  --tile-stroke: 3px;
 
   --cell-size: 36px;
 
@@ -64,14 +107,26 @@
    * follows the pointer during a drag is a sibling of the rack and has to
    * match whatever size it is using.
    */
-  --rack-tile-width: 42px;
-  --rack-tile-height: 48px;
+  --rack-tile-width: 46px;
+  /* Square, like the board's squares and like a tile actually is. */
+  --rack-tile-height: var(--rack-tile-width);
   --rack-gap: 0.375rem;
 
   --shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 8px rgb(0 0 0 / 0.04);
   --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.14), 0 6px 16px rgb(0 0 0 / 0.1);
 
-  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, sans-serif;
+  /*
+   * Geometric, after the lettering the band used. Futura and Avenir ship on
+   * Apple platforms only, so elsewhere this lands on Century Gothic or plain
+   * Helvetica — same skeleton, less character, still legible.
+   */
+  --font: Futura, "Avenir Next", "Century Gothic", "Helvetica Neue", Helvetica,
+    system-ui, sans-serif;
+  /* Tile letters, where a single glyph has to carry: heavier, tighter. */
+  --font-tile: Futura, "Avenir Next", "Century Gothic", "Helvetica Neue", Helvetica,
+    system-ui, sans-serif;
+  /* Headings are set like a record sleeve: caps, wide, tight to the grid. */
+  --tracking: 0.14em;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
@@ -81,81 +136,111 @@
  */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --surface: #17161a;
-    --surface-raised: #201f24;
-    --surface-sunken: #111014;
-    --border: #33313a;
-    --border-strong: #4c4955;
+    --surface: #08080a;
+    --surface-raised: #121216;
+    --surface-sunken: #000000;
+    --border: #26262e;
+    --border-strong: #45454f;
 
-    --text: #eceaf0;
-    --text-muted: #9a95a5;
-    --text-inverse: #17161a;
+    --text: #f2f2f5;
+    --text-muted: #8f8f9b;
+    --text-inverse: #08080a;
 
-    --cell-empty: #1c1b21;
-    --cell-line: #2b2933;
-    --cell-blocked: #08080a;
-    --tile-face: #d8c69b;
-    --tile-edge: #a08d63;
-    --tile-text: #262010;
-    --tile-blank-face: #b9bfc9;
-    --tile-blank-edge: #8b919c;
+    --cell-empty: #101014;
+    --cell-line: #35353e;
+    --cell-blocked: #000000;
 
-    --accent: #6aa17f;
-    --accent-hover: #7cb391;
-    --accent-soft: #24352c;
-    --pending: #d98a52;
-    --pending-soft: #3a2a1e;
-    --danger: #d97a6c;
-    --danger-soft: #3a221e;
+    /* The faces do not change: that is the point of choosing them this way. */
+    --tile-edge: #000000;
+    --tile-blank-face: #ffffff;
+    --tile-blank-edge: #000000;
+    /* Resolves per tile, since --tile-face is set on the tile itself. */
+    --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
+    --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
 
-    --seat-0: #6aa17f;
-    --seat-1: #6f9fc4;
-    --seat-2: #c9975c;
-    --seat-3: #a985ad;
+    --accent: var(--neon-magenta);
+    --accent-hover: #ff5cdc;
+    --accent-soft: #2e0726;
+    --pending: var(--neon-orange);
+    --pending-soft: #2b1405;
+    --danger: #ff4d6d;
+    --danger-soft: #2e0711;
+    --badge-fill: transparent;
 
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.3);
-    --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.5), 0 6px 16px rgb(0 0 0 / 0.4);
+    --valid: #2bff88;
+    --valid-hover: #6bffae;
+    --valid-soft: #04301b;
+    --invalid: #ff2b55;
+    --invalid-soft: #330711;
+
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
+    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);
   }
 }
 
 /* The same values again, for when dark is chosen on a light system. */
 :root[data-theme="dark"] {
-  --surface: #17161a;
-  --surface-raised: #201f24;
-  --surface-sunken: #111014;
-  --border: #33313a;
-  --border-strong: #4c4955;
+  --surface: #08080a;
+  --surface-raised: #121216;
+  --surface-sunken: #000000;
+  --border: #26262e;
+  --border-strong: #45454f;
 
-  --text: #eceaf0;
-  --text-muted: #9a95a5;
-  --text-inverse: #17161a;
+  --text: #f2f2f5;
+  --text-muted: #8f8f9b;
+  --text-inverse: #08080a;
 
-  --cell-empty: #1c1b21;
-  --cell-line: #2b2933;
-  --cell-blocked: #08080a;
-  --tile-face: #d8c69b;
-  --tile-edge: #a08d63;
-  --tile-text: #262010;
-  --tile-blank-face: #b9bfc9;
-  --tile-blank-edge: #8b919c;
+  --cell-empty: #101014;
+  --cell-line: #35353e;
+  --cell-blocked: #000000;
 
-  --accent: #6aa17f;
-  --accent-hover: #7cb391;
-  --accent-soft: #24352c;
-  --pending: #d98a52;
-  --pending-soft: #3a2a1e;
-  --danger: #d97a6c;
-  --danger-soft: #3a221e;
+  /* The faces do not change: that is the point of choosing them this way. */
+  --tile-edge: #000000;
+  --tile-blank-face: #ffffff;
+  --tile-blank-edge: #000000;
+  --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
+  --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
 
-  --seat-0: #6aa17f;
-  --seat-1: #6f9fc4;
-  --seat-2: #c9975c;
-  --seat-3: #a985ad;
+  --accent: var(--neon-magenta);
+  --accent-hover: #ff5cdc;
+  --accent-soft: #2e0726;
+  --pending: var(--neon-orange);
+  --pending-soft: #2b1405;
+  --danger: #ff4d6d;
+  --danger-soft: #2e0711;
+  --badge-fill: transparent;
 
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.3);
-  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.5), 0 6px 16px rgb(0 0 0 / 0.4);
+  --valid: #2bff88;
+  --valid-hover: #6bffae;
+  --valid-soft: #04301b;
+  --invalid: #ff2b55;
+  --invalid-soft: #330711;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
+  --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);
 }
 
+
+/*
+ * Whose tile this is, wherever it is drawn: on the board, on the rack, or
+ * following the pointer. One rule set rather than one per component, since
+ * "seat 2 is lime" is a fact about the game, not about the board.
+ */
+[data-seat="0"] {
+  --tile-face: var(--seat-0);
+}
+
+[data-seat="1"] {
+  --tile-face: var(--seat-1);
+}
+
+[data-seat="2"] {
+  --tile-face: var(--seat-2);
+}
+
+[data-seat="3"] {
+  --tile-face: var(--seat-3);
+}
 
 *,
 *::before,
@@ -187,8 +272,7 @@ body,
 @media (max-width: 640px) {
   :root {
     /* Small enough that a full rack still fits on one row. */
-    --rack-tile-width: 36px;
-    --rack-tile-height: 42px;
+    --rack-tile-width: 38px;
     --rack-gap: 4px;
   }
 }

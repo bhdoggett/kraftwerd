@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Bleeds to the edges: at 16px a margin costs more than it gives. -->
+  <rect x="1" y="1" width="62" height="62" rx="6" fill="#b8ff2b" stroke="#0b0b0d" stroke-width="2"/>
+  <text x="32" y="47" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="46"
+        font-weight="bold" fill="#0b0b0d" text-anchor="middle">K</text>
+</svg>

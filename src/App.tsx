@@ -21,7 +21,16 @@ export default function App() {
           className={styles.brandButton}
           onClick={() => navigate({ name: "lobby" })}
         >
-          <h1 className={styles.brand}>kraftwerd</h1>
+          {/* Two tiles, in the colours seats 2 and 1 play in: the mark is made
+              of the same pieces the game is. */}
+          <h1 className={styles.brand} aria-label="kraftwerd">
+            <span className={styles.markTile} data-seat="2" aria-hidden="true">
+              K
+            </span>
+            <span className={styles.markTile} data-seat="1" aria-hidden="true">
+              W
+            </span>
+          </h1>
         </button>
         {/* Signed out there is no lobby to go back to, and the route is
             about to be irrelevant anyway. */}

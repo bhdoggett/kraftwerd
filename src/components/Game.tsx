@@ -15,6 +15,7 @@ import { Rack, type Selection } from "./Rack";
 import { userMessage } from "../lib/errors";
 import { markCells } from "../lib/boardFeedback";
 import { moveToPosition, rackSlotUnder, shuffled } from "../lib/rackGeometry";
+import { moveStagedTo, stageAt } from "../lib/staging";
 import { useWakeLock } from "../lib/useWakeLock";
 import { Scoreboard } from "./Scoreboard";
 
@@ -446,14 +447,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
   /** Move a staged tile, keeping the rack slot it came from. */
   function moveStaged(origin: { x: number; y: number }, x: number, y: number) {
-    setPending((current) => {
-      const tile = current.find((p) => p.x === origin.x && p.y === origin.y);
-      if (tile === undefined) return current;
-      // Refuse to stack two staged tiles on one square.
-      if (current.some((p) => p.x === x && p.y === y)) return current;
-
-      return current.map((p) => (p === tile ? { ...p, x, y } : p));
-    });
+    setPending((current) => moveStagedTo(current, origin, x, y));
     setError(null);
   }
 
@@ -469,7 +463,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     } else {
       const letter = me.letters?.[selected.index];
       if (letter === undefined) return;
-      setPending((p) => [...p, { x, y, letter, isBlank: false, from: selected }]);
+      setPending((p) => stageAt(p, { x, y, letter, isBlank: false, from: selected }));
     }
 
     setSelected(null);
@@ -533,10 +527,15 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   /** Answer the question the dropped blank is asking. */
   function nameBlank(letter: string) {
     if (blankAt === null) return;
-    setPending((current) => [
-      ...current,
-      { x: blankAt.x, y: blankAt.y, letter, isBlank: true, from: { kind: "blank" } },
-    ]);
+    setPending((current) =>
+      stageAt(current, {
+        x: blankAt.x,
+        y: blankAt.y,
+        letter,
+        isBlank: true,
+        from: { kind: "blank" },
+      }),
+    );
     setBlankAt(null);
   }
 
@@ -563,6 +562,9 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
   const choosingBlank = blankAt !== null;
 
+  // Player id to seat, which is how a tile knows what colour to be.
+  const seatOf = new Map(view.players.map((p) => [p.userId, p.seat]));
+
   return (
     <div className={styles.layout}>
       <div className={styles.main}>
@@ -571,6 +573,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           layout={view.layout}
           tiles={view.tiles}
           pending={pending}
+          seatOf={seatOf}
+          yourSeat={view.yourSeat}
           canPlace={myTurn && selected !== null && !choosingBlank}
           onPlace={place}
           onPickUp={pickUp}
@@ -584,6 +588,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             tiles the game will never take. The scores stay. */}
         {me?.letters && game.status !== "finished" && (
           <Rack
+            seat={view.yourSeat}
             letters={me.letters}
             spent={spentIndices}
             blanks={blanksLeft}
@@ -795,6 +800,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
         {drag && (
           <div
             className={[styles.dragTile, drag.isBlank ? styles.dragBlank : ""].join(" ")}
+            data-seat={view.yourSeat === null ? undefined : view.yourSeat % 4}
             style={{ left: drag.x, top: drag.y }}
             aria-hidden="true"
           >

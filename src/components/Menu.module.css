@@ -14,7 +14,7 @@
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   display: grid;
   place-items: center;
 }

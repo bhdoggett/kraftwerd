@@ -23,11 +23,36 @@
   text-align: left;
 }
 
+/*
+ * Built like the board: a hairline of grid showing between the tiles, and the
+ * same hairline around them. No frame on top of that — three dark lines in a
+ * row at this size read as a black bar with two colours trapped inside it.
+ */
 .brand {
-  font-weight: 700;
-  letter-spacing: -0.01em;
   margin: 0;
+  display: flex;
+  gap: 1px;
+  padding: 1px;
+  background: var(--cell-line);
+  /* Lifted off the header just enough to have an edge, now that it has no
+     frame drawing one for it. */
+  box-shadow: var(--shadow);
   font-size: 1.05rem;
+}
+
+.markTile {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: var(--tile-face);
+  border: var(--tile-stroke) solid var(--tile-edge);
+  color: var(--tile-text);
+  font-family: var(--font-tile);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  filter: var(--tile-lit);
 }
 
 .spacer {

@@ -55,11 +55,17 @@
   display: none;
 }
 
+/*
+ * The lines are this element's background showing through the gaps: a
+ * hairline, so an empty grid stays light. What keeps two tiles apart is the
+ * tone rather than the width — in the ink's own colour a hairline closed up
+ * between two heavy edges and the tiles read as one.
+ */
 .grid {
   display: grid;
   gap: 1px;
   padding: 1px;
-  background: var(--border-strong);
+  background: var(--cell-line);
   border: 1px solid var(--border-strong);
   width: max-content;
 }
@@ -76,11 +82,13 @@
   background: var(--cell-empty);
   display: grid;
   place-items: center;
-  font-weight: 800;
+  font-family: var(--font-tile);
+  font-weight: 700;
   /* Tied to the cell, so letters grow and shrink with the board when zoomed. */
   font-size: calc(var(--cell-size) * 0.6);
   line-height: 1;
   color: var(--tile-text);
+  box-shadow: var(--cell-inset);
   transition:
     background-color 90ms ease,
     transform 90ms ease;
@@ -94,20 +102,31 @@
   cursor: grabbing;
 }
 
-/* Tinted the whole time a tile is in hand, so it is obvious where the letter
-   can go. Squares that would do nothing on a click stay inert. */
+/*
+ * Tinted the whole time a tile is in hand, so it is obvious where the letter
+ * can go — in the player's own colour, since that is the tile about to land
+ * there. Anything else here would be a third signal competing with the two
+ * that mean something: a word that checks out, and one that does not.
+ */
 .armed {
-  background: color-mix(in srgb, var(--accent-soft) 55%, var(--cell-empty));
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--cell-line));
+  background: color-mix(in srgb, var(--tile-face) 22%, var(--cell-empty));
 }
 
 /* Only squares a click would actually fill respond to the pointer. */
 .playable:not(:disabled):hover {
-  background: color-mix(in srgb, var(--accent-soft) 85%, var(--accent));
+  background: color-mix(in srgb, var(--tile-face) 45%, var(--cell-empty));
 }
 
+/*
+ * The face is the player's colour and the letter is cut out of it in black.
+ * The edge is drawn inside the square, so the grid's own lines still run
+ * between tiles and the board reads as a grid rather than a heap of tiles.
+ */
 .tile {
   background: var(--tile-face);
+  box-shadow:
+    inset 0 0 0 var(--tile-stroke) var(--tile-edge),
+    var(--cell-inset);
   position: relative;
 }
 
@@ -123,14 +142,18 @@
 }
 
 
+/* Setting the face rather than the background, so the cover and the glow that
+   read it follow the blank too. */
 .blank {
-  background: var(--tile-blank-face);
+  --tile-face: var(--tile-blank-face);
+  background: var(--tile-face);
   border-color: var(--tile-blank-edge);
   color: var(--tile-text);
 }
 
 .pending.blank {
-  background: var(--tile-blank-face);
+  --tile-face: var(--tile-blank-face);
+  background: var(--tile-face);
   border-color: var(--pending);
   color: var(--tile-text);
 }
@@ -148,9 +171,10 @@
   cursor: default;
 }
 
-/* Where the first word has to start. */
+/* Where the first word has to start: the one lit square on an empty board. */
 .centre {
   background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 
@@ -172,11 +196,11 @@
  * tile's own edge is untouched and words that cross do not fight each other.
  */
 .inWord {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--valid);
   outline-offset: -2px;
 }
 
 .inBadWord {
-  outline: 2px solid var(--danger);
+  outline: 2px solid var(--invalid);
   outline-offset: -2px;
 }
