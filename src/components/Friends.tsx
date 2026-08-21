@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { userMessage } from "../lib/errors";
 import styles from "./Friends.module.css";
+import { StartGame, type Player } from "./StartGame";
 
 export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const data = useQuery(api.friends.listFriends);
@@ -15,15 +16,22 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  /** The friend whose Play button was pressed, while the game is being set up. */
+  const [opponent, setOpponent] = useState<Player | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
-
-  /** One-click rematch: a two-player game against just this friend. */
-  async function playWith(userId: Id<"users">) {
-    setError(null);
+  async function start(friendIds: Id<"users">[]) {
+    setStartError(null);
+    setStarting(true);
     try {
-      onOpen(await createWithFriends({ friendIds: [userId] }));
+      const gameId = await createWithFriends({ friendIds });
+      setOpponent(null);
+      onOpen(gameId);
     } catch (err) {
-      setError(userMessage(err));
+      setStartError(userMessage(err));
+    } finally {
+      setStarting(false);
     }
   }
 
@@ -40,8 +48,22 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
 
   return (
-    <section className={styles.panel}>
-      <h2 className={styles.heading}>Friends</h2>
+    <div className={styles.panel}>
+      {opponent && (
+        <StartGame
+          friend={opponent}
+          others={(data?.friends ?? [])
+            .filter((f) => f.userId !== opponent.userId)
+            .map((f) => ({ userId: f.userId, name: f.name }))}
+          onStart={(friendIds) => void start(friendIds)}
+          onCancel={() => {
+            setOpponent(null);
+            setStartError(null);
+          }}
+          starting={starting}
+          error={startError}
+        />
+      )}
 
       <form className={styles.add} onSubmit={(e) => void add(e)}>
         <input
@@ -113,7 +135,7 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               <button
                 type="button"
                 className={styles.button}
-                onClick={() => void playWith(f.userId)}
+                onClick={() => setOpponent({ userId: f.userId, name: f.name })}
               >
                 Play
               </button>
@@ -175,6 +197,6 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           ))}
         </div>
       )}
-    </section>
+    </div>
   );
 }

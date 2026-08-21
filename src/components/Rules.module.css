@@ -1,50 +1,3 @@
-.button {
-  width: 26px;
-  height: 26px;
-  /* A flex item shrinks below its width by default, so in a narrow header the
-     ring squashed into an oval while its height stayed put. */
-  flex: none;
-  /* Browsers pad a button by default, which shrinks the content box and
-     shoves the icon off centre. */
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--border-strong);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  font-weight: 700;
-  line-height: 1;
-  display: grid;
-  place-items: center;
-}
-
-.button:hover {
-  background: var(--surface-sunken);
-  color: var(--text);
-  border-color: var(--text-muted);
-}
-
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  display: grid;
-  place-items: center;
-  padding: var(--space-4);
-  background: rgb(0 0 0 / 0.45);
-}
-
-.panel {
-  width: min(560px, 100%);
-  max-height: 85vh;
-  overflow: auto;
-  padding: var(--space-6);
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lift);
-}
-
 .head {
   display: flex;
   align-items: baseline;
@@ -80,24 +33,24 @@
   color: var(--text-muted);
 }
 
-.panel p {
+.body p {
   margin: 0 0 var(--space-4);
   font-size: 0.9rem;
   line-height: 1.5;
 }
 
-.panel ul {
+.body ul {
   margin: 0 0 var(--space-4);
   padding-left: var(--space-4);
   font-size: 0.9rem;
   line-height: 1.5;
 }
 
-.panel li {
+.body li {
   margin-bottom: var(--space-1);
 }
 
-.panel strong {
+.body strong {
   color: var(--text);
 }
 

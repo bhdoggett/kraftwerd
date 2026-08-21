@@ -1,0 +1,26 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  /* Above the header and the nav menu, which are the only other layers that
+     can be on screen at the same time. */
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(0 0 0 / 0.45);
+}
+
+.panel {
+  width: min(440px, 100%);
+  max-height: 85vh;
+  overflow: auto;
+  padding: var(--space-6);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
+}
+
+.wide {
+  width: min(560px, 100%);
+}

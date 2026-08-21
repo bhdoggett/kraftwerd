@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { userMessage } from "../lib/errors";
+import { Modal } from "./Modal";
 import styles from "./NewGame.module.css";
 
 interface NewGameProps {
@@ -55,8 +56,8 @@ export function NewGame({ gameId, name, playerCount, onOpen, onClose }: NewGameP
   const available = (friends?.friends ?? []).filter((f) => !invited.includes(f.userId));
 
   return (
-    <div className={styles.backdrop} role="dialog" aria-modal="true">
-      <div className={styles.modal}>
+    <Modal>
+      <div className={styles.body}>
         <div>
           <h2 className={styles.title}>{name}</h2>
           <p className={styles.subtitle}>
@@ -107,7 +108,7 @@ export function NewGame({ gameId, name, playerCount, onOpen, onClose }: NewGameP
             </div>
           ))}
           {picked.length > 0 && (
-            <div className={styles.actions} style={{ marginTop: "var(--space-3)" }}>
+            <div className={[styles.actions, styles.inviteActions].join(" ")}>
               <button
                 type="button"
                 className={styles.secondary}
@@ -130,6 +131,6 @@ export function NewGame({ gameId, name, playerCount, onOpen, onClose }: NewGameP
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

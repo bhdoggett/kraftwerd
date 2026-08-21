@@ -1,20 +1,13 @@
-import { useEffect, useState, type ComponentType } from "react";
-import { MoonIcon, SunIcon, SystemIcon } from "./Icons";
-import styles from "./Theme.module.css";
+import { useEffect, useState } from "react";
 
-type Choice = "light" | "dark" | "system";
+export type ThemeChoice = "light" | "dark" | "system";
 
 const KEY = "kraftwerd:theme";
-const CHOICES: Choice[] = ["light", "dark", "system"];
-const ICON: Record<Choice, ComponentType> = {
-  light: SunIcon,
-  dark: MoonIcon,
-  system: SystemIcon,
-};
+export const THEME_CHOICES: ThemeChoice[] = ["light", "dark", "system"];
 
-function stored(): Choice {
+function stored(): ThemeChoice {
   const saved = window.localStorage.getItem(KEY);
-  return CHOICES.includes(saved as Choice) ? (saved as Choice) : "system";
+  return THEME_CHOICES.includes(saved as ThemeChoice) ? (saved as ThemeChoice) : "system";
 }
 
 /**
@@ -24,8 +17,8 @@ function stored(): Choice {
  * prefers-color-scheme rules apply and the page follows the OS live — a
  * resolved value would freeze at whatever it was when the page loaded.
  */
-export function Theme() {
-  const [choice, setChoice] = useState<Choice>(stored);
+export function useTheme(): [ThemeChoice, (choice: ThemeChoice) => void] {
+  const [choice, setChoice] = useState<ThemeChoice>(stored);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -35,18 +28,5 @@ export function Theme() {
     window.localStorage.setItem(KEY, choice);
   }, [choice]);
 
-  const next = () => CHOICES[(CHOICES.indexOf(choice) + 1) % CHOICES.length]!;
-  const Icon = ICON[choice];
-
-  return (
-    <button
-      type="button"
-      className={styles.button}
-      onClick={() => setChoice(next())}
-      aria-label={`Theme: ${choice}. Switch to ${next()}.`}
-      title={`Theme: ${choice}`}
-    >
-      <Icon />
-    </button>
-  );
+  return [choice, setChoice];
 }

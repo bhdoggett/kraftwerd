@@ -108,3 +108,14 @@ export function HelpIcon({ size = 16 }: IconProps) {
     </svg>
   );
 }
+
+/** The menu: three dots, filled so they read at small sizes. */
+export function MoreIcon({ size = 16 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}

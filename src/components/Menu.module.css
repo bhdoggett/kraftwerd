@@ -1,0 +1,129 @@
+.wrap {
+  position: relative;
+  /* A flex item shrinks below its width by default, which deformed the round
+     buttons this replaces when the header ran out of room. */
+  flex: none;
+}
+
+.trigger {
+  width: 26px;
+  height: 26px;
+  /* Browsers pad a button by default, which shrinks the content box and
+     shoves the icon off centre. */
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+}
+
+.trigger:hover,
+.trigger[aria-expanded="true"] {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 200;
+  min-width: 180px;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.item {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.item:hover {
+  background: var(--surface-sunken);
+}
+
+.divider {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border);
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+}
+
+.groupLabel {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.choices {
+  display: flex;
+  gap: 2px;
+}
+
+.choice {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+}
+
+.choice:hover {
+  color: var(--text);
+}
+
+.choiceOn {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.dialogHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.close {
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 2px var(--space-3);
+  font-size: 0.85rem;
+}
+
+.close:hover {
+  background: var(--surface-sunken);
+}

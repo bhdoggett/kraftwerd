@@ -5,8 +5,7 @@ import type { Id } from "../convex/_generated/dataModel";
 import styles from "./App.module.css";
 import { Game } from "./components/Game";
 import { Lobby } from "./components/Lobby";
-import { Rules } from "./components/Rules";
-import { Theme } from "./components/Theme";
+import { Menu } from "./components/Menu";
 import { authClient } from "./lib/auth-client";
 import { navigate, useRoute } from "./router";
 
@@ -37,9 +36,8 @@ export default function App() {
           )}
         </Authenticated>
         <span className={styles.spacer} />
-        <Rules />
-        <Theme />
-        <SignOutButton />
+        <ViewerName />
+        <Menu />
       </header>
 
       <main className={styles.main}>
@@ -61,28 +59,13 @@ export default function App() {
   );
 }
 
-function SignOutButton() {
+/** Who is playing. Signing out is in the menu beside it. */
+function ViewerName() {
   const { isAuthenticated } = useConvexAuth();
   const viewer = useQuery(api.users.viewer);
 
   if (!isAuthenticated) return null;
-
-  return (
-    <>
-      <span className={styles.tagline}>{viewer?.name ?? "Signed in"}</span>
-      <button
-        type="button"
-        className={styles.signOut}
-        onClick={() => {
-          // Leave the game route behind, so signing back in lands in the lobby
-          // rather than a game the next person may not be in.
-          void authClient.signOut().then(() => navigate({ name: "lobby" }));
-        }}
-      >
-        Sign out
-      </button>
-    </>
-  );
+  return <span className={styles.tagline}>{viewer?.name ?? "Signed in"}</span>;
 }
 
 function SignInForm() {
