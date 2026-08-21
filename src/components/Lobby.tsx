@@ -43,26 +43,28 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
       <section className={styles.section}>
         <h2 className={styles.heading}>New game</h2>
-        <div className={styles.create}>
-          <button
-            type="button"
-            className={styles.secondary}
-            onClick={() =>
-              void createGame({ playerCount: 1 }).then((game) => onOpen(game.gameId))
-            }
-          >
-            Solo
-          </button>
-          {[2, 3, 4].map((n) => (
+        <div className={styles.create} role="group" aria-labelledby="playerCount">
+          <span className={styles.rowLabel} id="playerCount">
+            Players
+          </span>
+          {[1, 2, 3, 4].map((n) => (
             <button
               key={n}
               type="button"
               className={styles.secondary}
-              // A multiplayer game needs people before it needs a board, so
-              // creating one opens the invite step rather than the game.
-              onClick={() => void createGame({ playerCount: n }).then(setSetup)}
+              // One player is a game; the rest need people before they need a
+              // board, so creating one opens the invite step instead.
+              onClick={() =>
+                n === 1
+                  ? void createGame({ playerCount: 1 }).then((game) =>
+                      onOpen(game.gameId),
+                    )
+                  : void createGame({ playerCount: n }).then(setSetup)
+              }
+              aria-label={n === 1 ? "Solo game" : `${n} players`}
+              title={n === 1 ? "Just you — starts straight away" : undefined}
             >
-              {n} players
+              {n}
             </button>
           ))}
         </div>
