@@ -6,6 +6,13 @@ import { userMessage } from "../lib/errors";
 import styles from "./Friends.module.css";
 import { StartGame, type Player } from "./StartGame";
 
+/**
+ * Desktop Firefox has no share sheet, and Chrome only offers one on some
+ * platforms, so the copy button is not a fallback anyone should have to hunt
+ * for — it stays on show either way.
+ */
+const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
 export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const data = useQuery(api.friends.listFriends);
   const requestFriend = useMutation(api.friends.requestFriend);
@@ -39,15 +46,38 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     }
   }
 
-  /** Copy the link, making one first if this is the first time. */
+  /** The link, made on first use rather than for everyone who opens this. */
+  async function linkUrl() {
+    const token = link?.token ?? (await createLink({}));
+    return `${window.location.origin}/friend/${token}`;
+  }
+
   async function copyLink() {
     setError(null);
     try {
-      const token = link?.token ?? (await createLink({}));
-      await navigator.clipboard.writeText(`${window.location.origin}/friend/${token}`);
+      await navigator.clipboard.writeText(await linkUrl());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
+      setError(userMessage(err));
+    }
+  }
+
+  /**
+   * Hand the link to the phone's share sheet, so it arrives in a message with
+   * a sentence rather than as a bare URL somebody has to explain.
+   */
+  async function shareLink() {
+    setError(null);
+    try {
+      await navigator.share({
+        title: "kraftwerd",
+        text: "Play kraftwerd with me",
+        url: await linkUrl(),
+      });
+    } catch (err) {
+      // Backing out of the share sheet is not a failure.
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError(userMessage(err));
     }
   }
@@ -93,8 +123,17 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           whether or not they have played before.
         </p>
         <div className={styles.add}>
-          <button type="button" className={styles.button} onClick={() => void copyLink()}>
-            {copied ? "Copied" : "Copy invite link"}
+          {canShare && (
+            <button type="button" className={styles.button} onClick={() => void shareLink()}>
+              Share
+            </button>
+          )}
+          <button
+            type="button"
+            className={canShare ? styles.secondary : styles.button}
+            onClick={() => void copyLink()}
+          >
+            {copied ? "Copied" : canShare ? "Copy" : "Copy invite link"}
           </button>
           {link && (
             <button

@@ -6,6 +6,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="/src/index.css" />
     <title>kraftwerd</title>
+    <meta name="description" content="Build word squares against your friends." />
+    <!--
+      What a messaging app draws when someone shares a link. Its crawler does
+      not run JavaScript, so these have to be in the served HTML rather than
+      set by the app — which also means every link shows the same card, invite
+      links included.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="kraftwerd" />
+    <meta property="og:title" content="Play kraftwerd with me" />
+    <meta property="og:description" content="Build word squares against your friends." />
+    <meta property="og:url" content="https://kraftwerd.benapps.xyz" />
+    <!-- Absolute, and a raster: crawlers resolve it outside the page and
+         several will not render an SVG. -->
+    <meta property="og:image" content="https://kraftwerd.benapps.xyz/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A three-by-three square of letter tiles reading CAT, ACE and TEN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#3f6f52" />
   </head>
   <body>
     <div id="root"></div>
