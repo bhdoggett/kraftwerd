@@ -4,8 +4,9 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { FRIEND_LINK_DAYS } from "../../shared/config";
 import { userMessage } from "../lib/errors";
+import { useStartGame } from "../lib/useStartGame";
 import styles from "./Friends.module.css";
-import { StartGame, type Player } from "./StartGame";
+import { CreateGame } from "./CreateGame";
 
 /**
  * Desktop Firefox has no share sheet, and Chrome only offers one on some
@@ -20,7 +21,6 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const respond = useMutation(api.friends.respondToRequest);
   const removeFriend = useMutation(api.friends.removeFriend);
   const cancelInvite = useMutation(api.friends.cancelInvite);
-  const createWithFriends = useMutation(api.games.createGameWithFriends);
   const link = useQuery(api.friends.myFriendLink);
   const createLink = useMutation(api.friends.createFriendLink);
 
@@ -28,22 +28,14 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** The friend whose Play button was pressed, while the game is being set up. */
-  const [opponent, setOpponent] = useState<Player | null>(null);
-  const [starting, setStarting] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
+  const [opponent, setOpponent] = useState<Id<"users"> | null>(null);
+  const { start, starting, error: startError, clearError } = useStartGame();
 
-  async function start(friendIds: Id<"users">[]) {
-    setStartError(null);
-    setStarting(true);
-    try {
-      const gameId = await createWithFriends({ friendIds });
-      setOpponent(null);
-      onOpen(gameId);
-    } catch (err) {
-      setStartError(userMessage(err));
-    } finally {
-      setStarting(false);
-    }
+  async function startWith(playerCount: number, friendIds: Id<"users">[]) {
+    const game = await start(playerCount, friendIds);
+    if (game === null) return;
+    setOpponent(null);
+    onOpen(game.gameId);
   }
 
   /** The link, made on first use rather than for everyone who opens this. */
@@ -97,15 +89,12 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   return (
     <div className={styles.panel}>
       {opponent && (
-        <StartGame
-          friend={opponent}
-          others={(data?.friends ?? [])
-            .filter((f) => f.userId !== opponent.userId)
-            .map((f) => ({ userId: f.userId, name: f.name }))}
-          onStart={(friendIds) => void start(friendIds)}
+        <CreateGame
+          withFriend={opponent}
+          onStart={(playerCount, friendIds) => void startWith(playerCount, friendIds)}
           onCancel={() => {
             setOpponent(null);
-            setStartError(null);
+            clearError();
           }}
           starting={starting}
           error={startError}
@@ -211,7 +200,7 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               <button
                 type="button"
                 className={styles.button}
-                onClick={() => setOpponent({ userId: f.userId, name: f.name })}
+                onClick={() => setOpponent(f.userId)}
               >
                 Play
               </button>

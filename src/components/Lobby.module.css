@@ -53,7 +53,7 @@
   letter-spacing: 0.05em;
   padding: 2px var(--space-2);
   border-radius: 999px;
-  background: var(--accent-soft);
+  background: var(--badge-fill);
   color: var(--accent);
 }
 
@@ -81,16 +81,24 @@
   background: var(--surface-sunken);
 }
 
-.create {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
+/* The one thing you came here to do, if you are not opening a game. */
+.newGame {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking);
+  box-shadow: var(--shadow);
 }
 
-.rowLabel {
-  margin-right: var(--space-1);
-  color: var(--text-muted);
-  font-size: 0.9rem;
+.newGame:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .empty {

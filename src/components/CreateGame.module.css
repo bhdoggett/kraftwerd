@@ -9,18 +9,54 @@
   font-size: 1.2rem;
 }
 
-.subtitle {
-  margin: 0;
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.label {
   color: var(--text-muted);
   font-size: 0.9rem;
 }
 
+.counts {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* The chosen count is a lit tile; the rest are empty squares. */
+.count {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: var(--tile-stroke) solid var(--border-strong);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-tile);
+  font-size: 1rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.countOn {
+  border-color: var(--tile-edge);
+  background: var(--tile-face);
+  color: var(--tile-text);
+  filter: var(--tile-lit);
+}
+
 .heading {
-  margin: 0;
+  margin: 0 0 var(--space-2);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
+}
+
+.counter {
+  color: var(--accent);
 }
 
 .row {
@@ -29,9 +65,10 @@
   gap: var(--space-2);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--border);
+  cursor: pointer;
 }
 
-.row:last-child {
+.row:last-of-type {
   border-bottom: none;
 }
 
@@ -43,10 +80,10 @@
   white-space: nowrap;
 }
 
-.empty {
-  margin: 0;
+.hint {
+  margin: var(--space-2) 0 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .error {

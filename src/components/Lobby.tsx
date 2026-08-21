@@ -2,14 +2,15 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { CreateGame } from "./CreateGame";
 import { DevTools } from "./DevTools";
 import { NewGame } from "./NewGame";
+import { useStartGame } from "../lib/useStartGame";
 import styles from "./Lobby.module.css";
 
 export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const mine = useQuery(api.games.listMyGames);
   const respondToInvite = useMutation(api.games.respondToInvite);
-  const createGame = useMutation(api.games.createGame);
 
   const myGames = mine?.games ?? [];
   const invitations = mine?.invitations ?? [];
@@ -23,6 +24,21 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   } | null>(null);
 
   const viewer = useQuery(api.users.viewer);
+  const [creating, setCreating] = useState(false);
+  const { start, starting, error: startError, clearError } = useStartGame();
+
+  /**
+   * A solo game opens straight away. Anything else has seats to fill, so the
+   * link step follows — the seats nobody was picked for are filled that way.
+   */
+  async function startGame(playerCount: number, friendIds: Id<"users">[]) {
+    const game = await start(playerCount, friendIds);
+    if (game === null) return;
+
+    setCreating(false);
+    if (playerCount === 1) onOpen(game.gameId);
+    else setSetup(game);
+  }
 
   return (
     <div className={styles.lobby}>
@@ -41,34 +57,21 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
       <DevTools />
 
-      <section className={styles.section}>
-        <h2 className={styles.heading}>New game</h2>
-        <div className={styles.create} role="group" aria-labelledby="playerCount">
-          <span className={styles.rowLabel} id="playerCount">
-            Players
-          </span>
-          {[1, 2, 3, 4].map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={styles.secondary}
-              // One player is a game; the rest need people before they need a
-              // board, so creating one opens the invite step instead.
-              onClick={() =>
-                n === 1
-                  ? void createGame({ playerCount: 1 }).then((game) =>
-                      onOpen(game.gameId),
-                    )
-                  : void createGame({ playerCount: n }).then(setSetup)
-              }
-              aria-label={n === 1 ? "Solo game" : `${n} players`}
-              title={n === 1 ? "Just you — starts straight away" : undefined}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
-      </section>
+      <button type="button" className={styles.newGame} onClick={() => setCreating(true)}>
+        New game
+      </button>
+
+      {creating && (
+        <CreateGame
+          onStart={(playerCount, friendIds) => void startGame(playerCount, friendIds)}
+          onCancel={() => {
+            setCreating(false);
+            clearError();
+          }}
+          starting={starting}
+          error={startError}
+        />
+      )}
 
       {invitations.length > 0 && (
         <section className={styles.section}>
