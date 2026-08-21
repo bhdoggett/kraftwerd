@@ -129,9 +129,9 @@ describe("invite links", () => {
     const { asAna, asBo } = await twoUsers();
 
     const token = await asAna.mutation(api.friends.createFriendLink, {});
-    const owner = await asBo.mutation(api.friends.acceptFriendLink, { token });
+    const result = await asBo.mutation(api.friends.acceptFriendLink, { token });
 
-    expect(owner.name).toBe("Ana");
+    expect(result).toEqual({ ok: true, name: "Ana" });
     expect((await asBo.query(api.friends.listFriends)).friends).toHaveLength(1);
     expect((await asAna.query(api.friends.listFriends)).friends).toHaveLength(1);
   });
@@ -144,6 +144,31 @@ describe("invite links", () => {
 
     expect(again).toBe(first);
     expect((await asAna.query(api.friends.myFriendLink))?.token).toBe(first);
+  });
+
+  test("asking for the link again gives it a full life", async () => {
+    const { t, asAna } = await twoUsers();
+    const token = await asAna.mutation(api.friends.createFriendLink, {});
+
+    // As though it were made six days ago and nearly out of time.
+    const soon = Date.now() + 60_000;
+    await t.run(async (ctx) => {
+      const link = await ctx.db
+        .query("friendLinks")
+        .withIndex("by_token", (q) => q.eq("token", token))
+        .unique();
+      await ctx.db.patch("friendLinks", link!._id, { expiresAt: soon });
+    });
+
+    await asAna.mutation(api.friends.createFriendLink, {});
+
+    const link = await t.run(async (ctx) =>
+      ctx.db
+        .query("friendLinks")
+        .withIndex("by_token", (q) => q.eq("token", token))
+        .unique(),
+    );
+    expect(link?.expiresAt).toBeGreaterThan(soon);
   });
 
   test("following the same link twice leaves one friendship", async () => {
@@ -168,35 +193,58 @@ describe("invite links", () => {
     expect(bo.friends).toHaveLength(1);
   });
 
+  test("a link that has run out is turned away, and says so", async () => {
+    const { t, asAna, asBo } = await twoUsers();
+    const token = await asAna.mutation(api.friends.createFriendLink, {});
+
+    await t.run(async (ctx) => {
+      const link = await ctx.db
+        .query("friendLinks")
+        .withIndex("by_token", (q) => q.eq("token", token))
+        .unique();
+      await ctx.db.patch("friendLinks", link!._id, { expiresAt: Date.now() - 1 });
+    });
+
+    expect(await asBo.mutation(api.friends.acceptFriendLink, { token })).toEqual({
+      ok: false,
+      reason: "expired",
+    });
+    expect((await asBo.query(api.friends.listFriends)).friends).toHaveLength(0);
+  });
+
+  test("a stale link is replaced rather than reused", async () => {
+    const { t, asAna } = await twoUsers();
+    const old = await asAna.mutation(api.friends.createFriendLink, {});
+    await t.run(async (ctx) => {
+      const link = await ctx.db
+        .query("friendLinks")
+        .withIndex("by_token", (q) => q.eq("token", old))
+        .unique();
+      await ctx.db.patch("friendLinks", link!._id, { expiresAt: Date.now() - 1 });
+    });
+
+    const fresh = await asAna.mutation(api.friends.createFriendLink, {});
+
+    expect(fresh).not.toBe(old);
+    expect((await asAna.query(api.friends.myFriendLink))?.token).toBe(fresh);
+  });
+
   test("your own link does not befriend you to yourself", async () => {
     const { asAna } = await twoUsers();
     const token = await asAna.mutation(api.friends.createFriendLink, {});
 
-    await expect(
-      asAna.mutation(api.friends.acceptFriendLink, { token }),
-    ).rejects.toThrow("your own");
+    expect(await asAna.mutation(api.friends.acceptFriendLink, { token })).toEqual({
+      ok: false,
+      reason: "own",
+    });
     expect((await asAna.query(api.friends.listFriends)).friends).toHaveLength(0);
   });
 
-  test("an unknown token is refused", async () => {
+  test("an unknown token is turned away", async () => {
     const { asBo } = await twoUsers();
 
-    await expect(
-      asBo.mutation(api.friends.acceptFriendLink, { token: "nonsense" }),
-    ).rejects.toThrow("not valid");
-  });
-
-  test("resetting the link stops the old one working", async () => {
-    const { asAna, asBo } = await twoUsers();
-    const old = await asAna.mutation(api.friends.createFriendLink, {});
-
-    const fresh = await asAna.mutation(api.friends.resetFriendLink, {});
-
-    expect(fresh).not.toBe(old);
-    await expect(
-      asBo.mutation(api.friends.acceptFriendLink, { token: old }),
-    ).rejects.toThrow("not valid");
-    await asBo.mutation(api.friends.acceptFriendLink, { token: fresh });
-    expect((await asBo.query(api.friends.listFriends)).friends).toHaveLength(1);
+    expect(
+      await asBo.mutation(api.friends.acceptFriendLink, { token: "nonsense" }),
+    ).toEqual({ ok: false, reason: "unknown" });
   });
 });

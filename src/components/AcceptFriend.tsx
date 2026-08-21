@@ -4,6 +4,28 @@ import { api } from "../../convex/_generated/api";
 import { userMessage } from "../lib/errors";
 import styles from "./AcceptFriend.module.css";
 
+type Result =
+  | { ok: true; name: string }
+  | { ok: false; reason: "expired" | "unknown" | "own" };
+
+/** What to say for a link that did not work out. */
+const TURNED_AWAY: Record<"expired" | "unknown" | "own", { title: string; detail: string }> = {
+  expired: {
+    title: "That invite link has expired",
+    detail:
+      "Links only last a few days. You are signed in, though — start a game, then send your own invite link back so they can add you.",
+  },
+  unknown: {
+    title: "That link does not lead anywhere",
+    detail:
+      "It may have been mistyped, or replaced by a newer one. Ask whoever sent it for a fresh link.",
+  },
+  own: {
+    title: "That is your own invite link",
+    detail: "Send it to someone else, and they will land here and be added to your friends.",
+  },
+};
+
 interface AcceptFriendProps {
   token: string;
   onDone: () => void;
@@ -18,7 +40,7 @@ interface AcceptFriendProps {
  */
 export function AcceptFriend({ token, onDone }: AcceptFriendProps) {
   const accept = useMutation(api.friends.acceptFriendLink);
-  const [name, setName] = useState<string | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Strict mode mounts twice; the mutation is idempotent, but a second call
   // would race the first and could show an error over a success.
@@ -29,7 +51,7 @@ export function AcceptFriend({ token, onDone }: AcceptFriendProps) {
     asked.current = true;
 
     accept({ token })
-      .then((owner) => setName(owner.name))
+      .then(setResult)
       .catch((err: unknown) => setError(userMessage(err)));
   }, [accept, token]);
 
@@ -40,14 +62,19 @@ export function AcceptFriend({ token, onDone }: AcceptFriendProps) {
           <h2 className={styles.title}>That link did not work</h2>
           <p className={styles.detail}>{error}</p>
         </>
-      ) : name === null ? (
+      ) : result === null ? (
         <p className={styles.detail}>Adding you…</p>
-      ) : (
+      ) : result.ok ? (
         <>
-          <h2 className={styles.title}>You and {name} are friends</h2>
+          <h2 className={styles.title}>You and {result.name} are friends</h2>
           <p className={styles.detail}>
             They are in your friends list now — start a game from the menu.
           </p>
+        </>
+      ) : (
+        <>
+          <h2 className={styles.title}>{TURNED_AWAY[result.reason].title}</h2>
+          <p className={styles.detail}>{TURNED_AWAY[result.reason].detail}</p>
         </>
       )}
       <button type="button" className={styles.button} onClick={onDone}>

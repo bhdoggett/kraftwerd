@@ -31,6 +31,13 @@ export const RACK: RackConfig = {
  */
 export const BLANKS_PER_GAME = 3;
 
+/**
+ * How long an invite link works for. Long enough to sit in a message over a
+ * weekend, short enough that a link forwarded on, or found in an old thread,
+ * stops working on its own.
+ */
+export const FRIEND_LINK_DAYS = 7;
+
 export const GAME = {
   /**
    * Odd-sided, so there is a true centre for the opening word to cover.

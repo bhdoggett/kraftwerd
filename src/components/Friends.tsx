@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { FRIEND_LINK_DAYS } from "../../shared/config";
 import { userMessage } from "../lib/errors";
 import styles from "./Friends.module.css";
 import { StartGame, type Player } from "./StartGame";
@@ -22,7 +23,6 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const createWithFriends = useMutation(api.games.createGameWithFriends);
   const link = useQuery(api.friends.myFriendLink);
   const createLink = useMutation(api.friends.createFriendLink);
-  const resetLink = useMutation(api.friends.resetFriendLink);
 
   const [email, setEmail] = useState("");
   const [copied, setCopied] = useState(false);
@@ -114,13 +114,16 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
       {/*
         Anyone holding this becomes a friend on following it, which is the
-        point — it goes in a message to someone you know. Reset retires it.
+        point — it goes in a message to someone you know. It runs out on its
+        own, so a link forwarded on does not work forever.
       */}
       <div className={styles.section}>
         <h3 className={styles.heading}>Invite by link</h3>
         <p className={styles.hint}>
           Send this to anyone. Following it adds them to your friends list,
-          whether or not they have played before.
+          whether or not they have played before. A link works for{" "}
+          {FRIEND_LINK_DAYS} days, then sending a new one starts the clock
+          again.
         </p>
         <div className={styles.add}>
           {canShare && (
@@ -135,16 +138,6 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           >
             {copied ? "Copied" : canShare ? "Copy" : "Copy invite link"}
           </button>
-          {link && (
-            <button
-              type="button"
-              className={styles.secondary}
-              onClick={() => void resetLink({})}
-              title="Retire the old link, so it stops working"
-            >
-              Reset
-            </button>
-          )}
         </div>
       </div>
 

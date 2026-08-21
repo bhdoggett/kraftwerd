@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
+import { FRIEND_LINK_DAYS } from "../shared/config.js";
 import { currentUser, displayName } from "./auth_helpers";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 
@@ -189,6 +190,8 @@ function newToken(): string {
   return token.slice(0, 24);
 }
 
+const linkLife = () => Date.now() + FRIEND_LINK_DAYS * 24 * 60 * 60 * 1000;
+
 async function linkFor(ctx: QueryCtx, userId: Id<"users">) {
   return await ctx.db
     .query("friendLinks")
@@ -201,38 +204,38 @@ export const myFriendLink = query({
   handler: async (ctx) => {
     const me = await currentUser(ctx);
     const link = await linkFor(ctx, me._id);
-    return link === null ? null : { token: link.token };
+
+    // A link past its date is no link: offering it would be offering something
+    // that does not work.
+    if (link === null || link.expiresAt <= Date.now()) return null;
+    return { token: link.token, expiresAt: link.expiresAt };
   },
 });
 
-/** The link, made on first use. Asking twice gives the same one back. */
+/**
+ * The link, made on first use.
+ *
+ * Asking again gives the same one back with its clock wound forward, so the
+ * link you are sending right now lasts the full window rather than however
+ * much was left of the last one.
+ */
 export const createFriendLink = mutation({
   args: {},
   handler: async (ctx) => {
     const me = await currentUser(ctx);
+    const expiresAt = linkLife();
 
     const existing = await linkFor(ctx, me._id);
-    if (existing !== null) return existing.token;
-
-    const token = newToken();
-    await ctx.db.insert("friendLinks", { userId: me._id, token });
-    return token;
-  },
-});
-
-/** Retire the old link. Anyone still holding it is turned away. */
-export const resetFriendLink = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const me = await currentUser(ctx);
-    const token = newToken();
-
-    const existing = await linkFor(ctx, me._id);
-    if (existing === null) {
-      await ctx.db.insert("friendLinks", { userId: me._id, token });
-    } else {
-      await ctx.db.patch("friendLinks", existing._id, { token });
+    if (existing !== null) {
+      // Past its date it is public knowledge, so it gets a new secret rather
+      // than a new lease.
+      const token = existing.expiresAt <= Date.now() ? newToken() : existing.token;
+      await ctx.db.patch("friendLinks", existing._id, { token, expiresAt });
+      return token;
     }
+
+    const token = newToken();
+    await ctx.db.insert("friendLinks", { userId: me._id, token, expiresAt });
     return token;
   },
 });
@@ -252,11 +255,16 @@ export const acceptFriendLink = mutation({
       .query("friendLinks")
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
-    if (link === null) throw new ConvexError("That invite link is not valid any more");
+
+    // A link that has run out, or was never one, is an ordinary thing to
+    // arrive holding — so it is an answer rather than a failure, and the page
+    // on the other end can say something useful about it.
+    if (link === null) return { ok: false, reason: "unknown" } as const;
+    if (link.expiresAt <= Date.now()) return { ok: false, reason: "expired" } as const;
 
     const them = await ctx.db.get("users", link.userId);
-    if (them === null) throw new ConvexError("That invite link is not valid any more");
-    if (them._id === me._id) throw new ConvexError("That is your own invite link");
+    if (them === null) return { ok: false, reason: "unknown" } as const;
+    if (them._id === me._id) return { ok: false, reason: "own" } as const;
 
     // A pair can already be linked from either direction, and either row may
     // still be pending — following a link settles it.
@@ -288,7 +296,7 @@ export const acceptFriendLink = mutation({
       });
     }
 
-    return { name: displayName(them) };
+    return { ok: true, name: displayName(them) } as const;
   },
 });
 
