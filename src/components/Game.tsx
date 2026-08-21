@@ -723,42 +723,70 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
         )}
 
 
-        {(pending.length > 0 || (preview && legality?.ok)) && (
+        {/*
+          Everything here comes from the placement itself — the words, their
+          points, the squares, the total — so it is all drawn the moment a tile
+          lands. Only whether a word is a word waits on the server, and that
+          changes a chip's colour rather than whether it is there. Swapping the
+          whole panel for "checking…" and back was what made the page jump on
+          every tile.
+        */}
+        {pending.length > 0 && (
           <section className={styles.play}>
-            {pending.length > 0 && (
-              <div className={styles.words}>
-                {checked === undefined ? (
-                  <span className={styles.checking}>Checking words…</span>
-                ) : (
-                  // Every occurrence, not every distinct word: a letter at a
-                  // crossing belongs to two words and is paid for in each, so
-                  // showing AT once when it was formed twice would make the
-                  // chips fail to add up to the total.
-                  (preview?.words ?? []).map((scored, i) => {
-                    const valid =
-                      checked.find((e) => e.word === scored.word)?.valid ?? false;
-                    return (
-                      <span
-                        key={`${scored.word}-${i}`}
-                        className={[
-                          styles.word,
-                          valid ? styles.valid : styles.invalid,
-                        ].join(" ")}
-                      >
-                        {scored.word}
-                        {valid && <span className={styles.wordPoints}>{scored.points}</span>}
-                      </span>
-                    );
-                  })
-                )}
-              </div>
-            )}
+            <div className={styles.words}>
+              {/* Every occurrence, not every distinct word: a letter at a
+                  crossing belongs to two words and is paid for in each, so
+                  showing AT once when it was formed twice would make the
+                  chips fail to add up to the total. */}
+              {(preview?.words ?? []).map((scored, i) => {
+                const valid = checked?.find((e) => e.word === scored.word)?.valid;
+                return (
+                  <span
+                    key={`${scored.word}-${i}`}
+                    className={[
+                      styles.word,
+                      valid === undefined
+                        ? styles.checking
+                        : valid
+                          ? styles.valid
+                          : styles.invalid,
+                    ].join(" ")}
+                  >
+                    {scored.word}
+                    {/* The points hold their space while the word is being
+                        checked, so the chip does not resize under the pointer. */}
+                    <span
+                      className={[
+                        styles.wordPoints,
+                        valid === true ? "" : styles.pointsHidden,
+                      ].join(" ")}
+                    >
+                      {scored.points}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
 
-            {legality !== null && !legality.ok && (
-              <p className={styles.reason}>{describeLegality(legality)}</p>
-            )}
+            {/*
+              Always here, so the panel cannot change height when the verdict
+              lands. Legality is null while the words are being checked, and a
+              line that comes and goes on every tile shortens the page — enough
+              that, scrolled near the bottom, the browser clamps the scroll and
+              the whole board appears to jump.
+            */}
+            <p
+              className={[
+                styles.reason,
+                legality === null || legality.ok ? styles.reasonQuiet : "",
+              ].join(" ")}
+            >
+              {legality !== null && !legality.ok
+                ? describeLegality(legality)
+                : "Checking your play…"}
+            </p>
 
-            {preview && legality?.ok && breakdownOf(preview).length > 0 && (
+            {preview && breakdownOf(preview).length > 0 && (
               <div className={styles.bonus}>
                 <h3 className={styles.bonusHeading}>Square bonus</h3>
                 <table className={styles.breakdown}>

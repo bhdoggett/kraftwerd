@@ -302,13 +302,27 @@
   color: var(--text-muted);
 }
 
+/* A word whose verdict has not come back: present, but saying nothing yet. */
 .checking {
-  font-size: 0.85rem;
+  background: transparent;
   color: var(--text-muted);
+  border-color: var(--border-strong);
+}
+
+/* Keeps the points' width while the verdict is out, so nothing reflows when
+   it arrives. */
+.pointsHidden {
+  visibility: hidden;
+}
+
+/* Holds its line whether or not it has anything to say. */
+.reasonQuiet {
+  visibility: hidden;
 }
 
 .reason {
   margin: 0;
+  min-height: 1.2em;
   font-size: 0.88rem;
   color: var(--danger);
   text-align: center;
