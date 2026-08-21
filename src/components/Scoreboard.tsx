@@ -44,7 +44,10 @@ export function Scoreboard({
         <div key={p.userId} className={styles.row}>
           <span className={styles.dot} style={{ background: `var(--seat-${p.seat % 4})` }} />
           <span
-            className={[styles.name, p.seat === currentSeat ? styles.turn : ""].join(" ")}
+            className={[
+              styles.name,
+              p.seat === currentSeat && status !== "finished" ? styles.turn : "",
+            ].join(" ")}
           >
             {p.name}
             {p.isYou && <span className={styles.you}> (you)</span>}

@@ -576,7 +576,9 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           onGrabStaged={myTurn ? grabStaged : undefined}
         />
 
-        {me?.letters && (
+        {/* Nothing left to play once it is over: the rack would be a row of
+            tiles the game will never take. The scores stay. */}
+        {me?.letters && game.status !== "finished" && (
           <Rack
             letters={me.letters}
             spent={spentIndices}
