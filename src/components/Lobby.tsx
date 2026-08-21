@@ -2,7 +2,6 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { Friends } from "./Friends";
 import { DevTools } from "./DevTools";
 import { NewGame } from "./NewGame";
 import styles from "./Lobby.module.css";
@@ -40,40 +39,14 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         />
       )}
 
-      {viewer?.stats && (
-        <section className={styles.section}>
-          <h2 className={styles.heading}>Your record</h2>
-          <div className={styles.stats}>
-            <span className={styles.stat}>
-              <strong>{viewer.stats.wins}</strong>
-              wins
-            </span>
-            <span className={styles.stat}>
-              <strong>{viewer.stats.gamesPlayed}</strong>
-              games
-            </span>
-            <span className={styles.stat}>
-              <strong>{viewer.stats.bestGameScore}</strong>
-              best game
-            </span>
-            <span className={styles.stat}>
-              <strong>{viewer.stats.bestTurnScore}</strong>
-              best play
-            </span>
-          </div>
-        </section>
-      )}
-
       <DevTools />
-
-      <Friends onOpen={onOpen} />
 
       <section className={styles.section}>
         <h2 className={styles.heading}>New game</h2>
         <div className={styles.create}>
           <button
             type="button"
-            className={styles.button}
+            className={styles.secondary}
             onClick={() =>
               void createGame({ playerCount: 1 }).then((game) => onOpen(game.gameId))
             }
@@ -93,11 +66,6 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
             </button>
           ))}
         </div>
-        <p className={styles.empty}>
-          A solo game starts straight away. Multiplayer games wait in the lobby
-          until every seat is filled — share the invite link from inside the
-          game.
-        </p>
       </section>
 
       {invitations.length > 0 && (
@@ -159,6 +127,30 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           </div>
         ))}
       </section>
+
+      {viewer?.stats && (
+        <section className={styles.section}>
+          <h2 className={styles.heading}>Your record</h2>
+          <div className={styles.stats}>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.wins}</strong>
+              wins
+            </span>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.gamesPlayed}</strong>
+              games
+            </span>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.bestGameScore}</strong>
+              best game
+            </span>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.bestTurnScore}</strong>
+              best play
+            </span>
+          </div>
+        </section>
+      )}
 
       {past.length > 0 && (
         <section className={styles.section}>

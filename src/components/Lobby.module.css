@@ -3,6 +3,9 @@
   flex-direction: column;
   gap: var(--space-6);
   max-width: 560px;
+  /* The cap alone left the column parked against the left edge on anything
+     wider than 560px; the margin is what centres it. */
+  margin-inline: auto;
 }
 
 .section {
