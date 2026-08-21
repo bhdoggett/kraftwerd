@@ -192,6 +192,9 @@ function newToken(): string {
 
 const linkLife = () => Date.now() + FRIEND_LINK_DAYS * 24 * 60 * 60 * 1000;
 
+/** A row from before links ran out has no date, which counts as run out. */
+const spent = (link: Doc<"friendLinks">) => (link.expiresAt ?? 0) <= Date.now();
+
 async function linkFor(ctx: QueryCtx, userId: Id<"users">) {
   return await ctx.db
     .query("friendLinks")
@@ -207,7 +210,7 @@ export const myFriendLink = query({
 
     // A link past its date is no link: offering it would be offering something
     // that does not work.
-    if (link === null || link.expiresAt <= Date.now()) return null;
+    if (link === null || spent(link)) return null;
     return { token: link.token, expiresAt: link.expiresAt };
   },
 });
@@ -229,7 +232,7 @@ export const createFriendLink = mutation({
     if (existing !== null) {
       // Past its date it is public knowledge, so it gets a new secret rather
       // than a new lease.
-      const token = existing.expiresAt <= Date.now() ? newToken() : existing.token;
+      const token = spent(existing) ? newToken() : existing.token;
       await ctx.db.patch("friendLinks", existing._id, { token, expiresAt });
       return token;
     }
@@ -260,7 +263,7 @@ export const acceptFriendLink = mutation({
     // arrive holding — so it is an answer rather than a failure, and the page
     // on the other end can say something useful about it.
     if (link === null) return { ok: false, reason: "unknown" } as const;
-    if (link.expiresAt <= Date.now()) return { ok: false, reason: "expired" } as const;
+    if (spent(link)) return { ok: false, reason: "expired" } as const;
 
     const them = await ctx.db.get("users", link.userId);
     if (them === null) return { ok: false, reason: "unknown" } as const;

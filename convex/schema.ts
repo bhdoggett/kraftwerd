@@ -48,8 +48,12 @@ export default defineSchema({
     userId: v.id("users"),
     /** The secret half of the URL. Anyone holding it can become a friend. */
     token: v.string(),
-    /** Stops working after this, so a forwarded link cannot be used forever. */
-    expiresAt: v.number(),
+    /**
+     * Stops working after this, so a forwarded link cannot be used forever.
+     * Optional only for rows written before links ran out; absent counts as
+     * expired, and sending a new link puts the row right.
+     */
+    expiresAt: v.optional(v.number()),
   })
     .index("by_token", ["token"])
     .index("by_user", ["userId"]),

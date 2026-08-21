@@ -229,6 +229,32 @@ describe("invite links", () => {
     expect((await asAna.query(api.friends.myFriendLink))?.token).toBe(fresh);
   });
 
+  test("a link from before links ran out is treated as run out", async () => {
+    const { t, asAna, asBo } = await twoUsers();
+    const token = await asAna.mutation(api.friends.createFriendLink, {});
+    // A row written before the field existed, as production still holds.
+    await t.run(async (ctx) => {
+      const link = await ctx.db
+        .query("friendLinks")
+        .withIndex("by_token", (q) => q.eq("token", token))
+        .unique();
+      await ctx.db.patch("friendLinks", link!._id, { expiresAt: undefined });
+    });
+
+    expect(await asBo.mutation(api.friends.acceptFriendLink, { token })).toEqual({
+      ok: false,
+      reason: "expired",
+    });
+    expect(await asAna.query(api.friends.myFriendLink)).toBeNull();
+
+    // Sending a new one puts the row right, with a new secret.
+    const fresh = await asAna.mutation(api.friends.createFriendLink, {});
+    expect(fresh).not.toBe(token);
+    expect((await asBo.mutation(api.friends.acceptFriendLink, { token: fresh })).ok).toBe(
+      true,
+    );
+  });
+
   test("your own link does not befriend you to yourself", async () => {
     const { asAna } = await twoUsers();
     const token = await asAna.mutation(api.friends.createFriendLink, {});
