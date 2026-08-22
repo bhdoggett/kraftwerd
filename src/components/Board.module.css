@@ -164,6 +164,17 @@
   color: var(--tile-text);
 }
 
+/*
+ * A square that has ever had a tile land on another: shaded darker so the
+ * history reads at a glance, whatever colour or face is underneath. A filter
+ * rather than a background override, so it works the same on a player's
+ * colour, a blank's white, or a premium letter without fighting any of them
+ * for control of --tile-face.
+ */
+.cell.stacked {
+  filter: brightness(0.62);
+}
+
 /* An empty square adjacent to the played mass: a legal target. Dashed so it
    reads as a possibility rather than a tile. */
 .open {
