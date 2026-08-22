@@ -199,7 +199,7 @@ different rates:
 
 ## 5. Rack and letter generation
 
-- Rack is **7 letters**, refilled after every play.
+- Rack is **8 letters**, refilled after every play.
 - **3 blanks for the whole game.** They do not refill: spending one is a
   decision about when, not something to use or waste each turn.
 - Any number of your remaining blanks may go down in one turn.
