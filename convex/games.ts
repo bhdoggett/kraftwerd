@@ -473,12 +473,14 @@ export const placeTiles = mutation({
       };
 
       // A tile landing on a tile replaces it rather than stacking: the board
-      // holds one letter a square, and the square was already counted.
+      // holds one letter a square, and the square was already counted. The
+      // square stays marked as stacked from here on, even if this is only the
+      // first time -- there is no un-stacking.
       if (sitting === undefined) {
         await ctx.db.insert("tiles", { gameId: args.gameId, x: p.x, y: p.y, ...tile });
         laid++;
       } else {
-        await ctx.db.patch("tiles", sitting._id, tile);
+        await ctx.db.patch("tiles", sitting._id, { ...tile, stacked: true });
       }
     }
 
@@ -737,6 +739,7 @@ export const getGame = query({
         letter: t.letter,
         isBlank: t.isBlank,
         placedBy: t.placedBy,
+        stacked: t.stacked ?? false,
       })),
       // Racks are private: every player sees their own letters and only the
       // count of everyone else's.

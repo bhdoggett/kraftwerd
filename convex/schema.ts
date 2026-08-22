@@ -167,6 +167,8 @@ export default defineSchema({
     isBlank: v.boolean(),
     placedBy: v.id("users"),
     turnNumber: v.number(),
+    /** Set once a tile has ever landed on top of this square, and kept. */
+    stacked: v.optional(v.boolean()),
   })
     .index("by_game", ["gameId"])
     .index("by_game_and_position", ["gameId", "x", "y"]),
