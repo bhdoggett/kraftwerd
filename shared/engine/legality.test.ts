@@ -273,4 +273,29 @@ describe("laying a tile on top of another", () => {
 
     expect(result).toEqual({ ok: false, reason: "duplicate-cell", at: { x: 8, y: 7 } });
   });
+
+  test("is refused when the letter underneath is the same letter", () => {
+    // CAT would become CAT: nothing changes, so there is no reason to allow it.
+    const result = validateTurn(
+      board(),
+      [{ x: 8, y: 7, letter: "A", isBlank: false }],
+      dict("CAT"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "same-letter", at: { x: 8, y: 7 } });
+  });
+
+  test("a blank does not get to stand for the letter already there", () => {
+    // Blank-as-A still lands on A: the board only ever sees the letter, not
+    // where it came from.
+    const result = validateTurn(
+      board(),
+      [{ x: 8, y: 7, letter: "A", isBlank: true }],
+      dict("CAT"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "same-letter", at: { x: 8, y: 7 } });
+  });
 });
