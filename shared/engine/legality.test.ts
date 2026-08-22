@@ -260,6 +260,60 @@ describe("laying a tile on top of another", () => {
     expect(result).toEqual({ ok: false, reason: "invalid-words", words: ["CZT"] });
   });
 
+  test("cannot bury a whole word: something of it has to survive", () => {
+    // CAT, every letter of it replaced in one turn.
+    const result = validateTurn(
+      board(),
+      [
+        { x: 7, y: 7, letter: "D", isBlank: false },
+        { x: 8, y: 7, letter: "O", isBlank: false },
+        { x: 9, y: 7, letter: "G", isBlank: false },
+      ],
+      dict("DOG"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "erased", words: ["CAT"] });
+  });
+
+  test("leaving one letter of it standing is enough", () => {
+    // The T stays, so CAT becomes DOT rather than disappearing.
+    const result = validateTurn(
+      board(),
+      [
+        { x: 7, y: 7, letter: "D", isBlank: false },
+        { x: 8, y: 7, letter: "O", isBlank: false },
+      ],
+      dict("DOT"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("a word crossing the one you are covering has to survive too", () => {
+    // CAT across, and AN going down from its A. Covering the A and the N
+    // wipes AN out entirely, even though CAT keeps two of its letters.
+    const crossed = makeBoard([
+      { x: 7, y: 7, letter: "C" },
+      { x: 8, y: 7, letter: "A" },
+      { x: 9, y: 7, letter: "T" },
+      { x: 8, y: 8, letter: "N" },
+    ]);
+
+    const result = validateTurn(
+      crossed,
+      [
+        { x: 8, y: 7, letter: "O", isBlank: false },
+        { x: 8, y: 8, letter: "N", isBlank: false },
+      ],
+      dict("COT", "ON"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "erased", words: ["AN"] });
+  });
+
   test("two tiles still cannot go on the same square", () => {
     const result = validateTurn(
       board(),

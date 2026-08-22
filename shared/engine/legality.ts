@@ -32,7 +32,8 @@ export type Legality =
   | { ok: false; reason: "blocked"; at: { x: number; y: number } }
   | { ok: false; reason: "missing-centre" }
   | { ok: false; reason: "disconnected" }
-  | { ok: false; reason: "invalid-words"; words: string[] };
+  | { ok: false; reason: "invalid-words"; words: string[] }
+  | { ok: false; reason: "erased"; words: string[] };
 
 const NEIGHBOURS = [
   { dx: 1, dy: 0 },
@@ -74,6 +75,30 @@ function isOneMass(board: Board, from?: string, excused?: ReadonlySet<string>): 
     required++;
   }
   return seen.size === required;
+}
+
+/**
+ * Words already on the board that this turn would cover completely.
+ *
+ * A tile may land on a tile, but a word has to survive being built over: at
+ * least one of its letters must still be standing afterwards. Otherwise a
+ * long word could simply be paved over and replayed for full value, and the
+ * board would lose its history a word at a time.
+ */
+function wordsBuriedWhole(
+  before: Board,
+  placements: readonly Placement[],
+): string[] {
+  const covered = placements
+    .map((p) => ({ x: p.x, y: p.y }))
+    .filter((p) => before.has(cellKey(p.x, p.y)));
+  if (covered.length === 0) return [];
+
+  const coveredKeys = new Set(covered.map((c) => cellKey(c.x, c.y)));
+
+  return runsThrough(before, covered)
+    .filter((run) => run.cells.every((c) => coveredKeys.has(cellKey(c.x, c.y))))
+    .map((run) => run.word);
 }
 
 /** The board as it stands after `placements` are applied to `before`. */
@@ -148,6 +173,9 @@ export function validateTurn(
   if (!isOneMass(after, from, bounds.premium)) {
     return { ok: false, reason: "disconnected" };
   }
+
+  const buried = wordsBuriedWhole(before, placements);
+  if (buried.length > 0) return { ok: false, reason: "erased", words: [...new Set(buried)] };
 
   const bad = wordsFormed(after, placements).filter((w) => !dictionary.has(w));
 

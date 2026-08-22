@@ -56,6 +56,11 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             score in full, like any others — so a board tangled beyond
             playing is never quite stuck.
           </li>
+          <li>
+            A word already on the board must <strong>keep at least one of
+            its letters</strong>. You can build over CAT to make COT, but
+            you cannot pave the whole word over and start again.
+          </li>
         </ul>
 
         <h3 className={styles.section}>Scoring: words</h3>
