@@ -9,7 +9,7 @@ import type { RackConfig } from "./engine/rack.js";
 
 export const RACK: RackConfig = {
   /** Letters held at the start of a turn, refilled after every play. */
-  size: 7,
+  size: 8,
   // Derived from letter frequency in 2-5 letter dictionary words by
   // scripts/build-dictionary.mjs -- see design.md §5.1. Note S is inflated by
   // plurals; if racks feel S-heavy in play, damp it here rather than in code.
