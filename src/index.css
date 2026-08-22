@@ -13,7 +13,7 @@
   --neon-lime: #b8ff2b;
   --neon-amber: #ffd400;
   --neon-orange: #ff7a29;
-  --neon-violet: #9d7bff;
+  --neon-violet: #d79eff;
 
   /* Surfaces, light theme */
   --surface: #f4f4f6;
@@ -42,11 +42,17 @@
   --tile-text: #0b0b0d;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #0b0b0d;
-  /* The board's own squares: the premium corners, in nobody's colour —
-     black in both themes, so they read as part of the board rather than as
-     anybody's tile. */
-  --premium-face: #26262c;
-  --premium-ink: #ffffff;
+  /*
+   * The board's own squares: the premium corners, in nobody's colour. Violet
+   * is the one neon no player can be dealt and nothing else means — the four
+   * seats hold cyan, magenta, lime and amber, orange marks a tile you have
+   * not committed, and green and red say whether a word is a word.
+   *
+   * The same in both themes, like the tiles: it clears black ink on a white
+   * board and a black one alike.
+   */
+  --premium-face: var(--neon-violet);
+  --premium-ink: #0b0b0d;
   /* A tube glows against black and does nothing against paper. */
   --tile-lit: none;
   /* Every square is sunk into the board, tiles included. */
@@ -159,8 +165,8 @@
     --tile-edge: #000000;
     --tile-blank-face: #ffffff;
     --tile-blank-edge: #000000;
-    --premium-face: #26262c;
-    --premium-ink: #ffffff;
+    --premium-face: var(--neon-violet);
+    --premium-ink: #0b0b0d;
     /* Resolves per tile, since --tile-face is set on the tile itself. */
     --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
     --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
@@ -205,8 +211,8 @@
   --tile-edge: #000000;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #000000;
-  --premium-face: #26262c;
-  --premium-ink: #ffffff;
+  --premium-face: var(--neon-violet);
+  --premium-ink: #0b0b0d;
   --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
   --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
 
