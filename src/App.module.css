@@ -51,6 +51,7 @@
   font-family: var(--font-tile);
   font-size: 1.25rem;
   font-weight: 700;
+  font-synthesis-weight: none;
   line-height: 1;
   filter: var(--tile-lit);
 }

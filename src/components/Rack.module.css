@@ -59,6 +59,8 @@
   font-family: var(--font-tile);
   font-size: calc(var(--rack-tile-width) * 0.55);
   font-weight: 700;
+  /* See Board.module.css .glyph: no faked bold, or W sits off centre. */
+  font-synthesis-weight: none;
   display: grid;
   place-items: center;
   box-shadow: var(--shadow);
