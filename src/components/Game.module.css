@@ -351,6 +351,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Nothing to bank yet: the same box, without the green promise. */
+.previewNothing {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}
+
 .breakdown {
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;

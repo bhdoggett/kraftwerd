@@ -58,6 +58,10 @@ function describeLegality(
       return "The first word has to cover the centre square.";
     case "disconnected":
       return "Every tile must connect to the tiles already on the board.";
+    case "erased":
+      return legality.words.length === 1
+        ? `${legality.words[0]} was already on the board and would be covered completely. A word already played has to keep at least one of its letters.`
+        : `${legality.words.join(", ")} were already on the board and would be covered completely. A word already played has to keep at least one of its letters.`;
     case "invalid-words":
       return legality.words.length === 1
         ? `${legality.words[0]} is not a word.`
@@ -842,7 +846,18 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             {preview && (
               <p className={styles.scoreLine}>
                 This play scores{" "}
-                <span className={styles.previewScore}>{preview.total}</span>
+                {/* A play that is not legal scores nothing, whatever its
+                    words and squares would have added up to. The line stays
+                    put either way: it is the panel changing height that made
+                    the page jump. */}
+                <span
+                  className={[
+                    styles.previewScore,
+                    legality?.ok === true ? "" : styles.previewNothing,
+                  ].join(" ")}
+                >
+                  {legality?.ok === true ? preview.total : 0}
+                </span>
               </p>
             )}
           </section>
