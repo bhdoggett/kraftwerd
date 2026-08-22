@@ -149,8 +149,9 @@
 
 
 /* Setting the face rather than the background, so the cover and the glow that
-   read it follow the blank too. */
-.blank {
+   read it follow the blank too. Doubled specificity, like .cell.premium
+   below, so the seat colour set by [data-seat] cannot repaint it back. */
+.cell.blank {
   --tile-face: var(--tile-blank-face);
   background: var(--tile-face);
   border-color: var(--tile-blank-edge);
