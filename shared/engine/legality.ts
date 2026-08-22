@@ -29,6 +29,7 @@ export type Legality =
   | { ok: false; reason: "empty-turn" }
   | { ok: false; reason: "out-of-bounds"; at: { x: number; y: number } }
   | { ok: false; reason: "duplicate-cell"; at: { x: number; y: number } }
+  | { ok: false; reason: "same-letter"; at: { x: number; y: number } }
   | { ok: false; reason: "blocked"; at: { x: number; y: number } }
   | { ok: false; reason: "missing-centre" }
   | { ok: false; reason: "disconnected" }
@@ -127,6 +128,13 @@ export function validateTurn(
     }
     if (claimed.has(key)) return { ok: false, reason: "duplicate-cell", at };
     claimed.add(key);
+
+    // A tile may land on a tile, but landing on its own letter changes
+    // nothing about the board -- not the word, not the score, not the shape.
+    const under = before.get(key);
+    if (under !== undefined && under.letter.toUpperCase() === p.letter.toUpperCase()) {
+      return { ok: false, reason: "same-letter", at };
+    }
   }
 
   const after = applyPlacements(before, placements);
