@@ -21,10 +21,24 @@ if (!TIERS.includes(cut)) {
   process.exit(1);
 }
 
+/**
+ * Which lists to read.
+ *
+ * `english-words` holds only the spellings both sides of the Atlantic agree
+ * on, so on its own it has neither COLOR nor COLOUR — and no MATH, which is
+ * filed as American. Reading the variant lists alongside it is what makes
+ * both spellings playable, which is how a word game has to work.
+ *
+ * American only, for now: British spellings would roughly double the variant
+ * words and mean COLOUR and CENTRE are playable at a table where nobody
+ * writes them.
+ */
+const VARIANTS = ["english", "american"];
+
 const words = new Set();
 for (const tier of TIERS.filter((t) => t <= cut)) {
-  const file = join(SCOWL, `english-words-${tier}.json`);
-  for (const word of JSON.parse(readFileSync(file, "utf8"))) {
+  const files = VARIANTS.map((v) => join(SCOWL, `${v}-words-${tier}.json`));
+  for (const word of files.flatMap((file) => JSON.parse(readFileSync(file, "utf8")))) {
     // Drop anything with punctuation, accents, or capitals: proper nouns,
     // contractions ("don't"), and abbreviations are not playable tiles.
     if (/^[a-z]+$/.test(word)) words.add(word.toUpperCase());
