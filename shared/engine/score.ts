@@ -32,16 +32,34 @@ export interface TurnScore {
  *
  * Squares pay k^2 on top, counting nested sub-squares.
  */
-/**
- * `premium` maps a square to the letter waiting on it. A word running through
- * one is worth double, and so is a square of tiles containing one — the point
- * of walking the board out to a corner.
- */
+export interface ScoreOptions {
+  /**
+   * Squares whose letter belongs to the board. A word running through one is
+   * worth double, and so is a square of tiles containing one — the point of
+   * walking the board out to a corner. A covered corner is not in here: its
+   * letter is gone, and so is its bonus.
+   */
+  premium?: ReadonlyMap<string, string>;
+  /**
+   * The board before the turn. Only squares that were not already complete
+   * pay, and with tiles landing on top of tiles that can no longer be worked
+   * out from the placements alone. Defaults to the board without them, which
+   * is what it used to mean when a placement could only ever fill an empty
+   * square.
+   */
+  before?: Board;
+}
+
 export function scoreTurn(
   board: Board,
   placements: readonly Placement[],
-  premium: ReadonlyMap<string, string> = new Map(),
+  options: ScoreOptions = {},
 ): TurnScore {
+  const premium = options.premium ?? new Map<string, string>();
+  const before =
+    options.before ??
+    new Map([...board].filter(([key]) => !placements.some((p) => cellKey(p.x, p.y) === key)));
+
   const runs = runsThrough(board, placements);
   const covered = new Set(runs.flatMap((r) => r.cells.map((c) => cellKey(c.x, c.y))));
 
@@ -65,7 +83,7 @@ export function scoreTurn(
   }
 
   const wordPoints = words.reduce((sum, w) => sum + w.points, 0);
-  const blocks = newSquareBlocks(board, placements);
+  const blocks = newSquareBlocks(before, board, placements);
   const squares = blocks.map((block) => block.k);
 
   // A square pays double for every premium letter inside it, which is what a

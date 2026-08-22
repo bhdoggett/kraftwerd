@@ -28,7 +28,6 @@ export type Legality =
   | { ok: true }
   | { ok: false; reason: "empty-turn" }
   | { ok: false; reason: "out-of-bounds"; at: { x: number; y: number } }
-  | { ok: false; reason: "occupied"; at: { x: number; y: number } }
   | { ok: false; reason: "duplicate-cell"; at: { x: number; y: number } }
   | { ok: false; reason: "blocked"; at: { x: number; y: number } }
   | { ok: false; reason: "missing-centre" }
@@ -126,7 +125,6 @@ export function validateTurn(
     if (bounds.blocked?.has(key) === true) {
       return { ok: false, reason: "blocked", at };
     }
-    if (before.has(key)) return { ok: false, reason: "occupied", at };
     if (claimed.has(key)) return { ok: false, reason: "duplicate-cell", at };
     claimed.add(key);
   }

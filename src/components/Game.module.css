@@ -99,6 +99,7 @@
   display: grid;
   place-items: center;
   border: var(--tile-stroke) solid var(--tile-edge);
+  font-synthesis-weight: none;
   border-radius: 0;
   background: var(--tile-face);
   color: var(--tile-text);

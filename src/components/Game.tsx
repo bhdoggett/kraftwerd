@@ -8,7 +8,7 @@ import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
 import { boardShapeNamed } from "../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
-import { premiumMap } from "../../shared/premium";
+import { livePremium, premiumMap } from "../../shared/premium";
 import { Board } from "./Board";
 import { DevTools } from "./DevTools";
 import styles from "./Game.module.css";
@@ -50,8 +50,6 @@ function describeLegality(
       return "Place at least one tile.";
     case "out-of-bounds":
       return "That square is off the board.";
-    case "occupied":
-      return "There is already a tile there.";
     case "duplicate-cell":
       return "Two tiles on the same square.";
     case "blocked":
@@ -154,8 +152,15 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     [pending],
   );
 
-  /** The corners this game was dealt, and where they are. */
-  const premium = useMemo(() => view?.premium ?? [], [view?.premium]);
+  /**
+   * The corners still showing their letter. A tile on one buries it — the
+   * letter, the badge and the bonus go together — including a tile staged
+   * this turn, so the preview says what the play is really worth.
+   */
+  const premium = useMemo(
+    () => livePremium(view?.premium ?? [], [...(view?.tiles ?? []), ...pending]),
+    [view?.premium, view?.tiles, pending],
+  );
   const premiumKeys = useMemo(
     () => new Set(premium.map((c) => cellKey(c.x, c.y))),
     [premium],
@@ -175,7 +180,10 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const preview = useMemo(
     () =>
       boards && placements.length > 0
-        ? scoreTurn(boards.after, placements, premiumMap(premium))
+        ? scoreTurn(boards.after, placements, {
+            premium: premiumMap(premium),
+            before: boards.before,
+          })
         : null,
     [boards, placements, premium],
   );

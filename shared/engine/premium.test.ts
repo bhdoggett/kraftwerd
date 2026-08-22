@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { premiumCells, premiumMap, premiumSquares } from "../premium.js";
+import { livePremium, premiumCells, premiumMap, premiumSquares } from "../premium.js";
 import { makeBoard } from "./board.js";
 import { validateTurn } from "./legality.js";
 import { scoreTurn } from "./score.js";
@@ -31,7 +31,7 @@ describe("premium squares", () => {
     const placements = [at(4, 3, "A"), at(5, 3, "B")];
 
     const plain = scoreTurn(board, placements);
-    const doubled = scoreTurn(board, placements, premiumMap([{ x: 3, y: 3, letter: "J" }]));
+    const doubled = scoreTurn(board, placements, { premium: premiumMap([{ x: 3, y: 3, letter: "J" }]) });
 
     expect(plain.total).toBe(3);
     expect(doubled.total).toBe(6);
@@ -41,7 +41,7 @@ describe("premium squares", () => {
     const board = makeBoard([at(7, 7, "A"), at(8, 7, "T")]);
     const placements = [at(8, 7, "T")];
 
-    expect(scoreTurn(board, placements, premiumMap([{ x: 3, y: 3, letter: "J" }])).total).toBe(
+    expect(scoreTurn(board, placements, { premium: premiumMap([{ x: 3, y: 3, letter: "J" }]) }).total).toBe(
       scoreTurn(board, placements).total,
     );
   });
@@ -58,7 +58,7 @@ describe("premium squares", () => {
     const placements = [at(4, 3, "A"), at(3, 4, "A"), at(4, 4, "B")];
 
     const plain = scoreTurn(board, placements);
-    const doubled = scoreTurn(board, placements, premiumMap([{ x: 3, y: 3, letter: "J" }]));
+    const doubled = scoreTurn(board, placements, { premium: premiumMap([{ x: 3, y: 3, letter: "J" }]) });
 
     expect(plain.squarePoints).toBe(4);
     expect(doubled.squarePoints).toBe(8);
@@ -115,5 +115,27 @@ describe("reaching a premium square", () => {
     const anyWord = { has: () => true };
     const result = validateTurn(board, [at(4, 3, "A")], anyWord, bounds);
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("covering a premium square", () => {
+  test("buries the letter and the bonus with it", () => {
+    const cells = [{ x: 3, y: 3, letter: "J" }];
+    const tileOnTop = [{ x: 3, y: 3 }];
+
+    expect(livePremium(cells, [])).toEqual(cells);
+    expect(livePremium(cells, tileOnTop)).toEqual([]);
+  });
+
+  test("a word through a buried corner is worth what it says", () => {
+    // Someone has covered the J with an A: JAB is now AAB, and whatever it
+    // scores, it does not double.
+    const board = makeBoard([at(3, 3, "A"), at(4, 3, "A"), at(5, 3, "B")]);
+    const placements = [at(4, 3, "A"), at(5, 3, "B")];
+    const live = livePremium([{ x: 3, y: 3, letter: "J" }], [{ x: 3, y: 3 }]);
+
+    expect(scoreTurn(board, placements, { premium: premiumMap(live) }).total).toBe(
+      scoreTurn(board, placements).total,
+    );
   });
 });

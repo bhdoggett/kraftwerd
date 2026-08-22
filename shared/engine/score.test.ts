@@ -117,3 +117,31 @@ describe("words pay for letters already on the board", () => {
     expect(theirs.total).toBe(3);
   });
 });
+
+describe("laying a tile on top of another", () => {
+  const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
+
+  test("the new word scores in full, letters underneath included", () => {
+    // CAT was there; playing O over the A makes COT.
+    const before = makeBoard([at(7, 7, "C"), at(8, 7, "A"), at(9, 7, "T")]);
+    const after = makeBoard([at(7, 7, "C"), at(8, 7, "O"), at(9, 7, "T")]);
+
+    const score = scoreTurn(after, [at(8, 7, "O")], { before });
+
+    expect(score.words).toEqual([{ word: "COT", points: 3 }]);
+    expect(score.total).toBe(3);
+  });
+
+  test("but the square it sits in pays nothing if it was already complete", () => {
+    const square = [at(0, 0, "A"), at(1, 0, "T"), at(0, 1, "T"), at(1, 1, "O")];
+    const before = makeBoard(square);
+    const after = makeBoard([...square, at(0, 0, "I")]);
+
+    const score = scoreTurn(after, [at(0, 0, "I")], { before });
+
+    expect(score.squares).toEqual([]);
+    expect(score.squarePoints).toBe(0);
+    // The words it changed still pay: IT down and IT across.
+    expect(score.wordPoints).toBe(4);
+  });
+});

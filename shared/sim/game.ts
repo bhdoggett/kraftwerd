@@ -118,11 +118,12 @@ export function playGame(
       if (!p.isBlank && RARE.includes(p.letter)) rarePlayed.push(p.letter);
     }
 
+    const boardBefore = board;
     board = applyPlacements(board, move.placements);
 
     // Squares are counted where they are scored, so the totals line up with
     // what a player would have seen.
-    for (const k of newSquares(board, move.placements)) squares[k] = (squares[k] ?? 0) + 1;
+    for (const k of newSquares(boardBefore, board, move.placements)) squares[k] = (squares[k] ?? 0) + 1;
 
     player.score += score;
     bestTurn = Math.max(bestTurn, score);

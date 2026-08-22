@@ -209,6 +209,8 @@ export function Board({
       const bonus = premiumAt.get(k);
       const awaiting = awaitingBlankAt?.x === x && awaitingBlankAt?.y === y;
       const empty = !blocked && bonus === undefined && tile === undefined && stage === undefined;
+      /* Not empty, but still somewhere a tile may go. */
+      const playable = !blocked && stage === undefined;
 
       // Whose colour this square is lit in. A tile being staged is not on the
       // board yet, but it is the viewer's, so it takes their colour early.
@@ -227,7 +229,10 @@ export function Board({
       if (empty && !awaiting) {
         classes.push(styles.open);
         if (isCentre) classes.push(styles.centre);
-        if (canPlace) classes.push(styles.playable, styles.armed);
+      }
+      if (playable && canPlace && !awaiting) {
+        classes.push(styles.playable);
+        if (empty) classes.push(styles.armed);
       }
 
       cells.push(
@@ -235,15 +240,17 @@ export function Board({
           key={k}
           type="button"
           className={classes.join(" ")}
-          data-cell={blocked || bonus !== undefined || tile !== undefined ? undefined : k}
+          // Every square but a blocked one is a drop target now: a tile may
+          // land on a tile, and on a premium letter to bury it.
+          data-cell={blocked ? undefined : k}
           data-seat={seat === undefined ? undefined : seat % 4}
           data-staged={stage === undefined ? undefined : ""}
-          aria-disabled={blocked || tile !== undefined || (!stage && !canPlace)}
+          aria-disabled={blocked || (!stage && !canPlace)}
           aria-label={
             blocked
               ? `blocked square, column ${x + 1}, row ${y + 1}`
-              : tile || stage
-                ? `${(tile ?? stage)!.letter} at column ${x + 1}, row ${y + 1}`
+              : stage || tile
+                ? `${(stage ?? tile)!.letter} at column ${x + 1}, row ${y + 1}`
                 : `open square, column ${x + 1}, row ${y + 1}`
           }
           onPointerDown={(e) => {
@@ -252,13 +259,19 @@ export function Board({
           onClick={() => {
             // Swallowed if this click ended a pan rather than picking a square.
             if (panned.current) return;
-            if (blocked || bonus !== undefined || tile) return;
+            if (blocked) return;
+            // Tapping your own staged tile takes it back; anything else is a
+            // square you may play onto, whatever is already there.
             if (stage) onPickUp(x, y);
             else if (canPlace) onPlace(x, y);
           }}
         >
-          <span className={styles.glyph}>{(tile ?? stage)?.letter ?? bonus ?? ""}</span>
-          {bonus !== undefined && <span className={styles.bonus}>2×</span>}
+          {/* A tile staged this turn shows over whatever it landed on: the
+              letter under it is still there, and comes back if it is recalled. */}
+          <span className={styles.glyph}>{(stage ?? tile)?.letter ?? bonus ?? ""}</span>
+          {bonus !== undefined && stage === undefined && tile === undefined && (
+            <span className={styles.bonus}>2×</span>
+          )}
         </button>,
       );
     }

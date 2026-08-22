@@ -13,10 +13,11 @@ function isFilled(board: Board, ox: number, oy: number, k: number): boolean {
  * Sizes of every filled k x k block (k >= 2) that this turn brought into
  * existence.
  *
- * A block counts as new iff at least one of its cells was empty before the
- * turn -- i.e. iff it contains at least one placed cell. Placements only ever
- * add tiles, so that test is exactly equivalent to diffing the square sets of
- * the board before and after, without needing the "before" board at all.
+ * A block counts as new iff it is filled now and was not filled before. That
+ * used to be the same question as "does it contain a placed cell", because
+ * placements only ever added tiles — but a tile can now land on top of one,
+ * so a block can contain this turn's work and still have been complete all
+ * along. Those pay nothing: the square was already somebody's.
  */
 export interface SquareBlock {
   /** Side length. */
@@ -28,9 +29,13 @@ export interface SquareBlock {
 
 /** As `newSquares`, but saying where each block is — which is what a scorer
  * needs to know whether a premium square falls inside one. */
-export function newSquareBlocks(board: Board, placements: readonly Coord[]): SquareBlock[] {
+export function newSquareBlocks(
+  before: Board,
+  after: Board,
+  placements: readonly Coord[],
+): SquareBlock[] {
   // A k x k block needs k^2 tiles, so nothing larger than this can be filled.
-  const maxSize = Math.floor(Math.sqrt(board.size));
+  const maxSize = Math.floor(Math.sqrt(after.size));
   const found: SquareBlock[] = [];
   const seen = new Set<string>();
 
@@ -44,7 +49,9 @@ export function newSquareBlocks(board: Board, placements: readonly Coord[]): Squ
           const id = `${ox},${oy},${k}`;
           if (seen.has(id)) continue;
           seen.add(id);
-          if (isFilled(board, ox, oy, k)) found.push({ k, x: ox, y: oy });
+          if (isFilled(after, ox, oy, k) && !isFilled(before, ox, oy, k)) {
+            found.push({ k, x: ox, y: oy });
+          }
         }
       }
     }
@@ -53,6 +60,10 @@ export function newSquareBlocks(board: Board, placements: readonly Coord[]): Squ
   return found;
 }
 
-export function newSquares(board: Board, placements: readonly Coord[]): number[] {
-  return newSquareBlocks(board, placements).map((block) => block.k);
+export function newSquares(
+  before: Board,
+  after: Board,
+  placements: readonly Coord[],
+): number[] {
+  return newSquareBlocks(before, after, placements).map((block) => block.k);
 }

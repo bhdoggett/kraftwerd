@@ -139,6 +139,12 @@
   grid-area: cell;
   place-self: center;
   line-height: 1;
+  /*
+   * No faked bold. Futura has no true bold on most Macs, so asking for 700
+   * makes the browser smear the glyph to the right — which eats the gap on
+   * that side and leaves wide letters like W looking shoved off centre.
+   */
+  font-synthesis-weight: none;
 }
 
 

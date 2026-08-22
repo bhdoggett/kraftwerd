@@ -49,6 +49,13 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             Every run of two or more tiles, across and down, has to be a
             word.
           </li>
+          <li>
+            A tile may be laid <strong>on top of a tile already
+            there</strong>, so long as every word it leaves still reads:
+            CAT becomes COT, but never CZT. The words you make that way
+            score in full, like any others — so a board tangled beyond
+            playing is never quite stuck.
+          </li>
         </ul>
 
         <h3 className={styles.section}>Scoring: words</h3>
@@ -77,6 +84,29 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
           A square is scored by <strong>whoever places its final
           tile</strong>, no matter who placed the rest — so leaving a
           corner open is dangerous.
+        </p>
+        <p>
+          Each square pays <strong>once</strong>. Replacing a letter inside
+          a block that was already complete scores nothing for it; only a
+          block that was not there at the start of your turn pays.
+        </p>
+
+        <h3 className={styles.section}>The four corners</h3>
+        <p>
+          Four squares start with a <strong>J, Q, X or Z</strong> on them,
+          dealt at random and marked <strong>2×</strong>. You never draw
+          those letters — you build out to the one that is there, and it
+          cannot be played from until your tiles reach it.
+        </p>
+        <p>
+          Whatever it helps make is <strong>worth double</strong>: the word
+          it falls in, and any square it completes. A 2×2 built onto a
+          corner pays eight instead of four.
+        </p>
+        <p>
+          You may also <strong>cover a corner</strong> with a tile of your
+          own. Doing so buries the letter and the bonus with it, this turn
+          included — use what the board offers, or take the square away.
         </p>
 
         <h3 className={styles.section}>Blanks</h3>

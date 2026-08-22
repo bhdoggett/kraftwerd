@@ -13,8 +13,13 @@ const block = (ox: number, oy: number, w: number, h: number): TileSpec[] => {
 
 const coords = (specs: TileSpec[]) => specs.map(({ x, y }) => ({ x, y }));
 
-const sizes = (board: Parameters<typeof newSquares>[0], placed: { x: number; y: number }[]) =>
-  newSquares(board, placed).sort();
+/** Scores `placed` as a turn on `board`, which is the board after the turn. */
+const sizes = (board: Parameters<typeof newSquares>[0], placed: { x: number; y: number }[]) => {
+  const before = new Map(
+    [...board].filter(([key]) => !placed.some((p) => `${p.x},${p.y}` === key)),
+  );
+  return newSquares(before, board, placed).sort();
+};
 
 describe("newSquares", () => {
   test("a freshly placed 2x2 yields one square of size 2", () => {
@@ -79,5 +84,39 @@ describe("newSquares", () => {
     ]);
 
     expect(sizes(board, [{ x: 1, y: 1 }])).toEqual([2, 2]);
+  });
+});
+
+describe("squares when tiles land on top of tiles", () => {
+  const filled = (x: number, y: number, letter = "A") => ({ x, y, letter });
+
+  test("replacing a tile inside a finished square scores nothing", () => {
+    // A 2x2 that was already complete before this turn.
+    const before = makeBoard([filled(0, 0), filled(1, 0), filled(0, 1), filled(1, 1)]);
+    const after = makeBoard([filled(0, 0, "B"), filled(1, 0), filled(0, 1), filled(1, 1)]);
+
+    expect(newSquares(before, after, [{ x: 0, y: 0 }])).toEqual([]);
+  });
+
+  test("a square finished this turn still scores", () => {
+    const before = makeBoard([filled(0, 0), filled(1, 0), filled(0, 1)]);
+    const after = makeBoard([filled(0, 0), filled(1, 0), filled(0, 1), filled(1, 1)]);
+
+    expect(newSquares(before, after, [{ x: 1, y: 1 }])).toEqual([2]);
+  });
+
+  test("a replacement that completes a different square scores that one", () => {
+    // The left 2x2 is done; laying a tile at (2,0) and (2,1) closes a new one
+    // to its right, and overwriting (1,1) at the same time pays only for the
+    // square that was not there before.
+    const before = makeBoard([
+      filled(0, 0), filled(1, 0), filled(0, 1), filled(1, 1),
+    ]);
+    const after = makeBoard([
+      filled(0, 0), filled(1, 0), filled(0, 1), filled(1, 1, "C"),
+      filled(2, 0), filled(2, 1),
+    ]);
+
+    expect(newSquares(before, after, [{ x: 1, y: 1 }, { x: 2, y: 0 }, { x: 2, y: 1 }])).toEqual([2]);
   });
 });

@@ -54,3 +54,19 @@ export function premiumCells(size: number, rng: () => number = Math.random): Pre
 export function premiumMap(cells: readonly PremiumCell[]): ReadonlyMap<string, string> {
   return new Map(cells.map((c) => [cellKey(c.x, c.y), c.letter]));
 }
+
+/**
+ * The corners still worth something: the ones nobody has covered.
+ *
+ * A tile may be laid on a premium square like any other, and doing so buries
+ * the letter — you either use what the board offers or cover it up, and the
+ * bonus goes with it. That includes covering it this turn: the play that
+ * buries the Z does not get to collect for it on the way down.
+ */
+export function livePremium(
+  cells: readonly PremiumCell[],
+  covered: Iterable<{ x: number; y: number }>,
+): PremiumCell[] {
+  const taken = new Set([...covered].map((t) => cellKey(t.x, t.y)));
+  return cells.filter((c) => !taken.has(cellKey(c.x, c.y)));
+}

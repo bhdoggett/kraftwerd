@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { BLANKS_PER_GAME, GAME, RACK } from "../shared/config.js";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
-import { premiumCells, premiumMap } from "../shared/premium.js";
+import { livePremium, premiumCells, premiumMap } from "../shared/premium.js";
 import { gameName } from "../shared/gameNames.js";
 import { cellKey, makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
@@ -41,6 +41,14 @@ function boardShape(game: Doc<"games">) {
   };
 }
 
+/** A game's premium corners, minus any square that has a tile on it. */
+function livePremiumOf(
+  game: Doc<"games">,
+  covered: readonly { x: number; y: number }[],
+) {
+  return livePremium(premiumOf(game), covered);
+}
+
 /** The game's premium corners. Older games have none and play without them. */
 function premiumOf(game: Doc<"games">) {
   return game.premium ?? [];
@@ -54,7 +62,12 @@ function premiumOf(game: Doc<"games">) {
  */
 function boardWithPremium(game: Doc<"games">, tiles: readonly Doc<"tiles">[]) {
   return makeBoard([
-    ...premiumOf(game).map((c) => ({ x: c.x, y: c.y, letter: c.letter, isBlank: false })),
+    ...livePremium(premiumOf(game), tiles).map((c) => ({
+      x: c.x,
+      y: c.y,
+      letter: c.letter,
+      isBlank: false,
+    })),
     ...tiles.map(toSpec),
   ]);
 }
@@ -432,26 +445,41 @@ export const placeTiles = mutation({
 
     const remaining = spendRack(player, placements);
 
-    const before = boardWithPremium(game, await loadTiles(ctx, args.gameId));
+    const existing = await loadTiles(ctx, args.gameId);
+    const before = boardWithPremium(game, existing);
     const after = applyPlacements(before, placements);
     const dictionary = await lookUp(ctx, wordsFormed(after, placements));
 
     const legality = validateTurn(before, placements, dictionary, boardShape(game));
     if (!legality.ok) throw new ConvexError(describe(legality));
 
-    // Words and squares touching a premium corner are worth double.
-    const score = scoreTurn(after, placements, premiumMap(premiumOf(game)));
+    // Words and squares touching a premium corner are worth double — but only
+    // a corner still showing its letter. Burying one this turn forfeits it.
+    const score = scoreTurn(after, placements, {
+      premium: premiumMap(livePremiumOf(game, [...existing, ...placements])),
+      before,
+    });
+
+    const tileAt = new Map(existing.map((t) => [cellKey(t.x, t.y), t]));
+    let laid = 0;
 
     for (const p of placements) {
-      await ctx.db.insert("tiles", {
-        gameId: args.gameId,
-        x: p.x,
-        y: p.y,
+      const sitting = tileAt.get(cellKey(p.x, p.y));
+      const tile = {
         letter: p.letter,
         isBlank: p.isBlank,
         placedBy: userId,
         turnNumber: game.turnNumber,
-      });
+      };
+
+      // A tile landing on a tile replaces it rather than stacking: the board
+      // holds one letter a square, and the square was already counted.
+      if (sitting === undefined) {
+        await ctx.db.insert("tiles", { gameId: args.gameId, x: p.x, y: p.y, ...tile });
+        laid++;
+      } else {
+        await ctx.db.patch("tiles", sitting._id, tile);
+      }
     }
 
     await ctx.db.insert("turns", {
@@ -477,7 +505,9 @@ export const placeTiles = mutation({
       await ctx.db.patch("users", userId, { bestTurnScore: score.total });
     }
 
-    await advanceTurn(ctx, game, placements.length);
+    // Only tiles that filled an empty square move the game towards its end;
+    // a replacement leaves the board the same size.
+    await advanceTurn(ctx, game, laid);
 
     return { score: score.total, squares: score.squares };
   },
@@ -630,8 +660,6 @@ function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true 
       return "Place at least one tile";
     case "out-of-bounds":
       return `That square is off the board (${legality.at.x}, ${legality.at.y})`;
-    case "occupied":
-      return `There is already a tile at (${legality.at.x}, ${legality.at.y})`;
     case "duplicate-cell":
       return `Two tiles on the same square (${legality.at.x}, ${legality.at.y})`;
     case "blocked":

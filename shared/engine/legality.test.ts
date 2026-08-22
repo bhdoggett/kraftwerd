@@ -24,14 +24,14 @@ const at = (x: number, y: number, letter: string, isBlank = false): Placement =>
 });
 
 describe("validateTurn", () => {
-  test("rejects a tile placed on an occupied cell", () => {
-    const board = makeBoard([{ x: 3, y: 3, letter: "A" }]);
+  test("lets a tile land on an occupied cell, if the word survives", () => {
+    const board = makeBoard([
+      { x: 3, y: 3, letter: "A" },
+      { x: 4, y: 3, letter: "T" },
+    ]);
 
-    expect(validateTurn(board, [at(3, 3, "B")], dict(), bounds)).toEqual({
-      ok: false,
-      reason: "occupied",
-      at: { x: 3, y: 3 },
-    });
+    // AT becomes IT: legal, where it used to be refused out of hand.
+    expect(validateTurn(board, [at(3, 3, "I")], dict("IT"), bounds)).toEqual({ ok: true });
   });
 
   test("rejects a run that is not in the dictionary", () => {
@@ -226,3 +226,51 @@ describe("a board with blocked squares and a centre", () => {
   });
 });
 
+describe("laying a tile on top of another", () => {
+  const bounds: Bounds = { width: 15, height: 15, centre: { x: 7, y: 7 } };
+
+  const board = () =>
+    makeBoard([
+      { x: 7, y: 7, letter: "C" },
+      { x: 8, y: 7, letter: "A" },
+      { x: 9, y: 7, letter: "T" },
+    ]);
+
+  test("is allowed when what is left still reads as a word", () => {
+    // CAT becomes COT.
+    const result = validateTurn(
+      board(),
+      [{ x: 8, y: 7, letter: "O", isBlank: false }],
+      dict("COT"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("is refused when it wrecks the word it lands in", () => {
+    // CAT would become CZT.
+    const result = validateTurn(
+      board(),
+      [{ x: 8, y: 7, letter: "Z", isBlank: false }],
+      dict("CAT", "COT"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "invalid-words", words: ["CZT"] });
+  });
+
+  test("two tiles still cannot go on the same square", () => {
+    const result = validateTurn(
+      board(),
+      [
+        { x: 8, y: 7, letter: "O", isBlank: false },
+        { x: 8, y: 7, letter: "U", isBlank: false },
+      ],
+      dict("COT", "CUT"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "duplicate-cell", at: { x: 8, y: 7 } });
+  });
+});
