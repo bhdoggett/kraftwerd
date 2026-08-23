@@ -67,7 +67,7 @@ const TWO_LETTER = `
   aa ab ad ae ag ah ai al am an ar as at aw ax ay
   ba be bi bo by
   da de do
-  ed ef eh el em en er es et ex
+  ed ee ef eh el em en er es et ex
   fa fe
   go
   ha he hi hm ho
@@ -86,7 +86,7 @@ const TWO_LETTER = `
   uh um un up us ut
   we wo
   xi xu
-  ya ye yo
+  ya ye yo yu
   za
 `
   .split(/\s+/)
@@ -116,7 +116,52 @@ const EXTRAS = `
   .filter(Boolean)
   .map((w) => w.toUpperCase());
 
-for (const word of EXTRAS) words.add(word);
+/**
+ * The names of the letters, and their plurals.
+ *
+ * SCOWL carries some of these already, but only where they double as ordinary
+ * words: a BEE, to SEE, a JAY, the EL train, EM and EN from typography. Which
+ * ones survive is therefore an accident, and an accident a player runs into —
+ * EM plays and ESS does not, ELLS plays and ELS does not, with no way to guess
+ * which. Naming all of them makes the rule learnable: every letter has a name,
+ * and every name plays.
+ *
+ * Plurals in the same breath, deliberately. Adding the names alone would only
+ * move the arbitrary line rather than remove it.
+ */
+const LETTER_NAMES = `
+  ${""/* EE and YU are two letters long, so they live in TWO_LETTER above:
+        that list is rebuilt wholesale and would drop them from here. */}
+  aitch aitches
+  ar ars
+  bee bees
+  cee cees
+  dee dees
+  ees
+  ef efs
+  el els
+  em ems
+  en ens
+  ess esses
+  ex exes
+  gee gees
+  jay jays
+  kay kays
+  oh ohs
+  pee pees
+  cue cues
+  tee tees
+  vee vees
+  wye wyes
+  yus
+  zed zeds
+  zee zees
+`
+  .split(/\s+/)
+  .filter(Boolean)
+  .map((w) => w.toUpperCase());
+
+for (const word of [...EXTRAS, ...LETTER_NAMES]) words.add(word);
 
 // Replace SCOWL's two-letter entries wholesale rather than merging, so the
 // junk goes and the list is exactly what is written above.
