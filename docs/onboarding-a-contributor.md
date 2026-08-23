@@ -18,9 +18,24 @@ read this file.
    This must land **before** he runs `npm run dev`, or his backend provisions
    under a personal team of his own and you cannot see it.
 
-3. **Send him the Google credentials** privately — `GOOGLE_CLIENT_ID` and
-   `GOOGLE_CLIENT_SECRET`, the same pair the project already uses. He sets them
-   on his own backend; they never enter the repo.
+3. **Set the Google credentials on his backend yourself.** Once he is on the
+   Convex team and has run `npm run dev` once, his deployment appears in your
+   dashboard: pick it, then Settings → Environment Variables, and add
+   `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` — the same pair the project
+   already uses.
+
+   Better than sending them: the secret never leaves the console, so there is
+   no copy of it in a chat log. Sending them privately also works if you would
+   rather he set his own, and either way they never enter the repo.
+
+   He still sets the two that are his alone, and cannot be shared:
+
+   ```bash
+   npx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
+   npx convex env set SITE_URL http://localhost:5175
+   ```
+
+   Sign-in fails without all four, and the failure looks the same each time.
 
 4. **Nothing else to do for GitHub auth** — his first-time setup has him run
    `gh auth login` himself, which also configures git's credential helper. You

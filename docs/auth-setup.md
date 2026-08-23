@@ -35,6 +35,46 @@ In the [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 If you later deploy to production, add that deployment's `.convex.site`
 callback URL too — each Convex deployment has its own.
 
+## 1b. Let other people sign in
+
+A new OAuth client's consent screen starts in **Testing**, where only accounts
+you have named can sign in. Everyone else is turned away by Google before they
+ever reach the app — the error mentions the app being blocked or unverified,
+which reads like something is broken rather than like a setting.
+
+Two ways forward, in the Cloud Console under **APIs & Services → OAuth consent
+screen** (newer consoles call it **Branding** / **Audience**):
+
+- **Add them as test users.** Their Google address, one per line, up to 100.
+  Fastest, and right while it is only family playing. They must sign in with
+  exactly that address — a different Gmail on the same phone will not do.
+- **Publish the app.** Anyone with a Google account can then sign in. Google
+  only requires verification for sensitive scopes; this app asks for the basic
+  profile and email, so publishing needs no review.
+
+Nothing about this is sent to the player. The client ID and secret stay with
+you — they are set with `npx convex env set` and never committed. What a new
+player needs is the invite link, and nothing else.
+
+## 1c. Someone else running their own copy
+
+Playing needs none of this: the deployed site already has its credentials, and
+a new player needs a link and a place on the test-user list.
+
+Running the code is different. Every Convex deployment has its own
+`.convex.site` URL, and a Google client only permits the redirect URIs listed
+on it — so a contributor's backend cannot sign anyone in until its callback
+address is allowed somewhere.
+
+This project's answer is in `onboarding-a-contributor.md`: the owner adds the
+contributor's callback URL to the existing client and sends over the same
+client ID and secret, which the contributor sets on their own backend with
+`npx convex env set`. One client, one consent screen, one test-user list.
+
+The alternative is a client each, which shares no secret but means every
+contributor keeps their own Google Cloud project and their own test users.
+Worth it for strangers; not for the two or three people this game has.
+
 ## 2. Set the deployment environment variables
 
 The app deploys and runs fine without these — `GOOGLE_CLIENT_ID` and
