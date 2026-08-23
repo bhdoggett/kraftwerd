@@ -1,7 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { BLANKS_PER_GAME, GAME, RACK } from "../shared/config.js";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
-import { livePremium, premiumCells, premiumMap } from "../shared/premium.js";
 import { gameName } from "../shared/gameNames.js";
 import { cellKey, makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
@@ -37,39 +36,7 @@ function boardShape(game: Doc<"games">) {
     height: game.boardSize,
     blocked: shape.blocked,
     centre: shape.centre,
-    premium: new Set(premiumOf(game).map((c) => cellKey(c.x, c.y))),
   };
-}
-
-/** A game's premium corners, minus any square that has a tile on it. */
-function livePremiumOf(
-  game: Doc<"games">,
-  covered: readonly { x: number; y: number }[],
-) {
-  return livePremium(premiumOf(game), covered);
-}
-
-/** The game's premium corners. Older games have none and play without them. */
-function premiumOf(game: Doc<"games">) {
-  return game.premium ?? [];
-}
-
-/**
- * The board as the rules see it: the tiles played, plus the letters the board
- * itself brought. The premium letters are not rows in `tiles` — nobody played
- * them, they cannot be taken back, and counting them would end the game four
- * tiles early.
- */
-function boardWithPremium(game: Doc<"games">, tiles: readonly Doc<"tiles">[]) {
-  return makeBoard([
-    ...livePremium(premiumOf(game), tiles).map((c) => ({
-      x: c.x,
-      y: c.y,
-      letter: c.letter,
-      isBlank: false,
-    })),
-    ...tiles.map(toSpec),
-  ]);
 }
 
 /** Upper bound on tiles we ever read: the game ends at `endThreshold`. */
@@ -120,7 +87,6 @@ export const createGame = mutation({
     const gameId = await ctx.db.insert("games", {
       name,
       layout: pickLayout(),
-      premium: premiumCells(GAME.boardSize, Math.random),
       status: "lobby",
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
@@ -191,7 +157,6 @@ export const createGameWithFriends = mutation({
     const gameId = await ctx.db.insert("games", {
       name: gameName(Math.random),
       layout: pickLayout(),
-      premium: premiumCells(GAME.boardSize, Math.random),
       status: "lobby",
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
@@ -446,19 +411,14 @@ export const placeTiles = mutation({
     const remaining = spendRack(player, placements);
 
     const existing = await loadTiles(ctx, args.gameId);
-    const before = boardWithPremium(game, existing);
+    const before = makeBoard(existing.map(toSpec));
     const after = applyPlacements(before, placements);
     const dictionary = await lookUp(ctx, wordsFormed(after, placements));
 
     const legality = validateTurn(before, placements, dictionary, boardShape(game));
     if (!legality.ok) throw new ConvexError(describe(legality));
 
-    // Words and squares touching a premium corner are worth double — but only
-    // a corner still showing its letter. Burying one this turn forfeits it.
-    const score = scoreTurn(after, placements, {
-      premium: premiumMap(livePremiumOf(game, [...existing, ...placements])),
-      before,
-    });
+    const score = scoreTurn(after, placements, { before });
 
     const tileAt = new Map(existing.map((t) => [cellKey(t.x, t.y), t]));
     let laid = 0;
@@ -726,8 +686,6 @@ export const getGame = query({
         players.length < game.playerCount,
       seatsFilled: seated.length,
       game,
-      /** The corners this game was dealt, so the board can draw them. */
-      premium: premiumOf(game),
       viewerUserId: userId,
       /** Null when the viewer is looking at a game they have not joined. */
       yourSeat: you?.seat ?? null,

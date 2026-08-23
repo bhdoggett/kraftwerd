@@ -42,11 +42,6 @@
   --tile-text: #0b0b0d;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #0b0b0d;
-  /* The board's own squares: the premium corners, in nobody's colour —
-     black in both themes, so they read as part of the board rather than as
-     anybody's tile. */
-  --premium-face: #26262c;
-  --premium-ink: #ffffff;
   /* A tube glows against black and does nothing against paper. */
   --tile-lit: none;
   /* Every square is sunk into the board, tiles included. */
@@ -159,8 +154,6 @@
     --tile-edge: #000000;
     --tile-blank-face: #ffffff;
     --tile-blank-edge: #000000;
-    --premium-face: #26262c;
-    --premium-ink: #ffffff;
     /* Resolves per tile, since --tile-face is set on the tile itself. */
     --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
     --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
@@ -205,8 +198,6 @@
   --tile-edge: #000000;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #000000;
-  --premium-face: #26262c;
-  --premium-ink: #ffffff;
   --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
   --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
 
