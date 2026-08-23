@@ -61,6 +61,11 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             its letters</strong>. You can build over CAT to make COT, but
             you cannot pave the whole word over and start again.
           </li>
+          <li>
+            A tile laid on another has to <strong>change the letter
+            underneath</strong>. Laying an A back on an A leaves the board
+            as it was and would collect for the same words twice.
+          </li>
         </ul>
 
         <h3 className={styles.section}>Scoring: words</h3>

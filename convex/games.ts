@@ -668,6 +668,8 @@ function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true 
       return "The first word has to cover the centre square";
     case "disconnected":
       return "Every tile must connect to the tiles already on the board";;
+    case "unchanged":
+      return `The tile at (${legality.at.x}, ${legality.at.y}) is the same letter that is already there — a tile has to change the letter it covers`;
     case "erased":
       return legality.words.length === 1
         ? `${legality.words[0]} was already on the board and would be covered completely — a word already played has to keep at least one of its letters`

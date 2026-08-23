@@ -33,7 +33,8 @@ export type Legality =
   | { ok: false; reason: "missing-centre" }
   | { ok: false; reason: "disconnected" }
   | { ok: false; reason: "invalid-words"; words: string[] }
-  | { ok: false; reason: "erased"; words: string[] };
+  | { ok: false; reason: "erased"; words: string[] }
+  | { ok: false; reason: "unchanged"; at: { x: number; y: number } };
 
 const NEIGHBOURS = [
   { dx: 1, dy: 0 },
@@ -151,6 +152,13 @@ export function validateTurn(
       return { ok: false, reason: "blocked", at };
     }
     if (claimed.has(key)) return { ok: false, reason: "duplicate-cell", at };
+
+    // Laying a letter back on itself leaves the board exactly as it was, and
+    // would collect for every word the square sits in a second time. A tile
+    // that lands on a tile has to change it.
+    if (before.get(key)?.letter === p.letter) {
+      return { ok: false, reason: "unchanged", at };
+    }
     claimed.add(key);
   }
 

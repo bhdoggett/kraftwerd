@@ -305,13 +305,37 @@ describe("laying a tile on top of another", () => {
       crossed,
       [
         { x: 8, y: 7, letter: "O", isBlank: false },
-        { x: 8, y: 8, letter: "N", isBlank: false },
+        { x: 8, y: 8, letter: "R", isBlank: false },
       ],
-      dict("COT", "ON"),
+      dict("COT", "OR"),
       bounds,
     );
 
     expect(result).toEqual({ ok: false, reason: "erased", words: ["AN"] });
+  });
+
+  test("a tile has to change the letter under it", () => {
+    // Laying an A back on the A of CAT: the board is unchanged, and the
+    // words it sits in would pay out again for nothing.
+    const result = validateTurn(
+      board(),
+      [{ x: 8, y: 7, letter: "A", isBlank: false }],
+      dict("CAT"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "unchanged", at: { x: 8, y: 7 } });
+  });
+
+  test("a blank standing for the same letter is refused too", () => {
+    const result = validateTurn(
+      board(),
+      [{ x: 8, y: 7, letter: "A", isBlank: true }],
+      dict("CAT"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "unchanged", at: { x: 8, y: 7 } });
   });
 
   test("two tiles still cannot go on the same square", () => {
