@@ -32,6 +32,19 @@ export const RACK: RackConfig = {
 export const BLANKS_PER_GAME = 3;
 
 /**
+ * Playing every letter in your rack in one turn, using none of them as a
+ * blank, pays this flat bonus on top of the turn's ordinary score.
+ *
+ * No blanks: a blank is a free pass on the letters you were actually dealt,
+ * so a rack-out built on one is not the feat this rewards. Flat rather than
+ * scaled to the rack: a bare rack-out (no crossings, no square) already
+ * scores one point per letter on its own, so 20 lands the reward between a
+ * 2×2 (8) and a 3×3 (34) -- a real prize, not one that swamps the board-
+ * building game the rest of scoring is built around.
+ */
+export const RACK_OUT_BONUS = 20;
+
+/**
  * How long an invite link works for. Long enough to sit in a message over a
  * weekend, short enough that a link forwarded on, or found in an old thread,
  * stops working on its own.

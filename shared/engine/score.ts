@@ -1,3 +1,4 @@
+import { RACK_OUT_BONUS } from "../config.js";
 import { cellKey, type Board, type Coord } from "./board.js";
 import { runsThrough } from "./runs.js";
 import { newSquareBlocks } from "./squares.js";
@@ -19,6 +20,8 @@ export interface TurnScore {
   words: ScoredWord[];
   squarePoints: number;
   squares: number[];
+  /** RACK_OUT_BONUS if this turn emptied the rack without a blank, else 0. */
+  rackOutBonus: number;
   total: number;
 }
 
@@ -48,6 +51,12 @@ export interface ScoreOptions {
    * square.
    */
   before?: Board;
+  /**
+   * Whether this turn played every letter in the rack, using none of them as
+   * a blank. The caller decides this -- it is a fact about the player's hand,
+   * which the board knows nothing about.
+   */
+  rackOut?: boolean;
 }
 
 export function scoreTurn(
@@ -96,11 +105,14 @@ export function scoreTurn(
     return sum + block.k * block.k * 2 ** doubling(cells);
   }, 0);
 
+  const rackOutBonus = options.rackOut === true ? RACK_OUT_BONUS : 0;
+
   return {
     wordPoints,
     words,
     squarePoints,
     squares,
-    total: wordPoints + squarePoints,
+    rackOutBonus,
+    total: wordPoints + squarePoints + rackOutBonus,
   };
 }

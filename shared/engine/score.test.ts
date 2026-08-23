@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { RACK_OUT_BONUS } from "../config.js";
 import { makeBoard, type TileSpec } from "./board.js";
 import { scoreTurn, type Placement } from "./score.js";
 
@@ -143,5 +144,34 @@ describe("laying a tile on top of another", () => {
     expect(score.squarePoints).toBe(0);
     // The words it changed still pay: IT down and IT across.
     expect(score.wordPoints).toBe(4);
+  });
+});
+
+describe("rack-out bonus", () => {
+  const tiles: TileSpec[] = [
+    { x: 0, y: 0, letter: "C" },
+    { x: 1, y: 0, letter: "A" },
+    { x: 2, y: 0, letter: "T" },
+  ];
+
+  test("is paid when the caller says the rack emptied without a blank", () => {
+    const score = scoreTurn(makeBoard(tiles), place(tiles), { rackOut: true });
+
+    expect(score.rackOutBonus).toBe(RACK_OUT_BONUS);
+    expect(score.total).toBe(3 + RACK_OUT_BONUS);
+  });
+
+  test("is not paid by default", () => {
+    const score = scoreTurn(makeBoard(tiles), place(tiles));
+
+    expect(score.rackOutBonus).toBe(0);
+    expect(score.total).toBe(3);
+  });
+
+  test("is not paid when the caller says a blank was used", () => {
+    const score = scoreTurn(makeBoard(tiles), place(tiles), { rackOut: false });
+
+    expect(score.rackOutBonus).toBe(0);
+    expect(score.total).toBe(3);
   });
 });

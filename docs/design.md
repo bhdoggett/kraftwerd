@@ -197,6 +197,21 @@ different rates:
 | 3×3 | 18 | 25 | **43** |
 | 4×4 | 32 | 88 | **120** |
 
+### 4.6 Rack-out bonus
+
+Playing every letter in your rack in one turn, using none of them as a blank,
+pays a flat **+20** on top of the turn's ordinary score.
+
+**No blanks.** A blank is a free pass on the letters you were actually dealt,
+so a rack-out built on one is not the feat this rewards.
+
+**Flat, not scaled.** A bare rack-out — no crossings, no square — already
+scores one point per letter on its own. Twenty lands the bonus between a 2×2
+(12) and a 3×3 (43): a real prize, without swamping the square-building game
+the rest of scoring is built around.
+
+`RACK_OUT_BONUS` in `shared/config.ts`.
+
 ## 5. Rack and letter generation
 
 - Rack is **7 letters**, refilled after every play.

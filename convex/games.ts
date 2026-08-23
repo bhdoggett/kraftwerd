@@ -458,6 +458,7 @@ export const placeTiles = mutation({
     const score = scoreTurn(after, placements, {
       premium: premiumMap(livePremiumOf(game, [...existing, ...placements])),
       before,
+      rackOut: remaining.length === 0 && placements.every((p) => !p.isBlank),
     });
 
     const tileAt = new Map(existing.map((t) => [cellKey(t.x, t.y), t]));
