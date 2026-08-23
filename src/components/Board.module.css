@@ -165,24 +165,27 @@
 }
 
 /*
- * A square that has had a tile land on another reads richer, not darker: each
- * depth saturates the seat colour further rather than mixing it toward black.
- * A filter, not a --tile-tint override -- --seat-N is resolved once at :root
- * using :root's own --tile-tint, so a descendant redeclaring --tile-tint
- * never reaches it. saturate() works on whatever colour is already there,
- * whichever seat it belongs to, with no per-seat rule needed.
- *
- * A small brightness pull rides along with the saturation boost -- enough to
- * read as a deep, dense colour rather than the same pastel turned up, without
- * reintroducing the washed-out, dirty look a flat brightness(0.62) had on its
- * own with no saturation change at all.
+ * A square with one tile stacked on it reads richer, not darker: saturating
+ * the seat colour further rather than mixing it toward black. A filter, not
+ * a --tile-tint override -- --seat-N is resolved once at :root using :root's
+ * own --tile-tint, so a descendant redeclaring --tile-tint never reaches it.
+ * saturate() works on whatever colour is already there, whichever seat it
+ * belongs to, with no per-seat rule needed.
  */
 .cell.stacked[data-stack="2"] {
   filter: saturate(1.8) brightness(0.97);
 }
 
+/*
+ * The square is full at three: nothing can ever land here again. That is a
+ * different kind of fact than "one tile deeper" -- an end state, not a step
+ * along the way -- so it gets its own treatment rather than more of the
+ * same: a genuinely dark, dense colour with the letter flipped to white,
+ * the way a completed checkbox reads differently from a partial one.
+ */
 .cell.stacked[data-stack="3"] {
-  filter: saturate(2.6) brightness(0.93);
+  filter: saturate(1.6) brightness(0.42);
+  color: #ffffff;
 }
 
 /* An empty square adjacent to the played mass: a legal target. Dashed so it
