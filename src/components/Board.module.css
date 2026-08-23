@@ -166,17 +166,18 @@
 
 /*
  * A square that has had a tile land on another reads richer, not darker: each
- * depth pushes the seat colour closer to its pure, saturated form rather than
- * toward black. Done by raising --tile-tint locally -- the same variable
- * every --seat-N colour already resolves through (see index.css) -- so one
- * rule per depth covers all four seats instead of one per seat.
+ * depth saturates the seat colour further rather than mixing it toward black.
+ * A filter, not a --tile-tint override -- --seat-N is resolved once at :root
+ * using :root's own --tile-tint, so a descendant redeclaring --tile-tint
+ * never reaches it. saturate() works on whatever colour is already there,
+ * whichever seat it belongs to, with no per-seat rule needed.
  */
 .cell.stacked[data-stack="2"] {
-  --tile-tint: 82%;
+  filter: saturate(1.35);
 }
 
 .cell.stacked[data-stack="3"] {
-  --tile-tint: 95%;
+  filter: saturate(1.7);
 }
 
 /* An empty square adjacent to the played mass: a legal target. Dashed so it
