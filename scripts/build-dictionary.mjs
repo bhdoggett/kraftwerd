@@ -15,7 +15,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SCOWL = join(ROOT, "node_modules", "wordlist-english");
 const TIERS = [10, 20, 35, 40, 50, 55, 60, 70];
 
-const cut = Number(process.argv[2] ?? 50);
+const cut = Number(process.argv[2] ?? 60);
 if (!TIERS.includes(cut)) {
   console.error(`tier must be one of ${TIERS.join(", ")}`);
   process.exit(1);
@@ -39,9 +39,13 @@ const words = new Set();
 for (const tier of TIERS.filter((t) => t <= cut)) {
   const files = VARIANTS.map((v) => join(SCOWL, `${v}-words-${tier}.json`));
   for (const word of files.flatMap((file) => JSON.parse(readFileSync(file, "utf8")))) {
-    // Drop anything with punctuation, accents, or capitals: proper nouns,
-    // contractions ("don't"), and abbreviations are not playable tiles.
-    if (/^[a-z]+$/.test(word)) words.add(word.toUpperCase());
+    // An accent is a spelling detail no tile can carry, not a reason to drop
+    // an ordinary word: CAFE and CLICHE play as themselves, accent mark or
+    // not. Stripped first, so this still rejects what accent-stripping can't
+    // fix -- punctuation, contractions ("don't"), and the capitals on proper
+    // nouns and abbreviations (OK, dB, pH).
+    const plain = word.normalize("NFD").replace(/[̀-ͯ]/g, "");
+    if (/^[a-z]+$/.test(plain)) words.add(plain.toUpperCase());
   }
 }
 
@@ -167,6 +171,54 @@ for (const word of [...EXTRAS, ...LETTER_NAMES]) words.add(word);
 // junk goes and the list is exactly what is written above.
 for (const word of [...words]) if (word.length === 2) words.delete(word);
 for (const word of TWO_LETTER) words.add(word);
+
+/**
+ * Slurs, screened out by hand.
+ *
+ * SCOWL is a spellchecker lexicon: it documents a word if a dictionary does,
+ * with no opinion on whether it belongs at a family table. Some of these have
+ * an unrelated everyday sense too — CRIPPLE as a verb, RETARD as in "retard
+ * growth", GRINGO used neutrally, COON short for raccoon — cut anyway, since
+ * the slur sense is the one a tile on a board can't explain away. PADDY and
+ * SLOPE stay: those readings are the primary, everyday one.
+ *
+ * Not exhaustive, and not a stand-in for a full profanity filter — this is
+ * about identity-based slurs specifically. Add to it when a game turns one up.
+ */
+const SLURS = `
+  spic spics
+  wop wops
+  kike kikes
+  chink chinks
+  gook gooks
+  wetback wetbacks
+  dago dagos dagoes
+  honky honkies
+  redskin redskins
+  squaw squaws
+  negro
+  nigger niggers
+  nigga niggas
+  fag fags
+  faggot faggots
+  cunt cunts
+  mulatto mulattoes
+  yid yids
+  mongoloid mongoloids
+  coolie coolies
+  golliwog golliwogs
+  coon coons
+  gringo gringos
+  cripple cripples
+  spastic spastics
+  retard retards
+  limey limeys
+`
+  .split(/\s+/)
+  .filter(Boolean)
+  .map((w) => w.toUpperCase());
+
+for (const word of SLURS) words.delete(word);
 
 const sorted = [...words].sort();
 const outDir = join(ROOT, "shared", "data");

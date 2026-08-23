@@ -278,19 +278,40 @@ rather than in the generator.
 
 ### 5.2 Dictionary
 
-**Source: SCOWL tier 50**, via the `wordlist-english` npm package, built by
-`scripts/build-dictionary.mjs` into `shared/data/words.json` (59,513 words).
+**Source: SCOWL tier 60**, via the `wordlist-english` npm package, built by
+`scripts/build-dictionary.mjs` into `shared/data/words.json` (76,911 words).
 SCOWL's licence permits any use but requires its copyright notice travel with
 the words; the build copies it to `shared/data/SCOWL-Copyright.txt`.
 
+*This replaced tier 50 (60k words) — playtesting wanted more words available,
+not fewer, and tier 60 stays short of tier 70's much longer tail of words
+nobody would recognize as valid (`GRIGRI`, `CANULA`, `AXSEED`).*
+
+An accent is stripped rather than treated as disqualifying, so a loanword
+plays as the spelling any tile can actually make: `CAFE`, `CLICHE`, `ENTREE`.
+SCOWL's own accented spelling is what got dropped before; the ordinary word
+was never the problem.
+
+SCOWL is a spellchecker corpus, not moderated for word-game use, so a short
+hand-written list screens out identity-based slurs regardless of tier (see
+`SLURS` in `scripts/build-dictionary.mjs`). It only removes words with no
+everyday meaning worth keeping them for — `PADDY` and `SLOPE` stay, since
+those readings are the primary, everyday one.
+
 Measured across the tiers — the numbers that actually decide the game:
 
-| tier | words | 2-letter | valid 2×2 | valid 3×3 | letters in no 2-letter word |
-|------|-------|----------|-----------|-----------|------------------------------|
-| 35 | 38k | 41 | 187 | 39,595 | j k l q v z |
-| 40 | 43k | 54 | 327 | 49,576 | j q v z |
-| **50** | **60k** | **60** | **393** | **95,481** | **j q v z** |
-| 70 | 108k | 90 | 1,094 | 504,440 | v z |
+| tier | words | valid 2×2 | valid 3×3 | letters in no 2-letter word |
+|------|-------|-----------|-----------|------------------------------|
+| 35 | 38k | 187 | 39,595 | j k l q v z |
+| 40 | 43k | 327 | 49,576 | j q v z |
+| 50 | 60k | 393 | 95,481 | j q v z |
+| 70 | 108k | 1,094 | 504,440 | v z |
+
+*The 2-letter column above is stale: it predates the hand-curated `TWO_LETTER`
+list in `scripts/build-dictionary.mjs`, which fixes the two-letter words at
+107 regardless of tier rather than taking whatever SCOWL happens to carry at
+that cut. The 2×2/3×3 counts, measured before that list existed, have not been
+re-run since — treat them as directional, not current.*
 
 Two findings from this:
 
