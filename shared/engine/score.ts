@@ -30,7 +30,7 @@ export interface TurnScore {
  * extendable is a liability: the next player collects its whole length for one
  * tile, the same way an open corner hands away a square.
  *
- * Squares pay k^2 on top, counting nested sub-squares.
+ * Squares pay k on top, counting nested sub-squares.
  */
 export interface ScoreOptions {
   /**
@@ -87,13 +87,13 @@ export function scoreTurn(
   const squares = blocks.map((block) => block.k);
 
   // A square pays double for every premium letter inside it, which is what a
-  // 2x2 built onto a corner is worth going for: four becomes eight.
+  // 2x2 built onto a corner is worth going for: two becomes four.
   const squarePoints = blocks.reduce((sum, block) => {
     const cells: Coord[] = [];
     for (let y = block.y; y < block.y + block.k; y++) {
       for (let x = block.x; x < block.x + block.k; x++) cells.push({ x, y });
     }
-    return sum + block.k * block.k * 2 ** doubling(cells);
+    return sum + block.k * 2 ** doubling(cells);
   }, 0);
 
   return {
