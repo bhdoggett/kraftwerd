@@ -71,9 +71,9 @@ const TWO_LETTER = `
   aa ab ad ae ag ah ai al am an ar as at aw ax ay
   ba be bi bo by
   da de do
-  ed ee ef eh el em en er es et ex
+  ed ee ef eh el em en er es et ew ex
   fa fe
-  go
+  gi go
   ha he hi hm ho
   id if in is it
   jo
