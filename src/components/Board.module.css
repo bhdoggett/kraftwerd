@@ -140,9 +140,10 @@
   place-self: center;
   line-height: 1;
   /*
-   * No faked bold. Futura has no true bold on most Macs, so asking for 700
-   * makes the browser smear the glyph to the right — which eats the gap on
-   * that side and leaves wide letters like W looking shoved off centre.
+   * No faked bold. Lexend's 700 (--font-tile, index.css) is loaded as a real
+   * weight, so this mostly guards the fallback fonts -- if one of those has
+   * no true bold, a synthesized one smears the glyph to one side, which
+   * shoves wide letters off centre.
    */
   font-synthesis-weight: none;
 }

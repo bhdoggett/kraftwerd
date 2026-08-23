@@ -127,15 +127,17 @@
   --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.14), 0 6px 16px rgb(0 0 0 / 0.1);
 
   /*
-   * Geometric, after the lettering the band used. Futura and Avenir ship on
-   * Apple platforms only, so elsewhere this lands on Century Gothic or plain
-   * Helvetica — same skeleton, less character, still legible.
+   * A real bold, unlike Futura before it: Futura has no true bold on most
+   * Macs, so a requested 700 got synthesized (smeared) by the browser rather
+   * than drawn from an actual heavy cut. Lexend's 700 weight is loaded
+   * explicitly (index.html), so font-synthesis-weight: none (Board.module.css)
+   * has a real weight to draw from instead of faking one. Lexend was also
+   * designed for reading proficiency specifically, which is a reasonable
+   * thing to want from a font a single letter has to carry.
    */
-  --font: Futura, "Avenir Next", "Century Gothic", "Helvetica Neue", Helvetica,
-    system-ui, sans-serif;
-  /* Tile letters, where a single glyph has to carry: heavier, tighter. */
-  --font-tile: Futura, "Avenir Next", "Century Gothic", "Helvetica Neue", Helvetica,
-    system-ui, sans-serif;
+  --font: Lexend, "Helvetica Neue", Helvetica, sans-serif;
+  /* Tile letters, where a single glyph has to carry: same face, same weight. */
+  --font-tile: Lexend, "Helvetica Neue", Helvetica, sans-serif;
   /* Headings are set like a record sleeve: caps, wide, tight to the grid. */
   --tracking: 0.14em;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
