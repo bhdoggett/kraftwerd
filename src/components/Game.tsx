@@ -159,17 +159,31 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   );
 
   /**
-   * The corners still showing their letter. A tile on one buries it — the
-   * letter, the badge and the bonus go together — including a tile staged
-   * this turn, so the preview says what the play is really worth.
+   * The corners as they stood when the turn began: still showing their letter,
+   * because nobody had covered them yet.
+   *
+   * This is what the board was, so it is what squares are measured against. A
+   * corner is part of the board like any tile, so a block around it was
+   * already three-quarters built — and burying it this turn does not make that
+   * block new again.
+   */
+  const standingPremium = useMemo(
+    () => livePremium(view?.premium ?? [], view?.tiles ?? []),
+    [view?.premium, view?.tiles],
+  );
+
+  /**
+   * The corners still worth something once this turn's tiles are counted. A
+   * tile on one buries it — letter, badge and bonus together — so the preview
+   * says what the play is really worth.
    */
   const premium = useMemo(
-    () => livePremium(view?.premium ?? [], [...(view?.tiles ?? []), ...pending]),
-    [view?.premium, view?.tiles, pending],
+    () => livePremium(standingPremium, pending),
+    [standingPremium, pending],
   );
   const premiumKeys = useMemo(
-    () => new Set(premium.map((c) => cellKey(c.x, c.y))),
-    [premium],
+    () => new Set(standingPremium.map((c) => cellKey(c.x, c.y))),
+    [standingPremium],
   );
 
   const boards = useMemo(() => {
@@ -177,11 +191,11 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     // The premium letters belong to the board, not to any player, so they are
     // added here rather than coming back as tiles anyone placed.
     const before = makeBoard([
-      ...premium.map((c) => ({ x: c.x, y: c.y, letter: c.letter, isBlank: false })),
+      ...standingPremium.map((c) => ({ x: c.x, y: c.y, letter: c.letter, isBlank: false })),
       ...view.tiles,
     ]);
     return { before, after: applyPlacements(before, placements) };
-  }, [view, placements, premium]);
+  }, [view, placements, standingPremium]);
 
   const preview = useMemo(
     () =>
@@ -479,8 +493,23 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
   /** Move a staged tile, keeping the rack slot it came from. */
   function moveStaged(origin: { x: number; y: number }, x: number, y: number) {
+    const moving = pending.find((p) => p.x === origin.x && p.y === origin.y);
+    // Landing it there would change nothing, so it stays where it was.
+    if (moving !== undefined && changesNothing(x, y, moving.letter)) return;
+
     setPending((current) => moveStagedTo(current, origin, x, y));
     setError(null);
+  }
+
+  /**
+   * Whether a letter would land on the same letter, changing nothing.
+   *
+   * The rules refuse such a play, so there is no point letting it be staged
+   * and explaining afterwards: the tile simply does not land, and goes back
+   * where it came from.
+   */
+  function changesNothing(x: number, y: number, letter: string) {
+    return boards?.before.get(cellKey(x, y))?.letter === letter.toUpperCase();
   }
 
   function place(x: number, y: number) {
@@ -495,6 +524,10 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     } else {
       const letter = me.letters?.[selected.index];
       if (letter === undefined) return;
+      if (changesNothing(x, y, letter)) {
+        setSelected(null);
+        return;
+      }
       setPending((p) => stageAt(p, { x, y, letter, isBlank: false, from: selected }));
     }
 
@@ -559,6 +592,11 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   /** Answer the question the dropped blank is asking. */
   function nameBlank(letter: string) {
     if (blankAt === null) return;
+    // A blank standing for the letter already there is no change either.
+    if (changesNothing(blankAt.x, blankAt.y, letter)) {
+      setBlankAt(null);
+      return;
+    }
     setPending((current) =>
       stageAt(current, {
         x: blankAt.x,

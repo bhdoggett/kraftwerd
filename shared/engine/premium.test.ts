@@ -139,3 +139,42 @@ describe("covering a premium square", () => {
     );
   });
 });
+
+describe("squares around a corner", () => {
+  const corner = [{ x: 3, y: 3, letter: "J" }];
+
+  /** The 2x2 whose top-left is the J corner. */
+  const block = (topLeft: string) => [
+    at(3, 3, topLeft),
+    at(4, 3, "A"),
+    at(3, 4, "A"),
+    at(4, 4, "B"),
+  ];
+
+  test("completing it around the corner scores it, doubled", () => {
+    const before = makeBoard([at(3, 3, "J")]);
+    const after = makeBoard(block("J"));
+    const placements = [at(4, 3, "A"), at(3, 4, "A"), at(4, 4, "B")];
+
+    const score = scoreTurn(after, placements, { premium: premiumMap(corner), before });
+
+    expect(score.squares).toEqual([2]);
+    expect(score.squarePoints).toBe(8);
+  });
+
+  test("burying the corner later does not make the same square new again", () => {
+    // The block is already complete, with the J still in it. Laying a tile on
+    // the J changes the letter but not the fact that the square was there.
+    const before = makeBoard(block("J"));
+    const after = makeBoard(block("C"));
+
+    const score = scoreTurn(after, [at(3, 3, "C")], {
+      // The corner is buried by this very play, so nothing doubles.
+      premium: premiumMap([]),
+      before,
+    });
+
+    expect(score.squares).toEqual([]);
+    expect(score.squarePoints).toBe(0);
+  });
+});

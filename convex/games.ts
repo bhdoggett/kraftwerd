@@ -30,14 +30,16 @@ function pickLayout(): string {
  * stopped carrying blocked squares — otherwise those games would keep
  * enforcing a shape the board no longer draws.
  */
-function boardShape(game: Doc<"games">) {
+function boardShape(game: Doc<"games">, tiles: readonly Doc<"tiles">[] = []) {
   const shape = boardShapeNamed(OPEN_BOARD, game.boardSize);
   return {
     width: game.boardSize,
     height: game.boardSize,
     blocked: shape.blocked,
     centre: shape.centre,
-    premium: new Set(premiumOf(game).map((c) => cellKey(c.x, c.y))),
+    // Only corners still showing their letter: a corner somebody has covered
+    // holds a played tile, which has to connect like any other.
+    premium: new Set(livePremiumOf(game, tiles).map((c) => cellKey(c.x, c.y))),
   };
 }
 
@@ -450,7 +452,7 @@ export const placeTiles = mutation({
     const after = applyPlacements(before, placements);
     const dictionary = await lookUp(ctx, wordsFormed(after, placements));
 
-    const legality = validateTurn(before, placements, dictionary, boardShape(game));
+    const legality = validateTurn(before, placements, dictionary, boardShape(game, existing));
     if (!legality.ok) throw new ConvexError(describe(legality));
 
     // Words and squares touching a premium corner are worth double — but only
