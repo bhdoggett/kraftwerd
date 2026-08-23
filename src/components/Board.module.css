@@ -171,13 +171,18 @@
  * using :root's own --tile-tint, so a descendant redeclaring --tile-tint
  * never reaches it. saturate() works on whatever colour is already there,
  * whichever seat it belongs to, with no per-seat rule needed.
+ *
+ * A small brightness pull rides along with the saturation boost -- enough to
+ * read as a deep, dense colour rather than the same pastel turned up, without
+ * reintroducing the washed-out, dirty look a flat brightness(0.62) had on its
+ * own with no saturation change at all.
  */
 .cell.stacked[data-stack="2"] {
-  filter: saturate(1.35);
+  filter: saturate(1.8) brightness(0.97);
 }
 
 .cell.stacked[data-stack="3"] {
-  filter: saturate(1.7);
+  filter: saturate(2.6) brightness(0.93);
 }
 
 /* An empty square adjacent to the played mass: a legal target. Dashed so it
