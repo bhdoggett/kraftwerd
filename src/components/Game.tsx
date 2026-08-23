@@ -3,12 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { cellKey, makeBoard } from "../../shared/engine/board";
+import { makeBoard } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
 import { boardShapeNamed } from "../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
-import { livePremium, premiumMap } from "../../shared/premium";
 import { Board } from "./Board";
 import { DevTools } from "./DevTools";
 import styles from "./Game.module.css";
@@ -152,40 +151,18 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     [pending],
   );
 
-  /**
-   * The corners still showing their letter. A tile on one buries it — the
-   * letter, the badge and the bonus go together — including a tile staged
-   * this turn, so the preview says what the play is really worth.
-   */
-  const premium = useMemo(
-    () => livePremium(view?.premium ?? [], [...(view?.tiles ?? []), ...pending]),
-    [view?.premium, view?.tiles, pending],
-  );
-  const premiumKeys = useMemo(
-    () => new Set(premium.map((c) => cellKey(c.x, c.y))),
-    [premium],
-  );
-
   const boards = useMemo(() => {
     if (!view) return null;
-    // The premium letters belong to the board, not to any player, so they are
-    // added here rather than coming back as tiles anyone placed.
-    const before = makeBoard([
-      ...premium.map((c) => ({ x: c.x, y: c.y, letter: c.letter, isBlank: false })),
-      ...view.tiles,
-    ]);
+    const before = makeBoard(view.tiles);
     return { before, after: applyPlacements(before, placements) };
-  }, [view, placements, premium]);
+  }, [view, placements]);
 
   const preview = useMemo(
     () =>
       boards && placements.length > 0
-        ? scoreTurn(boards.after, placements, {
-            premium: premiumMap(premium),
-            before: boards.before,
-          })
+        ? scoreTurn(boards.after, placements, { before: boards.before })
         : null,
-    [boards, placements, premium],
+    [boards, placements],
   );
 
   // The words this play would put on the board. Computed locally by the same
@@ -215,9 +192,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
       boards.after,
       placements,
       new Map(checked.map((entry) => [entry.word, entry.valid])),
-      premiumKeys,
     );
-  }, [boards, placements, checked, premiumKeys]);
+  }, [boards, placements, checked]);
 
   /**
    * Full legality, run client-side against the words the server just
@@ -234,13 +210,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
     const shape = boardShapeNamed(view.layout, view.game.boardSize);
     return validateTurn(boards.before, placements, dictionary, {
-      premium: premiumKeys,
       width: view.game.boardSize,
       height: view.game.boardSize,
       blocked: shape.blocked,
       centre: shape.centre,
     });
-  }, [view, boards, placements, checked, premiumKeys]);
+  }, [view, boards, placements, checked]);
 
   const rackSignature = (view?.players.find((p) => p.letters !== null)?.letters ?? []).join(
     ",",
@@ -598,7 +573,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           boardSize={game.boardSize}
           layout={view.layout}
           tiles={view.tiles}
-          premium={premium}
           pending={pending}
           seatOf={seatOf}
           yourSeat={view.yourSeat}

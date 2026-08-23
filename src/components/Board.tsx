@@ -12,16 +12,8 @@ interface BoardTile {
   placedBy: string;
 }
 
-export interface PremiumCell {
-  x: number;
-  y: number;
-  letter: string;
-}
-
 interface BoardProps {
   boardSize: number;
-  /** The board's own letters, waiting in the corners for someone to reach. */
-  premium: readonly PremiumCell[];
   /** Which hand-drawn layout this game is played on. */
   layout: string;
   tiles: readonly BoardTile[];
@@ -54,7 +46,6 @@ const key = (x: number, y: number) => `${x},${y}`;
 export function Board({
   boardSize,
   layout,
-  premium,
   tiles,
   pending,
   seatOf,
@@ -195,8 +186,6 @@ export function Board({
     return map;
   }, [pending]);
 
-  const premiumAt = new Map(premium.map((c) => [key(c.x, c.y), c.letter]));
-
   const cells: React.ReactNode[] = [];
 
   for (let y = 0; y < boardSize; y++) {
@@ -206,9 +195,8 @@ export function Board({
       const tile = committed.get(k);
       const stage = staged.get(k);
       const isCentre = x === shape.centre.x && y === shape.centre.y;
-      const bonus = premiumAt.get(k);
       const awaiting = awaitingBlankAt?.x === x && awaitingBlankAt?.y === y;
-      const empty = !blocked && bonus === undefined && tile === undefined && stage === undefined;
+      const empty = !blocked && tile === undefined && stage === undefined;
       /* Not empty, but still somewhere a tile may go. */
       const playable = !blocked && stage === undefined;
 
@@ -217,7 +205,6 @@ export function Board({
       const seat = tile ? seatOf.get(tile.placedBy) : stage ? (yourSeat ?? undefined) : undefined;
 
       const classes = [styles.cell];
-      if (bonus !== undefined) classes.push(styles.premium, styles.tile);
       if (blocked) classes.push(styles.blocked);
       if (tile) classes.push(styles.tile);
       if (tile?.isBlank) classes.push(styles.blank);
@@ -241,7 +228,7 @@ export function Board({
           type="button"
           className={classes.join(" ")}
           // Every square but a blocked one is a drop target now: a tile may
-          // land on a tile, and on a premium letter to bury it.
+          // land on a tile.
           data-cell={blocked ? undefined : k}
           data-seat={seat === undefined ? undefined : seat % 4}
           data-staged={stage === undefined ? undefined : ""}
@@ -268,10 +255,7 @@ export function Board({
         >
           {/* A tile staged this turn shows over whatever it landed on: the
               letter under it is still there, and comes back if it is recalled. */}
-          <span className={styles.glyph}>{(stage ?? tile)?.letter ?? bonus ?? ""}</span>
-          {bonus !== undefined && stage === undefined && tile === undefined && (
-            <span className={styles.bonus}>2×</span>
-          )}
+          <span className={styles.glyph}>{(stage ?? tile)?.letter ?? ""}</span>
         </button>,
       );
     }

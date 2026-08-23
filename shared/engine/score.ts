@@ -34,13 +34,6 @@ export interface TurnScore {
  */
 export interface ScoreOptions {
   /**
-   * Squares whose letter belongs to the board. A word running through one is
-   * worth double, and so is a square of tiles containing one — the point of
-   * walking the board out to a corner. A covered corner is not in here: its
-   * letter is gone, and so is its bonus.
-   */
-  premium?: ReadonlyMap<string, string>;
-  /**
    * The board before the turn. Only squares that were not already complete
    * pay, and with tiles landing on top of tiles that can no longer be worked
    * out from the placements alone. Defaults to the board without them, which
@@ -55,7 +48,6 @@ export function scoreTurn(
   placements: readonly Placement[],
   options: ScoreOptions = {},
 ): TurnScore {
-  const premium = options.premium ?? new Map<string, string>();
   const before =
     options.before ??
     new Map([...board].filter(([key]) => !placements.some((p) => cellKey(p.x, p.y) === key)));
@@ -66,13 +58,9 @@ export function scoreTurn(
   const scoreCells = (cells: readonly Coord[]) =>
     cells.filter((c) => board.get(cellKey(c.x, c.y))?.isBlank === false).length;
 
-  /** How many premium squares a set of cells covers: each one doubles. */
-  const doubling = (cells: readonly Coord[]) =>
-    cells.filter((c) => premium.has(cellKey(c.x, c.y))).length;
-
   const words: ScoredWord[] = runs.map((run) => ({
     word: run.word,
-    points: scoreCells(run.cells) * 2 ** doubling(run.cells),
+    points: scoreCells(run.cells),
   }));
 
   // A tile touching nothing forms no run. It still has to be a word in its own
@@ -86,15 +74,7 @@ export function scoreTurn(
   const blocks = newSquareBlocks(before, board, placements);
   const squares = blocks.map((block) => block.k);
 
-  // A square pays double for every premium letter inside it, which is what a
-  // 2x2 built onto a corner is worth going for: four becomes eight.
-  const squarePoints = blocks.reduce((sum, block) => {
-    const cells: Coord[] = [];
-    for (let y = block.y; y < block.y + block.k; y++) {
-      for (let x = block.x; x < block.x + block.k; x++) cells.push({ x, y });
-    }
-    return sum + block.k * block.k * 2 ** doubling(cells);
-  }, 0);
+  const squarePoints = blocks.reduce((sum, block) => sum + block.k * block.k, 0);
 
   return {
     wordPoints,
