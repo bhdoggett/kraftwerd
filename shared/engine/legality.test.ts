@@ -273,4 +273,46 @@ describe("laying a tile on top of another", () => {
 
     expect(result).toEqual({ ok: false, reason: "duplicate-cell", at: { x: 8, y: 7 } });
   });
+
+  test("is refused when every letter of a word gets replaced at once", () => {
+    // CAT would become DOG: not an edit, a full swap.
+    const result = validateTurn(
+      board(),
+      [
+        { x: 7, y: 7, letter: "D", isBlank: false },
+        { x: 8, y: 7, letter: "O", isBlank: false },
+        { x: 9, y: 7, letter: "G", isBlank: false },
+      ],
+      dict("DOG"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "wipes-word", word: "CAT" });
+  });
+
+  test("still catches the wipe even when a shared cell also edits another word", () => {
+    // CAT is fully replaced. The A it shares with BOG only edits that word
+    // (B and G survive), so the wipe check has to charge CAT on its own.
+    const crossing = () =>
+      makeBoard([
+        { x: 7, y: 7, letter: "C" },
+        { x: 8, y: 7, letter: "A" },
+        { x: 9, y: 7, letter: "T" },
+        { x: 8, y: 6, letter: "B" },
+        { x: 8, y: 8, letter: "G" },
+      ]);
+
+    const result = validateTurn(
+      crossing(),
+      [
+        { x: 7, y: 7, letter: "D", isBlank: false },
+        { x: 8, y: 7, letter: "O", isBlank: false },
+        { x: 9, y: 7, letter: "G", isBlank: false },
+      ],
+      dict("DOG", "BOG"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "wipes-word", word: "CAT" });
+  });
 });

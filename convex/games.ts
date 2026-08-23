@@ -662,6 +662,8 @@ function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true 
       return `That square is off the board (${legality.at.x}, ${legality.at.y})`;
     case "duplicate-cell":
       return `Two tiles on the same square (${legality.at.x}, ${legality.at.y})`;
+    case "wipes-word":
+      return `That would replace every letter of ${legality.word}`;
     case "blocked":
       return `That square cannot be played on (${legality.at.x}, ${legality.at.y})`;
     case "missing-centre":
