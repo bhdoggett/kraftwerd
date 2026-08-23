@@ -1,3 +1,4 @@
+import { STACK_CAP } from "../config.js";
 import { cellKey, type Board } from "./board.js";
 import { runsThrough } from "./runs.js";
 import type { Placement } from "./score.js";
@@ -29,6 +30,7 @@ export type Legality =
   | { ok: false; reason: "empty-turn" }
   | { ok: false; reason: "out-of-bounds"; at: { x: number; y: number } }
   | { ok: false; reason: "duplicate-cell"; at: { x: number; y: number } }
+  | { ok: false; reason: "stack-full"; at: { x: number; y: number } }
   | { ok: false; reason: "blocked"; at: { x: number; y: number } }
   | { ok: false; reason: "missing-centre" }
   | { ok: false; reason: "disconnected" }
@@ -80,7 +82,9 @@ function isOneMass(board: Board, from?: string, excused?: ReadonlySet<string>): 
 export function applyPlacements(before: Board, placements: readonly Placement[]): Board {
   const next = new Map(before);
   for (const p of placements) {
-    next.set(cellKey(p.x, p.y), { letter: p.letter, isBlank: p.isBlank });
+    const key = cellKey(p.x, p.y);
+    const stacked = (before.get(key)?.stacked ?? 0) + 1;
+    next.set(key, { letter: p.letter, isBlank: p.isBlank, stacked });
   }
   return next;
 }
@@ -127,6 +131,13 @@ export function validateTurn(
     }
     if (claimed.has(key)) return { ok: false, reason: "duplicate-cell", at };
     claimed.add(key);
+
+    // A square holds at most STACK_CAP tiles over its lifetime, this one
+    // included. Once it is full, nothing may land there again.
+    const priorStack = before.get(key)?.stacked ?? 0;
+    if (priorStack >= STACK_CAP) {
+      return { ok: false, reason: "stack-full", at };
+    }
   }
 
   const after = applyPlacements(before, placements);

@@ -1,6 +1,8 @@
 export interface Tile {
   letter: string;
   isBlank: boolean;
+  /** How many tiles have ever landed on this square, this one included. */
+  stacked: number;
 }
 
 export interface Coord {
@@ -18,6 +20,7 @@ export function cellKey(x: number, y: number): string {
 export interface TileSpec extends Coord {
   letter: string;
   isBlank?: boolean;
+  stacked?: number;
 }
 
 export function makeBoard(tiles: readonly TileSpec[]): Board {
@@ -26,6 +29,7 @@ export function makeBoard(tiles: readonly TileSpec[]): Board {
     board.set(cellKey(t.x, t.y), {
       letter: t.letter,
       isBlank: t.isBlank ?? false,
+      stacked: t.stacked ?? 1,
     });
   }
   return board;

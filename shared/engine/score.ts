@@ -19,6 +19,8 @@ export interface TurnScore {
   words: ScoredWord[];
   squarePoints: number;
   squares: number[];
+  /** Bonus for landing on an already-occupied square (design.md §4, STACK_CAP). */
+  stackBonus: number;
   total: number;
 }
 
@@ -96,11 +98,20 @@ export function scoreTurn(
     return sum + block.k * block.k * 2 ** doubling(cells);
   }, 0);
 
+  // Landing on an already-occupied square pays extra, equal to how deep the
+  // stack now runs: 2 for the first tile on top, 3 for the second (the most
+  // STACK_CAP allows). A tile landing on an empty square scores none of this.
+  const stackBonus = placements.reduce((sum, p) => {
+    const depth = (before.get(cellKey(p.x, p.y))?.stacked ?? 0) + 1;
+    return sum + (depth >= 2 ? depth : 0);
+  }, 0);
+
   return {
     wordPoints,
     words,
     squarePoints,
     squares,
-    total: wordPoints + squarePoints,
+    stackBonus,
+    total: wordPoints + squarePoints + stackBonus,
   };
 }

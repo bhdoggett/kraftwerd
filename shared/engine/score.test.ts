@@ -129,7 +129,9 @@ describe("laying a tile on top of another", () => {
     const score = scoreTurn(after, [at(8, 7, "O")], { before });
 
     expect(score.words).toEqual([{ word: "COT", points: 3 }]);
-    expect(score.total).toBe(3);
+    // Landing on the occupied square also pays the stack bonus (2).
+    expect(score.stackBonus).toBe(2);
+    expect(score.total).toBe(5);
   });
 
   test("but the square it sits in pays nothing if it was already complete", () => {
@@ -143,5 +145,30 @@ describe("laying a tile on top of another", () => {
     expect(score.squarePoints).toBe(0);
     // The words it changed still pay: IT down and IT across.
     expect(score.wordPoints).toBe(4);
+  });
+});
+
+describe("stack bonus", () => {
+  const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
+
+  test("a tile on an empty square pays no stack bonus", () => {
+    const before = makeBoard([]);
+    const after = makeBoard([at(0, 0, "A")]);
+
+    expect(scoreTurn(after, [at(0, 0, "A")], { before }).stackBonus).toBe(0);
+  });
+
+  test("the first tile stacked on a square pays 2", () => {
+    const before = makeBoard([at(0, 0, "A")]);
+    const after = makeBoard([at(0, 0, "I")]);
+
+    expect(scoreTurn(after, [at(0, 0, "I")], { before }).stackBonus).toBe(2);
+  });
+
+  test("the second tile stacked on a square pays 3", () => {
+    const before = makeBoard([{ x: 0, y: 0, letter: "I", stacked: 2 }]);
+    const after = makeBoard([at(0, 0, "A")]);
+
+    expect(scoreTurn(after, [at(0, 0, "A")], { before }).stackBonus).toBe(3);
   });
 });

@@ -10,8 +10,8 @@ interface BoardTile {
   isBlank: boolean;
   /** Who put it there, so the board can light it in their colour. */
   placedBy: string;
-  /** A tile has landed here on top of another, at some point in the game. */
-  stacked: boolean;
+  /** How many tiles have ever landed here, this one included. */
+  stacked: number;
 }
 
 export interface PremiumCell {
@@ -227,7 +227,7 @@ export function Board({
       if (stage?.isBlank) classes.push(styles.blank);
       // Darkened the moment a placement covers a tile, and for good once that
       // placement is actually played -- `tile.stacked` is what persists.
-      if (tile?.stacked || (stage !== undefined && tile !== undefined)) {
+      if ((tile !== undefined && tile.stacked >= 2) || (stage !== undefined && tile !== undefined)) {
         classes.push(styles.stacked);
       }
       if (goodCells?.has(k)) classes.push(styles.inWord);
