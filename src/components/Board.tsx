@@ -88,6 +88,18 @@ export function Board({
   const viewport = useRef<HTMLDivElement>(null);
   const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const panned = useRef(false);
+  /**
+   * A press that began on a staged tile, and whether it has moved.
+   *
+   * Dropping a tile back on the square it came from ends the drag with a
+   * pointerup on the same element that started it, so the browser fires a
+   * click — and the click handler reads a tap on your own staged tile as
+   * "take it back", sending it to the rack. Panning already had this problem
+   * and its own flag; a tile drag never set one, because the pan handler
+   * deliberately steps aside for staged tiles.
+   */
+  const press = useRef<{ x: number; y: number } | null>(null);
+  const dragged = useRef(false);
 
   /** Zoom factor applied to the cell size, not to the page. */
   const [zoom, setZoom] = useState(1);
@@ -100,6 +112,13 @@ export function Board({
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
+      const from = press.current;
+      if (from !== null) {
+        const moved =
+          Math.abs(e.clientX - from.x) > 4 || Math.abs(e.clientY - from.y) > 4;
+        if (moved) dragged.current = true;
+      }
+
       const start = pan.current;
       const el = viewport.current;
       if (start === null || el === null) return;
@@ -115,6 +134,7 @@ export function Board({
 
     const onUp = () => {
       pan.current = null;
+      press.current = null;
     };
 
     window.addEventListener("pointermove", onMove);
@@ -257,8 +277,9 @@ export function Board({
             if (stage && onGrabStaged) onGrabStaged(x, y, e);
           }}
           onClick={() => {
-            // Swallowed if this click ended a pan rather than picking a square.
-            if (panned.current) return;
+            // Swallowed if this click ended a pan or a drag rather than
+            // being a tap on the square.
+            if (panned.current || dragged.current) return;
             if (blocked) return;
             // Tapping your own staged tile takes it back; anything else is a
             // square you may play onto, whatever is already there.
@@ -285,7 +306,11 @@ export function Board({
       onPointerDown={(e) => {
         pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
         // A staged tile is dragged, not panned from.
-        if ((e.target as HTMLElement).closest("[data-staged]") !== null) return;
+        if ((e.target as HTMLElement).closest("[data-staged]") !== null) {
+          press.current = { x: e.clientX, y: e.clientY };
+          dragged.current = false;
+          return;
+        }
         if (pointers.current.size > 1) return;
 
         panned.current = false;
