@@ -208,73 +208,54 @@ different rates:
 
 ### 5.1 Distribution
 
-Because every tile is worth 1 point, rare letters have **no compensating
-upside** — a Q is pure dead weight. Scrabble's distribution is therefore the
-wrong model, and so is English prose frequency.
+*This replaced an earlier corpus-derived distribution* (letter frequency
+across 2–5 letter dictionary words, with a floor lifting J/Q/X/Z out of
+near-zero). That approach optimized for which letters build short words in
+*this* dictionary; the current one optimizes for matching real English, which
+reads as fairer and is easy to check against a published source.
 
-Derive weights from data:
+**Source: real English letter frequency**, the "Texts" column of the English
+section at [Letter frequency (Wikipedia)](https://en.wikipedia.org/wiki/Letter_frequency)
+— frequency as letters actually appear running text, not per dictionary
+entry.
 
-1. **Short-word frequency.** Count each letter's occurrences across all 2–5
-   letter words in the chosen dictionary; normalize to sampling weights.
-2. **Dead-letter suppression.** Compute the set of letters appearing in *no*
-   valid 2-letter word (they can never appear in a 2×2). Drop them or weight
-   them near zero.
-3. **Vowel floor.** Enforce ≥3 vowels per 7-letter rack; resample the rack if
-   it fails. IID draws will otherwise hand someone `BCDFGHJ`.
-4. **Duplicate cap.** Cap any single letter at 2 per rack, or draw from a
-   large refilled virtual bag rather than IID. IID produces `EEEEEEE`.
+**J, Q, X, Z are pinned to 1 tile of 50 each**, by decision rather than by
+scaling down their real frequency (which would be under 1 tile anyway at this
+pool size — combined they are under 0.6% of English). Pinning them, rather
+than letting the maths round them to whatever it rounds to, makes the floor a
+choice on the record instead of an accident of the pool size.
 
-All four live in `shared/config.ts` (`RACK`), reading weights from
-`shared/data/letter-weights.json`, which `scripts/build-dictionary.mjs`
-derives from the corpus. Data, not code — this will be retuned many times from
-real games and the engine must not care.
+**K and V round to 0 at this pool size** (0.77% and 0.98% of English,
+respectively) scaled against the other 22 letters — an amount genuinely under
+half a tile. Left alone that is not "rare," it is *absent*: neither letter
+would ever be drawable. Both are floored to 1 tile instead, the two tiles
+taken back from the most common letters (E, T) so the pool still totals 50.
 
-**Derived weights** (per 10,000, from 2–5 letter words):
+**Weights** (tiles out of a 50-letter pool):
 
 ```
-E 1042   S 1035   A 828   O 676   R 598   L 569   T 564   I 543
-N  449   D  425   U 378   P 354   C 320   M 299   H 281   B 263
-G  253   Y  253   K 211   W 211   F 205   V 106   X  42   Z  41
-J   38   Q   15
+E 5   T 4   A 4
+H 3   I 3   N 3   O 3   R 3   S 3
+D 2   L 2
+B 1  C 1  F 1  G 1  J 1  K 1  M 1  P 1  Q 1  U 1  V 1  W 1  X 1  Y 1  Z 1
 ```
 
-J/Q/V/X/Z fall out near zero on their own, so the "dead letter suppression"
-step needs no separate mechanism — the data already handles it, and those
-letters stay playable in longer words where they belong.
+Every letter is drawable — nothing is suppressed to zero — and the shape
+still reads as English: E and T lead, the vowels and the common consonants
+(H/N/R/S) sit in the middle, and J/Q/X/Z (by decision) plus K/V (by floor)
+share the bottom at one tile each.
 
-**Rare-letter floor.** Left at their raw frequency those letters appear so
-seldom (1.4% of tiles combined) that most players never meet one and turns
-blur together. `RARE_FLOOR` in the build script lifts any letter to at least
-150 per 10,000, which puts a J/Q/X/Z in about a third of racks instead of one
-in twelve. Every rack can still spell a short word and the vowel share is
-unchanged.
+Live in `shared/data/letter-weights.json`, hand-written rather than generated
+— it does not depend on the dictionary, so `scripts/build-dictionary.mjs`
+leaves it alone on every rebuild.
 
-**Measured over 4,000 generated racks** (6 letters, vowel floor 2):
-
-| metric | value |
-|--------|-------|
-| can spell a 2- or 3-letter word | **100%** |
-| can build a 2×2 outright | 99% (82% without the blank) |
-| vowel share (corpus is 34.7%) | **34%** |
-| rack holding a J/Q/X/Z | 27% |
-
-The vowel floor is **1**. The blank can always stand in for a vowel, so a
-higher floor was guaranteeing spare vowels rather than playability:
-
-| floor | vowels | 0-vowel racks | can play | 2×2 | 2×2 without the blank |
-|-------|--------|---------------|----------|-----|-----------------------|
-| 2 | 40% | 0% | 100% | 99% | 82% |
-| **1** | **34%** | **0%** | **100%** | **98%** | **55%** |
-| 0 | 33% | 9% | 100% | 90% | 55% |
-
-At 1 the blank becomes a real decision — spend it to close a square now, or
-hold it — while a vowel-less rack stays vanishingly rare at six letters.
-
-Rack size is mostly a pacing lever, not a difficulty one: going 7 → 6 barely
-moved 2×2 buildability (100% → 99%) but stretches a game from roughly 17 turns
-to 20 and leaves less to work with each turn. Known tuning knob: `S` is
-inflated by plurals. If racks feel S-heavy in play, damp it in the config
-rather than in the generator.
+**Vowel floor and duplicate cap are unchanged** by this — they are about how
+a *rack* reads, not where the weights come from. A 7-letter rack keeps a
+floor of 2 vowels (`minVowels` in `shared/config.ts`): low enough that the
+blank standing in for a vowel is a real option rather than a guarantee, high
+enough that a vowel-less rack stays vanishingly rare. Any single letter is
+still capped at 2 copies per rack, so independent draws can never hand
+someone `EEEEEEE`.
 
 ### 5.2 Dictionary
 

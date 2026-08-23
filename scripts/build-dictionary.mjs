@@ -140,40 +140,10 @@ writeFileSync(
 // SCOWL's licence requires its copyright notice to travel with the words.
 copyFileSync(join(SCOWL, "Copyright"), join(outDir, "SCOWL-Copyright.txt"));
 
-// Letter weights, derived from how often each letter appears in SHORT words
-// (2-5 letters) rather than in English prose. Prose frequency is the wrong
-// prior here: what matters is the letters that actually build the small words
-// a word square is made of. J/Q/V/Z fall out near zero on their own, so they
-// need no special suppression -- they stay playable in longer words.
-const short = sorted.filter((w) => w.length >= 2 && w.length <= 5);
-const counts = {};
-let totalLetters = 0;
-for (const word of short) {
-  for (const ch of word) {
-    counts[ch] = (counts[ch] ?? 0) + 1;
-    totalLetters++;
-  }
-}
-
-/**
- * Floor for any single letter, per 10,000.
- *
- * Raw short-word frequency puts J/Q/X/Z near 1.4% combined, so a player can go
- * a dozen racks without meeting one and every turn plays much like the last.
- * At this floor they turn up in roughly a third of racks, which is often
- * enough to be interesting without crowding out the letters that build words.
- *
- * Measured at 150: racks holding a J/Q/X/Z rise from 8% to 28%, every rack can
- * still spell a short word, and the vowel share is unchanged at 45.9%.
- */
-const RARE_FLOOR = 150;
-
-const weights = {};
-for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
-  const raw = Math.round(((counts[letter] ?? 0) / totalLetters) * 10_000);
-  weights[letter] = Math.max(RARE_FLOOR, raw);
-}
-writeFileSync(join(outDir, "letter-weights.json"), JSON.stringify(weights, null, 2) + "\n");
+// Letter weights are not generated here. shared/data/letter-weights.json is
+// hand-written from real English letter frequency (design.md §5.1) rather
+// than derived from this dictionary, so it does not depend on which tier is
+// built and survives a rebuild untouched.
 
 const byLength = (n) => sorted.filter((w) => w.length === n).length;
 console.log(`tier ${cut}: ${sorted.length} words`);
