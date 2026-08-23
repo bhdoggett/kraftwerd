@@ -52,6 +52,8 @@ function describeLegality(
       return "That square is off the board.";
     case "duplicate-cell":
       return "Two tiles on the same square.";
+    case "wipes-word":
+      return `That would replace every letter of ${legality.word}.`;
     case "blocked":
       return "That square cannot be played on.";
     case "missing-centre":

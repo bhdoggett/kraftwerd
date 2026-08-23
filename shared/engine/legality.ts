@@ -29,6 +29,7 @@ export type Legality =
   | { ok: false; reason: "empty-turn" }
   | { ok: false; reason: "out-of-bounds"; at: { x: number; y: number } }
   | { ok: false; reason: "duplicate-cell"; at: { x: number; y: number } }
+  | { ok: false; reason: "wipes-word"; word: string }
   | { ok: false; reason: "blocked"; at: { x: number; y: number } }
   | { ok: false; reason: "missing-centre" }
   | { ok: false; reason: "disconnected" }
@@ -160,6 +161,16 @@ export function validateTurn(
       return { ok: false, reason: "unchanged", at };
     }
     claimed.add(key);
+  }
+
+  // A placement may cover part of an existing word -- CAT to COT -- but not
+  // every letter of it in the same turn. That is not editing the word, it is
+  // erasing it, and doing so in one move would let a play wipe out something
+  // another player built without ever having to build over it.
+  for (const run of runsThrough(before, placements)) {
+    if (run.cells.every((c) => claimed.has(cellKey(c.x, c.y)))) {
+      return { ok: false, reason: "wipes-word", word: run.word };
+    }
   }
 
   const after = applyPlacements(before, placements);
