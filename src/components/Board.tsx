@@ -218,6 +218,13 @@ export function Board({
       // board yet, but it is the viewer's, so it takes their colour early.
       const seat = tile ? seatOf.get(tile.placedBy) : stage ? (yourSeat ?? undefined) : undefined;
 
+      // How deep this square's stack would read at, right now: what a
+      // placement staged on top of it would make the count, or just the
+      // committed count when nothing is staged here. Richer, not darker, is
+      // how each depth beyond 1 shows -- see .stacked in Board.module.css.
+      const stackDepth =
+        tile === undefined ? undefined : stage !== undefined ? tile.stacked + 1 : tile.stacked;
+
       const classes = [styles.cell];
       if (bonus !== undefined) classes.push(styles.premium, styles.tile);
       if (blocked) classes.push(styles.blocked);
@@ -225,11 +232,7 @@ export function Board({
       if (tile?.isBlank) classes.push(styles.blank);
       if (stage) classes.push(styles.pending, styles.tile);
       if (stage?.isBlank) classes.push(styles.blank);
-      // Darkened the moment a placement covers a tile, and for good once that
-      // placement is actually played -- `tile.stacked` is what persists.
-      if ((tile !== undefined && tile.stacked >= 2) || (stage !== undefined && tile !== undefined)) {
-        classes.push(styles.stacked);
-      }
+      if (stackDepth !== undefined && stackDepth >= 2) classes.push(styles.stacked);
       if (goodCells?.has(k)) classes.push(styles.inWord);
       if (badCells?.has(k)) classes.push(styles.inBadWord);
       if (awaiting) classes.push(styles.tile, styles.blank, styles.awaiting);
@@ -251,6 +254,9 @@ export function Board({
           // land on a tile, and on a premium letter to bury it.
           data-cell={blocked ? undefined : k}
           data-seat={seat === undefined ? undefined : seat % 4}
+          data-stack={
+            stackDepth === undefined || stackDepth < 2 ? undefined : Math.min(stackDepth, 3)
+          }
           data-staged={stage === undefined ? undefined : ""}
           aria-disabled={blocked || (!stage && !canPlace)}
           aria-label={
