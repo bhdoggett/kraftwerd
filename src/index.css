@@ -47,6 +47,12 @@
      anybody's tile. */
   --premium-face: #26262c;
   --premium-ink: #ffffff;
+  /*
+   * A stacked square that has hit the cap: whoever's colour was there before,
+   * a maxed-out square reads as done rather than as anyone's -- pink, since
+   * it is not one of the six seats. Fixed across themes, like the six.
+   */
+  --tile-full-face: #ff5fa8;
   /* A tube glows against black and does nothing against paper. */
   --tile-lit: none;
   /* Every square is sunk into the board, tiles included. */

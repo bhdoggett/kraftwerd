@@ -179,32 +179,18 @@
 /*
  * The square is full at three: nothing can ever land here again. That is a
  * different kind of fact than "one tile deeper" -- an end state, not a step
- * along the way -- so it gets its own treatment: a dark, saturated shade of
- * the seat colour (mixed toward black, not white) with the letter flipped to
- * white, the way a completed checkbox reads differently from a partial one.
+ * along the way, and not anyone's colour any more -- pink (--tile-full-face)
+ * every time, whichever seat happened to place the last tile. The letter
+ * flips to white for it, the way a completed checkbox reads differently from
+ * a partial one.
  *
- * A background colour computed per seat, not a filter: filter is a whole-
- * element effect, so a brightness() meant for the background would have
- * dimmed the white letter right along with it -- there is no way to filter
- * only the background and leave a child's own colour alone.
+ * A background colour, not a filter: filter is a whole-element effect, so a
+ * brightness() meant for the background would have dimmed the white letter
+ * right along with it -- there is no way to filter only the background and
+ * leave a child's own colour alone.
  */
-.cell.stacked[data-stack="3"][data-seat="0"] {
-  background: color-mix(in srgb, var(--neon-cyan) 80%, black);
-  color: #ffffff;
-}
-
-.cell.stacked[data-stack="3"][data-seat="1"] {
-  background: color-mix(in srgb, var(--neon-magenta) 80%, black);
-  color: #ffffff;
-}
-
-.cell.stacked[data-stack="3"][data-seat="2"] {
-  background: color-mix(in srgb, var(--neon-lime) 80%, black);
-  color: #ffffff;
-}
-
-.cell.stacked[data-stack="3"][data-seat="3"] {
-  background: color-mix(in srgb, var(--neon-amber) 80%, black);
+.cell.stacked[data-stack="3"] {
+  background: var(--tile-full-face);
   color: #ffffff;
 }
 
