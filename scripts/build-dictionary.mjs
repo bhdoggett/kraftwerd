@@ -93,6 +93,31 @@ const TWO_LETTER = `
   .filter(Boolean)
   .map((w) => w.toUpperCase());
 
+/**
+ * Words the tier misses, added by hand.
+ *
+ * SCOWL's tiers are about how obscure a word is to a spellchecker, which is
+ * not the same question as whether a family will argue about it. MAGE sits at
+ * tier 60, and taking the whole of that tier to reach it would add fifteen
+ * thousand words including BOD, BUBS and DRAT. GREY and DONUT are in no tier
+ * at all — one is filed as British, the other is a spelling SCOWL declines to
+ * have an opinion about.
+ *
+ * Add to this list when a game turns one up. It is cheaper than a tier, and
+ * every entry is a decision somebody made rather than a side effect.
+ */
+const EXTRAS = `
+  mage mages
+  grey greys greyer greyest
+  donut donuts
+  zen
+`
+  .split(/\s+/)
+  .filter(Boolean)
+  .map((w) => w.toUpperCase());
+
+for (const word of EXTRAS) words.add(word);
+
 // Replace SCOWL's two-letter entries wholesale rather than merging, so the
 // junk goes and the list is exactly what is written above.
 for (const word of [...words]) if (word.length === 2) words.delete(word);
