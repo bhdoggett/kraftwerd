@@ -265,6 +265,17 @@
   border-color: var(--valid);
 }
 
+/*
+ * A word, but not one this play can make. Marked wrong, without the line: the
+ * line through a chip says "that is not a word", and saying that about a real
+ * word sends a player looking for a spelling mistake that is not there.
+ */
+.blockedWord {
+  background: var(--invalid-soft);
+  color: var(--invalid);
+  border-color: var(--invalid);
+}
+
 .invalid {
   background: var(--invalid-soft);
   color: var(--invalid);

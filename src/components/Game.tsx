@@ -58,6 +58,8 @@ function describeLegality(
       return "The first word has to cover the centre square.";
     case "disconnected":
       return "Every tile must connect to the tiles already on the board.";
+    case "unchanged":
+      return "A tile laid on another has to change the letter underneath it.";
     case "erased":
       return legality.words.length === 1
         ? `${legality.words[0]} was already on the board and would be covered completely. A word already played has to keep at least one of its letters.`
@@ -771,6 +773,11 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                   chips fail to add up to the total. */}
               {(preview?.words ?? []).map((scored, i) => {
                 const valid = checked?.find((e) => e.word === scored.word)?.valid;
+                // A real word the play cannot make — unreachable, or burying
+                // something — is marked wrong without the line through it.
+                // The line means "not a word", and this one is a word.
+                const unplayable =
+                  valid === true && legality !== null && !legality.ok;
                 return (
                   <span
                     key={`${scored.word}-${i}`}
@@ -778,22 +785,26 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                       styles.word,
                       valid === undefined
                         ? styles.checking
-                        : valid
-                          ? styles.valid
-                          : styles.invalid,
+                        : unplayable
+                          ? styles.blockedWord
+                          : valid
+                            ? styles.valid
+                            : styles.invalid,
                     ].join(" ")}
                   >
                     {scored.word}
-                    {/* The points hold their space while the word is being
-                        checked, so the chip does not resize under the pointer. */}
-                    <span
-                      className={[
-                        styles.wordPoints,
-                        valid === true ? "" : styles.pointsHidden,
-                      ].join(" ")}
-                    >
-                      {scored.points}
-                    </span>
+                    {/* While the verdict is out the points hold their space, so
+                        the chip does not resize when it lands. Once the answer
+                        is in and the word scores nothing, the space goes: it
+                        cannot change again, and an empty gap reads as a bug. */}
+                    {valid === undefined ? (
+                      <span className={[styles.wordPoints, styles.pointsHidden].join(" ")}>
+                        {scored.points}
+                      </span>
+                    ) : (
+                      valid &&
+                      !unplayable && <span className={styles.wordPoints}>{scored.points}</span>
+                    )}
                   </span>
                 );
               })}
