@@ -24,7 +24,7 @@ const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 /**
  * The score split by what earned it: the tiles themselves, then each size of
- * square. Every tile is a 1×1 worth 1, and a k×k is worth k², so the whole
+ * square. Every tile is a 1×1 worth 1, and a k×k is worth k, so the whole
  * scoring rule is legible from the table.
  */
 /** Squares only: the words carry their own points beside each word. */
@@ -37,7 +37,7 @@ function breakdownOf(score: TurnScore) {
     .map((size) => ({
       size: `${size}×${size}`,
       count: bySize.get(size)!,
-      total: bySize.get(size)! * size * size,
+      total: bySize.get(size)! * size,
     }));
 }
 

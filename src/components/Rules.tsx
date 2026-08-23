@@ -83,12 +83,12 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         <h3 className={styles.section}>Scoring: squares</h3>
         <p>
           Any solid block of tiles scores again on the turn it is
-          completed: <strong>a k×k block is worth k²</strong>, and bigger
+          completed: <strong>a k×k block is worth k</strong>, and bigger
           blocks contain smaller ones, which all count.
         </p>
         <div className={styles.example}>
-          {`2×2   4 tiles   4 words + 4          = 12
-3×3   9 tiles   6 words + (4×4 + 9)  = 43`}
+          {`2×2   4 tiles   4 words + 2          = 10
+3×3   9 tiles   6 words + (4×2 + 3)  = 29`}
         </div>
         <p>
           A square is scored by <strong>whoever places its final

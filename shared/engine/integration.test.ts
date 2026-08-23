@@ -30,12 +30,12 @@ describe("engine against the real tier-50 dictionary", () => {
     expect(dict.has("ZZZZQ")).toBe(false);
   });
 
-  test("a real 2x2 word square is legal and scores 12", () => {
+  test("a real 2x2 word square is legal and scores 10", () => {
     const before = makeBoard([]);
 
     expect(validateTurn(before, SQUARE, dict, bounds)).toEqual({ ok: true });
-    // Four 2-letter words (8) plus the square itself (4).
-    expect(scoreTurn(applyPlacements(before, SQUARE), SQUARE).total).toBe(12);
+    // Four 2-letter words (8) plus the square itself (2).
+    expect(scoreTurn(applyPlacements(before, SQUARE), SQUARE).total).toBe(10);
   });
 
   test("the same block with one letter changed is rejected", () => {
@@ -54,11 +54,11 @@ describe("engine against the real tier-50 dictionary", () => {
     const mine = [at(1, 1, "O")];
 
     expect(validateTurn(before, mine, dict, bounds)).toEqual({ ok: true });
-    // The tile closes AD down and DO across as well as the square.
-    expect(scoreTurn(applyPlacements(before, mine), mine).total).toBe(8);
+    // The tile closes AD down and DO across (4) as well as the square (2).
+    expect(scoreTurn(applyPlacements(before, mine), mine).total).toBe(6);
   });
 
-  test("a 3x3 built over two turns scores 43 in total", () => {
+  test("a 3x3 built over two turns scores 33 in total", () => {
     //   A C E      rows:    ACE, CAM, EMU
     //   C A M      columns: ACE, CAM, EMU
     //   E M U
@@ -78,20 +78,20 @@ describe("engine against the real tier-50 dictionary", () => {
     // Plus the three 2x2 blocks already complete.
     const after1 = applyPlacements(empty, turn1);
     const first = scoreTurn(after1, turn1);
-    expect(first.total).toBe(16 + 12);
+    expect(first.total).toBe(16 + 6);
 
     // Turn 2: the last corner completes EMU across and down.
     const turn2 = [at(2, 2, "U")];
     expect(validateTurn(after1, turn2, dict, bounds)).toEqual({ ok: true });
 
     // The last corner completes EMU across and down (6 letters), the final
-    // 2x2 (4) and the 3x3 itself (9).
+    // 2x2 (2) and the 3x3 itself (3).
     const second = scoreTurn(applyPlacements(after1, turn2), turn2);
-    expect(second.total).toBe(6 + 4 + 9);
+    expect(second.total).toBe(6 + 2 + 3);
 
-    // Together they pay more than the 43 a 3x3 scores in one go: the partial
+    // Together they pay more than the 29 a 3x3 scores in one go: the partial
     // words on the way were paid for too.
-    expect(first.total + second.total).toBe(47);
+    expect(first.total + second.total).toBe(33);
   });
 });
 

@@ -83,7 +83,7 @@ gap and filling the middle later — row 3 would touch nothing. A 3×3 is 9 tile
 against a rack of 8, so it always spans two turns, and the 8-tile intermediate
 state must itself be fully legal: the partial bottom row has to be a real word
 too. Verified end-to-end in `integration.test.ts` with `ACE/CAM/EMU`, which
-pays 20 on the first turn and 14 on the second.
+pays 22 on the first turn and 11 on the second.
 
 Consequence worth internalizing: a 2×2 block is four 2-letter words (2 across,
 2 down). A 3×3 is six 3-letter words. This is a genuine word square and it is
@@ -129,18 +129,24 @@ letter, so this is most of the board rather than an edge case.
 ### 4.2 Square bonus — nested
 
 Every axis-aligned, fully-filled `k×k` block on the board, for `k ≥ 2`, is a
-*square*. A square of size `k` is worth `k²`.
+*square*. A square of size `k` is worth `k`.
+
+*This replaced an earlier `k²` payout.* With word points also in play, `k²`
+compounded into totals (120 for a 4×4) that dwarfed everything else in the
+game — a single tile scores 1, the rack-out bonus is 20, a stacked tile is a
+point or two. `k` keeps the square bonus a real prize without making the rest
+of scoring feel irrelevant next to it.
 
 **Nested counting**: a 3×3 contains four 2×2s and one 3×3. All of them count.
 
 | Build | Tiles | Sub-squares | Bonus | Total | Pts/tile |
 |-------|-------|-------------|-------|-------|----------|
-| 2×2 | 4 | 1×(2×2 @4) | 4 | **8** | 2.0 |
-| 3×3 | 9 | 4×(2×2 @4) + 1×(3×3 @9) | 25 | **34** | 3.8 |
-| 4×4 | 16 | 9×@4 + 4×@9 + 1×@16 | 88 | **104** | 6.5 |
+| 2×2 | 4 | 1×(2×2 @2) | 2 | **6** | 1.5 |
+| 3×3 | 9 | 4×(2×2 @2) + 1×(3×3 @3) | 11 | **20** | 2.2 |
+| 4×4 | 16 | 9×@2 + 4×@3 + 1×@4 | 34 | **50** | 3.1 |
 
-Rate climbs 2.0 → 3.8 → 6.5. Big builds are worth chasing, which is correct
-given a 4×4 word square is brutally hard.
+Rate still climbs with size, just more gently than `k²` did — big builds stay
+worth chasing without the payout running away from the rest of the board.
 
 ### 4.3 Completion — squares score ONCE
 
@@ -184,7 +190,7 @@ is a risk.
 
 ```
 1. sum every letter of every word formed  -> word points (blanks count 0)
-2. diff square sets                       -> + Σ k² for new squares
+2. diff square sets                       -> + Σ k for new squares
 3. sum                                    -> turn score
 ```
 
@@ -193,9 +199,9 @@ different rates:
 
 | build | word points | square bonus | total |
 |-------|-------------|--------------|-------|
-| 2×2 | 8 | 4 | **12** |
-| 3×3 | 18 | 25 | **43** |
-| 4×4 | 32 | 88 | **120** |
+| 2×2 | 8 | 2 | **10** |
+| 3×3 | 18 | 11 | **29** |
+| 4×4 | 32 | 34 | **66** |
 
 ## 5. Rack and letter generation
 

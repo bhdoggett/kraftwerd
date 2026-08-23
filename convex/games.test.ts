@@ -85,8 +85,8 @@ describe("placeTiles", () => {
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
     });
 
-    // Four 2-letter words (8) plus the square (4).
-    expect(result).toEqual({ score: 12, squares: [2] });
+    // Four 2-letter words (8) plus the square (2).
+    expect(result).toEqual({ score: 10, squares: [2] });
 
     const player = await t.run(async (ctx) =>
       ctx.db
@@ -94,7 +94,7 @@ describe("placeTiles", () => {
         .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
         .unique(),
     );
-    expect(player?.score).toBe(12);
+    expect(player?.score).toBe(10);
   });
 
   test("refills the rack back to full after a play", async () => {
@@ -174,13 +174,13 @@ describe("placeTiles", () => {
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D")],
     });
 
-    // Bob closes it with one tile and scores 1 + 4.
+    // Bob closes it with one tile and scores 4 + 2.
     const result = await asBob.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(1, 1, "O")],
     });
     // The closing tile takes both 2-letter words and the square.
-    expect(result).toEqual({ score: 8, squares: [2] });
+    expect(result).toEqual({ score: 6, squares: [2] });
 
     const player = await t.run(async (ctx) =>
       ctx.db
@@ -188,7 +188,7 @@ describe("placeTiles", () => {
         .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", bob))
         .unique(),
     );
-    expect(player?.score).toBe(8);
+    expect(player?.score).toBe(6);
   });
 
   test("rotates the turn to the next seat", async () => {
@@ -251,8 +251,8 @@ describe("placeTiles", () => {
     });
 
     // Four 2-letter words, less the blank's letter in the two it sits in,
-    // plus 4 for the square.
-    expect(result).toEqual({ score: 10, squares: [2] });
+    // plus 2 for the square.
+    expect(result).toEqual({ score: 8, squares: [2] });
   });
 });
 
@@ -364,7 +364,7 @@ describe("resigning and stats", () => {
   test("a resigner cannot win even while ahead", async () => {
     const { t, gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D", "D", "O"]);
 
-    // Alice scores 8, then quits anyway.
+    // Alice scores 10, then quits anyway.
     await asAlice.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
@@ -381,7 +381,7 @@ describe("resigning and stats", () => {
     expect(users.alice?.wins ?? 0).toBe(0);
     expect(users.bob?.wins).toBe(1);
     // The score still counts toward personal bests.
-    expect(users.alice?.bestGameScore).toBe(12);
+    expect(users.alice?.bestGameScore).toBe(10);
   });
 
   test("records the best single turn as it happens", async () => {
@@ -393,7 +393,7 @@ describe("resigning and stats", () => {
     });
 
     const user = await t.run(async (ctx) => ctx.db.get("users", alice));
-    expect(user?.bestTurnScore).toBe(12);
+    expect(user?.bestTurnScore).toBe(10);
   });
 
   test("counts a game for everyone who played, won or not", async () => {

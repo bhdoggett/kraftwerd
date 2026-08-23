@@ -47,7 +47,7 @@ describe("premium squares", () => {
   });
 
   test("a square containing one pays double too", () => {
-    // A 2x2 in the corner, with the J in it: four letters, four for the
+    // A 2x2 in the corner, with the J in it: four letters, two for the
     // square, and the J doubles both the words it is in and the square.
     const board = makeBoard([
       at(3, 3, "J"),
@@ -60,8 +60,8 @@ describe("premium squares", () => {
     const plain = scoreTurn(board, placements);
     const doubled = scoreTurn(board, placements, { premium: premiumMap([{ x: 3, y: 3, letter: "J" }]) });
 
-    expect(plain.squarePoints).toBe(4);
-    expect(doubled.squarePoints).toBe(8);
+    expect(plain.squarePoints).toBe(2);
+    expect(doubled.squarePoints).toBe(4);
   });
 });
 

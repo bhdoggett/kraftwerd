@@ -35,8 +35,8 @@ describe("scoreTurn", () => {
     ];
 
     // Four words of 2 letters, but the blank counts in neither of the two it
-    // sits in: 8 - 2 = 6, plus 4 for the 2x2.
-    expect(scoreTurn(makeBoard(tiles), place(tiles)).total).toBe(10);
+    // sits in: 8 - 2 = 6, plus 2 for the 2x2.
+    expect(scoreTurn(makeBoard(tiles), place(tiles)).total).toBe(8);
   });
 
   describe("spec payouts (design.md §4.2)", () => {
@@ -52,19 +52,19 @@ describe("scoreTurn", () => {
     };
 
     // An n x n block is 2n words of n letters, so n^2 * 2 word points.
-    test("2x2 scores 12", () => {
+    test("2x2 scores 10", () => {
       const s = totalFor(2);
-      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([8, 4, 12]);
+      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([8, 2, 10]);
     });
 
-    test("3x3 scores 43", () => {
+    test("3x3 scores 29", () => {
       const s = totalFor(3);
-      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([18, 25, 43]);
+      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([18, 11, 29]);
     });
 
-    test("4x4 scores 120", () => {
+    test("4x4 scores 66", () => {
       const s = totalFor(4);
-      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([32, 88, 120]);
+      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([32, 34, 66]);
     });
   });
 
@@ -78,7 +78,7 @@ describe("scoreTurn", () => {
 
     // The one tile closes two 2-letter words and the square with them.
     const s = scoreTurn(board, place([{ x: 1, y: 1, letter: "O" }]));
-    expect([s.wordPoints, s.squarePoints, s.total]).toEqual([4, 4, 8]);
+    expect([s.wordPoints, s.squarePoints, s.total]).toEqual([4, 2, 6]);
   });
 });
 
