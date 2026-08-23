@@ -52,6 +52,8 @@ function describeLegality(
       return "That square is off the board.";
     case "duplicate-cell":
       return "Two tiles on the same square.";
+    case "stack-full":
+      return "That square is full -- no more tiles may land there.";
     case "blocked":
       return "That square cannot be played on.";
     case "missing-centre":
@@ -837,6 +839,13 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {preview && preview.stackBonus > 0 && (
+              <p className={styles.scoreLine}>
+                Landing on a stacked square:{" "}
+                <span className={styles.previewScore}>+{preview.stackBonus}</span>
+              </p>
             )}
 
             {preview && (

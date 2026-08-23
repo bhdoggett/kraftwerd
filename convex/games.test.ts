@@ -148,6 +148,31 @@ describe("placeTiles", () => {
     ).rejects.toThrow("Not a word: DA");
   });
 
+  test("refuses a tile on a square already at the stack cap", async () => {
+    const { t, gameId, asAlice, alice } = await twoPlayerGame(["I"]);
+
+    // Seeded directly at the cap, as if two tiles had already stacked here.
+    await t.run(async (ctx) => {
+      await ctx.db.insert("tiles", {
+        gameId,
+        x: CENTRE,
+        y: CENTRE,
+        letter: "A",
+        isBlank: false,
+        placedBy: alice,
+        turnNumber: 0,
+        stacked: 3,
+      });
+    });
+
+    await expect(
+      asAlice.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(0, 0, "I")],
+      }),
+    ).rejects.toThrow("That square is full");
+  });
+
   test("rejects a second play that does not touch the mass", async () => {
     const { gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "T", "O"]);
 

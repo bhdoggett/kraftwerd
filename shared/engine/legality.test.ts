@@ -274,3 +274,33 @@ describe("laying a tile on top of another", () => {
     expect(result).toEqual({ ok: false, reason: "duplicate-cell", at: { x: 8, y: 7 } });
   });
 });
+
+describe("the stack cap", () => {
+  const bounds: Bounds = { width: 15, height: 15, centre: { x: 7, y: 7 } };
+
+  test("a square that has been stacked once still takes one more tile", () => {
+    const board = makeBoard([{ x: 8, y: 7, letter: "A", stacked: 2 }]);
+
+    const result = validateTurn(
+      board,
+      [{ x: 8, y: 7, letter: "I", isBlank: false }],
+      dict("I"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("a square already at the cap refuses another tile", () => {
+    const board = makeBoard([{ x: 8, y: 7, letter: "A", stacked: 3 }]);
+
+    const result = validateTurn(
+      board,
+      [{ x: 8, y: 7, letter: "I", isBlank: false }],
+      dict("I"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "stack-full", at: { x: 8, y: 7 } });
+  });
+});
