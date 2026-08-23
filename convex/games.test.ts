@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { BLANKS_PER_GAME, RACK } from "../shared/config";
+import { BLANKS_PER_GAME, RACK, RACK_OUT_BONUS } from "../shared/config";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
@@ -78,7 +78,8 @@ async function twoPlayerGame(letters: string[]) {
 
 describe("placeTiles", () => {
   test("scores a legal opening 2x2 and banks it to the player", async () => {
-    const { gameId, asAlice, alice, t } = await twoPlayerGame(["A", "D", "D", "O"]);
+    // A spare E, so this play does not also trigger the rack-out bonus.
+    const { gameId, asAlice, alice, t } = await twoPlayerGame(["A", "D", "D", "O", "E"]);
 
     const result = await asAlice.mutation(api.games.placeTiles, {
       gameId,
@@ -95,6 +96,29 @@ describe("placeTiles", () => {
         .unique(),
     );
     expect(player?.score).toBe(12);
+  });
+
+  test("pays the rack-out bonus for playing every letter with no blank", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D", "D", "O"]);
+
+    const result = await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
+    });
+
+    // Same play as above (12), plus the rack-out bonus for emptying the rack.
+    expect(result).toEqual({ score: 12 + RACK_OUT_BONUS, squares: [2] });
+  });
+
+  test("does not pay the rack-out bonus when a letter is left unplayed", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D", "D", "O", "E"]);
+
+    const result = await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
+    });
+
+    expect(result).toEqual({ score: 12, squares: [2] });
   });
 
   test("refills the rack back to full after a play", async () => {
@@ -362,7 +386,8 @@ describe("resigning and stats", () => {
   });
 
   test("a resigner cannot win even while ahead", async () => {
-    const { t, gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D", "D", "O"]);
+    // A spare E, so this play does not also trigger the rack-out bonus.
+    const { t, gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D", "D", "O", "E"]);
 
     // Alice scores 8, then quits anyway.
     await asAlice.mutation(api.games.placeTiles, {
@@ -385,7 +410,8 @@ describe("resigning and stats", () => {
   });
 
   test("records the best single turn as it happens", async () => {
-    const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "D", "D", "O"]);
+    // A spare E, so this play does not also trigger the rack-out bonus.
+    const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "D", "D", "O", "E"]);
 
     await asAlice.mutation(api.games.placeTiles, {
       gameId,

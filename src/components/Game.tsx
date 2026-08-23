@@ -177,15 +177,31 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     return { before, after: applyPlacements(before, placements) };
   }, [view, placements, premium]);
 
+  /**
+   * Whether this staged play would empty the rack without spending a blank.
+   * Computed straight from `pending` rather than `spentIndices` below, so it
+   * does not depend on that memo's position in the file.
+   */
+  const rackOut = useMemo(() => {
+    const usedLetters = new Set(
+      pending
+        .filter((p) => p.from.kind === "letter")
+        .map((p) => (p.from as { kind: "letter"; index: number }).index),
+    );
+    const rackSize = me?.letters?.length ?? 0;
+    return rackSize > 0 && usedLetters.size === rackSize && pending.every((p) => p.from.kind !== "blank");
+  }, [pending, me?.letters]);
+
   const preview = useMemo(
     () =>
       boards && placements.length > 0
         ? scoreTurn(boards.after, placements, {
             premium: premiumMap(premium),
             before: boards.before,
+            rackOut,
           })
         : null,
-    [boards, placements, premium],
+    [boards, placements, premium, rackOut],
   );
 
   // The words this play would put on the board. Computed locally by the same
@@ -837,6 +853,13 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {preview && preview.rackOutBonus > 0 && (
+              <p className={styles.scoreLine}>
+                Whole rack, no blank:{" "}
+                <span className={styles.previewScore}>+{preview.rackOutBonus}</span>
+              </p>
             )}
 
             {preview && (
