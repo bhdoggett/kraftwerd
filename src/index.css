@@ -278,6 +278,17 @@ button,
   user-select: none;
 }
 
+/*
+ * Safari underlines whatever its data detectors matched, even where the meta
+ * tag stops the link working. This strips the styling too, so a word on a tile
+ * is a word rather than something that looks tappable.
+ */
+[x-apple-data-detectors] {
+  color: inherit !important;
+  text-decoration: none !important;
+  pointer-events: none !important;
+}
+
 html,
 body,
 #root {

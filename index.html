@@ -9,6 +9,16 @@
     <title>kraftwerd</title>
     <meta name="description" content="Build word squares against your friends." />
     <!--
+      iOS reads text looking for phone numbers, dates and addresses and turns
+      what it finds into links — and a grid of short uppercase words is exactly
+      what that heuristic mistakes for data. Off, all of it: nothing in this
+      game is ever a phone number.
+    -->
+    <meta
+      name="format-detection"
+      content="telephone=no, date=no, address=no, email=no"
+    />
+    <!--
       What a messaging app draws when someone shares a link. Its crawler does
       not run JavaScript, so these have to be in the served HTML rather than
       set by the app — which also means every link shows the same card, invite
