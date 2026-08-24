@@ -165,11 +165,14 @@
 /* Green, like the outline round a word that checks out: pressing this is
    what that outline is inviting. */
 .play {
+  /* The same height as the round buttons beside it: its own padding put it a
+     few pixels taller, which showed as a step in the row. */
+  height: 34px;
+  padding: 0 var(--space-4);
   border: 1px solid var(--valid);
   border-radius: var(--radius);
   background: var(--valid);
   color: var(--text-inverse);
-  padding: var(--space-2) var(--space-4);
   font-weight: 700;
 }
 

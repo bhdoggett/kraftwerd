@@ -638,23 +638,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   return (
     <div className={styles.layout}>
       <div className={styles.main}>
-        <Board
-          boardSize={game.boardSize}
-          layout={view.layout}
-          tiles={view.tiles}
-          premium={premium}
-          pending={pending}
-          seatOf={seatOf}
-          yourSeat={view.yourSeat}
-          canPlace={myTurn && selected !== null && !choosingBlank}
-          onPlace={place}
-          onPickUp={pickUp}
-          awaitingBlankAt={blankAt}
-          goodCells={wordCells.good}
-          badCells={wordCells.bad}
-          onGrabStaged={myTurn ? grabStaged : undefined}
-        />
-
         {/* Nothing left to play once it is over: the rack would be a row of
             tiles the game will never take. The scores stay. */}
         {me?.letters && game.status !== "finished" && (
@@ -690,6 +673,23 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             playing={submitting}
           />
         )}
+
+        <Board
+          boardSize={game.boardSize}
+          layout={view.layout}
+          tiles={view.tiles}
+          premium={premium}
+          pending={pending}
+          seatOf={seatOf}
+          yourSeat={view.yourSeat}
+          canPlace={myTurn && selected !== null && !choosingBlank}
+          onPlace={place}
+          onPickUp={pickUp}
+          awaitingBlankAt={blankAt}
+          goodCells={wordCells.good}
+          badCells={wordCells.bad}
+          onGrabStaged={myTurn ? grabStaged : undefined}
+        />
 
         {blankAt !== null && (
           <div className={styles.popoverBackdrop} role="dialog" aria-modal="true">
