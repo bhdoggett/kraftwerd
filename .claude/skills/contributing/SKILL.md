@@ -28,6 +28,22 @@ the game, never in terms of git.
 
 ## Before writing any code
 
+**First, ask whether this builds on what he just did.** If his last piece of
+work is still an open pull request — not merged yet — say what it was and ask
+in his terms:
+
+> "Last time you made the tiles darker where one landed on another. Is this
+> new thing meant to sit on top of that, or is it separate?"
+
+If it sits on top, branch from that branch rather than from `origin/main`, and
+say so in the new pull request: "this builds on the stacked-tile colours."
+Otherwise branch from `origin/main` as below.
+
+This matters because he cannot see it. Every branch holds only its own work,
+so four separate branches each changing the scoring mean he has never once
+played the game he is actually proposing. Ask, and the ones that belong
+together end up together.
+
 If the current branch is `main`, stop and set up a branch first. Do not edit a
 single file until this is done:
 

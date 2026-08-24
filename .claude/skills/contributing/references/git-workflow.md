@@ -76,7 +76,10 @@ git fetch origin --prune
 git branch -d <name>/<topic>
 ```
 
-The next piece of work starts a fresh branch from the updated `origin/main`.
+The next piece of work starts a fresh branch from the updated `origin/main` —
+unless he says it builds on something of his that is not merged yet, in which
+case branch from that branch instead and mention it in the pull request. Ask
+him; he has no way of knowing which of his branches contains what.
 `-d` refuses to delete anything unmerged; `-D`, which does not, is blocked.
 
 If Ben merged the pull request as a **squash merge**, `-d` will refuse anyway
