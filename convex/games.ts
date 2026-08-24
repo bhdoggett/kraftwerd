@@ -89,6 +89,7 @@ const toSpec = (t: Doc<"tiles">): TileSpec => ({
   y: t.y,
   letter: t.letter,
   isBlank: t.isBlank,
+  stacked: t.stacked,
 });
 
 /**
@@ -474,13 +475,29 @@ export const placeTiles = mutation({
         turnNumber: game.turnNumber,
       };
 
-      // A tile landing on a tile replaces it rather than stacking: the board
-      // holds one letter a square, and the square was already counted.
+      // A tile landing on a tile replaces its letter rather than stacking a
+      // second letter into the square: the board holds one letter a square,
+      // and the square was already counted. Depth climbs regardless, so the
+      // cap and the bonus can see how deep this square has been built.
+      //
+      // Taken from the board the engine just built rather than counted here,
+      // so a premium corner is the square's first tile in the database as
+      // well as in the rules. Written on insert too: leaving it out let the
+      // count restart at one the next time the row was read, which handed a
+      // covered corner an extra life.
+      const depth = after.get(cellKey(p.x, p.y))?.stacked ?? 1;
+
       if (sitting === undefined) {
-        await ctx.db.insert("tiles", { gameId: args.gameId, x: p.x, y: p.y, ...tile });
+        await ctx.db.insert("tiles", {
+          gameId: args.gameId,
+          x: p.x,
+          y: p.y,
+          ...tile,
+          stacked: depth,
+        });
         laid++;
       } else {
-        await ctx.db.patch("tiles", sitting._id, tile);
+        await ctx.db.patch("tiles", sitting._id, { ...tile, stacked: depth });
       }
     }
 
@@ -664,6 +681,8 @@ function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true 
       return `That square is off the board (${legality.at.x}, ${legality.at.y})`;
     case "duplicate-cell":
       return `Two tiles on the same square (${legality.at.x}, ${legality.at.y})`;
+    case "stack-full":
+      return `That square is full (${legality.at.x}, ${legality.at.y})`;
     case "blocked":
       return `That square cannot be played on (${legality.at.x}, ${legality.at.y})`;
     case "missing-centre":
@@ -745,6 +764,7 @@ export const getGame = query({
         letter: t.letter,
         isBlank: t.isBlank,
         placedBy: t.placedBy,
+        stacked: t.stacked ?? 1,
       })),
       // Racks are private: every player sees their own letters and only the
       // count of everyone else's.

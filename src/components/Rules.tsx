@@ -1,4 +1,4 @@
-import { BLANKS_PER_GAME, GAME, RACK } from "../../shared/config";
+import { BLANKS_PER_GAME, GAME, RACK, STACK_CAP } from "../../shared/config";
 import { Modal } from "./Modal";
 import styles from "./Rules.module.css";
 
@@ -66,6 +66,11 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             underneath</strong>. Laying an A back on an A leaves the board
             as it was and would collect for the same words twice.
           </li>
+          <li>
+            A square can only take so much traffic: once{" "}
+            <strong>{STACK_CAP} tiles</strong> have landed on it, it is
+            full and nobody may play there again.
+          </li>
         </ul>
 
         <h3 className={styles.section}>Scoring: words</h3>
@@ -78,6 +83,12 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
           So adding one tile to <strong>RISE</strong> scores{" "}
           <strong>RISEN</strong> in full: five points for one tile. Which
           means a word left extendable is a gift to whoever plays next.
+        </p>
+        <p>
+          Landing on a square that already has a tile on it pays extra, on
+          top of the word: <strong>+2</strong> for the first tile stacked
+          there, <strong>+3</strong> for the second — right up until the
+          square is full.
         </p>
 
         <h3 className={styles.section}>Scoring: squares</h3>

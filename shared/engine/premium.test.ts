@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { livePremium, premiumCells, premiumMap, premiumSquares } from "../premium.js";
 import { makeBoard } from "./board.js";
-import { validateTurn } from "./legality.js";
+import { applyPlacements, validateTurn } from "./legality.js";
 import { scoreTurn } from "./score.js";
 
 const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
@@ -176,5 +176,38 @@ describe("squares around a corner", () => {
 
     expect(score.squares).toEqual([]);
     expect(score.squarePoints).toBe(0);
+  });
+});
+
+describe("stacking on a premium corner", () => {
+  const bounds = {
+    width: 15,
+    height: 15,
+    centre: { x: 7, y: 7 },
+    premium: new Set(["3,3"]),
+  };
+  const anyWord = { has: () => true };
+
+  test("the corner is the square's first tile, so two more may land there", () => {
+    // The corner letter counts as one, exactly as a played tile would.
+    const board = makeBoard([
+      { x: 3, y: 3, letter: "J" },
+      { x: 4, y: 3, letter: "A" },
+    ]);
+    expect(board.get("3,3")?.stacked).toBe(1);
+
+    const first = applyPlacements(board, [at(3, 3, "C")]);
+    expect(first.get("3,3")?.stacked).toBe(2);
+    expect(validateTurn(board, [at(3, 3, "C")], anyWord, bounds).ok).toBe(true);
+
+    const second = applyPlacements(first, [at(3, 3, "B")]);
+    expect(second.get("3,3")?.stacked).toBe(3);
+
+    // Full: the corner used one of the three lives the square ever had.
+    expect(validateTurn(second, [at(3, 3, "D")], anyWord, bounds)).toEqual({
+      ok: false,
+      reason: "stack-full",
+      at: { x: 3, y: 3 },
+    });
   });
 });

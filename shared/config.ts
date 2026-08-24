@@ -40,6 +40,19 @@ export const BLANKS_PER_GAME = 3;
  */
 export const FRIEND_LINK_DAYS = 7;
 
+/**
+ * A square may hold at most this many tiles over its lifetime, the original
+ * included -- so at most STACK_CAP - 1 tiles may ever land on top of one.
+ * Without a limit a single square could be fought over forever; three lets
+ * it change hands twice and then settles.
+ *
+ * The bonus for landing on an already-occupied square equals how deep the
+ * stack now runs -- 2 for the first tile stacked on top, 3 for the second
+ * (the cap) -- so it scales with STACK_CAP by construction: change the cap
+ * and the top bonus follows it. See scoreTurn in shared/engine/score.ts.
+ */
+export const STACK_CAP = 3;
+
 export const GAME = {
   /**
    * Odd-sided, so there is a true centre for the opening word to cover.

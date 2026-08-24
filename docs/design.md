@@ -197,6 +197,33 @@ different rates:
 | 3×3 | 18 | 25 | **43** |
 | 4×4 | 32 | 88 | **120** |
 
+### 4.6 Landing on a tile, and the stack
+
+A placement may land on an occupied square, replacing its letter, as long as
+the resulting word still checks out (`AT` → `IT`, not `AT` → `AZ`). This is
+what keeps a board from ever getting stuck: every square stays reachable,
+even a closed-off one, because you can always rebuild through it.
+
+**Stack cap.** A square may hold at most `STACK_CAP` tiles over its lifetime
+— three, so it can change hands twice and then settles. A fourth attempt on
+a maxed-out square is refused outright, before word or connectivity checks
+even run.
+
+**Stack bonus.** Landing on an already-occupied square pays extra, equal to
+how deep the stack now runs: **+2** for the first tile stacked on top, **+3**
+for the second (the cap). A tile landing on an empty square earns none of
+this. The bonus scales with `STACK_CAP` by construction — raise the cap and
+the top bonus follows it.
+
+```
+fresh square      : 0
+1st tile stacked   : +2
+2nd tile stacked   : +3   (the square is now full)
+```
+
+Both live in `shared/config.ts` (`STACK_CAP`) and `shared/engine/score.ts`
+(`scoreTurn`'s `stackBonus`).
+
 ## 5. Rack and letter generation
 
 - Rack is **7 letters**, refilled after every play.
