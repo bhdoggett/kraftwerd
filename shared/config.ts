@@ -10,9 +10,11 @@ import type { RackConfig } from "./engine/rack.js";
 export const RACK: RackConfig = {
   /** Letters held at the start of a turn, refilled after every play. */
   size: 7,
-  // Real English letter frequency, out of a 50-letter pool -- see
-  // design.md §5.1. Hand-written in shared/data/letter-weights.json, not
-  // generated, so it survives a dictionary rebuild untouched.
+  // Real English letter frequency, out of a 50-letter pool, nudged toward
+  // letters that are good at turning one word into another by swapping a
+  // single tile -- see design.md §5.1. Hand-written in
+  // shared/data/letter-weights.json, not generated, so it survives a
+  // dictionary rebuild untouched.
   weights,
   vowels: "AEIOU",
   /**

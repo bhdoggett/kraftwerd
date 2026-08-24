@@ -231,19 +231,37 @@ half a tile. Left alone that is not "rare," it is *absent*: neither letter
 would ever be drawable. Both are floored to 1 tile instead, the two tiles
 taken back from the most common letters (E, T) so the pool still totals 50.
 
+*Nudged again, on top of that,* toward letters that are good at turning one
+word already on the board into another by swapping a single tile — the game's
+own stacking rule makes that a real, repeated decision, not just a
+frequency-matching exercise. Measured directly against the dictionary: for
+every letter, how many (word, position) pairs turn into a *different* valid
+word if that letter is dropped in. P, M, B and D ranked far above their
+weight (5th, 8th, 9th and 4th by that measure, at 1, 1, 1 and 2 tiles); H, E,
+A and O ranked well below theirs (13th, 10th, 12th and 16th, at 3, 5, 4 and 3
+tiles). One tile moved each way — P/M/B up, H/E/A/O down — funds the fix
+without touching J/Q/X/Z, K/V, or the letters that were already well matched
+to their rank (S, T, R, N stayed put; all four rank in the top 7).
+
+Vowel share drops from 32% to 26% of the pool as a result. The floor
+(`minVowels`, below) still guarantees 2 vowels every rack, but leans on that
+guarantee more often now — roughly a third of racks need it to kick in,
+against a little over a fifth before. Worth watching in play: this is the
+lever to loosen first if racks start feeling consonant-heavy.
+
 **Weights** (tiles out of a 50-letter pool):
 
 ```
-E 5   T 4   A 4
-H 3   I 3   N 3   O 3   R 3   S 3
-D 2   L 2
-B 1  C 1  F 1  G 1  J 1  K 1  M 1  P 1  Q 1  U 1  V 1  W 1  X 1  Y 1  Z 1
+T 4   E 4
+A 3  D 3  I 3  N 3  R 3  S 3
+B 2  H 2  L 2  M 2  O 2  P 2
+C 1  F 1  G 1  J 1  K 1  Q 1  U 1  V 1  W 1  X 1  Y 1  Z 1
 ```
 
 Every letter is drawable — nothing is suppressed to zero — and the shape
-still reads as English: E and T lead, the vowels and the common consonants
-(H/N/R/S) sit in the middle, and J/Q/X/Z (by decision) plus K/V (by floor)
-share the bottom at one tile each.
+still reads as English: T and E lead, the vowels and the common consonants
+sit in the middle, and J/Q/X/Z (by decision) plus K/V (by floor) share the
+bottom at one tile each.
 
 Live in `shared/data/letter-weights.json`, hand-written rather than generated
 — it does not depend on the dictionary, so `scripts/build-dictionary.mjs`
