@@ -56,8 +56,21 @@
   filter: var(--tile-lit);
 }
 
-.spacer {
+/*
+ * Three parts, with the mark in the middle. The sides are equal and flexible
+ * so the mark sits centred on the bar itself, not in whatever space the
+ * things either side of it happen to leave over.
+ */
+.side {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.sideEnd {
+  justify-content: flex-end;
 }
 
 .main {

@@ -1,4 +1,4 @@
-import { Authenticated, Unauthenticated, useConvexAuth, useQuery } from "convex/react";
+import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
@@ -16,6 +16,22 @@ export default function App() {
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
+        {/* Left: the way back, and nothing else. Signed out there is no lobby
+            to go to, and the route is about to be irrelevant anyway. */}
+        <div className={styles.side}>
+          <Authenticated>
+            {route.name === "game" && (
+              <button
+                type="button"
+                className={styles.link}
+                onClick={() => navigate({ name: "lobby" })}
+              >
+                Lobby
+              </button>
+            )}
+          </Authenticated>
+        </div>
+
         <button
           type="button"
           className={styles.brandButton}
@@ -32,22 +48,10 @@ export default function App() {
             </span>
           </h1>
         </button>
-        {/* Signed out there is no lobby to go back to, and the route is
-            about to be irrelevant anyway. */}
-        <Authenticated>
-          {route.name === "game" && (
-            <button
-              type="button"
-              className={styles.link}
-              onClick={() => navigate({ name: "lobby" })}
-            >
-              Back to lobby
-            </button>
-          )}
-        </Authenticated>
-        <span className={styles.spacer} />
-        <ViewerName />
-        <Menu />
+
+        <div className={[styles.side, styles.sideEnd].join(" ")}>
+          <Menu />
+        </div>
       </header>
 
       <main className={styles.main}>
@@ -72,15 +76,6 @@ export default function App() {
       </main>
     </div>
   );
-}
-
-/** Who is playing. Signing out is in the menu beside it. */
-function ViewerName() {
-  const { isAuthenticated } = useConvexAuth();
-  const viewer = useQuery(api.users.viewer);
-
-  if (!isAuthenticated) return null;
-  return <span className={styles.tagline}>{viewer?.name ?? "Signed in"}</span>;
 }
 
 function SignInForm() {
