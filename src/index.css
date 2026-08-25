@@ -93,10 +93,10 @@
    * opaque and identical on both.
    *
    * This is the pale end of a ramp: a fresh tile sits here, a square built on
-   * twice sits at 70%, and a full one is the pure tube. Moving this number
-   * moves where the ramp starts, not the whole of it.
+   * twice is near the pure tube, and a full one is the tube taken darker.
+   * Moving this number moves where the ramp starts, not the whole of it.
    */
-  --tile-tint: 42%;
+  --tile-tint: 38%;
   --seat-0: color-mix(in srgb, var(--neon-cyan) var(--tile-tint), #ffffff);
   --seat-1: color-mix(in srgb, var(--neon-magenta) var(--tile-tint), #ffffff);
   --seat-2: color-mix(in srgb, var(--neon-lime) var(--tile-tint), #ffffff);
@@ -275,11 +275,17 @@
  * raw neon and mixing on the tile itself always does.
  */
 [data-stack="2"] {
-  --tile-face: color-mix(in srgb, var(--seat-neon) 70%, #ffffff);
+  --tile-face: color-mix(in srgb, var(--seat-neon) 76%, #ffffff);
 }
 
+/*
+ * Full: past the pure tube and into it, so the last step is as visible as the
+ * first. Not darker than this — magenta is the floor, and at 90% it still
+ * clears the black letter at 5.3:1; much beyond that and the letter starts to
+ * struggle on the one seat colour that was never bright to begin with.
+ */
 [data-stack="3"] {
-  --tile-face: var(--seat-neon);
+  --tile-face: color-mix(in srgb, var(--seat-neon) 90%, #000000);
 }
 
 *,
