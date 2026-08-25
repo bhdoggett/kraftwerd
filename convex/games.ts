@@ -526,7 +526,7 @@ export const placeTiles = mutation({
 
     // Only tiles that filled an empty square move the game towards its end;
     // a replacement leaves the board the same size.
-    await advanceTurn(ctx, game, laid);
+    await advanceTurn(ctx, game, laid, placements.length);
 
     return { score: score.total, squares: score.squares };
   },
@@ -646,10 +646,21 @@ export const resignGame = mutation({
  * schedules the finish for the end of the current round rather than ending
  * immediately, so every player gets the same number of turns (§6).
  */
-async function advanceTurn(ctx: MutationCtx, game: Doc<"games">, placed: number) {
-  const tileCount = game.tileCount + placed;
+async function advanceTurn(
+  ctx: MutationCtx,
+  game: Doc<"games">,
+  /** Tiles that filled an empty square: how much bigger the board got. */
+  laid: number,
+  /** Tiles played at all, replacements included: whether anything happened. */
+  played = laid,
+) {
+  const tileCount = game.tileCount + laid;
   const turnNumber = game.turnNumber + 1;
-  const consecutivePasses = placed === 0 ? (game.consecutivePasses ?? 0) + 1 : 0;
+
+  // A turn that only replaced letters grew the board by nothing, but it was
+  // not a pass — the board changed, and so did the words on it. Counting it
+  // as one ended a solo game the moment two such turns ran together.
+  const consecutivePasses = played === 0 ? (game.consecutivePasses ?? 0) + 1 : 0;
 
   let endsAfterTurn = game.endsAfterTurn;
   if (endsAfterTurn === undefined && tileCount >= game.endThreshold) {

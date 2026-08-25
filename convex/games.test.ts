@@ -858,3 +858,41 @@ describe("the board", () => {
     expect(game?.endThreshold).toBe(50);
   });
 });
+
+describe("stacking is playing, not passing", () => {
+  test("a solo game does not end because two turns only replaced letters", async () => {
+    const t = convexTest(schema, modules);
+    const solo = await t.run(async (ctx) => {
+      const id = await ctx.db.insert("users", { authId: "auth|solo", name: "Solo" });
+      for (const word of [...WORDS, "AM", "AH"]) await ctx.db.insert("words", { word });
+      return id;
+    });
+    const asSolo = t.withIdentity({ subject: "auth|solo" });
+    const { gameId } = await asSolo.mutation(api.games.createGame, { playerCount: 1 });
+
+    const stock = async () => {
+      await t.run(async (ctx) => {
+        const player = await ctx.db
+          .query("players")
+          .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", solo))
+          .unique();
+        await ctx.db.patch("players", player!._id, { letters: ["A", "D", "T", "M", "H", "O", "E"] });
+      });
+    };
+
+    await stock();
+    await asSolo.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+
+    // Two turns in a row that only change letters already on the board.
+    await stock();
+    await asSolo.mutation(api.games.placeTiles, { gameId, placements: [at(1, 0, "T")] });
+    await stock();
+    await asSolo.mutation(api.games.placeTiles, { gameId, placements: [at(1, 0, "M")] });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("active");
+  });
+});
