@@ -9,6 +9,7 @@ import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/
 import { boardShapeNamed } from "../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { livePremium, premiumMap } from "../../shared/premium";
+import { STACK_CAP } from "../../shared/config";
 import { Board } from "./Board";
 import { DevTools } from "./DevTools";
 import styles from "./Game.module.css";
@@ -497,7 +498,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   function moveStaged(origin: { x: number; y: number }, x: number, y: number) {
     const moving = pending.find((p) => p.x === origin.x && p.y === origin.y);
     // Landing it there would change nothing, so it stays where it was.
-    if (moving !== undefined && changesNothing(x, y, moving.letter)) return;
+    if (moving !== undefined && (changesNothing(x, y, moving.letter) || isFull(x, y))) return;
 
     setPending((current) => moveStagedTo(current, origin, x, y));
     setError(null);
@@ -514,10 +515,27 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     return boards?.before.get(cellKey(x, y))?.letter === letter.toUpperCase();
   }
 
+  /**
+   * Whether a square has taken all the tiles it ever will.
+   *
+   * The rules refuse a play there, so the tile does not land: it goes back
+   * where it came from rather than sitting on the board waiting to be told
+   * on Play.
+   */
+  function isFull(x: number, y: number) {
+    return (boards?.before.get(cellKey(x, y))?.stacked ?? 0) >= STACK_CAP;
+  }
+
   function place(x: number, y: number) {
     if (!myTurn || selected === null || me === undefined) return;
 
     if (selected.kind === "blank") {
+      // A full square takes nothing, blanks included: no point asking what it
+      // stands for when it cannot land.
+      if (isFull(x, y)) {
+        setSelected(null);
+        return;
+      }
       // Landed, but nameless: ask now.
       setBlankAt({ x, y });
       setSelected(null);
@@ -526,7 +544,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     } else {
       const letter = me.letters?.[selected.index];
       if (letter === undefined) return;
-      if (changesNothing(x, y, letter)) {
+      if (changesNothing(x, y, letter) || isFull(x, y)) {
         setSelected(null);
         return;
       }
@@ -796,6 +814,41 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
         )}
 
 
+
+        {error && <div className={styles.error}>{error}</div>}
+
+        <DevTools gameId={gameId} />
+
+        {drag && (
+          <div
+            className={[styles.dragTile, drag.isBlank ? styles.dragBlank : ""].join(" ")}
+            data-seat={view.yourSeat === null ? undefined : view.yourSeat % 4}
+            style={{ left: drag.x, top: drag.y }}
+            aria-hidden="true"
+          >
+            {drag.letter}
+          </div>
+        )}
+      </div>
+
+      <div className={styles.side}>
+        <Scoreboard
+          onQuit={
+            game.status !== "finished" && view.yourSeat !== null ? quit : undefined
+          }
+          players={view.players.map((p) => ({
+            userId: p.userId,
+            seat: p.seat,
+            score: p.score,
+            name: p.name,
+            isYou: p.letters !== null,
+          }))}
+          currentSeat={game.currentSeat}
+          tileCount={game.tileCount}
+          endThreshold={game.endThreshold}
+            status={game.status}
+        />
+
         {/*
           Everything here comes from the placement itself — the words, their
           points, the squares, the total — so it is all drawn the moment a tile
@@ -920,39 +973,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             )}
           </section>
         )}
-
-        {error && <div className={styles.error}>{error}</div>}
-
-        <DevTools gameId={gameId} />
-
-        {drag && (
-          <div
-            className={[styles.dragTile, drag.isBlank ? styles.dragBlank : ""].join(" ")}
-            data-seat={view.yourSeat === null ? undefined : view.yourSeat % 4}
-            style={{ left: drag.x, top: drag.y }}
-            aria-hidden="true"
-          >
-            {drag.letter}
-          </div>
-        )}
       </div>
-
-      <Scoreboard
-        onQuit={
-          game.status !== "finished" && view.yourSeat !== null ? quit : undefined
-        }
-        players={view.players.map((p) => ({
-          userId: p.userId,
-          seat: p.seat,
-          score: p.score,
-          name: p.name,
-          isYou: p.letters !== null,
-        }))}
-        currentSeat={game.currentSeat}
-        tileCount={game.tileCount}
-        endThreshold={game.endThreshold}
-        status={game.status}
-      />
     </div>
   );
 }
