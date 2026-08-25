@@ -859,6 +859,26 @@ describe("the board", () => {
   });
 });
 
+describe("the tile count", () => {
+  test("counts every tile played, replacements included", async () => {
+    const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "T", "O"]);
+
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+    const opening = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(opening?.tileCount).toBe(2);
+
+    // A tile laid on one already there covers no new square, but it is still
+    // a tile played, and the game is that much closer to its end.
+    await asBob.mutation(api.games.placeTiles, { gameId, placements: [at(1, 0, "T")] });
+
+    const after = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(after?.tileCount).toBe(3);
+  });
+});
+
 describe("stacking is playing, not passing", () => {
   test("a solo game does not end because two turns only replaced letters", async () => {
     const t = convexTest(schema, modules);

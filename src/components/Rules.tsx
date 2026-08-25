@@ -147,10 +147,11 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
 
         <h3 className={styles.section}>Ending</h3>
         <p>
-          The game ends once <strong>{GAME.endThreshold} tiles</strong> are
-          on the board, finishing the round so everyone has had the same
-          number of turns. Highest score wins. Quitting hands the win to
-          whoever is left.
+          The game ends once <strong>{GAME.endThreshold} tiles</strong> have
+          been played, finishing the round so everyone has had the same number
+          of turns. Tiles laid on top of others count too — stacking spends
+          the game's supply like anything else. Highest score wins. Quitting
+          hands the win to whoever is left.
         </p>
       </div>
     </Modal>

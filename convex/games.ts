@@ -464,7 +464,6 @@ export const placeTiles = mutation({
     });
 
     const tileAt = new Map(existing.map((t) => [cellKey(t.x, t.y), t]));
-    let laid = 0;
 
     for (const p of placements) {
       const sitting = tileAt.get(cellKey(p.x, p.y));
@@ -495,7 +494,6 @@ export const placeTiles = mutation({
           ...tile,
           stacked: depth,
         });
-        laid++;
       } else {
         await ctx.db.patch("tiles", sitting._id, { ...tile, stacked: depth });
       }
@@ -524,9 +522,7 @@ export const placeTiles = mutation({
       await ctx.db.patch("users", userId, { bestTurnScore: score.total });
     }
 
-    // Only tiles that filled an empty square move the game towards its end;
-    // a replacement leaves the board the same size.
-    await advanceTurn(ctx, game, laid, placements.length);
+    await advanceTurn(ctx, game, placements.length);
 
     return { score: score.total, squares: score.squares };
   },
@@ -649,12 +645,13 @@ export const resignGame = mutation({
 async function advanceTurn(
   ctx: MutationCtx,
   game: Doc<"games">,
-  /** Tiles that filled an empty square: how much bigger the board got. */
-  laid: number,
-  /** Tiles played at all, replacements included: whether anything happened. */
-  played = laid,
+  /** Tiles played, replacements included. */
+  played: number,
 ) {
-  const tileCount = game.tileCount + laid;
+  // Every tile played counts towards the end, whether it filled an empty
+  // square or landed on one that was taken: the game is a supply of tiles, and
+  // stacking spends them like anything else.
+  const tileCount = game.tileCount + played;
   const turnNumber = game.turnNumber + 1;
 
   // A turn that only replaced letters grew the board by nothing, but it was
