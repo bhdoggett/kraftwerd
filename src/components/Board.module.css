@@ -150,11 +150,29 @@
 
 /* Setting the face rather than the background, so the cover and the glow that
    read it follow the blank too. */
-.blank {
+/*
+ * A blank is white whatever else is true of its square. Written at two class
+ * selectors so it beats the [data-stack] ramp outright: at equal specificity
+ * the winner is whichever stylesheet loaded last, which is not something to
+ * leave to chance — a blank taking the seat colour at the top of the ramp
+ * would look like an ordinary tile, and blankness is the one thing a tile's
+ * face has to say.
+ */
+.cell.blank {
   --tile-face: var(--tile-blank-face);
   background: var(--tile-face);
   border-color: var(--tile-blank-edge);
   color: var(--tile-text);
+}
+
+/* Depth still shows, in grey: it cannot borrow the seat's colour without
+   claiming to be a letter somebody played. */
+.cell.blank[data-stack="2"] {
+  --tile-face: color-mix(in srgb, var(--tile-blank-face) 88%, var(--text-muted));
+}
+
+.cell.blank[data-stack="3"] {
+  --tile-face: color-mix(in srgb, var(--tile-blank-face) 74%, var(--text-muted));
 }
 
 .pending.blank {
@@ -167,12 +185,17 @@
 /*
  * A square that has ever had a tile land on another: shaded darker so the
  * history reads at a glance, whatever colour or face is underneath. A filter
- * rather than a background override, so it works the same on a player's
- * colour, a blank's white, or a premium letter without fighting any of them
- * for control of --tile-face.
+/*
+ * Depth is told by colour alone for now: a square gets more vivid the more it
+ * has been built on (see --tile-tint and [data-stack] in index.css). The
+ * diagonal hatching that used to say the same thing is gone — two signals for
+ * one fact, and the paler ramp reads better without it.
  */
-.cell.stacked {
-  filter: brightness(0.62);
+
+/* Above anything a cell paints over its face. */
+.cell .glyph {
+  position: relative;
+  z-index: 1;
 }
 
 /* An empty square adjacent to the played mass: a legal target. Dashed so it

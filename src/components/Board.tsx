@@ -236,7 +236,12 @@ export function Board({
 
       // Whose colour this square is lit in. A tile being staged is not on the
       // board yet, but it is the viewer's, so it takes their colour early.
-      const seat = tile ? seatOf.get(tile.placedBy) : stage ? (yourSeat ?? undefined) : undefined;
+      /*
+       * Whose colour the square wears. A tile staged this turn is yours, even
+       * where it lands on somebody else's — showing the owner underneath made
+       * your own play look like theirs until you pressed Play.
+       */
+      const seat = stage ? (yourSeat ?? undefined) : tile ? seatOf.get(tile.placedBy) : undefined;
 
       const classes = [styles.cell];
       if (bonus !== undefined) classes.push(styles.premium, styles.tile);
@@ -245,11 +250,14 @@ export function Board({
       if (tile?.isBlank) classes.push(styles.blank);
       if (stage) classes.push(styles.pending, styles.tile);
       if (stage?.isBlank) classes.push(styles.blank);
-      // Darkened the moment a placement covers a tile, and for good once that
-      // placement is actually played -- `tile.stacked` is what persists.
-      if ((tile !== undefined && tile.stacked >= 2) || (stage !== undefined && tile !== undefined)) {
-        classes.push(styles.stacked);
-      }
+      /*
+       * How deep this square has been built, counting a staged tile as the
+       * next one down. It drives the colour: paler when fresh, the pure tube
+       * when full. `tile.stacked` is what persists; the staged tile is a
+       * preview of what the square becomes if the turn is played.
+       */
+      const depth =
+        tile === undefined ? 0 : stage === undefined ? tile.stacked : tile.stacked + 1;
       if (goodCells?.has(k)) classes.push(styles.inWord);
       if (badCells?.has(k)) classes.push(styles.inBadWord);
       if (awaiting) classes.push(styles.tile, styles.blank, styles.awaiting);
@@ -271,6 +279,7 @@ export function Board({
           // land on a tile, and on a premium letter to bury it.
           data-cell={blocked ? undefined : k}
           data-seat={seat === undefined ? undefined : seat % 4}
+          data-stack={depth >= 2 ? Math.min(depth, 3) : undefined}
           data-staged={stage === undefined ? undefined : ""}
           aria-disabled={blocked || (!stage && !canPlace)}
           aria-label={

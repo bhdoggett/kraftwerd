@@ -90,9 +90,13 @@
    * Softened towards white rather than made transparent: a translucent tile
    * would take its colour from whatever is behind it, so the same tile would
    * read differently on the black board and the white one. Mixing keeps them
-   * opaque and identical on both. One number moves all six.
+   * opaque and identical on both.
+   *
+   * This is the pale end of a ramp: a fresh tile sits here, a square built on
+   * twice sits at 70%, and a full one is the pure tube. Moving this number
+   * moves where the ramp starts, not the whole of it.
    */
-  --tile-tint: 68%;
+  --tile-tint: 42%;
   --seat-0: color-mix(in srgb, var(--neon-cyan) var(--tile-tint), #ffffff);
   --seat-1: color-mix(in srgb, var(--neon-magenta) var(--tile-tint), #ffffff);
   --seat-2: color-mix(in srgb, var(--neon-lime) var(--tile-tint), #ffffff);
@@ -242,19 +246,40 @@
  * "seat 2 is lime" is a fact about the game, not about the board.
  */
 [data-seat="0"] {
+  --seat-neon: var(--neon-cyan);
   --tile-face: var(--seat-0);
 }
 
 [data-seat="1"] {
+  --seat-neon: var(--neon-magenta);
   --tile-face: var(--seat-1);
 }
 
 [data-seat="2"] {
+  --seat-neon: var(--neon-lime);
   --tile-face: var(--seat-2);
 }
 
 [data-seat="3"] {
+  --seat-neon: var(--neon-amber);
   --tile-face: var(--seat-3);
+}
+
+/*
+ * A square gets more vivid the more it has been built on: pale at one tile,
+ * closer to the pure tube at two, the tube itself when it is full.
+ *
+ * Mixed here rather than by moving --tile-tint, which is what the first
+ * attempt at this did. --seat-N is a color-mix defined at :root, so changing
+ * the tint further down does not reliably re-resolve it; taking the seat's
+ * raw neon and mixing on the tile itself always does.
+ */
+[data-stack="2"] {
+  --tile-face: color-mix(in srgb, var(--seat-neon) 70%, #ffffff);
+}
+
+[data-stack="3"] {
+  --tile-face: var(--seat-neon);
 }
 
 *,
