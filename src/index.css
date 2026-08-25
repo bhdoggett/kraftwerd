@@ -286,6 +286,19 @@
  */
 [data-stack="3"] {
   --tile-face: color-mix(in srgb, var(--seat-neon) 90%, #000000);
+  /*
+   * The mark that says a square is closed: the player's own colour taken
+   * darker, so it belongs to whoever holds the square rather than arriving as
+   * a fifth colour. Darker than the face it sits on, which is already the
+   * tube taken down a tenth — a blank has no seat colour and takes ink.
+   */
+  --tile-full-dot: color-mix(in srgb, var(--seat-neon, var(--text)) 45%, #000000);
+}
+
+/* A blank has no seat colour to darken, so its mark is grey — dark enough to
+   read on the greyed face a full blank wears, without the weight of ink. */
+[data-face="blank"][data-stack="3"] {
+  --tile-full-dot: #4a4a52;
 }
 
 /*

@@ -169,6 +169,22 @@
  * one fact, and the paler ramp reads better without it.
  */
 
+/*
+ * A full square wears a dot in its top right: colour alone says how deep a
+ * square has been built, but not that it is closed, and finding out by being
+ * turned away is the worst way to learn a rule.
+ */
+.cell[data-stack="3"]::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--tile-stroke) + 2px);
+  right: calc(var(--tile-stroke) + 2px);
+  width: calc(var(--cell-size) * 0.15);
+  height: calc(var(--cell-size) * 0.15);
+  border-radius: 50%;
+  background: var(--tile-full-dot);
+}
+
 /* Above anything a cell paints over its face. */
 .cell .glyph {
   position: relative;
