@@ -50,6 +50,13 @@
   flex: none;
   width: var(--rack-tile-width);
   height: var(--rack-tile-height);
+  /*
+   * Browsers pad a button by default — 1px 6px in Chrome. On a 46px tile with
+   * a 3px edge that leaves the letter 28px to sit in, so a wide glyph like W
+   * fills its line and shifts off centre. The board's squares set this to
+   * zero, which is why the same letter looked right there and not here.
+   */
+  padding: 0;
   border: var(--tile-stroke) solid var(--tile-edge);
   /* Square, matching the board's squares. */
   border-radius: 0;
@@ -92,10 +99,9 @@
 }
 
 /* Deliberately no glyph: a blank is blank. The face colour distinguishes it. */
+/* Its colour comes from data-face in index.css, like every other tile. */
 .blank {
-  --tile-face: var(--tile-blank-face);
-  background: var(--tile-face);
-  border-color: var(--tile-blank-edge);
+  border-color: var(--tile-edge);
 }
 
 

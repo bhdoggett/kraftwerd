@@ -150,36 +150,13 @@
 
 /* Setting the face rather than the background, so the cover and the glow that
    read it follow the blank too. */
-/*
- * A blank is white whatever else is true of its square. Written at two class
- * selectors so it beats the [data-stack] ramp outright: at equal specificity
- * the winner is whichever stylesheet loaded last, which is not something to
- * leave to chance — a blank taking the seat colour at the top of the ramp
- * would look like an ordinary tile, and blankness is the one thing a tile's
- * face has to say.
- */
-.cell.blank {
-  --tile-face: var(--tile-blank-face);
-  background: var(--tile-face);
-  border-color: var(--tile-blank-edge);
-  color: var(--tile-text);
-}
-
-/* Depth still shows, in grey: it cannot borrow the seat's colour without
-   claiming to be a letter somebody played. */
-.cell.blank[data-stack="2"] {
-  --tile-face: color-mix(in srgb, var(--tile-blank-face) 88%, var(--text-muted));
-}
-
-.cell.blank[data-stack="3"] {
-  --tile-face: color-mix(in srgb, var(--tile-blank-face) 74%, var(--text-muted));
+/* What a blank looks like is settled in index.css, keyed on data-face. */
+.blank {
+  border-color: var(--tile-edge);
 }
 
 .pending.blank {
-  --tile-face: var(--tile-blank-face);
-  background: var(--tile-face);
   border-color: var(--pending);
-  color: var(--tile-text);
 }
 
 /*
@@ -257,19 +234,16 @@
  * white rather than any player's colour, because it belongs to nobody until a
  * word runs through it — and then it pays double for whatever it helped make.
  */
-.cell.premium {
-  /* Doubled specificity so no state class further up can repaint it: this
-     square is the board's, not a player's, and never changes hands. */
-  --tile-face: var(--premium-face);
-  background: var(--premium-face);
-  color: var(--premium-ink);
+.premium {
+  background: var(--tile-face);
+  color: var(--tile-text);
   box-shadow:
     inset 0 0 0 var(--tile-stroke) var(--tile-edge),
     var(--cell-inset);
   cursor: default;
 }
 
-.cell .bonus {
+.bonus {
   grid-area: cell;
   place-self: end end;
   /* Clear of the tile's own edge, which is three pixels of ink: sitting a
@@ -278,7 +252,7 @@
   font-size: calc(var(--cell-size) * 0.26);
   font-weight: 700;
   line-height: 1;
-  color: var(--premium-ink);
+  color: var(--tile-text);
 }
 
 /* The letter shifts up and left, and sets a little smaller, so the 2x has the

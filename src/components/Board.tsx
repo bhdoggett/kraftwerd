@@ -279,6 +279,14 @@ export function Board({
           // land on a tile, and on a premium letter to bury it.
           data-cell={blocked ? undefined : k}
           data-seat={seat === undefined ? undefined : seat % 4}
+          // What kind of tile this is; index.css turns that into a colour.
+          data-face={
+            bonus !== undefined && stage === undefined && tile === undefined
+              ? "premium"
+              : (stage ?? tile)?.isBlank === true
+                ? "blank"
+                : undefined
+          }
           data-stack={depth >= 2 ? Math.min(depth, 3) : undefined}
           data-staged={stage === undefined ? undefined : ""}
           aria-disabled={blocked || (!stage && !canPlace)}

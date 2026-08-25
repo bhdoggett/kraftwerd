@@ -53,10 +53,10 @@ export default function App() {
           {/* Two tiles, in the colours seats 2 and 1 play in: the mark is made
               of the same pieces the game is. */}
           <h1 className={styles.brand} aria-label="kraftwerd">
-            <span className={styles.markTile} data-seat="2" aria-hidden="true">
+            <span className={styles.markTile} data-seat="2" data-face="brand" aria-hidden="true">
               K
             </span>
-            <span className={styles.markTile} data-seat="1" aria-hidden="true">
+            <span className={styles.markTile} data-seat="1" data-face="brand" aria-hidden="true">
               W
             </span>
           </h1>

@@ -161,6 +161,7 @@ export function Rack({
               styles.blank,
               isSelected({ kind: "blank" }) ? styles.selected : "",
             ].join(" ")}
+            data-face="blank"
             aria-label={`Blank tile, ${blanks} left`}
             {...tileProps({ kind: "blank" })}
           >

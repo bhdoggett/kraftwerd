@@ -288,6 +288,43 @@
   --tile-face: color-mix(in srgb, var(--seat-neon) 90%, #000000);
 }
 
+/*
+ * Tiles that are not a player's letter. Written after the seat and stack
+ * rules, so they win by order rather than by anyone inventing a heavier
+ * selector — which is what happened twice while these lived in the component
+ * that drew them, once for blanks and once for the mark in the header.
+ *
+ * Everything about what colour a tile is lives here now. A component says
+ * what kind of tile it is drawing; this file decides what that looks like.
+ */
+[data-face="blank"] {
+  --tile-face: var(--tile-blank-face);
+  --tile-edge: var(--tile-blank-edge);
+}
+
+/* A blank cannot borrow the seat colour to show depth — it would read as a
+   letter somebody played — so it shows it in grey. */
+[data-face="blank"][data-stack="2"] {
+  --tile-face: color-mix(in srgb, var(--tile-blank-face) 88%, var(--text-muted));
+}
+
+[data-face="blank"][data-stack="3"] {
+  --tile-face: color-mix(in srgb, var(--tile-blank-face) 74%, var(--text-muted));
+}
+
+/* The board's own corner squares: nobody's colour, and never stacked into a
+   seat's. */
+[data-face="premium"] {
+  --tile-face: var(--premium-face);
+  --tile-text: var(--premium-ink);
+}
+
+/* The mark in the header: the pure tube, not the pale first rung of the ramp
+   that an ordinary tile starts on. */
+[data-face="brand"] {
+  --tile-face: var(--seat-neon);
+}
+
 *,
 *::before,
 *::after {
