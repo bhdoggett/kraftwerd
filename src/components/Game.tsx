@@ -823,6 +823,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           <div
             className={[styles.dragTile, drag.isBlank ? styles.dragBlank : ""].join(" ")}
             data-seat={view.yourSeat === null ? undefined : view.yourSeat % 4}
+            data-face={drag.isBlank ? "blank" : undefined}
             style={{ left: drag.x, top: drag.y }}
             aria-hidden="true"
           >

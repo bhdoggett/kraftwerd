@@ -21,6 +21,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     gameId: Id<"games">;
     name: string;
     playerCount: number;
+    /** How many friends were asked as the game was made. */
+    invited: number;
   } | null>(null);
 
   const viewer = useQuery(api.users.viewer);
@@ -37,7 +39,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
     setCreating(false);
     if (playerCount === 1) onOpen(game.gameId);
-    else setSetup(game);
+    else setSetup({ ...game, invited: friendIds.length });
   }
 
   return (
@@ -47,6 +49,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           gameId={setup.gameId}
           name={setup.name}
           playerCount={setup.playerCount}
+          invitedAlready={setup.invited}
           onOpen={(id) => {
             setSetup(null);
             onOpen(id);

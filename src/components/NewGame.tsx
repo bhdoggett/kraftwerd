@@ -10,6 +10,12 @@ interface NewGameProps {
   gameId: Id<"games">;
   name: string;
   playerCount: number;
+  /**
+   * Friends already asked when the game was made. Their seats are taken —
+   * offering them to somebody else would be offering a seat that is spoken
+   * for.
+   */
+  invitedAlready?: number;
   onOpen: (gameId: Id<"games">) => void;
   onClose: () => void;
 }
@@ -21,7 +27,14 @@ interface NewGameProps {
  * because at the moment of creating a game that is the only decision left, and
  * splitting it across the lobby and the board made the link hard to find.
  */
-export function NewGame({ gameId, name, playerCount, onOpen, onClose }: NewGameProps) {
+export function NewGame({
+  gameId,
+  name,
+  playerCount,
+  invitedAlready = 0,
+  onOpen,
+  onClose,
+}: NewGameProps) {
   const friends = useQuery(api.friends.listFriends);
   const invite = useMutation(api.games.inviteToGame);
 
@@ -31,7 +44,9 @@ export function NewGame({ gameId, name, playerCount, onOpen, onClose }: NewGameP
   const [invited, setInvited] = useState<Id<"users">[]>([]);
 
   const url = `${window.location.origin}/game/${gameId}`;
-  const seatsToFill = playerCount - 1 - invited.length;
+  const seatsToFill = playerCount - 1 - invitedAlready - invited.length;
+  /* Nothing left to offer: every seat has a name against it. */
+  const full = seatsToFill <= 0;
 
   const toggle = (userId: Id<"users">) =>
     setPicked((current) =>
@@ -67,6 +82,7 @@ export function NewGame({ gameId, name, playerCount, onOpen, onClose }: NewGameP
           </p>
         </div>
 
+        {!full && (
         <div>
           <h3 className={styles.heading}>Invite by link</h3>
           <div className={styles.link}>
@@ -85,7 +101,9 @@ export function NewGame({ gameId, name, playerCount, onOpen, onClose }: NewGameP
             </button>
           </div>
         </div>
+        )}
 
+        {!full && (
         <div>
           <h3 className={styles.heading}>Invite a friend</h3>
           {friends === undefined && <p className={styles.empty}>Loading…</p>}
@@ -119,6 +137,7 @@ export function NewGame({ gameId, name, playerCount, onOpen, onClose }: NewGameP
             </div>
           )}
         </div>
+        )}
 
         {error && <p className={styles.error}>{error}</p>}
 
