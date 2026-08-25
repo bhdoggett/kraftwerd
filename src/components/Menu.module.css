@@ -14,7 +14,9 @@
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: var(--text);
+  /* The bar reads pink, green, pink, green across: the Lobby link, the mark's
+     two tiles, and this. */
+  color: var(--neon-lime);
   display: grid;
   place-items: center;
 }

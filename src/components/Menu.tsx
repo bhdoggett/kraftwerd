@@ -60,7 +60,7 @@ export function Menu() {
         title="Menu"
         onClick={() => setOpen(!open)}
       >
-        <MoreIcon />
+        <MoreIcon size={19} />
       </button>
 
       {open && (

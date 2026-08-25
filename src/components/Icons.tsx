@@ -109,13 +109,29 @@ export function HelpIcon({ size = 16 }: IconProps) {
   );
 }
 
-/** The menu: three squares, since everything else in this game is one. */
+/**
+ * The menu: three tiles, drawn the way the board draws one — a coloured face
+ * inside an ink edge, square like every tile in the game.
+ */
 export function MoreIcon({ size = 16 }: IconProps) {
+  /* Face in the button's own colour, edge in the board's ink. */
+  const tile = (x: number) => (
+    <rect
+      x={x}
+      y={8.5}
+      width={7}
+      height={7}
+      fill="currentColor"
+      stroke="var(--tile-edge)"
+      strokeWidth={2}
+    />
+  );
+
   return (
-    <svg {...base(size)}>
-      <rect x="2" y="9.5" width="4.5" height="5" fill="currentColor" stroke="none" />
-      <rect x="9.75" y="9.5" width="4.5" height="5" fill="currentColor" stroke="none" />
-      <rect x="17.5" y="9.5" width="4.5" height="5" fill="currentColor" stroke="none" />
+    <svg {...base(size)} viewBox="-1 0 26 24">
+      {tile(-0.5)}
+      {tile(8.5)}
+      {tile(17.5)}
     </svg>
   );
 }
