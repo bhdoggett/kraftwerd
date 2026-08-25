@@ -5,13 +5,26 @@ import type { Id } from "../convex/_generated/dataModel";
 import styles from "./App.module.css";
 import { AcceptFriend } from "./components/AcceptFriend";
 import { Game } from "./components/Game";
+import { Swatches } from "./components/Swatches";
 import { Lobby } from "./components/Lobby";
 import { Menu } from "./components/Menu";
 import { authClient } from "./lib/auth-client";
 import { navigate, useRoute } from "./router";
 
+/*
+ * The colour reference, kept out of the router on purpose.
+ *
+ * Read once at load: anything that navigates — the sign-in gate resolving, a
+ * redirect — would otherwise take the page away mid-look, which is exactly
+ * what it did when this was a route.
+ */
+const SHOWING_SWATCHES = window.location.pathname.startsWith("/swatches");
+
 export default function App() {
   const route = useRoute();
+
+  // Before the router and before the sign-in gate: nothing to steer it away.
+  if (SHOWING_SWATCHES) return <Swatches />;
 
   return (
     <div className={styles.shell}>
