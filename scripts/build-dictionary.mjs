@@ -115,6 +115,7 @@ const EXTRAS = `
   grey greys greyer greyest
   donut donuts
   zen
+  paver pavers
 `
   .split(/\s+/)
   .filter(Boolean)
