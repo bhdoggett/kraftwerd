@@ -139,8 +139,18 @@ export function playGame(
     }
     topUp(player, bag, rng);
 
-    if (board.size >= GAME.endThreshold) break;
-    if (bag !== null && tilesLeft(bag) === 0 && player.letters.length === 0) break;
+    /*
+     * The game runs until the tiles run out: the bag empties, hands play out,
+     * and it ends the moment somebody has nothing left. Measuring bag sizes
+     * against a fixed tile count instead — which is what this did — made a
+     * bigger bag look like it never emptied, when what really happened was
+     * that the count stopped the game first.
+     */
+    if (bag === null) {
+      if (board.size >= GAME.endThreshold) break;
+    } else if (tilesLeft(bag) === 0 && player.letters.length === 0) {
+      break;
+    }
   }
 
   let margin = size;
