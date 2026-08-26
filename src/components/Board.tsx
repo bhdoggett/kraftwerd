@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { boardShapeNamed } from "../../shared/boards";
 import type { Placement } from "../../shared/engine/score";
 import styles from "./Board.module.css";
@@ -108,6 +108,17 @@ export function Board({
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
 
+  /**
+   * Where a zoom is aimed, and what the zoom was before it.
+   *
+   * Scaling the grid inside a scroll box leaves the scroll position alone, so
+   * the board grows away from its top-left corner however far from there you
+   * were looking. Holding the point under the fingers still means moving the
+   * scroll to match, once the bigger grid has been laid out.
+   */
+  const focus = useRef<{ x: number; y: number } | null>(null);
+  const zoomWas = useRef(1);
+
   // Zoom is for looking closer. The board already fits at its base size, so
   // shrinking it only costs legibility -- the floor barely goes below 1.
   const clamp = (value: number) => Math.min(2.5, Math.max(0.95, value));
@@ -164,6 +175,8 @@ export function Board({
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
+      // A trackpad pinch is aimed at the pointer.
+      focus.current = { x: e.clientX, y: e.clientY };
       setZoom((current) => clamp(current * (1 - e.deltaY * 0.01)));
     };
 
@@ -187,6 +200,8 @@ export function Board({
       }
       // Two fingers means zooming, never panning.
       pan.current = null;
+      // Aimed between the fingers, which is what a pinch means.
+      focus.current = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       setZoom(clamp(pinch.current.zoom * (distance / pinch.current.distance)));
     };
 
@@ -203,6 +218,25 @@ export function Board({
       window.removeEventListener("pointerup", drop);
       window.removeEventListener("pointercancel", drop);
     };
+  }, [zoom]);
+
+  useLayoutEffect(() => {
+    const el = viewport.current;
+    const aim = focus.current;
+    const before = zoomWas.current;
+    zoomWas.current = zoom;
+
+    if (el === null || aim === null || before === zoom) return;
+
+    // The board point under the aim keeps its place: everything scales by the
+    // ratio, so the scroll that was showing it has to scale with it.
+    const box = el.getBoundingClientRect();
+    const x = aim.x - box.left;
+    const y = aim.y - box.top;
+    const ratio = zoom / before;
+
+    el.scrollLeft = (el.scrollLeft + x) * ratio - x;
+    el.scrollTop = (el.scrollTop + y) * ratio - y;
   }, [zoom]);
 
   const committed = useMemo(() => {

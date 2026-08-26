@@ -6,6 +6,16 @@
   --cell-base: 36px;
   --cell-scale: 1;
   --cell-size: calc(var(--cell-base) * var(--cell-scale));
+  /*
+   * The edge scales with the square, so a zoomed-out board is the same board
+   * smaller rather than a grid of heavy black frames. A flat three pixels is
+   * a twelfth of a full-size square and a fifth of a shrunk one, which is why
+   * the letters looked out of proportion at the far end of the zoom.
+   *
+   * Board only: the rack and the header mark keep the flat value, being a
+   * fixed size themselves.
+   */
+  --tile-stroke: calc(var(--cell-size) * 0.083);
   overflow: auto;
   /* Dragging empty board pans it, so a drag must not select text as well. */
   user-select: none;
@@ -177,8 +187,8 @@
 .cell[data-stack="3"]::after {
   content: "";
   position: absolute;
-  top: calc(var(--tile-stroke) + 2px);
-  right: calc(var(--tile-stroke) + 2px);
+  top: calc(var(--cell-size) * 0.13);
+  right: calc(var(--cell-size) * 0.13);
   width: calc(var(--cell-size) * 0.15);
   height: calc(var(--cell-size) * 0.15);
   border-radius: 50%;
