@@ -18,9 +18,10 @@ export const RACK: RackConfig = {
   weights,
   vowels: "AEIOU",
   /**
-   * Two. At a floor of one, a third of racks arrived with a single vowel,
-   * which is barely playable. The blank can also stand in for a vowel, so this
-   * is about how a rack reads rather than whether a play exists.
+   * Held over from the endless draw, which could keep rolling until a rack met
+   * them. A bag cannot: it gives what it has, so these no longer bind. The
+   * vowel share is set in the bag itself instead — seventeen of fifty, which
+   * is why the four slots the rare letters left went to A, E, O and U.
    */
   minVowels: 2,
   maxDuplicates: 2,
