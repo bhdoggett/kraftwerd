@@ -9,7 +9,11 @@ import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/
 import { boardShapeNamed } from "../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { livePremium, premiumMap } from "../../shared/premium";
-import { STACK_CAP } from "../../shared/config";
+import { STACK_CAP, RACK } from "../../shared/config";
+import { newBag, tilesLeft as countTiles } from "../../shared/engine/bag";
+
+/** How many tiles a game starts with, for the progress bar's sake. */
+const BAG_SIZE = countTiles(newBag(RACK));
 import { Board } from "./Board";
 import { DevTools } from "./DevTools";
 import styles from "./Game.module.css";
@@ -846,7 +850,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           }))}
           currentSeat={game.currentSeat}
           tileCount={game.tileCount}
-          endThreshold={game.endThreshold}
+          tilesLeft={view.tilesLeft}
+          bagSize={BAG_SIZE}
             status={game.status}
         />
 

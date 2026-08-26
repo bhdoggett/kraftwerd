@@ -1,4 +1,4 @@
-import { BLANKS_PER_GAME, GAME, RACK, STACK_CAP } from "../../shared/config";
+import { BLANKS_PER_GAME, RACK, STACK_CAP } from "../../shared/config";
 import { Modal } from "./Modal";
 import styles from "./Rules.module.css";
 
@@ -115,9 +115,10 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         <h3 className={styles.section}>The four corners</h3>
         <p>
           Four squares start with a <strong>J, Q, X or Z</strong> on them,
-          dealt at random and marked <strong>2×</strong>. You never draw
-          those letters — you build out to the one that is there, and it
-          cannot be played from until your tiles reach it.
+          dealt at random and marked <strong>2×</strong>. Those four letters
+          are <strong>not in the bag at all</strong> — the only J in the game
+          is the one on the board, and it cannot be played from until your
+          tiles reach it.
         </p>
         <p>
           Whatever it helps make is <strong>worth double</strong>: the word
@@ -147,11 +148,16 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
 
         <h3 className={styles.section}>Ending</h3>
         <p>
-          The game ends once <strong>{GAME.endThreshold} tiles</strong> have
-          been played, finishing the round so everyone has had the same number
-          of turns. Tiles laid on top of others count too — stacking spends
-          the game's supply like anything else. Highest score wins. Quitting
-          hands the win to whoever is left.
+          There is <strong>one bag of tiles</strong> for the table, and the
+          game runs until it is gone. Once the bag is empty everyone plays out
+          what is left in their hand, and the moment somebody empties theirs,
+          the game stops — the others do not get another turn.
+        </p>
+        <p>
+          Whoever goes out <strong>takes a point for every tile</strong> still
+          in everyone else's hands, and they each lose the same. So a Q you
+          never played costs you twice. Highest score wins; quitting hands the
+          win to whoever is left.
         </p>
       </div>
     </Modal>

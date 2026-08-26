@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
-import { GAME, RACK } from "../shared/config.js";
-import { refill } from "../shared/engine/rack.js";
+import { GAME } from "../shared/config.js";
+import { drawInto } from "./games";
 import { env, mutation, query, type MutationCtx } from "./_generated/server";
 import { requireUser } from "./auth_helpers";
 
@@ -130,14 +130,16 @@ export const fillSeats = mutation({
       const user = await standIn(ctx, name);
       if (user === null || players.some((p) => p.userId === user._id)) continue;
 
-      const rack = refill([], Math.random, RACK);
+      // From the game's bag, like any other seat: a stand-in dealt tiles from
+      // nowhere would leave the bag counting tiles that are in someone's hand.
+      const rack = await drawInto(ctx, args.gameId, []);
       await ctx.db.insert("players", {
         gameId: args.gameId,
         userId: user._id,
         seat,
         score: 0,
         letters: rack.letters,
-        blank: rack.blank,
+        blank: true,
         status: "joined",
       });
       seat++;

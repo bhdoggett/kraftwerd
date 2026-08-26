@@ -6,7 +6,7 @@ import { gameName } from "../shared/gameNames.js";
 import { cellKey, makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
 import { applyPlacements, validateTurn, wordsFormed } from "../shared/engine/legality.js";
-import { refill } from "../shared/engine/rack.js";
+import { draw, newBag, returnTiles, tilesLeft, type Bag } from "../shared/engine/bag.js";
 import { scoreTurn, type Placement } from "../shared/engine/score.js";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
@@ -72,6 +72,45 @@ function boardWithPremium(game: Doc<"games">, tiles: readonly Doc<"tiles">[]) {
     })),
     ...tiles.map(toSpec),
   ]);
+}
+
+/**
+ * The game's bag, made on first use.
+ *
+ * Games dealt before there was a bag have none; they get one now rather than
+ * a special case for the rest of their lives, which costs those games a
+ * slightly fuller supply and nothing else.
+ */
+async function bagFor(ctx: MutationCtx, gameId: Id<"games">) {
+  const row = await ctx.db
+    .query("bags")
+    .withIndex("by_game", (q) => q.eq("gameId", gameId))
+    .unique();
+  if (row !== null) return row;
+
+  const id = await ctx.db.insert("bags", { gameId, letters: newBag(RACK) });
+  return (await ctx.db.get("bags", id))!;
+}
+
+/**
+ * Fill a rack back up from the bag, and write both down together.
+ *
+ * Rack and bag are one fact split across two rows: a tile is either in a hand
+ * or in the bag, never both and never neither. They are written in the same
+ * transaction so nothing can land between them.
+ */
+export async function drawInto(
+  ctx: MutationCtx,
+  gameId: Id<"games">,
+  keep: readonly string[],
+  putBack: readonly string[] = [],
+) {
+  const row = await bagFor(ctx, gameId);
+  const returned = returnTiles(row.letters as Bag, putBack);
+  const { drawn, bag } = draw(returned, RACK.size - keep.length, Math.random);
+
+  await ctx.db.patch("bags", row._id, { letters: bag });
+  return { letters: [...keep, ...drawn], left: tilesLeft(bag) };
 }
 
 /** Upper bound on tiles we ever read: the game ends at `endThreshold`. */
@@ -152,8 +191,8 @@ async function joinSeat(
   seat: number,
   status: "invited" | "joined" = "joined",
 ) {
-  // A fresh rack, drawn server-side: the client never sees the generator.
-  const rack = refill([], Math.random, RACK);
+  // A fresh rack, drawn server-side out of the game's own bag.
+  const rack = await drawInto(ctx, gameId, []);
 
   await ctx.db.insert("players", {
     gameId,
@@ -341,8 +380,9 @@ export const inviteToGame = mutation({
 /**
  * Swap chosen letters for new ones and forfeit the turn.
  *
- * Letters are generated rather than drawn from a finite bag, so there is
- * nothing to run out of and no limit on how often this can be done.
+ * What you give up goes back into the bag before what you take comes out, so
+ * a trade cannot draw the tiles it just returned — and an empty bag has
+ * nothing to swap with, which is when trading stops being possible.
  */
 export const tradeTiles = mutation({
   args: { gameId: v.id("games"), indices: v.array(v.number()) },
@@ -369,8 +409,14 @@ export const tradeTiles = mutation({
     }
 
     const kept = player.letters.filter((_, i) => !chosen.includes(i));
-    const rack = refill(kept, Math.random, RACK);
+    const given = player.letters.filter((_, i) => chosen.includes(i));
 
+    const bag = await bagFor(ctx, args.gameId);
+    if (tilesLeft(bag.letters as Bag) === 0) {
+      throw new ConvexError("The bag is empty — there is nothing to trade for");
+    }
+
+    const rack = await drawInto(ctx, args.gameId, kept, given);
     await ctx.db.patch("players", player._id, { letters: rack.letters });
 
     await advanceTurn(ctx, game, 0);
@@ -509,8 +555,9 @@ export const placeTiles = mutation({
       score: score.total,
     });
 
-    // Letters refill; blanks do not -- they are a whole-game allowance (§5).
-    const rack = refill(remaining, Math.random, RACK);
+    // Letters refill from the bag; blanks do not — they are a whole-game
+    // allowance of their own (§5) and were never in it.
+    const rack = await drawInto(ctx, args.gameId, remaining);
     await ctx.db.patch("players", player._id, {
       score: player.score + score.total,
       letters: rack.letters,
@@ -522,7 +569,11 @@ export const placeTiles = mutation({
       await ctx.db.patch("users", userId, { bestTurnScore: score.total });
     }
 
-    await advanceTurn(ctx, game, placements.length);
+    // Nothing left in the bag and nothing left in hand: the game is ending.
+    // Nothing left in the bag and nothing left in hand: the game ends here,
+    // and whoever got out takes what everyone else is still holding.
+    const out = rack.left === 0 && rack.letters.length === 0;
+    await advanceTurn(ctx, game, placements.length, out, userId);
 
     return { score: score.total, squares: score.squares };
   },
@@ -563,11 +614,43 @@ function spendRack(player: Doc<"players">, placements: readonly Placement[]): st
  * Players who resigned forfeit — they cannot win regardless of score. A tie
  * among the remaining leaders gives each of them a win.
  */
-async function finishGame(ctx: MutationCtx, game: Doc<"games">) {
+async function finishGame(
+  ctx: MutationCtx,
+  game: Doc<"games">,
+  /** Who emptied their hand, when that is what ended the game. */
+  wentOut?: Id<"users">,
+) {
   const players = await ctx.db
     .query("players")
     .withIndex("by_game", (q) => q.eq("gameId", game._id))
     .take(GAME.maxPlayers);
+
+  /*
+   * Tiles left in hand when the tiles run out.
+   *
+   * Every letter is worth a point played, so it costs a point unplayed —
+   * and the same points go to whoever got rid of theirs. That swing is what
+   * makes emptying your hand worth racing for, and what makes sitting on a Q
+   * at the end a decision rather than an accident.
+   */
+  if (wentOut !== undefined) {
+    let gathered = 0;
+
+    for (const player of players) {
+      const stuck = player.letters.length;
+      if (player.userId === wentOut || stuck === 0) continue;
+
+      gathered += stuck;
+      await ctx.db.patch("players", player._id, { score: player.score - stuck });
+      player.score -= stuck;
+    }
+
+    const finisher = players.find((p) => p.userId === wentOut);
+    if (finisher !== undefined && gathered > 0) {
+      await ctx.db.patch("players", finisher._id, { score: finisher.score + gathered });
+      finisher.score += gathered;
+    }
+  }
 
   const resigned = new Set(game.resignedBy ?? []);
   const eligible = players.filter((p) => !resigned.has(p.userId));
@@ -647,10 +730,11 @@ async function advanceTurn(
   game: Doc<"games">,
   /** Tiles played, replacements included. */
   played: number,
+  /** Whether the bag is empty and the player who just moved has played out. */
+  playedOut = false,
+  /** Who that was, so their leftover swing can be settled. */
+  wentOut?: Id<"users">,
 ) {
-  // Every tile played counts towards the end, whether it filled an empty
-  // square or landed on one that was taken: the game is a supply of tiles, and
-  // stacking spends them like anything else.
   const tileCount = game.tileCount + played;
   const turnNumber = game.turnNumber + 1;
 
@@ -659,16 +743,20 @@ async function advanceTurn(
   // as one ended a solo game the moment two such turns ran together.
   const consecutivePasses = played === 0 ? (game.consecutivePasses ?? 0) + 1 : 0;
 
-  let endsAfterTurn = game.endsAfterTurn;
-  if (endsAfterTurn === undefined && tileCount >= game.endThreshold) {
-    // Finish once the last seat has played: seats run 0..playerCount-1.
-    endsAfterTurn = game.turnNumber + (game.playerCount - 1 - game.currentSeat);
-  }
+  /*
+   * The game runs until the tiles run out.
+   *
+   * The bag empties, everyone plays out what is left in their hands, and it
+   * ends when somebody has nothing left to play. There used to be a count of
+   * fifty tiles instead, which was a stand-in for a supply back when the draw
+   * was endless and nothing could ever run out.
+   */
+  const endsAfterTurn = game.endsAfterTurn;
 
   // Two full rounds where nobody places anything: the game is going nowhere.
   const stalled = consecutivePasses >= game.playerCount * 2;
   const finished =
-    stalled || (endsAfterTurn !== undefined && game.turnNumber >= endsAfterTurn);
+    playedOut || stalled || (endsAfterTurn !== undefined && game.turnNumber >= endsAfterTurn);
 
   await ctx.db.patch("games", game._id, {
     tileCount,
@@ -678,7 +766,9 @@ async function advanceTurn(
     ...(endsAfterTurn === undefined ? {} : { endsAfterTurn }),
   });
 
-  if (finished) await finishGame(ctx, { ...game, tileCount, endsAfterTurn });
+  if (finished) {
+    await finishGame(ctx, { ...game, tileCount, endsAfterTurn }, playedOut ? wentOut : undefined);
+  }
 }
 
 function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true }>): string {
@@ -748,6 +838,12 @@ export const getGame = query({
       .take(GAME.maxPlayers);
 
     const tiles = await loadTiles(ctx, args.gameId);
+    // A query cannot make the bag, so a game that has not needed one yet
+    // reports a full one: that is what it would be handed.
+    const bag = await ctx.db
+      .query("bags")
+      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
+      .unique();
 
     const you = players.find((p) => p.userId === userId);
     const seated = players.filter((p) => p.status !== "invited");
@@ -763,6 +859,11 @@ export const getGame = query({
       game,
       /** The corners this game was dealt, so the board can draw them. */
       premium: premiumOf(game),
+      /**
+       * How many tiles nobody has drawn yet. The count, never the contents —
+       * knowing what is in the bag is knowing everyone's future draws.
+       */
+      tilesLeft: tilesLeft((bag?.letters ?? newBag(RACK)) as Bag),
       viewerUserId: userId,
       /** Null when the viewer is looking at a game they have not joined. */
       yourSeat: you?.seat ?? null,

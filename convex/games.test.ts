@@ -298,12 +298,17 @@ describe("getGame", () => {
 });
 
 describe("end of game", () => {
-  test("finishes only after the round completes, so seats get equal turns", async () => {
-    const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "T", "O"]);
+  test("playing out your hand ends the game there and then", async () => {
+    const { t, gameId, asAlice, asBob, bob } = await twoPlayerGame(["A", "D"]);
 
-    // Drop the threshold to something these two turns will cross.
+    // An empty bag, so nobody draws back up.
     await t.run(async (ctx) => {
-      await ctx.db.patch("games", gameId, { endThreshold: 2 });
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      if (bag === null) await ctx.db.insert("bags", { gameId, letters: {} });
+      else await ctx.db.patch("bags", bag._id, { letters: {} });
     });
 
     await asAlice.mutation(api.games.placeTiles, {
@@ -311,18 +316,30 @@ describe("end of game", () => {
       placements: [at(0, 0, "A"), at(1, 0, "D")],
     });
 
-    // Alice crossed the threshold at seat 0, so Bob still gets his turn.
-    let game = await t.run(async (ctx) => ctx.db.get("games", gameId));
-    expect(game?.status).toBe("active");
-    expect(game?.endsAfterTurn).toBe(1);
-
-    await asBob.mutation(api.games.placeTiles, {
-      gameId,
-      placements: [at(0, 1, "D"), at(1, 1, "O")],
-    });
-
-    game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    // Alice had two tiles and played both, so Bob never gets another turn.
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("finished");
+
+    await expect(
+      asBob.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(0, 1, "D")],
+      }),
+    ).rejects.toThrow("not active");
+
+    // Bob was still holding two tiles: a point each, to Alice.
+    const players = await t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .take(4),
+    );
+    const bobRow = players.find((p) => p.userId === bob);
+    const aliceRow = players.find((p) => p.userId !== bob);
+
+    // AD scores 2; Alice takes Bob's two leftovers on top.
+    expect(aliceRow?.score).toBe(4);
+    expect(bobRow?.score).toBe(-2);
   });
 
   test("rejects a play once the game has finished", async () => {
@@ -451,26 +468,27 @@ describe("resigning and stats", () => {
     ).rejects.toThrow("already over");
   });
 
-  test("reaching the tile threshold records a winner", async () => {
-    const { t, gameId, asAlice, asBob, alice } = await twoPlayerGame(["A", "D", "T", "O"]);
+  test("running the tiles out records a winner", async () => {
+    const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "D"]);
+    // An empty bag, so playing out a hand is what ends this game.
     await t.run(async (ctx) => {
-      await ctx.db.patch("games", gameId, { endThreshold: 2 });
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      if (bag !== null) await ctx.db.patch("bags", bag._id, { letters: {} });
+      else await ctx.db.insert("bags", { gameId, letters: {} });
     });
 
     await asAlice.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(0, 0, "A"), at(1, 0, "D")],
     });
-    await asBob.mutation(api.games.placeTiles, {
-      gameId,
-      placements: [at(0, 1, "D"), at(1, 1, "O")],
-    });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("finished");
-    // Bob closed the 2x2 for 5; Alice took 2.
-    expect(game?.winnerIds).toHaveLength(1);
-    expect(game?.winnerIds?.[0]).not.toBe(alice);
+    // Alice went out: her word, plus what Bob was left holding.
+    expect(game?.winnerIds).toEqual([alice]);
   });
 });
 

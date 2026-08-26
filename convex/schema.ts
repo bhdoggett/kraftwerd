@@ -58,6 +58,18 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_user", ["userId"]),
 
+  /**
+   * What is left in a game's bag, as counts by letter.
+   *
+   * Its own table because it must never reach a player: `getGame` returns the
+   * game document more or less whole, and the tiles nobody has drawn yet are
+   * the one thing at the table that is secret from everybody.
+   */
+  bags: defineTable({
+    gameId: v.id("games"),
+    letters: v.record(v.string(), v.number()),
+  }).index("by_game", ["gameId"]),
+
   games: defineTable({
     /** A generated name, so games are tellable apart at a glance. */
     name: v.optional(v.string()),

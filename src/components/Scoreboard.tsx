@@ -1,3 +1,4 @@
+import { BagContents } from "./BagContents";
 import styles from "./Scoreboard.module.css";
 
 interface Standing {
@@ -12,7 +13,9 @@ interface ScoreboardProps {
   players: readonly Standing[];
   currentSeat: number;
   tileCount: number;
-  endThreshold: number;
+  /** Tiles nobody has drawn yet: what is left of the game. */
+  tilesLeft: number;
+  bagSize: number;
   status: "lobby" | "active" | "finished";
   /** Absent when there is nothing to quit — a finished game, or a spectator. */
   onQuit?: () => void;
@@ -22,12 +25,15 @@ export function Scoreboard({
   players,
   currentSeat,
   tileCount,
-  endThreshold,
+  tilesLeft,
+  bagSize,
   status,
   onQuit,
 }: ScoreboardProps) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
-  const pct = Math.min(100, Math.round((tileCount / endThreshold) * 100));
+  // How far through the bag the game is, which is how far through the game it
+  // is: it ends when the tiles run out and somebody empties their hand.
+  const pct = Math.min(100, Math.round(((bagSize - tilesLeft) / bagSize) * 100));
 
   return (
     <aside className={styles.panel}>
@@ -63,9 +69,13 @@ export function Scoreboard({
         <p className={styles.caption}>
           {status === "finished"
             ? "Game over"
-            : `${tileCount} of ${endThreshold} tiles placed`}
+            : tilesLeft === 0
+              ? "The bag is empty — play out your hand"
+              : `${tileCount} tiles played`}
         </p>
       </div>
+
+      {status !== "finished" && <BagContents left={tilesLeft} />}
     </aside>
   );
 }
