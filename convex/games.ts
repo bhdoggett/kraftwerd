@@ -844,6 +844,8 @@ export const getGame = query({
             letters: p.userId === userId ? p.letters : null,
             letterCount: p.letters.length,
             blanks: blanksLeft(p),
+            /** Asked, but not yet sitting down. */
+            invited: p.status === "invited",
           };
         }),
       ),
@@ -883,6 +885,14 @@ export const listMyGames = query({
             })),
         );
 
+        // Who the game is waiting on, by name: "your turn" answers the
+        // question only when the answer is you.
+        const inSeat = seated.find((other) => other.seat === game.currentSeat);
+        const waitingFor =
+          game.status !== "active" || inSeat === undefined
+            ? null
+            : displayName(await ctx.db.get("users", inSeat.userId));
+
         return {
           opponents: others,
           gameId: game._id,
@@ -893,6 +903,8 @@ export const listMyGames = query({
           yourSeat: p.seat,
           yourScore: p.score,
           yourTurn: game.status === "active" && game.currentSeat === p.seat,
+          /** Whose turn it is, named. Null unless the game is under way. */
+          waitingFor,
           invited: p.status === "invited",
           invitedBy: displayName(creator),
           youWon: (game.winnerIds ?? []).includes(p.userId),

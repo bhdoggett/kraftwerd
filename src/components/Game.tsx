@@ -625,6 +625,9 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
   const choosingBlank = blankAt !== null;
 
+  /** Players who have been asked but have not taken their seat yet. */
+  const invitees = view.players.filter((p) => p.invited === true).map((p) => p.name);
+
   // Player id to seat, which is how a tile knows what colour to be.
   const seatOf = new Map(view.players.map((p) => [p.userId, p.seat]));
 
@@ -726,9 +729,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
         {game.status === "lobby" && (
           <div className={styles.waiting}>
+            {/* Name who has not arrived: "2 of 3 seats filled" says how many
+                are missing, never which. */}
             <strong>Waiting for players.</strong> {view.seatsFilled} of{" "}
-            {game.playerCount} seats filled — nobody can place tiles until the
-            game is full.
+            {game.playerCount} seats filled
+            {invitees.length > 0 && <> — yet to accept: {invitees.join(", ")}</>}
+            . Nobody can place tiles until the game is full.
             {view.canJoin ? (
               <>
                 {" "}

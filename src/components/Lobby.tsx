@@ -125,7 +125,14 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
                       .map((o) => (o.pending ? `${o.name} (invited)` : o.name))
                       .join(", ")}
                 {" · "}
-                {g.status === "lobby" ? "waiting" : `${g.yourScore} pts`}
+                {g.status === "lobby"
+                  ? "waiting for players"
+                  : `${g.yourScore} pts`}
+                {/* Whose move it is, by name — the row said so only when the
+                    answer was you, which is the case you least need told. */}
+                {g.waitingFor !== null && !g.yourTurn && (
+                  <> {" · "} waiting for {g.waitingFor}</>
+                )}
               </span>
             </span>
             {g.yourTurn && <span className={styles.badge}>Your turn</span>}

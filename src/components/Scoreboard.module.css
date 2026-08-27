@@ -73,6 +73,27 @@
   font-weight: 700;
 }
 
+/*
+ * Said in words above the scores, because bold on a name only tells you once
+ * you have worked out what the bold means — and in a game you come back to
+ * hours later, that is the first question you have.
+ */
+.turnLine {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* And marked on the row itself, for the seat that is on the move. */
+.playing {
+  color: var(--accent);
+  font-size: 0.7rem;
+}
+
 .score {
   font-variant-numeric: tabular-nums;
   font-weight: 700;

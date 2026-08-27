@@ -31,12 +31,27 @@ export function Scoreboard({
   onQuit,
 }: ScoreboardProps) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
+  const onTurn = ordered.find((p) => p.seat === currentSeat) ?? null;
   // How far through the bag the game is, which is how far through the game it
   // is: it ends when the tiles run out and somebody empties their hand.
   const pct = Math.min(100, Math.round(((bagSize - tilesLeft) / bagSize) * 100));
 
   return (
     <aside className={styles.panel}>
+      {/*
+        Whose move it is, said outright. The row for that seat was in bold,
+        which tells you once you have worked out that bold is what it means.
+      */}
+      {status === "active" && (
+        <p className={styles.turnLine}>
+          {onTurn === null
+            ? "Waiting"
+            : onTurn.isYou
+              ? "Your turn"
+              : `${onTurn.name}'s turn`}
+        </p>
+      )}
+
       <div className={styles.header}>
         <h2 className={styles.heading}>Scores</h2>
         {onQuit && (
@@ -58,6 +73,11 @@ export function Scoreboard({
             {p.name}
             {p.isYou && <span className={styles.you}> (you)</span>}
           </span>
+          {p.seat === currentSeat && status === "active" && (
+            <span className={styles.playing} aria-label="to play">
+              ▸
+            </span>
+          )}
           <span className={styles.score}>{p.score}</span>
         </div>
       ))}
