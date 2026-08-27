@@ -133,10 +133,15 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
 
         <h3 className={styles.section}>Blanks</h3>
         <p>
-          You get {BLANKS_PER_GAME} for the whole game. Drop one, then
-          choose the letter it stands for. It counts for words and squares
-          but is <strong>worth no points itself</strong>, and it is not
-          replaced — spending one is a decision about when.
+          You get {BLANKS_PER_GAME} for the whole game. Drop one, then choose
+          the letter it stands for. Once it has a letter it is an ordinary
+          tile — it <strong>scores its point</strong> and wears your colour
+          like any other.
+        </p>
+        <p>
+          The one thing a blank may not do is{" "}
+          <strong>close a square</strong>. It can start one, but the tile that
+          fills a square for good has to be a letter you actually drew.
         </p>
 
         <h3 className={styles.section}>Trading</h3>

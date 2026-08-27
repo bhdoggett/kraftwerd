@@ -16,14 +16,14 @@ describe("scoreTurn", () => {
     expect(scoreTurn(makeBoard(tiles), place(tiles)).total).toBe(3);
   });
 
-  test("a blank contributes no letter to the word", () => {
+  test("a blank counts as a letter like any other", () => {
     const tiles: TileSpec[] = [
       { x: 0, y: 0, letter: "C" },
       { x: 1, y: 0, letter: "A", isBlank: true },
       { x: 2, y: 0, letter: "T" },
     ];
 
-    expect(scoreTurn(makeBoard(tiles), place(tiles)).total).toBe(2);
+    expect(scoreTurn(makeBoard(tiles), place(tiles)).total).toBe(3);
   });
 
   test("a blank still counts toward the square it completes", () => {
@@ -34,9 +34,9 @@ describe("scoreTurn", () => {
       { x: 1, y: 1, letter: "O", isBlank: true },
     ];
 
-    // Four words of 2 letters, but the blank counts in neither of the two it
-    // sits in: 8 - 2 = 6, plus 4 for the 2x2.
-    expect(scoreTurn(makeBoard(tiles), place(tiles)).total).toBe(10);
+    // Four words of 2 letters, the blank paying its way in both it sits in:
+    // 8, plus 4 for the 2x2.
+    expect(scoreTurn(makeBoard(tiles), place(tiles)).total).toBe(12);
   });
 
   describe("spec payouts (design.md §4.2)", () => {

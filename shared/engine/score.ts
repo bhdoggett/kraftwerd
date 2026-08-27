@@ -9,7 +9,7 @@ export interface Placement extends Coord {
 
 export interface ScoredWord {
   word: string;
-  /** Letters that count: blanks are worth nothing wherever they sit. */
+  /** One point a letter, blanks included once they are on the board. */
   points: number;
 }
 
@@ -36,13 +36,6 @@ export interface TurnScore {
  */
 export interface ScoreOptions {
   /**
-   * Squares whose letter belongs to the board. A word running through one is
-   * worth double, and so is a square of tiles containing one — the point of
-   * walking the board out to a corner. A covered corner is not in here: its
-   * letter is gone, and so is its bonus.
-   */
-  premium?: ReadonlyMap<string, string>;
-  /**
    * The board before the turn. Only squares that were not already complete
    * pay, and with tiles landing on top of tiles that can no longer be worked
    * out from the placements alone. Defaults to the board without them, which
@@ -57,7 +50,6 @@ export function scoreTurn(
   placements: readonly Placement[],
   options: ScoreOptions = {},
 ): TurnScore {
-  const premium = options.premium ?? new Map<string, string>();
   const before =
     options.before ??
     new Map([...board].filter(([key]) => !placements.some((p) => cellKey(p.x, p.y) === key)));
@@ -65,38 +57,33 @@ export function scoreTurn(
   const runs = runsThrough(board, placements);
   const covered = new Set(runs.flatMap((r) => r.cells.map((c) => cellKey(c.x, c.y))));
 
+  /*
+   * Every letter counts, a blank as much as any other.
+   *
+   * A blank used to score nothing, which made it a way to fill a square
+   * cheaply rather than a letter you were glad to have. It pays now — the
+   * restraint is that it cannot be the tile that closes a square.
+   */
   const scoreCells = (cells: readonly Coord[]) =>
-    cells.filter((c) => board.get(cellKey(c.x, c.y))?.isBlank === false).length;
-
-  /** How many premium squares a set of cells covers: each one doubles. */
-  const doubling = (cells: readonly Coord[]) =>
-    cells.filter((c) => premium.has(cellKey(c.x, c.y))).length;
+    cells.filter((c) => board.has(cellKey(c.x, c.y))).length;
 
   const words: ScoredWord[] = runs.map((run) => ({
     word: run.word,
-    points: scoreCells(run.cells) * 2 ** doubling(run.cells),
+    points: scoreCells(run.cells),
   }));
 
   // A tile touching nothing forms no run. It still has to be a word in its own
   // right to be legal, so it scores as one.
   for (const p of placements) {
     if (covered.has(cellKey(p.x, p.y))) continue;
-    words.push({ word: p.letter.toUpperCase(), points: p.isBlank ? 0 : 1 });
+    words.push({ word: p.letter.toUpperCase(), points: 1 });
   }
 
   const wordPoints = words.reduce((sum, w) => sum + w.points, 0);
   const blocks = newSquareBlocks(before, board, placements);
   const squares = blocks.map((block) => block.k);
 
-  // A square pays double for every premium letter inside it, which is what a
-  // 2x2 built onto a corner is worth going for: four becomes eight.
-  const squarePoints = blocks.reduce((sum, block) => {
-    const cells: Coord[] = [];
-    for (let y = block.y; y < block.y + block.k; y++) {
-      for (let x = block.x; x < block.x + block.k; x++) cells.push({ x, y });
-    }
-    return sum + block.k * block.k * 2 ** doubling(cells);
-  }, 0);
+  const squarePoints = blocks.reduce((sum, block) => sum + block.k * block.k, 0);
 
   // Landing on an already-occupied square pays extra, equal to how deep the
   // stack now runs: 2 for the first tile on top, 3 for the second (the most

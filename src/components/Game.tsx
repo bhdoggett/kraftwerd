@@ -8,7 +8,6 @@ import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
 import { boardShapeNamed } from "../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
-import { livePremium, premiumMap } from "../../shared/premium";
 import { STACK_CAP, RACK } from "../../shared/config";
 import { newBag, tilesLeft as countTiles } from "../../shared/engine/bag";
 
@@ -65,6 +64,8 @@ function describeLegality(
       return "The first word has to cover the centre square.";
     case "disconnected":
       return "Every tile must connect to the tiles already on the board.";
+    case "blank-on-stack":
+      return "A blank cannot be the tile that closes a square.";
     case "unchanged":
       return "A tile laid on another has to change the letter underneath it.";
     case "erased":
@@ -165,54 +166,18 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     [pending],
   );
 
-  /**
-   * The corners as they stood when the turn began: still showing their letter,
-   * because nobody had covered them yet.
-   *
-   * This is what the board was, so it is what squares are measured against. A
-   * corner is part of the board like any tile, so a block around it was
-   * already three-quarters built — and burying it this turn does not make that
-   * block new again.
-   */
-  const standingPremium = useMemo(
-    () => livePremium(view?.premium ?? [], view?.tiles ?? []),
-    [view?.premium, view?.tiles],
-  );
-
-  /**
-   * The corners still worth something once this turn's tiles are counted. A
-   * tile on one buries it — letter, badge and bonus together — so the preview
-   * says what the play is really worth.
-   */
-  const premium = useMemo(
-    () => livePremium(standingPremium, pending),
-    [standingPremium, pending],
-  );
-  const premiumKeys = useMemo(
-    () => new Set(standingPremium.map((c) => cellKey(c.x, c.y))),
-    [standingPremium],
-  );
-
   const boards = useMemo(() => {
     if (!view) return null;
-    // The premium letters belong to the board, not to any player, so they are
-    // added here rather than coming back as tiles anyone placed.
-    const before = makeBoard([
-      ...standingPremium.map((c) => ({ x: c.x, y: c.y, letter: c.letter, isBlank: false })),
-      ...view.tiles,
-    ]);
+    const before = makeBoard(view.tiles);
     return { before, after: applyPlacements(before, placements) };
-  }, [view, placements, standingPremium]);
+  }, [view, placements]);
 
   const preview = useMemo(
     () =>
       boards && placements.length > 0
-        ? scoreTurn(boards.after, placements, {
-            premium: premiumMap(premium),
-            before: boards.before,
-          })
+        ? scoreTurn(boards.after, placements, { before: boards.before })
         : null,
-    [boards, placements, premium],
+    [boards, placements],
   );
 
   // The words this play would put on the board. Computed locally by the same
@@ -242,9 +207,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
       boards.after,
       placements,
       new Map(checked.map((entry) => [entry.word, entry.valid])),
-      premiumKeys,
     );
-  }, [boards, placements, checked, premiumKeys]);
+  }, [boards, placements, checked]);
 
   /**
    * Full legality, run client-side against the words the server just
@@ -261,13 +225,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
     const shape = boardShapeNamed(view.layout, view.game.boardSize);
     return validateTurn(boards.before, placements, dictionary, {
-      premium: premiumKeys,
       width: view.game.boardSize,
       height: view.game.boardSize,
       blocked: shape.blocked,
       centre: shape.centre,
     });
-  }, [view, boards, placements, checked, premiumKeys]);
+  }, [view, boards, placements, checked]);
 
   const rackSignature = (view?.players.find((p) => p.letters !== null)?.letters ?? []).join(
     ",",
@@ -530,13 +493,19 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     return (boards?.before.get(cellKey(x, y))?.stacked ?? 0) >= STACK_CAP;
   }
 
+  /** A blank may start a square but not close one, so it bounces off a stack. */
+  function blankBlocked(x: number, y: number) {
+    const deep = boards?.before.get(cellKey(x, y))?.stacked ?? 0;
+    return deep > 0 && deep + 1 >= STACK_CAP;
+  }
+
   function place(x: number, y: number) {
     if (!myTurn || selected === null || me === undefined) return;
 
     if (selected.kind === "blank") {
-      // A full square takes nothing, blanks included: no point asking what it
-      // stands for when it cannot land.
-      if (isFull(x, y)) {
+      // A full square takes nothing, and a blank cannot be the tile that
+      // closes one: no point asking what it stands for when it cannot land.
+      if (isFull(x, y) || blankBlocked(x, y)) {
         setSelected(null);
         return;
       }
@@ -666,7 +635,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           boardSize={game.boardSize}
           layout={view.layout}
           tiles={view.tiles}
-          premium={premium}
           pending={pending}
           seatOf={seatOf}
           yourSeat={view.yourSeat}
@@ -827,7 +795,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           <div
             className={[styles.dragTile, drag.isBlank ? styles.dragBlank : ""].join(" ")}
             data-seat={view.yourSeat === null ? undefined : view.yourSeat % 4}
-            data-face={drag.isBlank ? "blank" : undefined}
             style={{ left: drag.x, top: drag.y }}
             aria-hidden="true"
           >

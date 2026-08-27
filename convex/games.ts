@@ -1,7 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { BLANKS_PER_GAME, GAME, RACK } from "../shared/config.js";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
-import { livePremium, premiumCells, premiumMap } from "../shared/premium.js";
 import { gameName } from "../shared/gameNames.js";
 import { cellKey, makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
@@ -30,48 +29,14 @@ function pickLayout(): string {
  * stopped carrying blocked squares — otherwise those games would keep
  * enforcing a shape the board no longer draws.
  */
-function boardShape(game: Doc<"games">, tiles: readonly Doc<"tiles">[] = []) {
+function boardShape(game: Doc<"games">) {
   const shape = boardShapeNamed(OPEN_BOARD, game.boardSize);
   return {
     width: game.boardSize,
     height: game.boardSize,
     blocked: shape.blocked,
     centre: shape.centre,
-    // Only corners still showing their letter: a corner somebody has covered
-    // holds a played tile, which has to connect like any other.
-    premium: new Set(livePremiumOf(game, tiles).map((c) => cellKey(c.x, c.y))),
   };
-}
-
-/** A game's premium corners, minus any square that has a tile on it. */
-function livePremiumOf(
-  game: Doc<"games">,
-  covered: readonly { x: number; y: number }[],
-) {
-  return livePremium(premiumOf(game), covered);
-}
-
-/** The game's premium corners. Older games have none and play without them. */
-function premiumOf(game: Doc<"games">) {
-  return game.premium ?? [];
-}
-
-/**
- * The board as the rules see it: the tiles played, plus the letters the board
- * itself brought. The premium letters are not rows in `tiles` — nobody played
- * them, they cannot be taken back, and counting them would end the game four
- * tiles early.
- */
-function boardWithPremium(game: Doc<"games">, tiles: readonly Doc<"tiles">[]) {
-  return makeBoard([
-    ...livePremium(premiumOf(game), tiles).map((c) => ({
-      x: c.x,
-      y: c.y,
-      letter: c.letter,
-      isBlank: false,
-    })),
-    ...tiles.map(toSpec),
-  ]);
 }
 
 /**
@@ -162,7 +127,6 @@ export const createGame = mutation({
     const gameId = await ctx.db.insert("games", {
       name,
       layout: pickLayout(),
-      premium: premiumCells(GAME.boardSize, Math.random),
       status: "lobby",
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
@@ -233,7 +197,6 @@ export const createGameWithFriends = mutation({
     const gameId = await ctx.db.insert("games", {
       name: gameName(Math.random),
       layout: pickLayout(),
-      premium: premiumCells(GAME.boardSize, Math.random),
       status: "lobby",
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
@@ -495,19 +458,14 @@ export const placeTiles = mutation({
     const remaining = spendRack(player, placements);
 
     const existing = await loadTiles(ctx, args.gameId);
-    const before = boardWithPremium(game, existing);
+    const before = makeBoard(existing.map(toSpec));
     const after = applyPlacements(before, placements);
     const dictionary = await lookUp(ctx, wordsFormed(after, placements));
 
-    const legality = validateTurn(before, placements, dictionary, boardShape(game, existing));
+    const legality = validateTurn(before, placements, dictionary, boardShape(game));
     if (!legality.ok) throw new ConvexError(describe(legality));
 
-    // Words and squares touching a premium corner are worth double — but only
-    // a corner still showing its letter. Burying one this turn forfeits it.
-    const score = scoreTurn(after, placements, {
-      premium: premiumMap(livePremiumOf(game, [...existing, ...placements])),
-      before,
-    });
+    const score = scoreTurn(after, placements, { before });
 
     const tileAt = new Map(existing.map((t) => [cellKey(t.x, t.y), t]));
 
@@ -526,10 +484,8 @@ export const placeTiles = mutation({
       // cap and the bonus can see how deep this square has been built.
       //
       // Taken from the board the engine just built rather than counted here,
-      // so a premium corner is the square's first tile in the database as
-      // well as in the rules. Written on insert too: leaving it out let the
-      // count restart at one the next time the row was read, which handed a
-      // covered corner an extra life.
+      // and written on insert too: leaving it out let the count restart at one
+      // the next time the row was read, which gave a square an extra life.
       const depth = after.get(cellKey(p.x, p.y))?.stacked ?? 1;
 
       if (sitting === undefined) {
@@ -787,6 +743,8 @@ function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true 
       return "The first word has to cover the centre square";
     case "disconnected":
       return "Every tile must connect to the tiles already on the board";;
+    case "blank-on-stack":
+      return `A blank cannot be the tile that closes a square (${legality.at.x}, ${legality.at.y})`;
     case "unchanged":
       return `The tile at (${legality.at.x}, ${legality.at.y}) is the same letter that is already there — a tile has to change the letter it covers`;
     case "erased":
@@ -857,8 +815,6 @@ export const getGame = query({
         players.length < game.playerCount,
       seatsFilled: seated.length,
       game,
-      /** The corners this game was dealt, so the board can draw them. */
-      premium: premiumOf(game),
       /**
        * How many tiles nobody has drawn yet. The count, never the contents —
        * knowing what is in the bag is knowing everyone's future draws.

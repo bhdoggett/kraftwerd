@@ -353,11 +353,47 @@ describe("laying a tile on top of another", () => {
   });
 });
 
+describe("blanks on a stack", () => {
+  const bounds: Bounds = { width: 15, height: 15, centre: { x: 7, y: 7 } };
+
+  test("a blank cannot be the tile that closes a square", () => {
+    const board = makeBoard([
+      { x: 7, y: 7, letter: "A", stacked: 1 },
+      { x: 8, y: 7, letter: "T", stacked: 1 },
+    ]);
+
+    const result = validateTurn(
+      board,
+      [{ x: 7, y: 7, letter: "I", isBlank: true }],
+      dict("IT"),
+      bounds,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "blank-on-stack", at: { x: 7, y: 7 } });
+  });
+
+  test("a real letter may close it, and a blank may start one", () => {
+    const board = makeBoard([
+      { x: 7, y: 7, letter: "A", stacked: 1 },
+      { x: 8, y: 7, letter: "T", stacked: 1 },
+    ]);
+
+    expect(
+      validateTurn(board, [{ x: 7, y: 7, letter: "I", isBlank: false }], dict("IT"), bounds).ok,
+    ).toBe(true);
+
+    // An empty square takes a blank like any other tile.
+    expect(
+      validateTurn(board, [{ x: 9, y: 7, letter: "S", isBlank: true }], dict("ATS"), bounds).ok,
+    ).toBe(true);
+  });
+});
+
 describe("the stack cap", () => {
   const bounds: Bounds = { width: 15, height: 15, centre: { x: 7, y: 7 } };
 
-  test("a square that has been stacked once still takes one more tile", () => {
-    const board = makeBoard([{ x: 8, y: 7, letter: "A", stacked: 2 }]);
+  test("a square nobody has stacked on still takes a tile", () => {
+    const board = makeBoard([{ x: 8, y: 7, letter: "A", stacked: 1 }]);
 
     const result = validateTurn(
       board,
@@ -370,7 +406,7 @@ describe("the stack cap", () => {
   });
 
   test("a square already at the cap refuses another tile", () => {
-    const board = makeBoard([{ x: 8, y: 7, letter: "A", stacked: 3 }]);
+    const board = makeBoard([{ x: 8, y: 7, letter: "A", stacked: 2 }]);
 
     const result = validateTurn(
       board,

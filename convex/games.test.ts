@@ -184,7 +184,7 @@ describe("placeTiles", () => {
     await expect(
       asBob.mutation(api.games.placeTiles, {
         gameId,
-        // Well clear of the mass, and clear of the premium corners.
+        // Well clear of the mass.
         placements: [at(2, 2, "T"), at(3, 2, "O")],
       }),
     ).rejects.toThrow("connect to the tiles already on the board");
@@ -267,7 +267,7 @@ describe("placeTiles", () => {
     ).rejects.toThrow("only 1 blanks left");
   });
 
-  test("a blank scores no point but still counts in the square", async () => {
+  test("a blank scores like any other letter", async () => {
     const { gameId, asAlice } = await twoPlayerGame(["A", "D", "D"]);
 
     const result = await asAlice.mutation(api.games.placeTiles, {
@@ -275,9 +275,8 @@ describe("placeTiles", () => {
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O", true)],
     });
 
-    // Four 2-letter words, less the blank's letter in the two it sits in,
-    // plus 4 for the square.
-    expect(result).toEqual({ score: 10, squares: [2] });
+    // Four 2-letter words and 4 for the square: the blank pays its way.
+    expect(result).toEqual({ score: 12, squares: [2] });
   });
 });
 
@@ -902,7 +901,7 @@ describe("stacking is playing, not passing", () => {
     const t = convexTest(schema, modules);
     const solo = await t.run(async (ctx) => {
       const id = await ctx.db.insert("users", { authId: "auth|solo", name: "Solo" });
-      for (const word of [...WORDS, "AM", "AH"]) await ctx.db.insert("words", { word });
+      for (const word of [...WORDS, "AM", "AH", "IT"]) await ctx.db.insert("words", { word });
       return id;
     });
     const asSolo = t.withIdentity({ subject: "auth|solo" });
@@ -914,7 +913,7 @@ describe("stacking is playing, not passing", () => {
           .query("players")
           .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", solo))
           .unique();
-        await ctx.db.patch("players", player!._id, { letters: ["A", "D", "T", "M", "H", "O", "E"] });
+        await ctx.db.patch("players", player!._id, { letters: ["A", "D", "T", "I", "H", "O", "E"] });
       });
     };
 
@@ -925,10 +924,12 @@ describe("stacking is playing, not passing", () => {
     });
 
     // Two turns in a row that only change letters already on the board.
+    // Two different squares: one tile may land on each, and the cap stops a
+    // second landing on the same one.
     await stock();
     await asSolo.mutation(api.games.placeTiles, { gameId, placements: [at(1, 0, "T")] });
     await stock();
-    await asSolo.mutation(api.games.placeTiles, { gameId, placements: [at(1, 0, "M")] });
+    await asSolo.mutation(api.games.placeTiles, { gameId, placements: [at(0, 0, "I")] });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("active");

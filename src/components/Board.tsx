@@ -14,16 +14,8 @@ interface BoardTile {
   stacked: number;
 }
 
-export interface PremiumCell {
-  x: number;
-  y: number;
-  letter: string;
-}
-
 interface BoardProps {
   boardSize: number;
-  /** The board's own letters, waiting in the corners for someone to reach. */
-  premium: readonly PremiumCell[];
   /** Which hand-drawn layout this game is played on. */
   layout: string;
   tiles: readonly BoardTile[];
@@ -56,7 +48,6 @@ const key = (x: number, y: number) => `${x},${y}`;
 export function Board({
   boardSize,
   layout,
-  premium,
   tiles,
   pending,
   seatOf,
@@ -251,8 +242,6 @@ export function Board({
     return map;
   }, [pending]);
 
-  const premiumAt = new Map(premium.map((c) => [key(c.x, c.y), c.letter]));
-
   const cells: React.ReactNode[] = [];
 
   for (let y = 0; y < boardSize; y++) {
@@ -262,9 +251,8 @@ export function Board({
       const tile = committed.get(k);
       const stage = staged.get(k);
       const isCentre = x === shape.centre.x && y === shape.centre.y;
-      const bonus = premiumAt.get(k);
       const awaiting = awaitingBlankAt?.x === x && awaitingBlankAt?.y === y;
-      const empty = !blocked && bonus === undefined && tile === undefined && stage === undefined;
+      const empty = !blocked && tile === undefined && stage === undefined;
       /* Not empty, but still somewhere a tile may go. */
       const playable = !blocked && stage === undefined;
 
@@ -278,12 +266,9 @@ export function Board({
       const seat = stage ? (yourSeat ?? undefined) : tile ? seatOf.get(tile.placedBy) : undefined;
 
       const classes = [styles.cell];
-      if (bonus !== undefined) classes.push(styles.premium, styles.tile);
       if (blocked) classes.push(styles.blocked);
       if (tile) classes.push(styles.tile);
-      if (tile?.isBlank) classes.push(styles.blank);
       if (stage) classes.push(styles.pending, styles.tile);
-      if (stage?.isBlank) classes.push(styles.blank);
       /*
        * How deep this square has been built, counting a staged tile as the
        * next one down. It drives the colour: paler when fresh, the pure tube
@@ -294,7 +279,7 @@ export function Board({
         tile === undefined ? 0 : stage === undefined ? tile.stacked : tile.stacked + 1;
       if (goodCells?.has(k)) classes.push(styles.inWord);
       if (badCells?.has(k)) classes.push(styles.inBadWord);
-      if (awaiting) classes.push(styles.tile, styles.blank, styles.awaiting);
+      if (awaiting) classes.push(styles.tile, styles.awaiting);
       if (empty && !awaiting) {
         classes.push(styles.open);
         if (isCentre) classes.push(styles.centre);
@@ -310,18 +295,13 @@ export function Board({
           type="button"
           className={classes.join(" ")}
           // Every square but a blocked one is a drop target now: a tile may
-          // land on a tile, and on a premium letter to bury it.
           data-cell={blocked ? undefined : k}
           data-seat={seat === undefined ? undefined : seat % 4}
           // What kind of tile this is; index.css turns that into a colour.
-          data-face={
-            bonus !== undefined && stage === undefined && tile === undefined
-              ? "premium"
-              : (stage ?? tile)?.isBlank === true
-                ? "blank"
-                : undefined
-          }
-          data-stack={depth >= 2 ? Math.min(depth, 3) : undefined}
+          data-stack={depth >= 2 ? Math.min(depth, 2) : undefined}
+          // Only a blank still waiting for its letter reads as one: once it
+          // has a letter it scores like any tile, so it looks like any tile.
+          data-face={awaiting ? "blank" : undefined}
           data-staged={stage === undefined ? undefined : ""}
           aria-disabled={blocked || (!stage && !canPlace)}
           aria-label={
@@ -347,10 +327,7 @@ export function Board({
         >
           {/* A tile staged this turn shows over whatever it landed on: the
               letter under it is still there, and comes back if it is recalled. */}
-          <span className={styles.glyph}>{(stage ?? tile)?.letter ?? bonus ?? ""}</span>
-          {bonus !== undefined && stage === undefined && tile === undefined && (
-            <span className={styles.bonus}>2×</span>
-          )}
+          <span className={styles.glyph}>{(stage ?? tile)?.letter ?? ""}</span>
         </button>,
       );
     }
