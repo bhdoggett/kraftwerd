@@ -1,0 +1,62 @@
+.page {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+/*
+ * Each half paints its own ground rather than inheriting the page's: the
+ * tokens follow data-theme, but the surface behind them has to as well or the
+ * light tiles sit on a dark board and prove nothing.
+ */
+.half {
+  padding: var(--space-4);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.heading {
+  margin: 0 0 var(--space-3);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking);
+  color: var(--text-muted);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 90px repeat(3, 43px);
+  grid-template-areas: none;
+  padding-left: 90px;
+  gap: 0;
+  color: var(--text-muted);
+  font-size: 0.6rem;
+}
+
+.columns span {
+  width: 43px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.label {
+  width: 90px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.note {
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}

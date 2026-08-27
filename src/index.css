@@ -3,7 +3,15 @@
    component CSS modules never hard-code a colour or a spacing value.
    --------------------------------------------------------------------------- */
 
-:root {
+/*
+ * The light palette, on the page and on anything that asks for light.
+ *
+ * Both selectors, so a subtree can carry its own theme: /swatches shows light
+ * and dark at once, which needs the tokens to answer to an element rather
+ * than only to the document.
+ */
+:root,
+[data-theme="light"] {
   /*
    * The six. Named once, in the open, because they are the identity: neon
    * tubes over black, after the band this game is named for.
@@ -14,6 +22,21 @@
   --neon-amber: #ffd400;
   --neon-orange: #ff7a29;
   --neon-violet: #d79eff;
+
+  /*
+   * The same four, darkened to read as ink on paper rather than as a tube on
+   * black. A tile solves contrast the other way round — bright face, dark
+   * letter — but a full square is bare, so the letter carries the colour
+   * itself and needs the contrast. Each clears 6.5:1 against white.
+   *
+   * Clinton's values, from his stack-richness branch.
+   */
+  --ink-cyan: #00676b;
+  --ink-magenta: #ad0088;
+  --ink-lime: #446600;
+  /* Warm brown rather than the olive a darkened yellow lands on: amber loses
+     its identity going down, so it goes down towards orange instead. */
+  --ink-amber: #7a4b00;
 
   /* Surfaces, light theme */
   --surface: #f4f4f6;
@@ -42,17 +65,6 @@
   --tile-text: #0b0b0d;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #0b0b0d;
-  /*
-   * The board's own squares: the premium corners, in nobody's colour. Violet
-   * is the one neon no player can be dealt and nothing else means — the four
-   * seats hold cyan, magenta, lime and amber, orange marks a tile you have
-   * not committed, and green and red say whether a word is a word.
-   *
-   * The same in both themes, like the tiles: it clears black ink on a white
-   * board and a black one alike.
-   */
-  --premium-face: var(--neon-violet);
-  --premium-ink: #0b0b0d;
   /* A tube glows against black and does nothing against paper. */
   --tile-lit: none;
   /* Every square is sunk into the board, tiles included. */
@@ -92,11 +104,12 @@
    * read differently on the black board and the white one. Mixing keeps them
    * opaque and identical on both.
    *
-   * This is the pale end of a ramp: a fresh tile sits here, a square built on
-   * twice is near the pure tube, and a full one is the tube taken darker.
-   * Moving this number moves where the ramp starts, not the whole of it.
+   * There is no ramp any more: a square takes one tile on top and is then
+   * full, and full is said by the square going bare with its letter lit. So a
+   * tile is simply the tube itself. Lower this to soften every face at once —
+   * each still clears the black letter by 6.5:1 or better at full strength.
    */
-  --tile-tint: 38%;
+  --tile-tint: 100%;
   --seat-0: color-mix(in srgb, var(--neon-cyan) var(--tile-tint), #ffffff);
   --seat-1: color-mix(in srgb, var(--neon-magenta) var(--tile-tint), #ffffff);
   --seat-2: color-mix(in srgb, var(--neon-lime) var(--tile-tint), #ffffff);
@@ -150,7 +163,8 @@
  * dark and no explicit choice overrides it, or because dark was chosen.
  */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme="light"]),
+  [data-theme="dark"] {
     --surface: #08080a;
     --surface-raised: #121216;
     --surface-sunken: #000000;
@@ -169,10 +183,13 @@
     --tile-edge: #000000;
     --tile-blank-face: #ffffff;
     --tile-blank-edge: #000000;
-    --premium-face: var(--neon-violet);
-    --premium-ink: #0b0b0d;
     /* Resolves per tile, since --tile-face is set on the tile itself. */
     --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
+    /* A bare square is black here, not paper: the letter is the tube itself. */
+    --ink-cyan: var(--neon-cyan);
+    --ink-magenta: var(--neon-magenta);
+    --ink-lime: var(--neon-lime);
+    --ink-amber: var(--neon-amber);
     --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
 
     --accent: var(--neon-magenta);
@@ -196,7 +213,8 @@
 }
 
 /* The same values again, for when dark is chosen on a light system. */
-:root[data-theme="dark"] {
+/* Chosen dark, wherever it is chosen: the document, or one element of it. */
+[data-theme="dark"] {
   --surface: #08080a;
   --surface-raised: #121216;
   --surface-sunken: #000000;
@@ -215,9 +233,12 @@
   --tile-edge: #000000;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #000000;
-  --premium-face: var(--neon-violet);
-  --premium-ink: #0b0b0d;
   --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
+  /* A bare square is black here, not paper: the letter is the tube itself. */
+  --ink-cyan: var(--neon-cyan);
+  --ink-magenta: var(--neon-magenta);
+  --ink-lime: var(--neon-lime);
+  --ink-amber: var(--neon-amber);
   --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
 
   --accent: var(--neon-magenta);
@@ -246,21 +267,29 @@
  * "seat 2 is lime" is a fact about the game, not about the board.
  */
 [data-seat="0"] {
+  /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
+  --seat-lit: var(--ink-cyan);
   --seat-neon: var(--neon-cyan);
   --tile-face: var(--seat-0);
 }
 
 [data-seat="1"] {
+  /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
+  --seat-lit: var(--ink-magenta);
   --seat-neon: var(--neon-magenta);
   --tile-face: var(--seat-1);
 }
 
 [data-seat="2"] {
+  /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
+  --seat-lit: var(--ink-lime);
   --seat-neon: var(--neon-lime);
   --tile-face: var(--seat-2);
 }
 
 [data-seat="3"] {
+  /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
+  --seat-lit: var(--ink-amber);
   --seat-neon: var(--neon-amber);
   --tile-face: var(--seat-3);
 }
@@ -274,63 +303,30 @@
  * the tint further down does not reliably re-resolve it; taking the seat's
  * raw neon and mixing on the tile itself always does.
  */
-[data-stack="2"] {
-  --tile-face: color-mix(in srgb, var(--seat-neon) 76%, #ffffff);
-}
-
 /*
- * Full: past the pure tube and into it, so the last step is as visible as the
- * first. Not darker than this — magenta is the floor, and at 90% it still
- * clears the black letter at 5.3:1; much beyond that and the letter starts to
- * struggle on the one seat colour that was never bright to begin with.
- */
-[data-stack="3"] {
-  --tile-face: color-mix(in srgb, var(--seat-neon) 90%, #000000);
-  /*
-   * The mark that says a square is closed: the player's own colour taken
-   * darker, so it belongs to whoever holds the square rather than arriving as
-   * a fifth colour. Darker than the face it sits on, which is already the
-   * tube taken down a tenth — a blank has no seat colour and takes ink.
-   */
-  --tile-full-dot: color-mix(in srgb, var(--seat-neon, var(--text)) 45%, #000000);
-}
-
-/* A blank has no seat colour to darken, so its mark is grey — dark enough to
-   read on the greyed face a full blank wears, without the weight of ink. */
-[data-face="blank"][data-stack="3"] {
-  --tile-full-dot: #4a4a52;
-}
-
-/*
- * Tiles that are not a player's letter. Written after the seat and stack
- * rules, so they win by order rather than by anyone inventing a heavier
- * selector — which is what happened twice while these lived in the component
- * that drew them, once for blanks and once for the mark in the header.
+ * Full. The square goes back to reading as bare board and the letter lights
+ * up in whoever played it — two things changing at once rather than a fifth
+ * colour to tell apart from the four seats, which also means it reads without
+ * depending on which hues you can distinguish.
  *
- * Everything about what colour a tile is lives here now. A component says
- * what kind of tile it is drawing; this file decides what that looks like.
+ * Bare, not blocked: a blocked square is the board's own shape and was never
+ * playable. A full one was played on twice; it just cannot be again.
  */
+[data-stack="2"] {
+  --tile-face: var(--cell-empty);
+}
+
+/* Blanks show depth in grey: a full blank has no seat colour to light. */
+[data-face="blank"][data-stack="2"] {
+  --tile-face: color-mix(in srgb, var(--tile-blank-face) 74%, var(--text-muted));
+}
+
 [data-face="blank"] {
   --tile-face: var(--tile-blank-face);
   --tile-edge: var(--tile-blank-edge);
 }
 
-/* A blank cannot borrow the seat colour to show depth — it would read as a
-   letter somebody played — so it shows it in grey. */
-[data-face="blank"][data-stack="2"] {
-  --tile-face: color-mix(in srgb, var(--tile-blank-face) 88%, var(--text-muted));
-}
 
-[data-face="blank"][data-stack="3"] {
-  --tile-face: color-mix(in srgb, var(--tile-blank-face) 74%, var(--text-muted));
-}
-
-/* The board's own corner squares: nobody's colour, and never stacked into a
-   seat's. */
-[data-face="premium"] {
-  --tile-face: var(--premium-face);
-  --tile-text: var(--premium-ink);
-}
 
 /* The mark in the header: the pure tube, not the pale first rung of the ramp
    that an ordinary tile starts on. */

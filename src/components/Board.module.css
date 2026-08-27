@@ -160,15 +160,6 @@
 
 /* Setting the face rather than the background, so the cover and the glow that
    read it follow the blank too. */
-/* What a blank looks like is settled in index.css, keyed on data-face. */
-.blank {
-  border-color: var(--tile-edge);
-}
-
-.pending.blank {
-  border-color: var(--pending);
-}
-
 /*
  * A square that has ever had a tile land on another: shaded darker so the
  * history reads at a glance, whatever colour or face is underneath. A filter
@@ -180,19 +171,12 @@
  */
 
 /*
- * A full square wears a dot in its top right: colour alone says how deep a
- * square has been built, but not that it is closed, and finding out by being
- * turned away is the worst way to learn a rule.
+ * A full square: the letter lights up in the colour of whoever played it,
+ * against a face that has gone back to bare board. The pair is the signal —
+ * a square nobody can play on again.
  */
-.cell[data-stack="3"]::after {
-  content: "";
-  position: absolute;
-  top: calc(var(--cell-size) * 0.13);
-  right: calc(var(--cell-size) * 0.13);
-  width: calc(var(--cell-size) * 0.15);
-  height: calc(var(--cell-size) * 0.15);
-  border-radius: 50%;
-  background: var(--tile-full-dot);
+.cell[data-stack="2"] .glyph {
+  color: var(--seat-lit);
 }
 
 /* Above anything a cell paints over its face. */
@@ -255,36 +239,5 @@
   outline-offset: -2px;
 }
 
-/*
- * A premium corner: the board's own letter, and what it is worth. Held in
- * white rather than any player's colour, because it belongs to nobody until a
- * word runs through it — and then it pays double for whatever it helped make.
- */
-.premium {
-  background: var(--tile-face);
-  color: var(--tile-text);
-  box-shadow:
-    inset 0 0 0 var(--tile-stroke) var(--tile-edge),
-    var(--cell-inset);
-  cursor: default;
-}
-
-.bonus {
-  grid-area: cell;
-  place-self: end end;
-  /* Clear of the tile's own edge, which is three pixels of ink: sitting a
-     pixel off it made the badge look wedged into the corner. */
-  padding: 0 calc(var(--tile-stroke) + 2px) calc(var(--tile-stroke) + 1px) 0;
-  font-size: calc(var(--cell-size) * 0.26);
-  font-weight: 700;
-  line-height: 1;
-  color: var(--tile-text);
-}
-
 /* The letter shifts up and left, and sets a little smaller, so the 2x has the
    bottom-right corner to itself rather than sitting on top of it. */
-.premium .glyph {
-  place-self: center;
-  font-size: calc(var(--cell-size) * 0.5);
-  transform: translate(calc(var(--cell-size) * -0.14), calc(var(--cell-size) * -0.08));
-}
