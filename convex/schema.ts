@@ -128,6 +128,16 @@ export default defineSchema({
     /** @deprecated the per-turn blank slot, kept so old rows still validate. */
     blank: v.boolean(),
     /**
+     * Set when a machine holds this seat, and how well it plays.
+     *
+     * A bot is a player like any other — its own users row, its own rack out
+     * of the same bag, its own turn in the order — so scores, the ending and
+     * the board need to know nothing about it. This is the only difference.
+     */
+    bot: v.optional(
+      v.union(v.literal("easy"), v.literal("medium"), v.literal("hard")),
+    ),
+    /**
      * "invited" until the player accepts. Optional because rows created before
      * invitations existed are all seated players; absent reads as "joined".
      */

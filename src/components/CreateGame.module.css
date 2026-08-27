@@ -80,6 +80,93 @@
   white-space: nowrap;
 }
 
+/* A machine's row is read, not clicked -- only the controls in it are. */
+.botRow {
+  composes: row;
+  cursor: default;
+}
+
+/*
+ * A computer player's row. Wider than a friend's, because it carries the
+ * choice of how well it plays -- so the name gives up its stretch and the
+ * controls sit at the end where they line up down the list.
+ */
+.machine {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.levels {
+  display: flex;
+  /* Butted together, so the three read as one switch with one setting. */
+  gap: 0;
+  flex: none;
+}
+
+.level {
+  padding: 4px var(--space-2);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* One shared edge between neighbours rather than two stacked ones. */
+.level + .level {
+  border-left: none;
+}
+
+.level:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.level:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+/* The chosen level lights up in the seat's own colour, like a played tile. */
+.levelOn {
+  background: var(--tile-face);
+  border-color: var(--tile-edge);
+  color: var(--tile-text);
+}
+
+.remove {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  display: grid;
+  place-items: center;
+}
+
+.remove:hover {
+  color: var(--danger);
+}
+
+/*
+ * Adding a machine is a smaller act than starting the game, so it is written
+ * rather than boxed -- a line of text you can press, under the list it adds to.
+ */
+.addBot {
+  margin-top: var(--space-2);
+  padding: var(--space-2) 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+}
+
 .hint {
   margin: var(--space-2) 0 0;
   color: var(--text-muted);

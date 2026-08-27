@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import type { Difficulty } from "../../shared/config";
 import { CreateGame } from "./CreateGame";
 import { DevTools } from "./DevTools";
 import { NewGame } from "./NewGame";
@@ -30,16 +31,23 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const { start, starting, error: startError, clearError } = useStartGame();
 
   /**
-   * A solo game opens straight away. Anything else has seats to fill, so the
-   * link step follows — the seats nobody was picked for are filled that way.
+   * A game whose every seat is spoken for opens straight away — solo, or one
+   * where friends and machines between them fill the table. Only a game with
+   * a seat still empty goes on to the link step, which is what that step is
+   * for.
    */
-  async function startGame(playerCount: number, friendIds: Id<"users">[]) {
-    const game = await start(playerCount, friendIds);
+  async function startGame(
+    playerCount: number,
+    friendIds: Id<"users">[],
+    bots: Difficulty[],
+  ) {
+    const game = await start(playerCount, friendIds, bots);
     if (game === null) return;
 
     setCreating(false);
-    if (playerCount === 1) onOpen(game.gameId);
-    else setSetup({ ...game, invited: friendIds.length });
+    const taken = 1 + friendIds.length + bots.length;
+    if (taken === playerCount) onOpen(game.gameId);
+    else setSetup({ ...game, invited: friendIds.length + bots.length });
   }
 
   return (
@@ -66,7 +74,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
       {creating && (
         <CreateGame
-          onStart={(playerCount, friendIds) => void startGame(playerCount, friendIds)}
+          onStart={(playerCount, friendIds, bots) =>
+            void startGame(playerCount, friendIds, bots)
+          }
           onCancel={() => {
             setCreating(false);
             clearError();

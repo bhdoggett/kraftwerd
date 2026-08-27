@@ -1,5 +1,11 @@
 import { ConvexError, v } from "convex/values";
-import { BLANKS_PER_GAME, GAME, RACK } from "../shared/config.js";
+import {
+  BLANKS_PER_GAME,
+  BOT_NAMES,
+  GAME,
+  RACK,
+  type Difficulty,
+} from "../shared/config.js";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
 import { gameName } from "../shared/gameNames.js";
 import { cellKey, makeBoard, type TileSpec } from "../shared/engine/board.js";
@@ -8,7 +14,14 @@ import { applyPlacements, validateTurn, wordsFormed } from "../shared/engine/leg
 import { draw, newBag, returnTiles, tilesLeft, type Bag } from "../shared/engine/bag.js";
 import { scoreTurn, type Placement } from "../shared/engine/score.js";
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { displayName, requireUser } from "./auth_helpers";
 import { placement } from "./schema";
 
@@ -114,13 +127,27 @@ async function lookUp(ctx: QueryCtx | MutationCtx, candidates: readonly string[]
   return makeDictionary(found.filter((w): w is string => w !== null));
 }
 
+export const difficulty = v.union(
+  v.literal("easy"),
+  v.literal("medium"),
+  v.literal("hard"),
+);
+
 export const createGame = mutation({
-  args: { playerCount: v.number() },
+  args: {
+    playerCount: v.number(),
+    /** A computer player per entry, at the difficulty given. */
+    bots: v.optional(v.array(difficulty)),
+  },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
+    const bots = args.bots ?? [];
 
     if (args.playerCount < GAME.minPlayers || args.playerCount > GAME.maxPlayers) {
       throw new ConvexError(`Games take ${GAME.minPlayers}-${GAME.maxPlayers} players`);
+    }
+    if (bots.length > args.playerCount - 1) {
+      throw new ConvexError("There are not that many seats to fill");
     }
 
     const name = gameName(Math.random);
@@ -139,14 +166,47 @@ export const createGame = mutation({
 
     await joinSeat(ctx, gameId, userId, 0);
 
-    // A solo game has nobody to wait for, so it is playable at once.
-    if (args.playerCount === 1) {
+    for (const [i, level] of bots.entries()) {
+      await seatBot(ctx, gameId, i + 1, level);
+    }
+
+    // Nobody left to wait for: a solo game, or one whose other seats are all
+    // machines. Either way it is playable at once.
+    if (args.playerCount === 1 + bots.length) {
       await ctx.db.patch("games", gameId, { status: "active" });
+      await wakeBot(ctx, gameId);
     }
 
     return { gameId, name, playerCount: args.playerCount };
   },
 });
+
+/**
+ * Seat a computer player.
+ *
+ * It gets a users row of its own so everything that references a player by id
+ * — tiles, scores, winners — works without knowing the difference. The row is
+ * per game and per seat, so two bots at one table stay distinct.
+ */
+async function seatBot(
+  ctx: MutationCtx,
+  gameId: Id<"games">,
+  seat: number,
+  level: Difficulty,
+) {
+  const name = BOT_NAMES[seat % BOT_NAMES.length];
+  const userId = await ctx.db.insert("users", {
+    authId: `bot|${gameId}|${seat}`,
+    name: `${name} (${level})`,
+  });
+
+  await joinSeat(ctx, gameId, userId, seat);
+  const player = await ctx.db
+    .query("players")
+    .withIndex("by_game_and_seat", (q) => q.eq("gameId", gameId).eq("seat", seat))
+    .unique();
+  if (player !== null) await ctx.db.patch("players", player._id, { bot: level });
+}
 
 async function joinSeat(
   ctx: MutationCtx,
@@ -383,6 +443,7 @@ export const tradeTiles = mutation({
     await ctx.db.patch("players", player._id, { letters: rack.letters });
 
     await advanceTurn(ctx, game, 0);
+    await wakeBot(ctx, args.gameId);
     return null;
   },
 });
@@ -436,7 +497,47 @@ export const placeTiles = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
+    return await playTurn(ctx, args.gameId, userId, args.placements);
+  },
+});
 
+/**
+ * A computer player's turn, played through the same code as anyone else's.
+ *
+ * Internal, so it cannot be called from a browser: it takes the player it acts
+ * for rather than the signed-in caller, which is exactly the argument nobody
+ * outside the server should get to choose. Empty placements are a pass, which
+ * a bot needs and a person cannot ask for.
+ */
+export const playForBot = internalMutation({
+  args: {
+    gameId: v.id("games"),
+    userId: v.id("users"),
+    placements: v.array(placement),
+  },
+  handler: async (ctx, args) => {
+    const game = await ctx.db.get("games", args.gameId);
+    if (game === null || game.status !== "active") return null;
+
+    if (args.placements.length === 0) {
+      await advanceTurn(ctx, game, 0);
+      await wakeBot(ctx, args.gameId);
+      return null;
+    }
+
+    await playTurn(ctx, args.gameId, args.userId, args.placements);
+    return null;
+  },
+});
+
+async function playTurn(
+  ctx: MutationCtx,
+  gameId: Id<"games">,
+  userId: Id<"users">,
+  played: Placement[],
+) {
+  const args = { gameId, placements: played };
+  {
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) throw new ConvexError("No such game");
     if (game.status !== "active") throw new ConvexError("Game is not active");
@@ -525,15 +626,20 @@ export const placeTiles = mutation({
       await ctx.db.patch("users", userId, { bestTurnScore: score.total });
     }
 
-    // Nothing left in the bag and nothing left in hand: the game is ending.
     // Nothing left in the bag and nothing left in hand: the game ends here,
     // and whoever got out takes what everyone else is still holding.
     const out = rack.left === 0 && rack.letters.length === 0;
     await advanceTurn(ctx, game, placements.length, out, userId);
+    await wakeBot(ctx, args.gameId);
 
     return { score: score.total, squares: score.squares };
-  },
-});
+  }
+}
+
+/** Give the seat on the move a nudge, if a machine holds it. */
+async function wakeBot(ctx: MutationCtx, gameId: Id<"games">) {
+  await ctx.scheduler.runAfter(0, internal.bots.scheduleIfBot, { gameId });
+}
 
 /** Blanks a player has left, reading rows made before they became a count. */
 function blanksLeft(player: Doc<"players">): number {
@@ -658,7 +764,17 @@ export const resignGame = mutation({
           .query("players")
           .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
           .take(GAME.maxPlayers);
-        for (const seat of seated) await ctx.db.delete("players", seat._id);
+        for (const seat of seated) {
+          await ctx.db.delete("players", seat._id);
+          // A machine's user row belongs to this game alone, so it goes with
+          // it. A person's row obviously does not.
+          if (seat.bot !== undefined) await ctx.db.delete("users", seat.userId);
+        }
+        const bag = await ctx.db
+          .query("bags")
+          .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
+          .unique();
+        if (bag !== null) await ctx.db.delete("bags", bag._id);
         await ctx.db.delete("games", args.gameId);
       } else {
         // Somebody else's game, still waiting for players: give the seat back

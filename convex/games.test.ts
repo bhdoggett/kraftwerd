@@ -1,10 +1,11 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { BLANKS_PER_GAME, RACK } from "../shared/config";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
+import ALL_WORDS from "../shared/data/words.json" with { type: "json" };
 
 // Excludes test files: globbing them made each test module import the
 // others, which reads as a dependency cycle and loads them needlessly.

@@ -54,6 +54,20 @@ export const FRIEND_LINK_DAYS = 7;
  */
 export const STACK_CAP = 2;
 
+/**
+ * How well a computer player plays.
+ *
+ * It sees every legal move either way; the difficulty is how strongly it
+ * prefers the best one. Even `hard` takes its top move only about seven times
+ * in ten — an opponent that always finds the best word is not one anybody
+ * enjoys losing to.
+ */
+export const DIFFICULTIES = ["easy", "medium", "hard"] as const;
+export type Difficulty = (typeof DIFFICULTIES)[number];
+
+/** Names for computer players, so a table of them is tellable apart. */
+export const BOT_NAMES = ["Robin", "Sam", "Ash", "Nico"] as const;
+
 export const GAME = {
   /**
    * Odd-sided, so there is a true centre for the opening word to cover.

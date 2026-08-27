@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { FRIEND_LINK_DAYS } from "../../shared/config";
+import { FRIEND_LINK_DAYS, type Difficulty } from "../../shared/config";
 import { userMessage } from "../lib/errors";
 import { useStartGame } from "../lib/useStartGame";
 import styles from "./Friends.module.css";
@@ -31,8 +31,12 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const [opponent, setOpponent] = useState<Id<"users"> | null>(null);
   const { start, starting, error: startError, clearError } = useStartGame();
 
-  async function startWith(playerCount: number, friendIds: Id<"users">[]) {
-    const game = await start(playerCount, friendIds);
+  async function startWith(
+    playerCount: number,
+    friendIds: Id<"users">[],
+    bots: Difficulty[],
+  ) {
+    const game = await start(playerCount, friendIds, bots);
     if (game === null) return;
     setOpponent(null);
     onOpen(game.gameId);
@@ -91,7 +95,9 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
       {opponent && (
         <CreateGame
           withFriend={opponent}
-          onStart={(playerCount, friendIds) => void startWith(playerCount, friendIds)}
+          onStart={(playerCount, friendIds, bots) =>
+            void startWith(playerCount, friendIds, bots)
+          }
           onCancel={() => {
             setOpponent(null);
             clearError();

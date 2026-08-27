@@ -2,12 +2,17 @@ import { useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { GAME } from "../../shared/config";
+import { DIFFICULTIES, GAME, type Difficulty } from "../../shared/config";
+import { botLabel, seatsFree, trimRoster } from "../lib/roster";
 import { Modal } from "./Modal";
 import styles from "./CreateGame.module.css";
 
 interface CreateGameProps {
-  onStart: (playerCount: number, friendIds: Id<"users">[]) => void;
+  onStart: (
+    playerCount: number,
+    friendIds: Id<"users">[],
+    bots: Difficulty[],
+  ) => void;
   onCancel: () => void;
   starting: boolean;
   error: string | null;
@@ -19,6 +24,9 @@ interface CreateGameProps {
 }
 
 const COUNTS = Array.from({ length: GAME.maxPlayers }, (_, i) => i + 1);
+
+/** What a bot added on the spur of the moment plays at until told otherwise. */
+const DEFAULT_LEVEL: Difficulty = "medium";
 
 /**
  * Everything about starting a game, in one place.
@@ -40,10 +48,13 @@ export function CreateGame({
   const [picked, setPicked] = useState<Id<"users">[]>(
     withFriend === undefined ? [] : [withFriend],
   );
+  const [bots, setBots] = useState<Difficulty[]>([]);
 
-  // You hold one seat, so the rest are what is left to fill.
+  // You hold one seat, so the rest are what is left to fill -- and friends and
+  // machines are filling the same ones.
   const seats = count - 1;
-  const full = picked.length >= seats;
+  const free = seatsFree({ friends: picked, bots }, count);
+  const full = free === 0;
   const available = friends?.friends ?? [];
 
   const toggle = (userId: Id<"users">) =>
@@ -55,11 +66,16 @@ export function CreateGame({
           : [...current, userId],
     );
 
-  /** Shrinking the game past the people already picked drops the extras. */
+  /** Shrinking the game past the table drops the machines first. */
   const choose = (next: number) => {
+    const trimmed = trimRoster({ friends: picked, bots }, next);
     setCount(next);
-    setPicked((current) => current.slice(0, next - 1));
+    setPicked([...trimmed.friends]);
+    setBots([...trimmed.bots]);
   };
+
+  const setLevel = (index: number, level: Difficulty) =>
+    setBots((current) => current.map((b, i) => (i === index ? level : b)));
 
   return (
     <Modal onDismiss={starting ? undefined : onCancel}>
@@ -93,14 +109,15 @@ export function CreateGame({
             <h3 className={styles.heading}>
               Who’s playing{" "}
               <span className={styles.counter}>
-                {picked.length} of {seats}
+                {seats - free} of {seats}
               </span>
             </h3>
 
             {friends === undefined && <p className={styles.hint}>Loading…</p>}
             {friends !== undefined && available.length === 0 && (
               <p className={styles.hint}>
-                No friends to pick yet — start the game and send the invite link.
+                No friends to pick yet — add a computer player, or start the game and
+                send the invite link.
               </p>
             )}
 
@@ -116,10 +133,60 @@ export function CreateGame({
               </label>
             ))}
 
-            {picked.length < seats && (
+            {/*
+              Each machine picks its own level. One hard opponent alongside an
+              easy one is a normal thing to want at a family table, and asking
+              once per bot is the only way to say it.
+            */}
+            {bots.map((level, i) => (
+              <div key={i} className={styles.botRow}>
+                <span className={styles.name}>
+                  {botLabel(i)} <span className={styles.machine}>computer</span>
+                </span>
+                <div
+                  className={styles.levels}
+                  role="group"
+                  aria-label={`How well ${botLabel(i)} plays`}
+                >
+                  {DIFFICULTIES.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      className={[styles.level, d === level ? styles.levelOn : ""].join(
+                        " ",
+                      )}
+                      aria-pressed={d === level}
+                      onClick={() => setLevel(i, d)}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className={styles.remove}
+                  aria-label={`Take ${botLabel(i)} out of the game`}
+                  onClick={() => setBots((current) => current.filter((_, j) => j !== i))}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+
+            {!full && (
+              <button
+                type="button"
+                className={styles.addBot}
+                onClick={() => setBots((current) => [...current, DEFAULT_LEVEL])}
+              >
+                + Add computer player
+              </button>
+            )}
+
+            {free > 0 && (
               <p className={styles.hint}>
-                {seats - picked.length === 1 ? "The other seat" : "The other seats"} can be
-                filled with an invite link once the game exists.
+                {free === 1 ? "The other seat" : "The other seats"} can be filled with an
+                invite link once the game exists.
               </p>
             )}
           </div>
@@ -139,7 +206,7 @@ export function CreateGame({
           <button
             type="button"
             className={styles.button}
-            onClick={() => onStart(count, picked)}
+            onClick={() => onStart(count, picked, bots)}
             disabled={starting}
           >
             {starting ? "Starting…" : "Start"}
