@@ -135,6 +135,16 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    */
   const [blankAt, setBlankAt] = useState<{ x: number; y: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Why a tile just bounced back.
+   *
+   * The rules refuse some placements before they land — a letter on its own
+   * twin, a square that is full, a blank on top of a tile — and until now the
+   * tile simply returned to the rack, which reads as the drag having missed.
+   * Every other refusal in the game says what it was.
+   */
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const refusalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   /**
@@ -464,8 +474,21 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   /** Move a staged tile, keeping the rack slot it came from. */
   function moveStaged(origin: { x: number; y: number }, x: number, y: number) {
     const moving = pending.find((p) => p.x === origin.x && p.y === origin.y);
-    // Landing it there would change nothing, so it stays where it was.
-    if (moving !== undefined && (changesNothing(x, y, moving.letter) || isFull(x, y))) return;
+    if (moving !== undefined) {
+      // Landing it there would change nothing, so it stays where it was.
+      if (changesNothing(x, y, moving.letter)) {
+        refuse(`That square is already ${moving.letter} — a tile has to change it.`);
+        return;
+      }
+      if (isFull(x, y)) {
+        refuse(`That square is full — ${STACK_CAP} tiles is the limit.`);
+        return;
+      }
+      if (moving.isBlank && blankBlocked(x, y)) {
+        refuse("A blank can only go on an empty square.");
+        return;
+      }
+    }
 
     setPending((current) => moveStagedTo(current, origin, x, y));
     setError(null);
@@ -493,6 +516,13 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     return (boards?.before.get(cellKey(x, y))?.stacked ?? 0) >= STACK_CAP;
   }
 
+  /** Say why a tile did not land, and take it back down after a moment. */
+  function refuse(why: string) {
+    setRefusal(why);
+    if (refusalTimer.current !== null) clearTimeout(refusalTimer.current);
+    refusalTimer.current = setTimeout(() => setRefusal(null), 2600);
+  }
+
   /** A blank may start a square but not close one, so it bounces off a stack. */
   function blankBlocked(x: number, y: number) {
     const deep = boards?.before.get(cellKey(x, y))?.stacked ?? 0;
@@ -505,7 +535,13 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     if (selected.kind === "blank") {
       // A full square takes nothing, and a blank cannot be the tile that
       // closes one: no point asking what it stands for when it cannot land.
-      if (isFull(x, y) || blankBlocked(x, y)) {
+      if (isFull(x, y)) {
+        refuse(`That square is full — ${STACK_CAP} tiles is the limit.`);
+        setSelected(null);
+        return;
+      }
+      if (blankBlocked(x, y)) {
+        refuse("A blank can only go on an empty square.");
         setSelected(null);
         return;
       }
@@ -517,7 +553,13 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     } else {
       const letter = me.letters?.[selected.index];
       if (letter === undefined) return;
-      if (changesNothing(x, y, letter) || isFull(x, y)) {
+      if (changesNothing(x, y, letter)) {
+        refuse(`That square is already ${letter} — a tile has to change it.`);
+        setSelected(null);
+        return;
+      }
+      if (isFull(x, y)) {
+        refuse(`That square is full — ${STACK_CAP} tiles is the limit.`);
         setSelected(null);
         return;
       }
@@ -587,6 +629,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     if (blankAt === null) return;
     // A blank standing for the letter already there is no change either.
     if (changesNothing(blankAt.x, blankAt.y, letter)) {
+      refuse(`That square is already ${letter} — a tile has to change it.`);
       setBlankAt(null);
       return;
     }
@@ -687,7 +730,16 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
         )}
 
         {blankAt !== null && (
-          <div className={styles.popoverBackdrop} role="dialog" aria-modal="true">
+          <div
+            className={styles.popoverBackdrop}
+            role="dialog"
+            aria-modal="true"
+            // Pressing away takes the blank back, which is what the button
+            // under the letters used to say in words.
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setBlankAt(null);
+            }}
+          >
             <div className={styles.popover}>
               <p className={styles.popoverTitle}>What does this blank stand for?</p>
 
@@ -716,13 +768,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                 ))}
               </div>
 
-              <button
-                type="button"
-                className={styles.popoverBack}
-                onClick={() => setBlankAt(null)}
-              >
-                Put the blank back on the rack
-              </button>
             </div>
           </div>
         )}
@@ -794,6 +839,15 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
 
         {error && <div className={styles.error}>{error}</div>}
+
+        {/* Floats over the board rather than sitting in the column: a message
+            that pushed the layout down would move the square you were aiming
+            at. */}
+        {refusal !== null && (
+          <div className={styles.refusal} role="status" aria-live="polite">
+            {refusal}
+          </div>
+        )}
 
         <DevTools gameId={gameId} />
 

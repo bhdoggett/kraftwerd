@@ -81,6 +81,38 @@
   font-size: 0.9rem;
 }
 
+/*
+ * A refused placement, said over the board and gone in a moment. Fixed rather
+ * than in the flow: a message that took up space would shift the board under
+ * the hand that just tried to play there.
+ */
+.refusal {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-8);
+  transform: translateX(-50%);
+  z-index: 250;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  /* The app's accent rather than the red that means "not a word": nothing
+     has gone wrong here, the tile simply could not land where it was aimed. */
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+  pointer-events: none;
+  animation: refusal-in 140ms ease-out;
+}
+
+@keyframes refusal-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
 .notice {
   color: var(--text-muted);
   font-size: 0.9rem;
@@ -226,21 +258,6 @@
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: var(--space-2);
-}
-
-.popoverBack {
-  margin-top: var(--space-2);
-  background: none;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-3);
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-.popoverBack:hover {
-  background: var(--surface-sunken);
-  color: var(--text);
 }
 
 /* --- the play in progress: what it spells, what it scores --- */
