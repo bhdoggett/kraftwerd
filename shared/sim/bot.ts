@@ -1,3 +1,4 @@
+import { STACK_CAP } from "../config.js";
 import { cellKey, type Board } from "../engine/board.js";
 import type { Dictionary } from "../engine/legality.js";
 import { applyPlacements, validateTurn } from "../engine/legality.js";
@@ -121,6 +122,34 @@ function rackWords(index: LengthIndex, letters: readonly string[], length: numbe
 }
 
 /** Word indices matching every fixed letter, smallest posting list first. */
+/**
+ * Words that match the letters already in the span, or match all but one.
+ *
+ * The odd one out is a square the play would cover. Dropping each fixed
+ * position in turn is what turns "the board says A here" from a requirement
+ * into a choice; `fit` then charges a tile for disagreeing, and the legality
+ * check has the last word on whether covering it is allowed.
+ */
+function withOneCovered(
+  index: LengthIndex,
+  fixed: [number, string][],
+  rackPool: readonly number[],
+): number[] {
+  const pool = new Set<number>(candidates(index, fixed) ?? []);
+
+  for (let skip = 0; skip < fixed.length; skip++) {
+    const rest = fixed.filter((_, i) => i !== skip);
+    // Nothing left to match on: the rack decides, exactly as for a span with
+    // no letters in it at all.
+    // With nothing left to match on, the rack decides — exactly as for a span
+    // with no letters in it at all, so the same list serves.
+    const found = rest.length > 0 ? candidates(index, rest)! : rackPool;
+    for (const i of found) pool.add(i);
+  }
+
+  return [...pool];
+}
+
 function candidates(index: LengthIndex, fixed: [number, string][]): number[] | null {
   if (fixed.length === 0) return null;
 
@@ -175,10 +204,25 @@ function fit(
     const sitting = board.get(cellKey(x, y));
 
     if (sitting !== undefined) {
-      if (sitting.letter !== letter) return null;
+      // The letter already there serves, and costs nothing.
+      if (sitting.letter === letter) {
+        touched = true;
+        continue;
+      }
+
+      /*
+       * Otherwise the square can be played over, at the price of a tile.
+       *
+       * This used to give up instead, which meant the bot never once laid a
+       * tile on another — so it never took a square from anyone, never earned
+       * a stacking bonus, and never covered a letter to make a block
+       * reachable. Everything measured about stacking was measuring a game
+       * nobody was playing.
+       */
+      if ((sitting.stacked ?? 1) >= STACK_CAP) return null;
       touched = true;
-      continue;
     }
+
     need.set(letter, (need.get(letter) ?? 0) + 1);
     placements.push({ x, y, letter, isBlank: false });
   }
@@ -255,6 +299,51 @@ export interface MoveOptions {
   };
 }
 
+export type Difficulty = "easy" | "medium" | "hard";
+
+/**
+ * How sharply a player prefers its best move.
+ *
+ * The bot sees every legal move and can rank them; playing the top one every
+ * time makes an opponent nobody can beat and nobody enjoys. So the rank is a
+ * weighting rather than a decision: weight falls away as exp(-rank / tau), and
+ * tau is the difficulty. Small tau means the best move nearly always; large
+ * tau spreads the choice down the list.
+ *
+ * Even hard is not perfect — it takes its best move about seven times in ten,
+ * which is roughly what a strong player who is not concentrating does.
+ */
+const TAU: Record<Difficulty, number> = {
+  easy: 8,
+  medium: 2.5,
+  hard: 0.8,
+};
+
+/**
+ * Choose among ranked moves, best first, by difficulty.
+ *
+ * `rng` returns a float in [0, 1). Exported for its own tests: the shape of
+ * this distribution is the whole of how hard the game feels.
+ */
+export function chooseRanked(
+  moves: readonly Move[],
+  difficulty: Difficulty,
+  rng: () => number,
+): Move | null {
+  if (moves.length === 0) return null;
+
+  const tau = TAU[difficulty];
+  const weights = moves.map((_, i) => Math.exp(-i / tau));
+  const total = weights.reduce((sum, w) => sum + w, 0);
+
+  let roll = rng() * total;
+  for (const [i, weight] of weights.entries()) {
+    roll -= weight;
+    if (roll < 0) return moves[i]!;
+  }
+  return moves[moves.length - 1]!;
+}
+
 export function bestMove(
   board: Board,
   hand: Hand,
@@ -293,6 +382,26 @@ function search(
   value: (board: Board, placements: readonly Placement[]) => number,
   options: MoveOptions,
 ): Move | null {
+  return rank(board, hand, dictionary, words, shape, size, value, options)[0] ?? null;
+}
+
+/**
+ * Every legal move, best first.
+ *
+ * The search already had to find and score them all to pick one; handing the
+ * list back is what lets a player choose by difficulty rather than always
+ * taking the top.
+ */
+export function rank(
+  board: Board,
+  hand: Hand,
+  dictionary: Dictionary,
+  words: WordIndex,
+  shape: BoardShape,
+  size: number,
+  value: (board: Board, placements: readonly Placement[]) => number,
+  options: MoveOptions,
+): Move[] {
   const tiles = hand.letters.length + hand.blanks;
   const longest = Math.min(options.maxLength ?? 7, tiles + 4);
   const sortedRack = [...hand.letters].sort();
@@ -322,6 +431,17 @@ function search(
     const index = words.byLength.get(length);
     if (index === undefined) continue;
 
+    /*
+     * What the rack alone can spell at this length, worked out once.
+     *
+     * Every span with a single letter on it falls back to this list, and
+     * enumerating it per span made the search cost far more than the covering
+     * moves it found were worth.
+     */
+    const rackPool = anyLetter
+      ? index.words.map((_, i) => i)
+      : rackWords(index, sortedRack, length);
+
     for (const span of spans(size, length)) {
       // Read the span once: which squares are taken, and does it touch play.
       const fixed: [number, string][] = [];
@@ -348,17 +468,28 @@ function search(
         if (live.has(key)) touchesLive = true;
       }
 
-      if (blockedSquare || !touchesLive || free === 0 || free > tiles) continue;
+      // A span with no empty square at all is still worth reading: laying a
+      // tile on a letter is a move here, and changing one letter of a word
+      // that is already on the board is one of the commonest.
+      if (blockedSquare || !touchesLive || free > tiles) continue;
+      if (free === 0 && fixed.length === 0) continue;
 
-      // With letters in the span, ask which words have them there. With none,
-      // ask which words the rack spells. Falling back to every word only
-      // happens when a blank is standing in for something.
+      /*
+       * With letters in the span, ask which words have them there — and also
+       * which words have all but one of them.
+       *
+       * Tiles may be laid on tiles here, so a word that disagrees with the
+       * board in one place is a move, not a mismatch: CATS with an O on the A
+       * is COTS. Asking only for words that match the board exactly quietly
+       * ruled every such move out before `fit` could weigh it, which is why
+       * the bot never once played on top of anything.
+       *
+       * One square, not several: covering two letters at once is legal but
+       * rare, and the pool for it grows with the square of the letters in the
+       * span. The cap is what keeps this affordable.
+       */
       const pool =
-        fixed.length > 0
-          ? candidates(index, fixed)!
-          : hand.blanks > 0
-            ? index.words.map((_, i) => i)
-            : rackWords(index, sortedRack, length);
+        fixed.length > 0 ? withOneCovered(index, fixed, rackPool) : rackPool;
 
       for (const i of pool) {
         // Every letter the word needs must be in the rack, unless a blank can
@@ -382,21 +513,17 @@ function search(
     }
   }
 
-  if (found.length === 0) return null;
   found.sort((a, b) => b.score - a.score);
 
   const ahead = options.lookahead;
-  if (ahead === undefined) return found[0]!;
+  if (ahead === undefined || found.length === 0) return found;
 
   /*
    * Only the strongest few are looked at this closely: each costs a whole
    * search of its own, and a move outside the top handful is not going to win
    * once a penalty is subtracted from it.
    */
-  let best = found[0]!;
-  let bestNet = -Infinity;
-
-  for (const move of found.slice(0, ahead.breadth ?? 6)) {
+  const looked = found.slice(0, ahead.breadth ?? 6).map((move) => {
     const after = applyPlacements(board, move.placements);
     const reply = search(
       after,
@@ -409,12 +536,10 @@ function search(
       { maxLength: options.maxLength },
     );
 
-    const net = move.score - ahead.weight * (reply?.score ?? 0);
-    if (net > bestNet) {
-      bestNet = net;
-      best = move;
-    }
-  }
+    return { ...move, score: move.score - ahead.weight * (reply?.score ?? 0) };
+  });
 
-  return best;
+  // Re-ranked by what each move nets, with the rest of the list behind them.
+  looked.sort((a, b) => b.score - a.score);
+  return [...looked, ...found.slice(ahead.breadth ?? 6)];
 }
