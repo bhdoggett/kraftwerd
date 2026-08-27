@@ -30,16 +30,19 @@ function seeded(seed: number) {
   };
 }
 
+/** Who won, by seat: ties count for each leader. */
+function winners(scores: readonly number[]) {
+  const best = Math.max(...scores);
+  return scores.map((score) => (score === best ? 1 / scores.filter((s) => s === best).length : 0));
+}
+
 const VARIANTS: Variant[] = [
-  { name: "today: endless draw", bag: null, multiplier: "none" },
-  { name: "bag of 100, by frequency", bag: 100, multiplier: "none" },
-  { name: "flat bag: 2 each, 1 hard", bag: 0, multiplier: "none" },
-  { name: "flat bag + 2x first rare", bag: 0, multiplier: "first" },
-  { name: "flat bag + 2x always", bag: 0, multiplier: "always" },
-  { name: "flat bag + 4 premium squares", bag: 0, multiplier: "none" },
-  { name: "flat bag + premium + rare", bag: 0, multiplier: "first" },
-  { name: "flat bag on 17x17", bag: 0, multiplier: "none", premium: false, size: 17 },
+  { name: "greedy", bag: 50, multiplier: "none" },
+  { name: "thinks ahead", bag: 50, multiplier: "none", lookahead: 0.6 },
 ];
+
+
+
 
 const mean = (xs: number[]) => (xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length);
 const pct = (xs: number[], p: number) => {
@@ -66,8 +69,23 @@ for (const variant of VARIANTS) {
     Object.entries(r.squares).reduce((n, [k, v]) => n + (Number(k) >= 3 ? v : 0), 0),
   );
 
+  const seatWins = results.reduce(
+    (totals, r) => winners(r.scores).map((w, i) => (totals[i] ?? 0) + w),
+    [] as number[],
+  );
+  const seatScores = results.reduce(
+    (totals, r) => r.scores.map((sc, i) => (totals[i] ?? 0) + sc),
+    [] as number[],
+  );
+
   rows.push({
     variant: variant.name,
+    ...Object.fromEntries(
+      seatWins.map((w, i) => [`seat ${i} win%`, ((w / games) * 100).toFixed(0)]),
+    ),
+    ...Object.fromEntries(
+      seatScores.map((sc, i) => [`seat ${i} pts`, (sc / games).toFixed(0)]),
+    ),
     "win score": mean(winning).toFixed(0),
     margin: mean(margins).toFixed(0),
     turns: mean(results.map((r) => r.turns)).toFixed(0),

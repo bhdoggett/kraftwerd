@@ -1,6 +1,6 @@
 import { cellKey, type Board } from "../engine/board.js";
 import type { Dictionary } from "../engine/legality.js";
-import { validateTurn } from "../engine/legality.js";
+import { applyPlacements, validateTurn } from "../engine/legality.js";
 import type { Placement } from "../engine/score.js";
 import { scoreTurn } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
@@ -231,6 +231,28 @@ export interface MoveOptions {
   value?: (board: Board, placements: readonly Placement[]) => number;
   /** Longest word to consider. Longer words cost time and are rarely played. */
   maxLength?: number;
+  /**
+   * Look at what a move leaves behind before taking it.
+   *
+   * A greedy player takes the most points on offer and hands the board over
+   * however open it leaves things — which is exactly the question "is going
+   * first a disadvantage" turns on, since every tile placed is material for
+   * whoever moves next. With this set, each candidate is worth what it scores
+   * less what the best reply to it would score.
+   *
+   * The reply is measured against a stand-in rack rather than the opponent's
+   * real one: the bot should not see their letters, and what is being
+   * measured is how exposed the board is left, not what one hand can do to
+   * it.
+   */
+  lookahead?: {
+    /** The stand-in rack a reply is imagined from. */
+    rack: readonly string[];
+    /** How much of the reply's score to hold against a move. */
+    weight: number;
+    /** How many candidates to look this closely at. Each costs a search. */
+    breadth?: number;
+  };
 }
 
 export function bestMove(
@@ -274,6 +296,7 @@ function search(
   const tiles = hand.letters.length + hand.blanks;
   const longest = Math.min(options.maxLength ?? 7, tiles + 4);
   const sortedRack = [...hand.letters].sort();
+  const found: Move[] = [];
 
   // Squares worth building through: occupied, or touching something occupied.
   // On an empty board there is only one — the centre the opening must cover.
@@ -294,8 +317,6 @@ function search(
 
   const rackMask = hand.letters.reduce((mask, l) => mask | (1 << (l.charCodeAt(0) - 65)), 0);
   const anyLetter = hand.blanks > 0;
-
-  let best: Move | null = null;
 
   for (let length = 2; length <= longest; length++) {
     const index = words.byLength.get(length);
@@ -356,10 +377,42 @@ function search(
         if (!legality.ok) continue;
 
         const score = value(board, laid.placements);
-        if (best === null || score > best.score) {
-          best = { placements: laid.placements, score };
-        }
+        found.push({ placements: laid.placements, score });
       }
+    }
+  }
+
+  if (found.length === 0) return null;
+  found.sort((a, b) => b.score - a.score);
+
+  const ahead = options.lookahead;
+  if (ahead === undefined) return found[0]!;
+
+  /*
+   * Only the strongest few are looked at this closely: each costs a whole
+   * search of its own, and a move outside the top handful is not going to win
+   * once a penalty is subtracted from it.
+   */
+  let best = found[0]!;
+  let bestNet = -Infinity;
+
+  for (const move of found.slice(0, ahead.breadth ?? 6)) {
+    const after = applyPlacements(board, move.placements);
+    const reply = search(
+      after,
+      { letters: ahead.rack, blanks: 0 },
+      dictionary,
+      words,
+      shape,
+      size,
+      value,
+      { maxLength: options.maxLength },
+    );
+
+    const net = move.score - ahead.weight * (reply?.score ?? 0);
+    if (net > bestNet) {
+      bestNet = net;
+      best = move;
     }
   }
 
