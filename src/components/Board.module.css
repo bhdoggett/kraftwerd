@@ -165,14 +165,40 @@
 }
 
 /*
- * A square that has ever had a tile land on another: shaded darker so the
- * history reads at a glance, whatever colour or face is underneath. A filter
- * rather than a background override, so it works the same on a player's
- * colour, a blank's white, or a premium letter without fighting any of them
- * for control of --tile-face.
+ * A square with one tile stacked on it reads richer, not darker: saturating
+ * the seat colour further rather than mixing it toward black. A filter, not
+ * a --tile-tint override -- --seat-N is resolved once at :root using :root's
+ * own --tile-tint, so a descendant redeclaring --tile-tint never reaches it.
+ * saturate() works on whatever colour is already there, whichever seat it
+ * belongs to, with no per-seat rule needed.
  */
-.cell.stacked {
-  filter: brightness(0.62);
+.cell.stacked[data-stack="2"] {
+  filter: saturate(1.8) brightness(0.97);
+}
+
+/*
+ * The square is full at three: nothing can ever land here again. That is a
+ * different kind of fact than "one tile deeper" -- an end state, not a step
+ * along the way -- so it gets a different kind of signal: the tile goes
+ * back to reading as a bare square (--cell-empty, not anyone's colour), and
+ * the letter itself lights up in whoever's colour played it. Two-way
+ * contrast (blank square, lit glyph) rather than a fifth colour to tell
+ * apart from the four seats -- readable regardless of colour vision, since
+ * "is this square blank" doesn't depend on which hues you can tell apart.
+ *
+ * Blank rather than blocked: a blocked square is the board's own permanent
+ * shape, never playable. A capped square was very much played on, three
+ * times over -- it just cannot be again. Reusing the blocked colour would
+ * say the wrong one of those two things.
+ *
+ * A background colour, not a filter: filter is a whole-element effect, so a
+ * brightness() meant for the background would have dimmed the letter right
+ * along with it -- there is no way to filter only the background and leave a
+ * child's own colour alone.
+ */
+.cell.stacked[data-stack="3"] {
+  background: var(--cell-empty);
+  color: var(--tile-neon);
 }
 
 /* An empty square adjacent to the played mass: a legal target. Dashed so it
