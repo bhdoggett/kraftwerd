@@ -138,11 +138,15 @@ describe("racks drawn from the real letter weights", () => {
     }
   });
 
-  test("the awkward letters are not in the bag at all", () => {
-    // J, Q, X and Z exist only as the four premium corners: letters you reach
-    // rather than letters you hold. Nothing draws them, so a rack can never
-    // be stuck with one — and a game holds exactly one of each.
-    expect(racks.flat().filter((l) => "JQXZ".includes(l))).toHaveLength(0);
+  test("the awkward letters turn up often enough to notice, without crowding", () => {
+    const letters = racks.flat();
+    const hostile = letters.filter((l) => "JQXZ".includes(l)).length;
+    const share = hostile / letters.length;
+
+    // One of each in a bag of fifty: rare enough to stay interesting, common
+    // enough that a player meets them.
+    expect(share).toBeGreaterThan(0.03);
+    expect(share).toBeLessThan(0.12);
   });
 
   test("a rack can still spell something despite the awkward letters", () => {
