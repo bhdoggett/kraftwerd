@@ -179,19 +179,26 @@
 /*
  * The square is full at three: nothing can ever land here again. That is a
  * different kind of fact than "one tile deeper" -- an end state, not a step
- * along the way, and not anyone's colour any more -- pink (--tile-full-face)
- * every time, whichever seat happened to place the last tile. The letter
- * flips to white for it, the way a completed checkbox reads differently from
- * a partial one.
+ * along the way -- so it gets a different kind of signal: the tile goes
+ * back to reading as a bare square (--cell-empty, not anyone's colour), and
+ * the letter itself lights up in whoever's colour played it. Two-way
+ * contrast (blank square, lit glyph) rather than a fifth colour to tell
+ * apart from the four seats -- readable regardless of colour vision, since
+ * "is this square blank" doesn't depend on which hues you can tell apart.
+ *
+ * Blank rather than blocked: a blocked square is the board's own permanent
+ * shape, never playable. A capped square was very much played on, three
+ * times over -- it just cannot be again. Reusing the blocked colour would
+ * say the wrong one of those two things.
  *
  * A background colour, not a filter: filter is a whole-element effect, so a
- * brightness() meant for the background would have dimmed the white letter
- * right along with it -- there is no way to filter only the background and
- * leave a child's own colour alone.
+ * brightness() meant for the background would have dimmed the letter right
+ * along with it -- there is no way to filter only the background and leave a
+ * child's own colour alone.
  */
 .cell.stacked[data-stack="3"] {
-  background: var(--tile-full-face);
-  color: #ffffff;
+  background: var(--cell-empty);
+  color: var(--tile-neon);
 }
 
 /* An empty square adjacent to the played mass: a legal target. Dashed so it

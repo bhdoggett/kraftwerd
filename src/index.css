@@ -15,6 +15,19 @@
   --neon-orange: #ff7a29;
   --neon-violet: #9d7bff;
 
+  /*
+   * The same four, darkened to read as ink on paper rather than a tube on
+   * black: a neon this bright sits at 6.5:1 or worse against white, which is
+   * the opposite problem tiles solve (§ below) -- there the face is bright
+   * and the letter is dark; here the square is bare and the letter has to
+   * carry the colour itself, so it is the letter that needs the contrast.
+   * Each still clears 6.5:1 against white, matching the tile-face bar.
+   */
+  --ink-cyan: #00676b;
+  --ink-magenta: #ad0088;
+  --ink-lime: #446600;
+  --ink-amber: #6b5900;
+
   /* Surfaces, light theme */
   --surface: #f4f4f6;
   --surface-raised: #ffffff;
@@ -47,12 +60,6 @@
      anybody's tile. */
   --premium-face: #26262c;
   --premium-ink: #ffffff;
-  /*
-   * A stacked square that has hit the cap: whoever's colour was there before,
-   * a maxed-out square reads as done rather than as anyone's -- pink, since
-   * it is not one of the six seats. Fixed across themes, like the six.
-   */
-  --tile-full-face: #ff5fa8;
   /* A tube glows against black and does nothing against paper. */
   --tile-lit: none;
   /* Every square is sunk into the board, tiles included. */
@@ -97,6 +104,17 @@
   --seat-1: color-mix(in srgb, var(--neon-magenta) var(--tile-tint), #ffffff);
   --seat-2: color-mix(in srgb, var(--neon-lime) var(--tile-tint), #ffffff);
   --seat-3: color-mix(in srgb, var(--neon-amber) var(--tile-tint), #ffffff);
+
+  /*
+   * A capped stack's letter, read directly off a bare square (Board.module.css)
+   * rather than mixed into a tile face -- ink on the light board, a lit tube
+   * on the dark one. Redeclared in both dark blocks below, the same way every
+   * other theme-dependent token is.
+   */
+  --seat-0-lit: var(--ink-cyan);
+  --seat-1-lit: var(--ink-magenta);
+  --seat-2-lit: var(--ink-lime);
+  --seat-3-lit: var(--ink-amber);
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -171,6 +189,12 @@
     --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
     --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
 
+    /* Ink flips to the actual neon: a bare square is black here, not paper. */
+    --seat-0-lit: var(--neon-cyan);
+    --seat-1-lit: var(--neon-magenta);
+    --seat-2-lit: var(--neon-lime);
+    --seat-3-lit: var(--neon-amber);
+
     --accent: var(--neon-magenta);
     --accent-hover: #ff5cdc;
     --accent-soft: #2e0726;
@@ -216,6 +240,12 @@
   --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
   --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
 
+  /* Ink flips to the actual neon: a bare square is black here, not paper. */
+  --seat-0-lit: var(--neon-cyan);
+  --seat-1-lit: var(--neon-magenta);
+  --seat-2-lit: var(--neon-lime);
+  --seat-3-lit: var(--neon-amber);
+
   --accent: var(--neon-magenta);
   --accent-hover: #ff5cdc;
   --accent-soft: #2e0726;
@@ -240,21 +270,29 @@
  * Whose tile this is, wherever it is drawn: on the board, on the rack, or
  * following the pointer. One rule set rather than one per component, since
  * "seat 2 is lime" is a fact about the game, not about the board.
+ *
+ * --tile-neon carries the same seat as a bare square reads it (Board.module.css,
+ * a capped stack) -- ink on the light board so it clears 6.5:1 against paper,
+ * the full-strength neon on the dark one so it reads as a lit tube.
  */
 [data-seat="0"] {
   --tile-face: var(--seat-0);
+  --tile-neon: var(--seat-0-lit);
 }
 
 [data-seat="1"] {
   --tile-face: var(--seat-1);
+  --tile-neon: var(--seat-1-lit);
 }
 
 [data-seat="2"] {
   --tile-face: var(--seat-2);
+  --tile-neon: var(--seat-2-lit);
 }
 
 [data-seat="3"] {
   --tile-face: var(--seat-3);
+  --tile-neon: var(--seat-3-lit);
 }
 
 *,
