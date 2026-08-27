@@ -31,7 +31,12 @@
    *
    * Clinton's values, from his stack-richness branch.
    */
-  /* The menu's three tiles: ink on a white bar, lime on a black one. */
+  /*
+   * The menu's three tiles. Solid ink on a white bar — outlined squares at
+   * this size read as three empty boxes rather than as a control. On a black
+   * bar they are lime faces in black, the way a tile sits on the board.
+   */
+  --menu-face: #0b0b0d;
   --menu-mark: #0b0b0d;
 
   --ink-cyan: #00676b;
@@ -190,6 +195,9 @@
     --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
     /* A bare square is black here, not paper: the letter is the tube itself. */
     --ink-cyan: var(--neon-cyan);
+    --menu-face: var(--neon-lime);
+    /* Edge and face the same lime: on a black bar the mark is the shape, and
+       an edge in the board's ink only eats into it. */
     --menu-mark: var(--neon-lime);
     --ink-magenta: var(--neon-magenta);
     --ink-lime: var(--neon-lime);
@@ -240,6 +248,9 @@
   --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
   /* A bare square is black here, not paper: the letter is the tube itself. */
   --ink-cyan: var(--neon-cyan);
+  --menu-face: var(--neon-lime);
+  /* Edge and face the same lime: on a black bar the mark is the shape, and
+     an edge in the board's ink only eats into it. */
   --menu-mark: var(--neon-lime);
   --ink-magenta: var(--neon-magenta);
   --ink-lime: var(--neon-lime);

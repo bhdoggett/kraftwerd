@@ -24,16 +24,16 @@
 }
 
 /*
- * Built like the board: a hairline of grid showing between the tiles, and the
- * same hairline around them. No frame on top of that — three dark lines in a
- * row at this size read as a black bar with two colours trapped inside it.
+ * Two tiles, set apart by the header behind them. The board puts a hairline
+ * of grid between its squares, but these carry three pixels of ink each: a
+ * grey seam is a third line in a row of dark ones and reads as grubby, while
+ * touching makes one double-thick bar of the two edges. A gap of the bar's
+ * own colour separates them without adding a line at all.
  */
 .brand {
   margin: 0;
   display: flex;
-  gap: 1px;
-  padding: 1px;
-  background: var(--cell-line);
+  gap: 7px;
   /* Lifted off the header just enough to have an edge, now that it has no
      frame drawing one for it. */
   box-shadow: var(--shadow);

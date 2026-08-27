@@ -24,11 +24,12 @@
   place-items: center;
 }
 
-.trigger:hover,
-.trigger[aria-expanded="true"] {
-  background: var(--surface-sunken);
-  color: var(--text);
-}
+/*
+ * Nothing happens to it on hover or while open: no disc behind it, and no
+ * change of colour. The tiles are the mark, and the menu appearing under them
+ * is feedback enough — a disc read as a button nobody had styled, and a shift
+ * of colour read as the mark itself changing.
+ */
 
 .panel {
   position: absolute;

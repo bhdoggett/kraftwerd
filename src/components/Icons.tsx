@@ -114,24 +114,32 @@ export function HelpIcon({ size = 16 }: IconProps) {
  * inside an ink edge, square like every tile in the game.
  */
 export function MoreIcon({ size = 16 }: IconProps) {
-  /* Face in the button's own colour, edge in the board's ink. */
+  /*
+   * A face inside an edge, like a tile on the board. The stroke is centred on
+   * the path, so half of it sits outside the square: gaps are measured from
+   * the outside of the ink, not from the face.
+   */
   const tile = (x: number) => (
     <rect
       x={x}
-      y={8.5}
-      width={7}
-      height={7}
-      fill="currentColor"
-      stroke="var(--tile-edge)"
-      strokeWidth={2}
+      y={9}
+      width={5}
+      height={5}
+      strokeWidth={1.2}
+      /*
+       * Through style, not the fill and stroke attributes: a presentation
+       * attribute is parsed as an SVG value and var() is not one, so it falls
+       * back to the inherited paint — which is how these ended up ink on ink.
+       */
+      style={{ fill: "var(--menu-face)", stroke: "var(--menu-mark)" }}
     />
   );
 
   return (
     <svg {...base(size)} viewBox="-1 0 26 24">
-      {tile(-0.5)}
-      {tile(8.5)}
-      {tile(17.5)}
+      {tile(0)}
+      {tile(9.5)}
+      {tile(19)}
     </svg>
   );
 }
