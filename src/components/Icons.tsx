@@ -36,6 +36,16 @@ export function RecallIcon({ size = 16 }: IconProps) {
 }
 
 /** Trade tiles in: two arrows passing each other. */
+/** Skip ahead: the turn goes past you. */
+export function PassIcon({ size = 16 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <path d="m5 5 9 7-9 7V5Z" />
+      <path d="M19 5v14" />
+    </svg>
+  );
+}
+
 export function TradeIcon({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>

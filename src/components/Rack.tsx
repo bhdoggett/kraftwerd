@@ -1,5 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { RecallIcon, ShuffleIcon, TradeIcon } from "./Icons";
+import { PassIcon, RecallIcon, ShuffleIcon, TradeIcon } from "./Icons";
 import styles from "./Rack.module.css";
 
 export type Selection = { kind: "letter"; index: number } | { kind: "blank" };
@@ -36,6 +36,13 @@ interface RackProps {
   onToggleTrade: (index: number) => void;
   onStartTrade: () => void;
   canTrade: boolean;
+  /**
+   * Passing replaces trading once the bag is empty — the one moment trading
+   * is impossible and a rack that will not play needs some way out.
+   */
+  onPass: () => void;
+  canPass: boolean;
+  passing: boolean;
   onPlay: () => void;
   canPlay: boolean;
   playing: boolean;
@@ -60,6 +67,9 @@ export function Rack({
   onToggleTrade,
   onStartTrade,
   canTrade,
+  onPass,
+  canPass,
+  passing,
   onPlay,
   canPlay,
   playing,
@@ -181,17 +191,30 @@ export function Rack({
         >
           <RecallIcon />
         </button>
-        <button
-          type="button"
-          onClick={onStartTrade}
-          disabled={!canTrade}
-          aria-pressed={trading !== null}
-          className={[styles.action, trading !== null ? styles.actionOn : ""].join(" ")}
-          aria-label="Trade tiles in for new ones"
-          title="Trade tiles"
-        >
-          <TradeIcon />
-        </button>
+        {canPass ? (
+          <button
+            type="button"
+            onClick={onPass}
+            aria-pressed={passing}
+            className={[styles.action, passing ? styles.actionOn : ""].join(" ")}
+            aria-label="Pass your turn"
+            title="Pass"
+          >
+            <PassIcon />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onStartTrade}
+            disabled={!canTrade}
+            aria-pressed={trading !== null}
+            className={[styles.action, trading !== null ? styles.actionOn : ""].join(" ")}
+            aria-label="Trade tiles in for new ones"
+            title="Trade tiles"
+          >
+            <TradeIcon />
+          </button>
+        )}
         <button
           type="button"
           className={styles.action}

@@ -936,3 +936,326 @@ describe("stacking is playing, not passing", () => {
     expect(game?.status).toBe("active");
   });
 });
+
+describe("computer players", () => {
+  /** A signed-in creator, with the words table stocked. */
+  async function table() {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+      await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
+      for (const word of WORDS) await ctx.db.insert("words", { word });
+    });
+    return { t, asAlice: t.withIdentity({ subject: "auth|alice" }) };
+  }
+
+  // Typed from `table` rather than from convexTest itself, so the schema —
+  // and with it the index names — survives.
+  const seatsOf = (t: Awaited<ReturnType<typeof table>>["t"], gameId: Id<"games">) =>
+    t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("players")
+          .withIndex("by_game", (q) => q.eq("gameId", gameId))
+          .take(10)
+      ).sort((a, b) => a.seat - b.seat),
+    );
+
+  test("a table of nothing but machines is playable at once", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      bots: ["easy", "hard"],
+    });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("active");
+
+    const players = await seatsOf(t, gameId);
+    expect(players.map((p) => p.bot)).toEqual([undefined, "easy", "hard"]);
+    expect(players.every((p) => p.status === "joined")).toBe(true);
+  });
+
+  test("a bot waits with everyone else for the person who was invited", async () => {
+    const { t, asAlice } = await table();
+    const bob = await t.run(async (ctx) =>
+      (await ctx.db.query("users").take(10)).find((u) => u.authId === "auth|bob")!._id,
+    );
+    await t.run(async (ctx) => {
+      await ctx.db.insert("friendships", {
+        requesterId: (await ctx.db.query("users").take(10))[0]!._id,
+        addresseeId: bob,
+        status: "accepted",
+      });
+    });
+
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      bots: ["medium"],
+    });
+    await asAlice.mutation(api.games.inviteToGame, { gameId, friendIds: [bob] });
+
+    const lobby = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(lobby?.status).toBe("lobby");
+
+    // The bot took the seat next to the creator; the invitation went to the
+    // one after it, rather than to a seat the bot already holds.
+    const players = await seatsOf(t, gameId);
+    expect(players.map((p) => p.bot)).toEqual([undefined, "medium", undefined]);
+    expect(players[2]?.status).toBe("invited");
+
+    await t
+      .withIdentity({ subject: "auth|bob" })
+      .mutation(api.games.respondToInvite, { gameId, accept: true });
+    const started = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(started?.status).toBe("active");
+  });
+
+  test("a trade hands the turn over to the machine, not to nobody", async () => {
+    vi.useFakeTimers();
+    try {
+      const { t, asAlice } = await table();
+      const { gameId } = await asAlice.mutation(api.games.createGame, {
+        playerCount: 2,
+        bots: ["hard"],
+      });
+
+      // Drain the nudge createGame left behind, so what wakes the machine
+      // below can only be the trade itself.
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+      const traded = await t.run(async (ctx) => ctx.db.get("games", gameId));
+      expect(traded?.currentSeat).toBe(1);
+
+      // The machine takes its turn on its own -- whether it finds a word or
+      // passes, the seat comes back. Without the nudge it never wakes and the
+      // game is stuck on a player who is not there to be prodded.
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const after = await t.run(async (ctx) => ctx.db.get("games", gameId));
+      expect(after?.currentSeat).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("calling off a game before it starts takes its machines with it", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+      bots: ["easy"],
+    });
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    // A bot exists only for the game it was seated in, so a game that never
+    // happened should leave no trace of one.
+    const left = await t.run(async (ctx) => ({
+      users: (await ctx.db.query("users").take(10)).filter((u) =>
+        u.authId.startsWith("bot|"),
+      ),
+      bags: await ctx.db.query("bags").take(10),
+    }));
+    expect(left.users).toEqual([]);
+    expect(left.bags).toEqual([]);
+  });
+
+  test("the machine plays a real word off what is already there", async () => {
+    vi.useFakeTimers();
+    try {
+      const { t, asAlice } = await table();
+
+      /*
+       * The words table gets every word in the bot's own list that these
+       * racks could spell. Elsewhere these tests run on a handful of words,
+       * which would have the bot pass every turn -- it considers the bundled
+       * list and is then held to the table, and with a table that small the
+       * two never meet.
+       */
+      const letters = new Set("TOADEMUC");
+      await t.run(async (ctx) => {
+        for (const word of ALL_WORDS) {
+          if ([...word].every((c) => letters.has(c))) {
+            if (!WORDS.includes(word)) await ctx.db.insert("words", { word });
+          }
+        }
+      });
+
+      const { gameId } = await asAlice.mutation(api.games.createGame, {
+        playerCount: 2,
+        bots: ["hard"],
+      });
+
+      const stock = async (seat: number, letters: string[]) =>
+        t.run(async (ctx) => {
+          const player = await ctx.db
+            .query("players")
+            .withIndex("by_game_and_seat", (q) =>
+              q.eq("gameId", gameId).eq("seat", seat),
+            )
+            .unique();
+          await ctx.db.patch("players", player!._id, { letters });
+        });
+
+      await stock(0, ["A", "D", "E", "M", "U", "C", "T", "O"]);
+      await stock(1, ["T", "O", "A", "D", "E", "M", "U", "C"]);
+      await asAlice.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(0, 0, "A"), at(1, 0, "D")],
+      });
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      // Not just "the turn came back" -- a machine that passes would do that
+      // too. It found a word, and the word was checked against the same
+      // dictionary a person's would be.
+      const bot = await t.run(async (ctx) =>
+        ctx.db
+          .query("players")
+          .withIndex("by_game_and_seat", (q) => q.eq("gameId", gameId).eq("seat", 1))
+          .unique(),
+      );
+      expect(bot!.score).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("it keeps playing once the board has words to cross", async () => {
+    vi.useFakeTimers();
+    try {
+      const { t, asAlice } = await table();
+
+      const pool = new Set("TOADEMUCS");
+      await t.run(async (ctx) => {
+        for (const word of ALL_WORDS) {
+          if ([...word].every((c) => pool.has(c)) && !WORDS.includes(word)) {
+            await ctx.db.insert("words", { word });
+          }
+        }
+      });
+
+      const { gameId } = await asAlice.mutation(api.games.createGame, {
+        playerCount: 2,
+        bots: ["medium"],
+      });
+
+      const stock = async (seat: number) =>
+        t.run(async (ctx) => {
+          const player = await ctx.db
+            .query("players")
+            .withIndex("by_game_and_seat", (q) =>
+              q.eq("gameId", gameId).eq("seat", seat),
+            )
+            .unique();
+          await ctx.db.patch("players", player!._id, {
+            letters: ["T", "O", "A", "D", "E", "M", "U", "C"],
+          });
+        });
+
+      await stock(0);
+      await stock(1);
+      await asAlice.mutation(api.games.placeTiles, {
+        gameId,
+        placements: [at(0, 0, "A"), at(1, 0, "D")],
+      });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      // Second turn: the board now has letters to build across, and every
+      // candidate makes crossing words as well as its own. A machine that
+      // only checks the word it meant to play finds all its best moves
+      // refused and passes -- for the rest of the game, since the board only
+      // ever gets busier.
+      const scoreAfterFirst = await t.run(async (ctx) => {
+        const bot = await ctx.db
+          .query("players")
+          .withIndex("by_game_and_seat", (q) => q.eq("gameId", gameId).eq("seat", 1))
+          .unique();
+        return bot!.score;
+      });
+
+      // Alice trades rather than plays, so this test does not depend on
+      // where the machine put its first word — only on the board having
+      // something to cross, which it now does.
+      await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+      await stock(1);
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      const bot = await t.run(async (ctx) =>
+        ctx.db
+          .query("players")
+          .withIndex("by_game_and_seat", (q) => q.eq("gameId", gameId).eq("seat", 1))
+          .unique(),
+      );
+      expect(bot!.score).toBeGreaterThan(scoreAfterFirst);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("more machines than seats is refused", async () => {
+    const { asAlice } = await table();
+    await expect(
+      asAlice.mutation(api.games.createGame, { playerCount: 2, bots: ["easy", "easy"] }),
+    ).rejects.toThrow(/seats/i);
+  });
+});
+
+describe("passing a turn", () => {
+  /** Empty the game's bag, which is what makes passing possible at all. */
+  const emptyBag = async (
+    t: Awaited<ReturnType<typeof twoPlayerGame>>["t"],
+    gameId: Id<"games">,
+  ) =>
+    t.run(async (ctx) => {
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      await ctx.db.patch("bags", bag!._id, { letters: {} });
+    });
+
+  test("is refused while there are still tiles to trade for", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+
+    // Trading is the way to skip a turn while the bag has anything in it:
+    // giving up a turn should cost you the tiles you could not use.
+    await expect(asAlice.mutation(api.games.passTurn, { gameId })).rejects.toThrow(
+      /trade/i,
+    );
+  });
+
+  test("hands the turn on once the bag is empty", async () => {
+    const { t, gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+    await emptyBag(t, gameId);
+
+    await asAlice.mutation(api.games.passTurn, { gameId });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.currentSeat).toBe(1);
+    expect(game?.status).toBe("active");
+  });
+
+  test("is refused when it is not your turn", async () => {
+    const { t, gameId, asBob } = await twoPlayerGame(["A", "D"]);
+    await emptyBag(t, gameId);
+
+    await expect(asBob.mutation(api.games.passTurn, { gameId })).rejects.toThrow(
+      /not your turn/i,
+    );
+  });
+
+  test("two rounds of it end a game that is going nowhere", async () => {
+    const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D"]);
+    await emptyBag(t, gameId);
+
+    // Nobody can play and nobody can trade: the game is over, rather than
+    // being handed round for ever.
+    for (let i = 0; i < 2; i++) {
+      await asAlice.mutation(api.games.passTurn, { gameId });
+      await asBob.mutation(api.games.passTurn, { gameId });
+    }
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("finished");
+  });
+});

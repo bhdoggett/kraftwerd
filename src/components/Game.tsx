@@ -123,6 +123,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const placeTiles = useMutation(api.games.placeTiles);
   const resignGame = useMutation(api.games.resignGame);
   const tradeTiles = useMutation(api.games.tradeTiles);
+  const passTurn = useMutation(api.games.passTurn);
   const joinGame = useMutation(api.games.joinGame);
   const [copied, setCopied] = useState(false);
 
@@ -158,6 +159,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const [rackHover, setRackHover] = useState<number | null>(null);
   /** Tiles picked for trading. Null when not trading at all. */
   const [trading, setTrading] = useState<number[] | null>(null);
+  /** Whether the pass confirmation is showing. */
+  const [passing, setPassing] = useState(false);
 
   /** Live pointer drag: the tile that follows the finger/cursor. */
   const [drag, setDrag] = useState<{
@@ -600,6 +603,27 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     setTrading([]);
   }
 
+  /** Pressing Pass asks first: one tap should not cost a turn by accident. */
+  function togglePass() {
+    setPassing((current) => !current);
+    if (!passing) {
+      setPending([]);
+      setSelected(null);
+      setBlankAt(null);
+      setTrading(null);
+    }
+  }
+
+  async function confirmPass() {
+    setError(null);
+    try {
+      await passTurn({ gameId });
+      setPassing(false);
+    } catch (e) {
+      setError(userMessage(e));
+    }
+  }
+
   async function confirmTrade() {
     if (trading === null || trading.length === 0) return;
     setError(null);
@@ -722,7 +746,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
               )
             }
             onStartTrade={toggleTrade}
-            canTrade={myTurn}
+            /* Trading needs tiles to trade for; once the bag is dry the same
+               button becomes the only way out of a rack that will not play. */
+            canTrade={myTurn && view.tilesLeft > 0}
+            onPass={togglePass}
+            canPass={myTurn && view.tilesLeft === 0}
+            passing={passing}
             onPlay={() => void submit()}
             canPlay={myTurn && pending.length > 0 && !submitting && legality?.ok === true}
             playing={submitting}
@@ -808,6 +837,29 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                 </button>
               </>
             )}
+          </div>
+        )}
+
+        {passing && myTurn && (
+          <div className={styles.tradeBar}>
+            <span>
+              Pass your turn? The bag is empty, so there is nothing to trade
+              for.
+            </span>
+            <button
+              type="button"
+              className={styles.secondary}
+              onClick={() => setPassing(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => void confirmPass()}
+            >
+              Pass
+            </button>
           </div>
         )}
 

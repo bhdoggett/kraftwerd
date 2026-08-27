@@ -448,6 +448,48 @@ export const tradeTiles = mutation({
   },
 });
 
+/**
+ * Give up a turn outright.
+ *
+ * Only once the bag is empty. While there is anything left to draw, trading
+ * is how you skip a turn, and it costs you the tiles you could not use —
+ * passing freely instead would make that cost optional. But when the bag runs
+ * dry trading stops being possible, and a rack that will not play anywhere
+ * leaves nothing to do at all: without this the only button left is Resign,
+ * which ends everyone's game and records it as abandoned when really the
+ * tiles just ran out.
+ */
+export const passTurn = mutation({
+  args: { gameId: v.id("games") },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+
+    const game = await ctx.db.get("games", args.gameId);
+    if (game === null) throw new ConvexError("No such game");
+    if (game.status !== "active") throw new ConvexError("Game is not active");
+
+    const player = await ctx.db
+      .query("players")
+      .withIndex("by_game_and_user", (q) =>
+        q.eq("gameId", args.gameId).eq("userId", userId),
+      )
+      .unique();
+    if (player === null) throw new ConvexError("You are not in this game");
+    if (player.seat !== game.currentSeat) throw new ConvexError("Not your turn");
+
+    const bag = await bagFor(ctx, args.gameId);
+    if (tilesLeft(bag.letters as Bag) > 0) {
+      throw new ConvexError("There are still tiles in the bag — trade instead");
+    }
+
+    // Enough of these in a row and advanceTurn ends the game: nobody can
+    // play and nobody can draw, so it is going nowhere.
+    await advanceTurn(ctx, game, 0);
+    await wakeBot(ctx, args.gameId);
+    return null;
+  },
+});
+
 /** Accept or decline an invitation to a game. */
 export const respondToInvite = mutation({
   args: { gameId: v.id("games"), accept: v.boolean() },
