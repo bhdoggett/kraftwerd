@@ -36,7 +36,13 @@ interface Player {
 
 function makeBag(variant: Variant): Bag | null {
   if (variant.bag === null) return null;
-  return variant.bag === 0 ? bagFlat() : bagFromWeights(RACK.weights, variant.bag);
+  if (variant.bag === 0) return bagFlat();
+  const weights = variant.weights ?? RACK.weights;
+  // Given exact contents, use them as they are: scaling a bag someone wrote
+  // by hand would round the very ratios being tested.
+  return variant.weights === undefined
+    ? bagFromWeights(weights, variant.bag)
+    : new Map(Object.entries(weights).filter(([, n]) => n > 0));
 }
 
 /** Top a hand back up, from the bag if there is one, otherwise out of the air. */

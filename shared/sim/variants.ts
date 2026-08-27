@@ -11,6 +11,14 @@ export interface Variant {
   name: string;
   /** Draw from a finite pool rather than an endless weighted stream. */
   bag: number | null;
+  /**
+   * The bag's exact contents, letter by letter.
+   *
+   * Without this a variant can only scale one set of weights to a size, which
+   * ties "a bigger bag" to "the same mixture" — and the question worth asking
+   * is what more vowels do, at either size.
+   */
+  weights?: Readonly<Record<string, number>>;
   multiplier: Multiplier;
   /** Board size, to see whether play is running out of room. */
   size?: number;

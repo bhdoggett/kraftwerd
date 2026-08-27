@@ -10,6 +10,7 @@ import { makeDictionary } from "../shared/engine/dictionary.ts";
 import { indexWords } from "../shared/sim/bot.ts";
 import { playGame, type GameResult } from "../shared/sim/game.ts";
 import type { Variant } from "../shared/sim/variants.ts";
+import { RACK } from "../shared/config.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const games = Number(process.argv[2] ?? 40);
@@ -36,13 +37,76 @@ function winners(scores: readonly number[]) {
   return scores.map((score) => (score === best ? 1 / scores.filter((s) => s === best).length : 0));
 }
 
+/**
+ * Build a bag of a given size at a given vowel share.
+ *
+ * Vowels are split by how often English uses them, consonants in the
+ * proportions the hand-written bag already uses, and every letter keeps at
+ * least one tile — dropping the Q by rounding would be a rules change
+ * disguised as arithmetic. Size and vowel share move independently, which is
+ * the whole point: "more vowels" and "more tiles" are separate questions that
+ * a single scaled weights file cannot tell apart.
+ */
+function makeBag(size: number, vowelShare: number): Record<string, number> {
+  const VOWEL_SPLIT: Record<string, number> = { A: 8.2, E: 12.7, I: 7.0, O: 7.5, U: 2.8 };
+  const consonants = Object.fromEntries(
+    Object.entries(RACK.weights).filter(([l]) => !"AEIOU".includes(l)),
+  );
+
+  const share = (weights: Record<string, number>, tiles: number) => {
+    const total = Object.values(weights).reduce((a, b) => a + b, 0);
+    const out: Record<string, number> = {};
+    let given = 0;
+    for (const [letter, weight] of Object.entries(weights)) {
+      const n = Math.max(1, Math.round((weight / total) * tiles));
+      out[letter] = n;
+      given += n;
+    }
+    // Settle the rounding on the commonest letters, which can spare a tile
+    // either way without changing what the bag feels like.
+    const order = Object.entries(weights)
+      .sort((a, b) => b[1] - a[1])
+      .map(([l]) => l);
+    let i = 0;
+    while (given !== tiles) {
+      const letter = order[i % order.length]!;
+      if (given > tiles && out[letter]! > 1) {
+        out[letter]!--;
+        given--;
+      } else if (given < tiles) {
+        out[letter]!++;
+        given++;
+      }
+      i++;
+    }
+    return out;
+  };
+
+  const vowels = Math.round(size * vowelShare);
+  return { ...share(VOWEL_SPLIT, vowels), ...share(consonants, size - vowels) };
+}
+
+const CURRENT = RACK.weights as Record<string, number>;
+
 const VARIANTS: Variant[] = [
-  { name: "greedy", bag: 50, multiplier: "none" },
-  { name: "thinks ahead", bag: 50, multiplier: "none", lookahead: 0.6 },
+  { name: "now: 50 / 26% vowels", bag: 50, multiplier: "none", weights: CURRENT },
+  { name: "50 / 33%", bag: 50, multiplier: "none", weights: makeBag(50, 0.33) },
+  { name: "50 / 42%", bag: 50, multiplier: "none", weights: makeBag(50, 0.42) },
+  { name: "62 / 26%", bag: 62, multiplier: "none", weights: makeBag(62, 0.26) },
+  { name: "62 / 33%", bag: 62, multiplier: "none", weights: makeBag(62, 0.33) },
+  { name: "62 / 42%", bag: 62, multiplier: "none", weights: makeBag(62, 0.42) },
 ];
 
-
-
+for (const v of VARIANTS) {
+  const w = v.weights!;
+  const total = Object.values(w).reduce((a, b) => a + b, 0);
+  const vowels = [..."AEIOU"].reduce((n, c) => n + (w[c] ?? 0), 0);
+  const hard = [..."JQXZ"].reduce((n, c) => n + (w[c] ?? 0), 0);
+  console.error(
+    `${v.name}: ${total} tiles, ${vowels} vowels (${((vowels / total) * 100).toFixed(0)}%), ` +
+      `JQXZ ${((hard / total) * 100).toFixed(1)}%`,
+  );
+}
 
 const mean = (xs: number[]) => (xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length);
 const pct = (xs: number[], p: number) => {
