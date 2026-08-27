@@ -372,11 +372,25 @@ body,
   height: 100%;
 }
 
+/*
+ * Small enough that a full rack still fits on one row.
+ *
+ * Eight letters and the blank is nine tiles: at 38px with 4px gaps that is
+ * 374px of tiles alone, before the rack's own padding, which wraps on a phone
+ * even without the buttons — they drop to their own row below 640px.
+ */
 @media (max-width: 640px) {
   :root {
-    /* Small enough that a full rack still fits on one row. */
-    --rack-tile-width: 38px;
-    --rack-gap: 4px;
+    --rack-tile-width: 34px;
+    --rack-gap: 3px;
+  }
+}
+
+/* Narrower still — an SE is 320px across, and nine tiles have to fit in it. */
+@media (max-width: 380px) {
+  :root {
+    --rack-tile-width: 30px;
+    --rack-gap: 2px;
   }
 }
 

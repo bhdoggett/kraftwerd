@@ -112,7 +112,11 @@ export function Board({
 
   // Zoom is for looking closer. The board already fits at its base size, so
   // shrinking it only costs legibility -- the floor barely goes below 1.
-  const clamp = (value: number) => Math.min(2.5, Math.max(0.95, value));
+  const clamp = (value: number) =>
+    // Rounded to hundredths: a pinch reports a new distance every frame, and
+    // re-laying out 225 squares for a change too small to see is most of what
+    // made the gesture feel rough.
+    Math.round(Math.min(2.5, Math.max(0.95, value)) * 100) / 100;
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -186,19 +190,30 @@ export function Board({
 
       const distance = Math.hypot(a.x - b.x, a.y - b.y);
       if (pinch.current === null) {
+        /*
+         * Where the pinch is aimed, fixed for the whole gesture.
+         *
+         * Taking the midpoint again on every move made the board chase the
+         * fingers: the anchor shifted a pixel or two per frame, and the
+         * scroll correction dragged the board after it. The square under
+         * your fingers when the pinch starts is the one that should stay
+         * put.
+         */
         pinch.current = { distance, zoom };
+        focus.current = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         return;
       }
       // Two fingers means zooming, never panning.
       pan.current = null;
-      // Aimed between the fingers, which is what a pinch means.
-      focus.current = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       setZoom(clamp(pinch.current.zoom * (distance / pinch.current.distance)));
     };
 
     const drop = (e: PointerEvent) => {
       pointers.current.delete(e.pointerId);
-      if (pointers.current.size < 2) pinch.current = null;
+      if (pointers.current.size < 2) {
+        pinch.current = null;
+        focus.current = null;
+      }
     };
 
     window.addEventListener("pointermove", track);
