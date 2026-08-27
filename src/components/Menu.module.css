@@ -14,9 +14,12 @@
   border: none;
   border-radius: 50%;
   background: transparent;
-  /* The bar reads pink, green, pink, green across: the Lobby link, the mark's
-     two tiles, and this. */
-  color: var(--neon-lime);
+  /*
+   * Lime on the dark bar, where it makes the header read pink, green, pink,
+   * green across — the Lobby link, the mark's two tiles, and this. On a white
+   * bar the same lime is barely there, so it takes the ink instead.
+   */
+  color: var(--menu-mark);
   display: grid;
   place-items: center;
 }

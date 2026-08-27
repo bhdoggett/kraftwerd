@@ -31,6 +31,9 @@
    *
    * Clinton's values, from his stack-richness branch.
    */
+  /* The menu's three tiles: ink on a white bar, lime on a black one. */
+  --menu-mark: #0b0b0d;
+
   --ink-cyan: #00676b;
   --ink-magenta: #ad0088;
   --ink-lime: #446600;
@@ -187,6 +190,7 @@
     --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
     /* A bare square is black here, not paper: the letter is the tube itself. */
     --ink-cyan: var(--neon-cyan);
+    --menu-mark: var(--neon-lime);
     --ink-magenta: var(--neon-magenta);
     --ink-lime: var(--neon-lime);
     --ink-amber: var(--neon-amber);
@@ -236,6 +240,7 @@
   --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
   /* A bare square is black here, not paper: the letter is the tube itself. */
   --ink-cyan: var(--neon-cyan);
+  --menu-mark: var(--neon-lime);
   --ink-magenta: var(--neon-magenta);
   --ink-lime: var(--neon-lime);
   --ink-amber: var(--neon-amber);
