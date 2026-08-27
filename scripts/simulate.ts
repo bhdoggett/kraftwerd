@@ -31,13 +31,13 @@ function seeded(seed: number) {
 }
 
 const VARIANTS: Variant[] = [
-  { name: "today: endless draw", bag: null, multiplier: "none", premium: false },
-  { name: "bag of 100, by frequency", bag: 100, multiplier: "none", premium: false },
-  { name: "flat bag: 2 each, 1 hard", bag: 0, multiplier: "none", premium: false },
-  { name: "flat bag + 2x first rare", bag: 0, multiplier: "first", premium: false },
-  { name: "flat bag + 2x always", bag: 0, multiplier: "always", premium: false },
-  { name: "flat bag + 4 premium squares", bag: 0, multiplier: "none", premium: true },
-  { name: "flat bag + premium + rare", bag: 0, multiplier: "first", premium: true },
+  { name: "today: endless draw", bag: null, multiplier: "none" },
+  { name: "bag of 100, by frequency", bag: 100, multiplier: "none" },
+  { name: "flat bag: 2 each, 1 hard", bag: 0, multiplier: "none" },
+  { name: "flat bag + 2x first rare", bag: 0, multiplier: "first" },
+  { name: "flat bag + 2x always", bag: 0, multiplier: "always" },
+  { name: "flat bag + 4 premium squares", bag: 0, multiplier: "none" },
+  { name: "flat bag + premium + rare", bag: 0, multiplier: "first" },
   { name: "flat bag on 17x17", bag: 0, multiplier: "none", premium: false, size: 17 },
 ];
 

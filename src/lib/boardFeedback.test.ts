@@ -71,21 +71,3 @@ describe("markCells", () => {
     expect([...bad].sort()).toEqual(["5,5", "6,5"]);
   });
 });
-
-describe("boards with premium corners", () => {
-  test("a good word is green, even with a premium letter sitting apart", () => {
-    // The J is on the board from the start and nothing has reached it. It is
-    // its own island, and must not be taken for the mass the play grows from.
-    const after = makeBoard([
-      { x: 3, y: 3, letter: "J" },
-      { x: 7, y: 7, letter: "A" },
-      { x: 8, y: 7, letter: "T" },
-    ]);
-    const placements = [{ x: 8, y: 7, letter: "T", isBlank: false }];
-
-    const marks = markCells(after, placements, new Map([["AT", true]]), new Set(["3,3"]));
-
-    expect([...marks.good]).toEqual(["8,7"]);
-    expect([...marks.bad]).toEqual([]);
-  });
-});

@@ -28,7 +28,7 @@ export interface SquareBlock {
 }
 
 /** As `newSquares`, but saying where each block is — which is what a scorer
- * needs to know whether a premium square falls inside one. */
+ * needs to know whether a block was already complete before a turn. */
 export function newSquareBlocks(
   before: Board,
   after: Board,

@@ -8,7 +8,7 @@ import { refill } from "../engine/rack.js";
 import { newSquares } from "../engine/squares.js";
 import { bestMove, type WordIndex } from "./bot.js";
 import { bagFlat, bagFromWeights, draw, tilesLeft, type Bag } from "./bag.js";
-import { premiumsClaimed, RARE, turnValue, type Variant } from "./variants.js";
+import { RARE, turnValue, type Variant } from "./variants.js";
 
 export interface GameResult {
   /** Squares between the played mass and the nearest edge. */
@@ -60,8 +60,6 @@ export function playGame(
   const bag = makeBag(variant);
 
   let board: Board = makeBoard([]);
-  /** Premium squares already collected, so each pays once. */
-  const premiumTaken = new Set<string>();
 
   const hands: Player[] = Array.from({ length: players }, () => {
     const player: Player = { letters: [], blanks: 3, score: 0 };
@@ -87,7 +85,7 @@ export function playGame(
       shape,
       size,
       {
-        value: (b, p) => turnValue(b, p, variant, claimed, size, premiumTaken).score,
+        value: (b, p) => turnValue(b, p, variant, claimed).score,
       },
     );
 
@@ -102,17 +100,7 @@ export function playGame(
     }
     consecutivePasses = 0;
 
-    const { score, doubled } = turnValue(
-      board,
-      move.placements,
-      variant,
-      claimed,
-      size,
-      premiumTaken,
-    );
-    for (const cell of premiumsClaimed(move.placements, size, premiumTaken)) {
-      premiumTaken.add(cell);
-    }
+    const { score, doubled } = turnValue(board, move.placements, variant, claimed);
     for (const letter of doubled) claimed.add(letter);
     for (const p of move.placements) {
       if (!p.isBlank && RARE.includes(p.letter)) rarePlayed.push(p.letter);
