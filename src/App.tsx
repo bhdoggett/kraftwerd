@@ -65,6 +65,11 @@ export default function App() {
         </button>
 
         <div className={[styles.side, styles.sideEnd].join(" ")}>
+          {/* Beside the menu rather than beside the mark: the mark's centring
+              was hard won, and a badge next to it would take that away. */}
+          <span className={styles.beta} title="The rules are still changing">
+            beta
+          </span>
           <Menu />
         </div>
       </header>
@@ -135,6 +140,11 @@ function SignInForm() {
       <p className={styles.tagline}>
         Build words on a crossword grid, and score again for every solid square
         of tiles you complete.
+      </p>
+      <p className={styles.betaNote}>
+        Still in beta: the rules change from week to week, and scores from
+        games played under older ones may be cleared. Play it for the games,
+        not for the numbers.
       </p>
       <button
         type="button"

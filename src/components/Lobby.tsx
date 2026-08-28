@@ -174,6 +174,12 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               best play
             </span>
           </div>
+          <p className={styles.betaNote}>
+            Counts games played under the rules as they stand. The rules are
+            still moving — bag, rack, scoring — and when they change these
+            start again, since a score set with a different bag never competed
+            with a newer one. The games themselves are kept either way.
+          </p>
         </section>
       )}
 

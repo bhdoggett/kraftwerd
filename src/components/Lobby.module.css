@@ -144,3 +144,15 @@
 .disclosure:hover {
   color: var(--text);
 }
+
+/*
+ * Said where the numbers are, not only on the way in: a record is exactly the
+ * thing somebody gets attached to, and these were earned under rules that no
+ * longer exist.
+ */
+.betaNote {
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
