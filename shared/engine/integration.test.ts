@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { RACK } from "../config.js";
 import words from "../data/words.json" with { type: "json" };
 import { makeBoard } from "./board.js";
-import { refill } from "./rack.js";
+import { draw, newBag } from "./bag.js";
 import { makeDictionary } from "./dictionary.js";
 import { applyPlacements, validateTurn, type Bounds } from "./legality.js";
 import { scoreTurn, type Placement } from "./score.js";
@@ -95,13 +95,24 @@ describe("engine against the real tier-50 dictionary", () => {
   });
 });
 
-describe("racks drawn from the real letter weights", () => {
+describe("racks drawn from the real bag", () => {
   const seeded = (seed: number) => () => {
     seed = (seed * 1664525 + 1013904223) >>> 0;
     return seed / 0x100000000;
   };
 
-  const racks = Array.from({ length: 1000 }, (_, i) => refill([], seeded(i + 1), RACK).letters);
+  /*
+   * Dealt out of the bag, which is how the game deals.
+   *
+   * These used to come from `refill`, the endless weighted draw — a path
+   * nothing has used since tiles became a finite shared pool. It honours
+   * `RACK.minVowels`, so it guaranteed things the game does not: the numbers
+   * below were describing a dealer that had been retired.
+   */
+  const racks = Array.from({ length: 1000 }, (_, i) => {
+    const rng = seeded(i + 1);
+    return draw(newBag(RACK), RACK.size, rng).drawn;
+  });
 
   const canSpell = (rack: string[], word: string) => {
     const pool = [...rack];
@@ -125,17 +136,23 @@ describe("racks drawn from the real letter weights", () => {
     const letters = racks.flat();
     const share = letters.filter((l) => "AEIOU".includes(l)).length / letters.length;
 
-    // Short words run ~35% vowels. With the floor at 1 the draw is close to
-    // that naturally; a much higher share would mean the floor is doing the
-    // dealing rather than the weights.
-    expect(share).toBeGreaterThan(0.28);
-    expect(share).toBeLessThan(0.45);
+    // The bag is 42% vowels and deals without a floor, so a rack is simply a
+    // handful out of it: the share a player sees should be the share the bag
+    // holds, give or take the sampling.
+    expect(share).toBeGreaterThan(0.36);
+    expect(share).toBeLessThan(0.48);
   });
 
-  test("a rack is never dealt without a vowel", () => {
-    for (const rack of racks) {
-      expect(rack.some((l) => "AEIOU".includes(l))).toBe(true);
-    }
+  test("a rack without a vowel is possible, but rare", () => {
+    const dry = racks.filter((r) => !r.some((l) => "AEIOU".includes(l))).length;
+
+    /*
+     * The bag has no vowel floor, so this can happen — about one hand in
+     * thirty at six tiles. It is deliberately not zero: a floor would mean
+     * the dealer choosing hands rather than the bag giving what it holds,
+     * and trading exists for the hand that will not play.
+     */
+    expect(dry / racks.length).toBeLessThan(0.06);
   });
 
   test("the awkward letters turn up often enough to notice, without crowding", () => {
@@ -143,8 +160,8 @@ describe("racks drawn from the real letter weights", () => {
     const hostile = letters.filter((l) => "JQXZ".includes(l)).length;
     const share = hostile / letters.length;
 
-    // One of each in a bag of fifty: rare enough to stay interesting, common
-    // enough that a player meets them.
+    // One of each in a bag of sixty-two: rare enough to stay interesting,
+    // common enough that a player meets them.
     expect(share).toBeGreaterThan(0.03);
     expect(share).toBeLessThan(0.12);
   });

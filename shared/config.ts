@@ -8,8 +8,16 @@ import type { RackConfig } from "./engine/rack.js";
  */
 
 export const RACK: RackConfig = {
-  /** Letters held at the start of a turn, refilled after every play. */
-  size: 8,
+  /**
+   * Letters held at the start of a turn, refilled after every play. Blanks
+   * are not among them: those are a whole-game allowance, held separately.
+   *
+   * Six rather than eight makes each draw matter more, and makes the bag's
+   * mixture matter more with it -- two tiles fewer is two fewer chances at a
+   * vowel, which is why the bag holds a richer share of them than the eight
+   * did.
+   */
+  size: 6,
   // Real English letter frequency, out of a 50-letter pool, nudged toward
   // letters that are good at turning one word into another by swapping a
   // single tile -- see design.md §5.1. Hand-written in
@@ -20,8 +28,8 @@ export const RACK: RackConfig = {
   /**
    * Held over from the endless draw, which could keep rolling until a rack met
    * them. A bag cannot: it gives what it has, so these no longer bind. The
-   * vowel share is set in the bag itself instead — seventeen of fifty, which
-   * is why the four slots the rare letters left went to A, E, O and U.
+   * vowel share is set in the bag itself instead — twenty-six of sixty-two,
+   * which for a rack of six leaves about one hand in five short of vowels.
    */
   minVowels: 2,
   maxDuplicates: 2,
