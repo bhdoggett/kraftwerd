@@ -4,8 +4,8 @@ import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
 import { type Difficulty } from "../shared/config.js";
 import { makeBoard } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
-import { applyPlacements, wordsFormed } from "../shared/engine/legality.js";
-import { chooseRanked, indexWords, rank, type Move } from "../shared/sim/bot.js";
+import { applyPlacements, wordsFormed, type Dictionary } from "../shared/engine/legality.js";
+import { chooseRanked, indexWords, rank, type Move, type WordIndex } from "../shared/sim/bot.js";
 import { scoreTurn } from "../shared/engine/score.js";
 import { internal } from "./_generated/api";
 import { internalMutation, type MutationCtx } from "./_generated/server";
@@ -25,19 +25,30 @@ import type { Doc } from "./_generated/dataModel";
  * authority — what the bot finally plays is checked against it like anybody
  * else's move — but the bundle is what lets it tell a move from a mess.
  */
-const DICTIONARY = makeDictionary(ALL_WORDS);
+let dictionary: Dictionary | undefined;
+let words: WordIndex | undefined;
 
 /**
- * The words it can lay, indexed by the letters they need.
+ * Built on the first bot turn, not when the module loads.
  *
- * Only up to seven: a rack holds eight, and a word that long is beyond both
- * what the rack can spell and what the search can afford. Crossing words are
- * checked against the whole dictionary above, not this.
+ * Every function in a deployment shares the module graph, so work done at the
+ * top level here is work the sign-in query pays for too — on every cold
+ * isolate, in a game with no machines in it at all. Indexing the dictionary
+ * is a bot's cost and should be charged to bots.
  */
-const WORDS = indexWords(
-  ALL_WORDS.filter((word) => word.length <= 7),
-  7,
-);
+function thinking() {
+  dictionary ??= makeDictionary(ALL_WORDS);
+  /*
+   * Only up to seven letters may be laid: a rack holds eight, and a word that
+   * long is beyond both what the rack can spell and what the search can
+   * afford. Crossing words are checked against the whole dictionary above.
+   */
+  words ??= indexWords(
+    ALL_WORDS.filter((word) => word.length <= 7),
+    7,
+  );
+  return { dictionary, words };
+}
 
 /** A pause long enough to read as a turn being taken. */
 const THINKING_MS = 1_600;
@@ -103,11 +114,12 @@ async function chooseMove(
 
   const shape = boardShapeNamed(OPEN_BOARD, game.boardSize);
 
+  const { dictionary, words } = thinking();
   const moves = rank(
     board,
     { letters: player.letters, blanks: 0 },
-    DICTIONARY,
-    WORDS,
+    dictionary,
+    words,
     shape,
     game.boardSize,
     (b, p) => scoreTurn(b, p, { before: board }).total,
