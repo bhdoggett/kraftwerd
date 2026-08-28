@@ -442,11 +442,37 @@ export const tradeTiles = mutation({
     const rack = await drawInto(ctx, args.gameId, kept, given);
     await ctx.db.patch("players", player._id, { letters: rack.letters });
 
+    await noteSkippedTurn(ctx, game, userId, "trade");
     await advanceTurn(ctx, game, 0);
     await wakeBot(ctx, args.gameId);
     return null;
   },
 });
+
+/**
+ * Record a turn where nothing was placed.
+ *
+ * A trade and a pass both hand the turn on without touching the board, and
+ * both used to leave nothing behind — so the history skipped from one player
+ * to the same player again with no account of why.
+ */
+async function noteSkippedTurn(
+  ctx: MutationCtx,
+  game: Doc<"games">,
+  userId: Id<"users">,
+  kind: "pass" | "trade",
+) {
+  await ctx.db.insert("turns", {
+    gameId: game._id,
+    turnNumber: game.turnNumber,
+    userId,
+    kind,
+    placements: [],
+    words: [],
+    squares: [],
+    score: 0,
+  });
+}
 
 /**
  * Give up a turn outright.
@@ -484,6 +510,7 @@ export const passTurn = mutation({
 
     // Enough of these in a row and advanceTurn ends the game: nobody can
     // play and nobody can draw, so it is going nowhere.
+    await noteSkippedTurn(ctx, game, userId, "pass");
     await advanceTurn(ctx, game, 0);
     await wakeBot(ctx, args.gameId);
     return null;
@@ -566,6 +593,7 @@ export const playForBot = internalMutation({
     if (game === null || game.status !== "active") return null;
 
     if (args.placements.length === 0) {
+      await noteSkippedTurn(ctx, game, args.userId, "pass");
       await advanceTurn(ctx, game, 0);
       await wakeBot(ctx, args.gameId);
       return null;
@@ -652,6 +680,7 @@ async function playTurn(
       gameId: args.gameId,
       turnNumber: game.turnNumber,
       userId,
+      kind: "play",
       placements: args.placements,
       words: wordsFormed(after, placements),
       squares: score.squares,
@@ -929,6 +958,54 @@ function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true 
  * 59k words to the browser. The client works out which words its staged tiles
  * form and asks about just those — a handful per turn.
  */
+/**
+ * Every turn of a game, in the order they were taken.
+ *
+ * Enough to rebuild any position: a turn carries what it placed, so replaying
+ * them in order gives the board as it stood at any point. Nothing here can
+ * change the game -- winding back through the history is looking, not
+ * undoing.
+ */
+export const listTurns = query({
+  args: { gameId: v.id("games") },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+
+    const game = await ctx.db.get("games", args.gameId);
+    if (game === null) throw new ConvexError("No such game");
+
+    const seated = await ctx.db
+      .query("players")
+      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
+      .take(GAME.maxPlayers);
+    if (!seated.some((p) => p.userId === userId)) {
+      throw new ConvexError("You are not in this game");
+    }
+
+    const rows = await ctx.db
+      .query("turns")
+      .withIndex("by_game_and_turn", (q) => q.eq("gameId", args.gameId))
+      .take(MAX_TILES);
+
+    return await Promise.all(
+      rows
+        .sort((a, b) => a.turnNumber - b.turnNumber)
+        .map(async (turn) => ({
+          turnNumber: turn.turnNumber,
+          userId: turn.userId,
+          name: displayName(await ctx.db.get("users", turn.userId)),
+          seat: seated.find((p) => p.userId === turn.userId)?.seat ?? 0,
+          // Rows written before anything but plays was recorded.
+          kind: turn.kind ?? ("play" as const),
+          placements: turn.placements,
+          words: turn.words,
+          squares: turn.squares,
+          score: turn.score,
+        })),
+    );
+  },
+});
+
 export const checkWords = query({
   args: { words: v.array(v.string()) },
   handler: async (ctx, args) => {

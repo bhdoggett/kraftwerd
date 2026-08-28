@@ -442,3 +442,83 @@
   font-weight: 700;
 }
 
+
+/*
+ * The review bar. Sits under the board where the rack would be, because that
+ * is where your eyes already are and because the rack is hidden while looking
+ * at a board from the past -- a hand you cannot play is only a distraction.
+ */
+/*
+ * Takes the rack's place while you are looking at the past, on every screen.
+ *
+ * The rack is the wrong thing to be holding then -- a hand you cannot play,
+ * for a board that is not the one in front of you -- and the timeline is what
+ * you are actually working with, so it wants the space and the position the
+ * rack had, directly under the board.
+ *
+ * Only the way in lives in the right-hand rail, under the game's progress.
+ */
+.review {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+.reviewOpen,
+.reviewDone {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.reviewDone {
+  border-color: var(--accent);
+  color: var(--accent);
+  flex: none;
+}
+
+/* Full width so the row above keeps its shape as the caption changes length. */
+.reviewOpen {
+  width: 100%;
+}
+
+.reviewStep {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  display: grid;
+  place-items: center;
+}
+
+.reviewStep:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Takes the slack, so the bar keeps its shape as the caption changes length. */
+.scrubber {
+  flex: 1;
+  min-width: 120px;
+  accent-color: var(--accent);
+}
+
+.reviewSays {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  /* Whole line to itself on a narrow screen rather than squeezing the slider. */
+  flex-basis: 100%;
+}

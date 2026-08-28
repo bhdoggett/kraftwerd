@@ -208,6 +208,15 @@ export default defineSchema({
     gameId: v.id("games"),
     turnNumber: v.number(),
     userId: v.id("users"),
+    /**
+     * What the player did. Absent on rows written before turns other than
+     * plays were recorded at all — every one of those was a play.
+     *
+     * Trades and passes are kept because a turn nobody can see is a turn that
+     * looks like it never happened, which is precisely how a skipped turn
+     * reads to whoever is waiting on it.
+     */
+    kind: v.optional(v.union(v.literal("play"), v.literal("pass"), v.literal("trade"))),
     placements: v.array(placement),
     words: v.array(v.string()),
     squares: v.array(v.number()),

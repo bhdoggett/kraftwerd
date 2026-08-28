@@ -1311,3 +1311,42 @@ describe("the order past games come back in", () => {
     expect(past.map((g) => g.gameId)).toEqual([second.gameId, first.gameId]);
   });
 });
+
+describe("turn history", () => {
+  test("records a trade and a pass, not just plays", async () => {
+    const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "T", "O"]);
+
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+    await asBob.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+
+    await t.run(async (ctx) => {
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      await ctx.db.patch("bags", bag!._id, { letters: {} });
+    });
+    await asAlice.mutation(api.games.passTurn, { gameId });
+
+    // A turn nobody can see is a turn that looks like it never happened --
+    // which is exactly how a skipped turn reads to the player waiting on it.
+    const history = await asAlice.query(api.games.listTurns, { gameId });
+    expect(history.map((h) => h.kind)).toEqual(["play", "trade", "pass"]);
+    expect(history[0]).toMatchObject({ score: 2, seat: 0 });
+    expect(history[1]).toMatchObject({ score: 0, seat: 1 });
+  });
+
+  test("names who took each turn, so a replay can say", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+
+    const history = await asAlice.query(api.games.listTurns, { gameId });
+    expect(history[0]).toMatchObject({ name: "Alice", words: ["AD"] });
+  });
+});

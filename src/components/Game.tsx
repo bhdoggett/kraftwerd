@@ -19,6 +19,7 @@ import styles from "./Game.module.css";
 import { Rack, type Selection } from "./Rack";
 import { userMessage } from "../lib/errors";
 import { markCells } from "../lib/boardFeedback";
+import { boardAfter } from "../lib/replay";
 import { moveToPosition, rackSlotUnder, shuffled } from "../lib/rackGeometry";
 import { moveStagedTo, stageAt } from "../lib/staging";
 import { useWakeLock } from "../lib/useWakeLock";
@@ -118,6 +119,22 @@ function writeDraft(gameId: string, turnNumber: number, pending: Staged[]) {
   }
 }
 
+/** One line saying what a turn did, for the review bar. */
+function describeTurn(turn: {
+  name: string;
+  kind: "play" | "pass" | "trade";
+  words: readonly string[];
+  score: number;
+  squares: readonly number[];
+}) {
+  if (turn.kind === "pass") return `${turn.name} passed`;
+  if (turn.kind === "trade") return `${turn.name} traded tiles`;
+
+  const squares = turn.squares.filter((n) => n >= 2);
+  const made = squares.length === 0 ? "" : ` and closed a ${squares[0]}\u00d7${squares[0]}`;
+  return `${turn.name} played ${turn.words.join(", ")} for ${turn.score}${made}`;
+}
+
 export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => void }) {
   const view = useQuery(api.games.getGame, { gameId });
   const placeTiles = useMutation(api.games.placeTiles);
@@ -161,6 +178,17 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const [trading, setTrading] = useState<number[] | null>(null);
   /** Whether the pass confirmation is showing. */
   const [passing, setPassing] = useState(false);
+  /**
+   * Winding back through the turns. Null when watching the game itself.
+   *
+   * Looking only: nothing here can play, and the live board is one press
+   * away — a review that could change the game would be a different feature
+   * and a much more frightening one.
+   */
+  const [reviewing, setReviewing] = useState(false);
+  const [stepAt, setStepAt] = useState<number | null>(null);
+  // Not fetched until asked for: most visits never open the history.
+  const history = useQuery(api.games.listTurns, reviewing ? { gameId } : "skip");
 
   /** Live pointer drag: the tile that follows the finger/cursor. */
   const [drag, setDrag] = useState<{
@@ -698,28 +726,92 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   // Player id to seat, which is how a tile knows what colour to be.
   const seatOf = new Map(view.players.map((p) => [p.userId, p.seat]));
 
+  const turns = history ?? [];
+  // Fresh review starts at the end: the board you were just looking at.
+  const step = stepAt ?? turns.length;
+  const ready = reviewing && history !== undefined;
+  // Live tiles until the history has actually arrived: swapping in an empty
+  // board while it loads reads as the game having been wiped, which is the
+  // one thing a review must never look like.
+  const shown = ready ? boardAfter(turns, step) : view.tiles;
+  const lastTurn = step > 0 ? turns[step - 1] : undefined;
+
   return (
     <div className={styles.layout}>
       <div className={styles.main}>
         <Board
           boardSize={game.boardSize}
           layout={view.layout}
-          tiles={view.tiles}
-          pending={pending}
+          tiles={shown}
+          pending={ready ? [] : pending}
           seatOf={seatOf}
           yourSeat={view.yourSeat}
-          canPlace={myTurn && selected !== null && !choosingBlank}
+          canPlace={!reviewing && myTurn && selected !== null && !choosingBlank}
           onPlace={place}
           onPickUp={pickUp}
           awaitingBlankAt={blankAt}
           goodCells={wordCells.good}
           badCells={wordCells.bad}
-          onGrabStaged={myTurn ? grabStaged : undefined}
+          onGrabStaged={!reviewing && myTurn ? grabStaged : undefined}
         />
+
 
         {/* Nothing left to play once it is over: the rack would be a row of
             tiles the game will never take. The scores stay. */}
-        {me?.letters && game.status !== "finished" && (
+        {reviewing && (
+          <div className={styles.review}>
+            {!ready ? (
+              <span className={styles.reviewSays}>Fetching the turns…</span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={styles.reviewStep}
+                  aria-label="Back a turn"
+                  disabled={step === 0}
+                  onClick={() => setStepAt(Math.max(0, step - 1))}
+                >
+                  ◀
+                </button>
+                <input
+                  type="range"
+                  className={styles.scrubber}
+                  min={0}
+                  max={turns.length}
+                  value={step}
+                  aria-label="Turn"
+                  onChange={(e) => setStepAt(Number(e.target.value))}
+                />
+                <button
+                  type="button"
+                  className={styles.reviewStep}
+                  aria-label="On a turn"
+                  disabled={step === turns.length}
+                  onClick={() => setStepAt(Math.min(turns.length, step + 1))}
+                >
+                  ▶
+                </button>
+                <button
+                  type="button"
+                  className={styles.reviewDone}
+                  onClick={() => {
+                    setReviewing(false);
+                    setStepAt(null);
+                  }}
+                >
+                  Back to the game
+                </button>
+                <span className={styles.reviewSays}>
+                  {lastTurn === undefined
+                    ? "Before the first turn"
+                    : describeTurn(lastTurn)}
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
+        {me?.letters && game.status !== "finished" && !reviewing && (
           <Rack
             seat={view.yourSeat}
             letters={me.letters}
@@ -933,6 +1025,17 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           bagSize={BAG_SIZE}
             status={game.status}
         />
+
+        {game.turnNumber > 0 && !reviewing && (
+          <button
+            type="button"
+            className={styles.reviewOpen}
+            onClick={() => setReviewing(true)}
+          >
+            Review turns
+          </button>
+        )}
+
 
         {/*
           Everything here comes from the placement itself — the words, their
