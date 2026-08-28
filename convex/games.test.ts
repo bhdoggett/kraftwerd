@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
-import { BLANKS_PER_GAME, RACK } from "../shared/config";
+import { BLANKS_PER_GAME, RACK, RULES_VERSION } from "../shared/config";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
@@ -1348,5 +1348,97 @@ describe("turn history", () => {
 
     const history = await asAlice.query(api.games.listTurns, { gameId });
     expect(history[0]).toMatchObject({ name: "Alice", words: ["AD"] });
+  });
+});
+
+describe("records and the rules they were set under", () => {
+  /** A finished solo game, stamped with the rules version given. */
+  async function playedUnder(rulesVersion: number | undefined) {
+    const t = convexTest(schema, modules);
+    const alice = await t.run(async (ctx) => {
+      const id = await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+      for (const word of WORDS) await ctx.db.insert("words", { word });
+      return id;
+    });
+    const asAlice = t.withIdentity({ subject: "auth|alice" });
+    const { gameId } = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
+
+    await t.run(async (ctx) => {
+      const player = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .unique();
+      await ctx.db.patch("players", player!._id, { letters: ["A", "D"], score: 40 });
+      await ctx.db.patch("games", gameId, { rulesVersion });
+    });
+
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    return { t, alice, asAlice };
+  }
+
+  test("a game under the current rules counts", async () => {
+    const { t, alice } = await playedUnder(RULES_VERSION);
+
+    const user = await t.run(async (ctx) => ctx.db.get("users", alice));
+    expect(user?.gamesPlayed).toBe(1);
+  });
+
+  test("a game under older rules leaves the record alone", async () => {
+    const { t, alice } = await playedUnder(RULES_VERSION - 1);
+
+    // Its score was set by a different game -- a different bag, a different
+    // rack, different scoring -- so counting it would put two numbers that
+    // never competed into one record.
+    const user = await t.run(async (ctx) => ctx.db.get("users", alice));
+    expect(user?.gamesPlayed ?? 0).toBe(0);
+  });
+
+  test("a record set under older rules is cleared, not added to", async () => {
+    const { t, alice, asAlice } = await playedUnder(RULES_VERSION);
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("users", alice, {
+        gamesPlayed: 99,
+        wins: 40,
+        bestGameScore: 500,
+        statsVersion: RULES_VERSION - 1,
+      });
+    });
+
+    const { gameId } = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
+    await t.run(async (ctx) => {
+      const player = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .unique();
+      await ctx.db.patch("players", player!._id, { letters: ["A", "D"] });
+    });
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    const user = await t.run(async (ctx) => ctx.db.get("users", alice));
+    expect(user?.gamesPlayed).toBe(1);
+    expect(user?.bestGameScore).toBeLessThan(500);
+  });
+
+  test("the lobby shows nothing until a game under these rules is finished", async () => {
+    const { t, alice, asAlice } = await playedUnder(RULES_VERSION);
+    await t.run(async (ctx) => {
+      await ctx.db.patch("users", alice, {
+        gamesPlayed: 99,
+        statsVersion: RULES_VERSION - 1,
+      });
+    });
+
+    const me = await asAlice.query(api.users.viewer);
+    expect(me?.stats.gamesPlayed).toBe(0);
   });
 });

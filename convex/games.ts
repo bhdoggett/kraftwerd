@@ -4,6 +4,7 @@ import {
   BOT_NAMES,
   GAME,
   RACK,
+  RULES_VERSION,
   type Difficulty,
 } from "../shared/config.js";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
@@ -162,6 +163,7 @@ export const createGame = mutation({
       turnNumber: 0,
       tileCount: 0,
       createdBy: userId,
+      rulesVersion: RULES_VERSION,
     });
 
     await joinSeat(ctx, gameId, userId, 0);
@@ -696,9 +698,12 @@ async function playTurn(
       blanks: blanksLeft(player) - placements.filter((p) => p.isBlank).length,
     });
 
-    const user = await ctx.db.get("users", userId);
-    if (user !== null && score.total > (user.bestTurnScore ?? 0)) {
-      await ctx.db.patch("users", userId, { bestTurnScore: score.total });
+    const played = await ctx.db.get("users", userId);
+    if (played !== null && (game.rulesVersion ?? 0) === RULES_VERSION) {
+      const user = await recordUnderCurrentRules(ctx, played);
+      if (score.total > (user.bestTurnScore ?? 0)) {
+        await ctx.db.patch("users", userId, { bestTurnScore: score.total });
+      }
     }
 
     // Nothing left in the bag and nothing left in hand: the game ends here,
@@ -751,6 +756,29 @@ function spendRack(player: Doc<"players">, placements: readonly Placement[]): st
  * Players who resigned forfeit — they cannot win regardless of score. A tie
  * among the remaining leaders gives each of them a win.
  */
+/**
+ * A player's record, brought up to the rules now in force.
+ *
+ * The first thing that happens under a new version clears what older ones
+ * set, rather than adding to it: a best score from a different bag and a
+ * different rack never competed with today's. Done here, once, so a play and
+ * a finish cannot each decide to clear separately -- and so the clear happens
+ * before this game's own numbers land, never after.
+ */
+async function recordUnderCurrentRules(ctx: MutationCtx, user: Doc<"users">) {
+  if ((user.statsVersion ?? 0) === RULES_VERSION) return user;
+
+  const cleared = {
+    statsVersion: RULES_VERSION,
+    gamesPlayed: 0,
+    wins: 0,
+    bestGameScore: 0,
+    bestTurnScore: 0,
+  };
+  await ctx.db.patch("users", user._id, cleared);
+  return { ...user, ...cleared };
+}
+
 async function finishGame(
   ctx: MutationCtx,
   game: Doc<"games">,
@@ -801,9 +829,20 @@ async function finishGame(
     finishedAt: Date.now(),
   });
 
+  /*
+   * Only games played under the rules in force count toward a record.
+   *
+   * A game that began before a rules change finishes under the rules it
+   * began with, and those scores never competed with today's -- a different
+   * bag, a different rack, different scoring. It keeps its history and its
+   * winner; it simply does not go in the record.
+   */
+  if ((game.rulesVersion ?? 0) !== RULES_VERSION) return;
+
   for (const player of players) {
-    const user = await ctx.db.get("users", player.userId);
-    if (user === null) continue;
+    const found = await ctx.db.get("users", player.userId);
+    if (found === null) continue;
+    const user = await recordUnderCurrentRules(ctx, found);
 
     await ctx.db.patch("users", user._id, {
       gamesPlayed: (user.gamesPlayed ?? 0) + 1,

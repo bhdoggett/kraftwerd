@@ -36,6 +36,12 @@ export default defineSchema({
     bestGameScore: v.optional(v.number()),
     /** Best score from one turn. */
     bestTurnScore: v.optional(v.number()),
+    /**
+     * Which rules the numbers above were set under. When it falls behind, the
+     * record is stale rather than wrong: it is shown as empty and cleared the
+     * next time a game finishes.
+     */
+    statsVersion: v.optional(v.number()),
   })
     .index("by_authId", ["authId"])
     .index("by_email", ["email"]),
@@ -116,6 +122,12 @@ export default defineSchema({
     /** Players who quit. They forfeit and cannot win. */
     resignedBy: v.optional(v.array(v.id("users"))),
     createdBy: v.id("users"),
+    /**
+     * The rules in force when this game was created. Absent on games from
+     * before it was recorded, which are older than the current rules by
+     * definition and so count for nothing.
+     */
+    rulesVersion: v.optional(v.number()),
   }).index("by_status", ["status"]),
 
   /** One row per player per game: seat, score, and their private rack. */

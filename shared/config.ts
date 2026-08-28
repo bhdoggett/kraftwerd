@@ -43,6 +43,21 @@ export const RACK: RackConfig = {
 export const BLANKS_PER_GAME = 3;
 
 /**
+ * Which rules a game was played under.
+ *
+ * Bump this whenever a change makes scores incomparable with older ones — the
+ * bag, the rack, what a square pays. A record is the thing people get attached
+ * to, and a best score set with eight tiles from a fifty-tile bag is not
+ * competing with anything set since.
+ *
+ * Stamped on a game when it is created, so a game finishes under the rules it
+ * began with. Records count only games at the current version, which means a
+ * rules change costs nobody their game history: the games stay, replayable and
+ * intact, and stop counting toward a score they never competed for.
+ */
+export const RULES_VERSION = 1;
+
+/**
  * How long an invite link works for. Long enough to sit in a message over a
  * weekend, short enough that a link forwarded on, or found in an old thread,
  * stops working on its own.
