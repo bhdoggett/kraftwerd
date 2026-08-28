@@ -54,15 +54,15 @@
   color: var(--text);
 }
 
-.example {
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3);
-  border-radius: var(--radius);
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  line-height: 1.6;
-  white-space: pre;
-  overflow-x: auto;
+
+/*
+ * Diagrams sit side by side where there is room and stack where there is not.
+ * Before-and-after reads as a pair, so they must not be split across a line
+ * break when they can help it.
+ */
+.diagrams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin: var(--space-3) 0 var(--space-4);
 }

@@ -1,4 +1,5 @@
 import { BLANKS_PER_GAME, RACK, STACK_CAP } from "../../shared/config";
+import { MiniBoard } from "./MiniBoard";
 import { Modal } from "./Modal";
 import styles from "./Rules.module.css";
 
@@ -84,12 +85,37 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
           <strong>RISEN</strong> in full: five points for one tile. Which
           means a word left extendable is a gift to whoever plays next.
         </p>
+        <div className={styles.diagrams}>
+          <MiniBoard
+            rows={["RISE."]}
+            seat={1}
+            caption="RISE, already on the board."
+          />
+          <MiniBoard
+            rows={["RISEN"]}
+            seat={1}
+            played={["4,0"]}
+            ring={["4,0"]}
+            caption="One tile makes RISEN, and scores all five letters."
+          />
+        </div>
         <p>
-          Landing on a square that already has a tile on it pays extra, on
-          top of the word: <strong>+2</strong> for the first tile stacked
-          there, <strong>+3</strong> for the second — right up until the
-          square is full.
+          Landing on a square that already has a tile on it pays{" "}
+          <strong>+2</strong> on top of the word. That fills the square, and
+          a full square is out of play for good — it goes back to bare board
+          with its letter lit in the colour of whoever closed it.
         </p>
+        <div className={styles.diagrams}>
+          <MiniBoard rows={["CAT"]} seat={1} caption="CAT." />
+          <MiniBoard
+            rows={["COT"]}
+            seat={1}
+            played={["1,0"]}
+            full={["1,0"]}
+            ring={["1,0"]}
+            caption="An O on the A makes COT: three for the word, +2 for the tile on top."
+          />
+        </div>
 
         <h3 className={styles.section}>Scoring: squares</h3>
         <p>
@@ -97,9 +123,21 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
           completed: <strong>a k×k block is worth k²</strong>, and bigger
           blocks contain smaller ones, which all count.
         </p>
-        <div className={styles.example}>
-          {`2×2   4 tiles   4 words + 4          = 12
-3×3   9 tiles   6 words + (4×4 + 9)  = 43`}
+        <div className={styles.diagrams}>
+          <MiniBoard
+            rows={["AT", "TO"]}
+            seat={1}
+            played={["1,1"]}
+            ring={["0,0", "1,0", "0,1", "1,1"]}
+            caption="A 2×2: four two-letter words, and 4 again for the block. 12 in all."
+          />
+          <MiniBoard
+            rows={["CAT", "ARE", "TEN"]}
+            seat={1}
+            played={["2,2"]}
+            ring={["0,0", "1,0", "2,0", "0,1", "1,1", "2,1", "0,2", "1,2", "2,2"]}
+            caption="A 3×3 holds four 2×2s as well as itself: 6 words + 16 + 9 = 43."
+          />
         </div>
         <p>
           A square is scored by <strong>whoever places its final
@@ -110,25 +148,6 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
           Each square pays <strong>once</strong>. Replacing a letter inside
           a block that was already complete scores nothing for it; only a
           block that was not there at the start of your turn pays.
-        </p>
-
-        <h3 className={styles.section}>The four corners</h3>
-        <p>
-          Four squares start with a <strong>J, Q, X or Z</strong> on them,
-          dealt at random and marked <strong>2×</strong>. Those four letters
-          are <strong>not in the bag at all</strong> — the only J in the game
-          is the one on the board, and it cannot be played from until your
-          tiles reach it.
-        </p>
-        <p>
-          Whatever it helps make is <strong>worth double</strong>: the word
-          it falls in, and any square it completes. A 2×2 built onto a
-          corner pays eight instead of four.
-        </p>
-        <p>
-          You may also <strong>cover a corner</strong> with a tile of your
-          own. Doing so buries the letter and the bonus with it, this turn
-          included — use what the board offers, or take the square away.
         </p>
 
         <h3 className={styles.section}>Blanks</h3>
@@ -145,11 +164,15 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
           letter you actually drew.
         </p>
 
-        <h3 className={styles.section}>Trading</h3>
+        <h3 className={styles.section}>Trading and passing</h3>
         <p>
           Swap any tiles for new ones with the trade button on the rack.
-          Trading{" "}
-          <strong>gives up your turn</strong>.
+          Trading <strong>gives up your turn</strong>.
+        </p>
+        <p>
+          Once the bag is empty there is nothing to trade for, and the same
+          button becomes <strong>Pass</strong> — for the hand that will not
+          play anywhere. Enough passes in a row and the game ends.
         </p>
 
         <h3 className={styles.section}>Ending</h3>
