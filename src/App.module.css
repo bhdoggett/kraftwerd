@@ -94,7 +94,7 @@
 /* --- sign in --- */
 
 .auth {
-  max-width: 360px;
+  max-width: 420px;
   margin: var(--space-8) auto;
   display: flex;
   flex-direction: column;
@@ -121,10 +121,49 @@
   font-size: 0.85rem;
 }
 
+/*
+ * The board sits above the sign-in, centred and scrolling sideways on a narrow
+ * screen rather than squeezing the squares out of shape -- a board with
+ * rectangular tiles is a worse advertisement than one you have to nudge.
+ */
+.hero {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: calc(var(--space-2) * -1) 0 var(--space-2);
+}
+
+.hero::-webkit-scrollbar {
+  display: none;
+}
+
 .tagline {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/*
+ * A real button rather than a line of small print. Someone who has never seen
+ * the game needs this more than they need the sign-in, so it reads as the
+ * second thing on the page, not the last.
+ */
+.howTo {
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
   font-size: 0.9rem;
+}
+
+.howTo:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .google {

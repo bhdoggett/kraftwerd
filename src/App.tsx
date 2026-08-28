@@ -8,6 +8,8 @@ import { Game } from "./components/Game";
 import { Swatches } from "./components/Swatches";
 import { Lobby } from "./components/Lobby";
 import { Menu } from "./components/Menu";
+import { MiniBoard } from "./components/MiniBoard";
+import { RulesDialog } from "./components/Rules";
 import { authClient } from "./lib/auth-client";
 import { navigate, useRoute } from "./router";
 
@@ -91,15 +93,48 @@ export default function App() {
   );
 }
 
+/*
+ * A position part-way through a game, for the sign-in page.
+ *
+ * Chosen to show the two things that make this game its own: a tile laid over
+ * another (the O closing a square, lit rather than faced) and a solid block
+ * that scores again for being solid.
+ */
+const DEMO_ROWS = [
+  "CAT..",
+  "ARE..",
+  "TENS.",
+  "...I.",
+  "...T.",
+];
+/** The last play: SIT, hung off the S. */
+const DEMO_PLAYED = ["3,2", "3,3", "3,4"];
+/** A square somebody has already closed by playing over it. */
+const DEMO_FULL = ["1,1"];
+
 function SignInForm() {
   const [error, setError] = useState<string | null>(null);
+  const [showRules, setShowRules] = useState(false);
   const status = useQuery(api.users.authStatus);
   const configured = status?.googleConfigured ?? true;
 
   return (
     <div className={styles.auth}>
+      {showRules && <RulesDialog onClose={() => setShowRules(false)} />}
+
+      <div className={styles.hero}>
+        <MiniBoard
+          rows={DEMO_ROWS}
+          seat={1}
+          played={DEMO_PLAYED}
+          full={DEMO_FULL}
+          size={34}
+        />
+      </div>
+
       <p className={styles.tagline}>
-        Build word squares against your friends.
+        Build words on a crossword grid, and score again for every solid square
+        of tiles you complete.
       </p>
       <button
         type="button"
@@ -132,6 +167,14 @@ function SignInForm() {
         </div>
       )}
       {error && <div className={styles.error}>Could not sign in: {error}</div>}
+
+      <button
+        type="button"
+        className={styles.howTo}
+        onClick={() => setShowRules(true)}
+      >
+        How to play
+      </button>
     </div>
   );
 }
