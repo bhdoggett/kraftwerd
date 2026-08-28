@@ -1259,3 +1259,55 @@ describe("passing a turn", () => {
     expect(game?.status).toBe("finished");
   });
 });
+
+describe("the order past games come back in", () => {
+  /** Two finished solo games, with the older one finishing last. */
+  async function twoFinished() {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+      for (const word of WORDS) await ctx.db.insert("words", { word });
+    });
+    const asAlice = t.withIdentity({ subject: "auth|alice" });
+
+    const first = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
+    const second = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
+
+    return { t, asAlice, first, second };
+  }
+
+  test("the game that finished last comes first", async () => {
+    const { t, asAlice, first, second } = await twoFinished();
+
+    // The older game ran longer and ended after the newer one, so ordering
+    // by when a game started would put these the wrong way round.
+    await t.run(async (ctx) => {
+      await ctx.db.patch("games", second.gameId, {
+        status: "finished",
+        winnerIds: [],
+        finishedAt: 1_000,
+      });
+      await ctx.db.patch("games", first.gameId, {
+        status: "finished",
+        winnerIds: [],
+        finishedAt: 2_000,
+      });
+    });
+
+    const { past } = await asAlice.query(api.games.listMyGames);
+    expect(past.map((g) => g.gameId)).toEqual([first.gameId, second.gameId]);
+  });
+
+  test("games from before finishing was recorded fall back to when they began", async () => {
+    const { t, asAlice, first, second } = await twoFinished();
+
+    await t.run(async (ctx) => {
+      for (const id of [first.gameId, second.gameId]) {
+        await ctx.db.patch("games", id, { status: "finished", winnerIds: [] });
+      }
+    });
+
+    const { past } = await asAlice.query(api.games.listMyGames);
+    expect(past.map((g) => g.gameId)).toEqual([second.gameId, first.gameId]);
+  });
+});

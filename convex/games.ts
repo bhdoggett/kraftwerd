@@ -512,7 +512,11 @@ export const respondToInvite = mutation({
       // The game can never fill now, so it ends rather than lingering as a
       // lobby nobody can enter.
       await ctx.db.delete("players", me._id);
-      await ctx.db.patch("games", args.gameId, { status: "finished", winnerIds: [] });
+      await ctx.db.patch("games", args.gameId, {
+        status: "finished",
+        winnerIds: [],
+        finishedAt: Date.now(),
+      });
       return null;
     }
 
@@ -762,7 +766,11 @@ async function finishGame(
   const best = eligible.reduce((max, p) => Math.max(max, p.score), -Infinity);
   const winners = eligible.filter((p) => p.score === best).map((p) => p.userId);
 
-  await ctx.db.patch("games", game._id, { status: "finished", winnerIds: winners });
+  await ctx.db.patch("games", game._id, {
+    status: "finished",
+    winnerIds: winners,
+    finishedAt: Date.now(),
+  });
 
   for (const player of players) {
     const user = await ctx.db.get("users", player.userId);
@@ -1068,6 +1076,11 @@ export const listMyGames = query({
           youWon: (game.winnerIds ?? []).includes(p.userId),
           /** True when the game ended because someone quit. */
           abandoned: (game.resignedBy ?? []).length > 0,
+          /**
+           * When it ended, falling back to when it began for games that
+           * finished before this was recorded.
+           */
+          endedAt: game.finishedAt ?? game._creationTime,
         };
       }),
     );
@@ -1080,8 +1093,12 @@ export const listMyGames = query({
       // the lobby offers accept/decline rather than a way in.
       invitations: visible.filter((r) => r.invited && r.status === "lobby"),
       games: mineOnly.filter((r) => r.status !== "finished"),
-      // Finished games are history: kept, but out of the way.
-      past: mineOnly.filter((r) => r.status === "finished"),
+      // Finished games are history: kept, out of the way, and newest first --
+      // the last game you played is the one you want to look at. Rows come
+      // back in the order you joined the games, which is neither.
+      past: mineOnly
+        .filter((r) => r.status === "finished")
+        .sort((a, b) => b.endedAt - a.endedAt),
     };
   },
 });

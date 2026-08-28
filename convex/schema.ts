@@ -107,6 +107,12 @@ export default defineSchema({
     consecutivePasses: v.optional(v.number()),
     /** Set when the game finishes; ties give every leader a win. */
     winnerIds: v.optional(v.array(v.id("users"))),
+    /**
+     * When the game ended, for putting finished games in the order they
+     * finished. Absent on games that ended before this was recorded, which
+     * fall back to when they began -- the closest thing those rows have.
+     */
+    finishedAt: v.optional(v.number()),
     /** Players who quit. They forfeit and cannot win. */
     resignedBy: v.optional(v.array(v.id("users"))),
     createdBy: v.id("users"),
