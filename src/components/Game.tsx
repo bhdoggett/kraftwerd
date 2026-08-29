@@ -1026,7 +1026,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             status={game.status}
         />
 
-        {game.turnNumber > 0 && !reviewing && (
+        {/*
+          Only once it is over. Mid-game the board in front of you is the one
+          that matters, and winding back through it while a turn is owed is a
+          way to lose your place rather than find it.
+        */}
+        {game.status === "finished" && game.turnNumber > 0 && !reviewing && (
           <button
             type="button"
             className={styles.reviewOpen}
