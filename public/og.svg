@@ -1,7 +1,75 @@
+<!--
+  The card a messaging app draws for a shared link: the two tiles as the board
+  shows them, side by side in adjoining squares with the grid running between
+  them, and the squares around cropped by the edge of the picture.
+
+  Everything is the board's own proportion -- a hairline of grid at 1/36 of a
+  square, the tile's edge drawn inside at 0.083, the letter at 0.6 -- so the
+  card and the game show the same object. No glow: a tile glows in the rack
+  and in the header mark, never once it is down.
+-->
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <clipPath id="patch">
+      <rect x="362" y="80" width="477" height="276"/>
+    </clipPath>
+    <!--
+      The board runs off into the dark rather than stopping at a rectangle:
+      a hard crop draws a box, and a box around the mark is a frame the game
+      does not have. Two gradients multiplied, so the fade works on all four
+      sides at once.
+    -->
+    <linearGradient id="fadeX" x1="362" x2="839" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000"/><stop offset="0.16" stop-color="#fff"/>
+      <stop offset="0.84" stop-color="#fff"/><stop offset="1" stop-color="#000"/>
+    </linearGradient>
+    <linearGradient id="fadeY" y1="80" y2="356" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000"/><stop offset="0.2" stop-color="#fff"/>
+      <stop offset="0.8" stop-color="#fff"/><stop offset="1" stop-color="#000"/>
+    </linearGradient>
+    <mask id="fade">
+      <rect x="362" y="80" width="477" height="276" fill="url(#fadeX)"/>
+      <rect x="362" y="80" width="477" height="276" fill="url(#fadeY)" style="mix-blend-mode:multiply"/>
+    </mask>
+  </defs>
+
   <rect width="1200" height="630" fill="#08080a"/>
   <rect x="0" y="0" width="1200" height="10" fill="#ff2bd1"/>
-  <rect x="398.0" y="116" width="404" height="204" fill="#35353e"/><rect x="402.0" y="120" width="196" height="196" fill="#d3ff7f" stroke="#0b0b0d" stroke-width="7"/><text x="500" y="264.0" font-family="Futura, Avenir Next, Century Gothic, Helvetica" font-size="130" font-weight="bold" fill="#0b0b0d" text-anchor="middle">K</text><rect x="602.0" y="120" width="196" height="196" fill="#ff77e1" stroke="#0b0b0d" stroke-width="7"/><text x="700" y="264.0" font-family="Futura, Avenir Next, Century Gothic, Helvetica" font-size="130" font-weight="bold" fill="#0b0b0d" text-anchor="middle">W</text>
-  <text x="600" y="512" font-family="Futura, Avenir Next, Century Gothic, Helvetica" font-size="82" font-weight="bold" letter-spacing="16"
+
+  <!-- The board around the play. Faded; the tiles on top are not, so nothing
+       eats into a face or an edge. -->
+  <g clip-path="url(#patch)" mask="url(#fade)">
+    <!-- The grid lines are this showing through the gaps between squares. -->
+    <rect x="362" y="80" width="477" height="276" fill="#35353e"/>
+    <g fill="#101014">
+      <rect x="201" y="-81" width="196" height="196"/>
+      <rect x="402" y="-81" width="196" height="196"/>
+      <rect x="603" y="-81" width="196" height="196"/>
+      <rect x="804" y="-81" width="196" height="196"/>
+      <rect x="201" y="120" width="196" height="196"/>
+      <rect x="804" y="120" width="196" height="196"/>
+      <rect x="201" y="321" width="196" height="196"/>
+      <rect x="402" y="321" width="196" height="196"/>
+      <rect x="603" y="321" width="196" height="196"/>
+      <rect x="804" y="321" width="196" height="196"/>
+    </g>
+  </g>
+
+  <!-- K, seat 2: lime. -->
+  <rect x="402" y="120" width="196" height="196" fill="#000000"/>
+  <rect x="418" y="136" width="164" height="164" fill="#b8ff2b"/>
+  <text x="500" y="260" font-family="Futura, Avenir Next, Century Gothic, Helvetica"
+        font-size="118" font-weight="bold" fill="#0b0b0d" text-anchor="middle">K</text>
+
+  <!-- W, seat 1: magenta, in the square next door. -->
+  <rect x="603" y="120" width="196" height="196" fill="#000000"/>
+  <rect x="619" y="136" width="164" height="164" fill="#ff2bd1"/>
+  <text x="701" y="260" font-family="Futura, Avenir Next, Century Gothic, Helvetica"
+        font-size="118" font-weight="bold" fill="#0b0b0d" text-anchor="middle">W</text>
+
+  <!-- Medium, not the tiles' bold: set like a record sleeve, wide and light,
+       so the name reads as a caption under the mark rather than competing
+       with it. -->
+  <text x="600" y="512" font-family="Futura, Avenir Next, Century Gothic, Helvetica" font-size="82" font-weight="500" letter-spacing="16"
         fill="#f2f2f5" text-anchor="middle">KRAFTWERD</text>
 </svg>
