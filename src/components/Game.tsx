@@ -92,11 +92,18 @@ type Origin = { kind: "rack"; selection: Selection } | { kind: "cell"; x: number
  * Drafts survive a reload, and a re-mount. Keyed by turn so a draft is
  * discarded the moment the turn moves on rather than reappearing later.
  */
-const draftKey = (gameId: string) => `wordcraft:draft:${gameId}`;
+const draftKey = (gameId: string) => `kraftwerd:draft:${gameId}`;
+
+/** The key used before the rename. Read once, then dropped. */
+const legacyDraftKey = (gameId: string) => `wordcraft:draft:${gameId}`;
 
 function readDraft(gameId: string, turnNumber: number): Staged[] {
   try {
-    const raw = window.localStorage.getItem(draftKey(gameId));
+    let raw = window.localStorage.getItem(draftKey(gameId));
+    if (raw === null) {
+      raw = window.localStorage.getItem(legacyDraftKey(gameId));
+      if (raw !== null) window.localStorage.removeItem(legacyDraftKey(gameId));
+    }
     if (raw === null) return [];
     const parsed = JSON.parse(raw) as { turnNumber: number; pending: Staged[] };
     return parsed.turnNumber === turnNumber ? parsed.pending : [];

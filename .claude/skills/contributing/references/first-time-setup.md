@@ -46,7 +46,8 @@ npx convex dev
 ```
 
 `convex dev` will ask which project to use. **Choose Ben's team, then the
-existing `word-craft` project.** Do not create a new project — that is the one
+existing `word-craft` project** — the Convex project kept its old name when
+the repo became kraftwerd. Do not create a new project — that is the one
 mistake here that produces no error message and leaves him working somewhere
 nobody else can see. If it already happened, delete the stray project from the
 Convex dashboard and run `npx convex dev` again.

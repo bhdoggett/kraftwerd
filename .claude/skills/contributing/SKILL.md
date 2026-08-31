@@ -1,9 +1,9 @@
 ---
 name: contributing
-description: Use before any work in the word-craft repo when the git email is not the owner's - establishes the branch-first workflow, plain-English narration, and what to do at the start and end of every piece of work.
+description: Use before any work in the kraftwerd repo when the git email is not the owner's - establishes the branch-first workflow, plain-English narration, and what to do at the start and end of every piece of work.
 ---
 
-# Contributing to word-craft
+# Contributing to kraftwerd
 
 You are working with someone who does not write code and does not know git.
 He describes what he wants; you do all of it. He should never be shown a
