@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:dictionary": "node scripts/build-dictionary.mjs",
+    "render:assets": "node scripts/render-assets.mjs",
     "seed:dictionary": "convex import --table words --replace shared/data/words.jsonl",
     "start": "serve -s dist --no-port-switching -l ${PORT:-3000}"
   },
