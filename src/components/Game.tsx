@@ -746,21 +746,34 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   return (
     <div className={styles.layout}>
       <div className={styles.main}>
-        <Board
-          boardSize={game.boardSize}
-          layout={view.layout}
-          tiles={shown}
-          pending={ready ? [] : pending}
-          seatOf={seatOf}
-          yourSeat={view.yourSeat}
-          canPlace={!reviewing && myTurn && selected !== null && !choosingBlank}
-          onPlace={place}
-          onPickUp={pickUp}
-          awaitingBlankAt={blankAt}
-          goodCells={wordCells.good}
-          badCells={wordCells.bad}
-          onGrabStaged={!reviewing && myTurn ? grabStaged : undefined}
-        />
+        {/* The refusal floats over the board, so the board is what it is
+            measured against. */}
+        <div className={styles.boardArea}>
+          <Board
+            boardSize={game.boardSize}
+            layout={view.layout}
+            tiles={shown}
+            pending={ready ? [] : pending}
+            seatOf={seatOf}
+            yourSeat={view.yourSeat}
+            canPlace={!reviewing && myTurn && selected !== null && !choosingBlank}
+            onPlace={place}
+            onPickUp={pickUp}
+            awaitingBlankAt={blankAt}
+            goodCells={wordCells.good}
+            badCells={wordCells.bad}
+            onGrabStaged={!reviewing && myTurn ? grabStaged : undefined}
+          />
+
+          {/* Floats over the board rather than sitting in the column: a message
+              that pushed the layout down would move the square you were aiming
+              at. */}
+          {refusal !== null && (
+            <div className={styles.refusal} role="status" aria-live="polite">
+              {refusal}
+            </div>
+          )}
+        </div>
 
 
         {/* Nothing left to play once it is over: the rack would be a row of
@@ -990,15 +1003,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
 
         {error && <div className={styles.error}>{error}</div>}
-
-        {/* Floats over the board rather than sitting in the column: a message
-            that pushed the layout down would move the square you were aiming
-            at. */}
-        {refusal !== null && (
-          <div className={styles.refusal} role="status" aria-live="polite">
-            {refusal}
-          </div>
-        )}
 
         <DevTools gameId={gameId} />
 
