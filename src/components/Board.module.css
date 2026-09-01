@@ -241,3 +241,42 @@
 
 /* The letter shifts up and left, and sets a little smaller, so the 2x has the
    bottom-right corner to itself rather than sitting on top of it. */
+
+/*
+ * What was played while you were away, pointed out as your turn opens.
+ *
+ * A ring inside the square rather than anything that moves it: these are
+ * tiles you are about to play around, and a square that grows or shifts is a
+ * square you cannot aim at. It pulses in the colour of whoever put it there,
+ * so a table of four says who as well as where, and it is gone in about two
+ * seconds -- a reminder, not a state to dismiss.
+ */
+.recent::after {
+  content: "";
+  grid-area: cell;
+  align-self: stretch;
+  justify-self: stretch;
+  border: 2px solid var(--seat-neon);
+  pointer-events: none;
+  animation: recent-play 640ms ease-out 3;
+}
+
+@keyframes recent-play {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/*
+ * No pulsing where that is unwelcome: the ring simply sits there instead, and
+ * is taken away on the same timer.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .recent::after {
+    animation: none;
+    opacity: 1;
+  }
+}

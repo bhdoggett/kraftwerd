@@ -1127,6 +1127,8 @@ export const getGame = query({
         isBlank: t.isBlank,
         placedBy: t.placedBy,
         stacked: t.stacked ?? 1,
+        /** Which turn put it there, so the board can point out what is new. */
+        turnNumber: t.turnNumber,
       })),
       // Racks are private: every player sees their own letters and only the
       // count of everyone else's.

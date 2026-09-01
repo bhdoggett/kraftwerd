@@ -30,6 +30,8 @@ interface BoardProps {
   /** Squares in a word that checks out, and in one that does not. */
   goodCells?: ReadonlySet<string>;
   badCells?: ReadonlySet<string>;
+  /** Squares played while you were away, pointed out as your turn opens. */
+  recentCells?: ReadonlySet<string>;
   onPlace: (x: number, y: number) => void;
   onPickUp: (x: number, y: number) => void;
   /** Begin dragging a tile staged this turn to another square. */
@@ -56,6 +58,7 @@ export function Board({
   awaitingBlankAt,
   goodCells,
   badCells,
+  recentCells,
   onPlace,
   onPickUp,
   onGrabStaged,
@@ -294,6 +297,7 @@ export function Board({
         tile === undefined ? 0 : stage === undefined ? tile.stacked : tile.stacked + 1;
       if (goodCells?.has(k)) classes.push(styles.inWord);
       if (badCells?.has(k)) classes.push(styles.inBadWord);
+      if (recentCells?.has(k)) classes.push(styles.recent);
       if (awaiting) classes.push(styles.tile, styles.awaiting);
       if (empty && !awaiting) {
         classes.push(styles.open);

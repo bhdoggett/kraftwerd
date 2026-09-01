@@ -128,3 +128,22 @@ describe("picking a staged tile back up", () => {
     expect(onPickUp).toHaveBeenCalledWith(1, 1);
   });
 });
+
+describe("pointing out what was played while you were away", () => {
+  test("rings the squares it is given, and only those", () => {
+    const played = [
+      { x: 1, y: 1, letter: "A", isBlank: false, placedBy: "ann", stacked: 1 },
+      { x: 2, y: 1, letter: "T", isBlank: false, placedBy: "ann", stacked: 1 },
+    ];
+    draw({ tiles: played, recentCells: new Set(["1,1"]) });
+
+    expect(square(1, 1).className).toMatch(/recent/);
+    expect(square(2, 1).className).not.toMatch(/recent/);
+  });
+
+  test("rings nothing when there is nothing to point out", () => {
+    draw();
+
+    expect(square(2, 2).className).not.toMatch(/recent/);
+  });
+});

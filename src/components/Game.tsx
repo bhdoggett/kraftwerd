@@ -29,6 +29,7 @@ import { moveToPosition, rackSlotUnder, shuffled } from "../lib/rackGeometry";
 import { moveStagedTo, stageAt } from "../lib/staging";
 import { useWakeLock } from "../lib/useWakeLock";
 import { Scoreboard } from "./Scoreboard";
+import { playedSinceYourTurn } from "../lib/recap";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -173,6 +174,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    */
   const [refusal, setRefusal] = useState<string | null>(null);
   const refusalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * The turn whose recap has already had its two seconds. Kept rather than
+   * the squares themselves: what to point out is worked out while rendering,
+   * and all this has to remember is that the reminder is over.
+   */
+  const [recapShown, setRecapShown] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   /**
@@ -369,6 +376,40 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   }, [draggedLetterIndex, rackHover, rackOrder, spentIndices]);
 
 
+
+  /** What was played while you were away, to point out as your turn opens. */
+  const playedSinceYou = useMemo(
+    () =>
+      view === undefined || view === null
+        ? new Set<string>()
+        : playedSinceYourTurn(view.tiles, view.viewerUserId),
+    [view],
+  );
+
+  const yourTurn =
+    view?.game.status === "active" &&
+    view.yourSeat !== null &&
+    view.yourSeat === view.game.currentSeat;
+
+  /**
+   * Squares to point out right now, or null when there is nothing to say.
+   *
+   * Shown once, as the turn opens: a reminder of what you missed belongs at
+   * the moment you arrive and nowhere after. Worked out here rather than held
+   * in state, so it follows the board instead of going stale behind it.
+   */
+  const recap =
+    yourTurn && !reviewing && recapShown !== view?.game.turnNumber && playedSinceYou.size > 0
+      ? playedSinceYou
+      : null;
+
+  // The only thing the timer does is end it.
+  useEffect(() => {
+    if (recap === null) return;
+    const turn = view?.game.turnNumber;
+    const done = setTimeout(() => setRecapShown(turn ?? null), 2200);
+    return () => clearTimeout(done);
+  }, [recap, view?.game.turnNumber]);
 
   // A turn is mostly thinking, so the screen should not dim mid-thought.
   useWakeLock(view?.game.status === "active");
@@ -779,6 +820,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             awaitingBlankAt={blankAt}
             goodCells={wordCells.good}
             badCells={wordCells.bad}
+            recentCells={recap ?? undefined}
             onGrabStaged={!reviewing ? grabStaged : undefined}
           />
 
