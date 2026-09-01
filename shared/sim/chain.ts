@@ -79,13 +79,11 @@ export function chain(
     centre: shape.centre,
   };
 
-  const emit = (placements: Placement[]) => {
+  /** Offer a turn, once, however many orders of play arrive at it. */
+  const offer = (placements: Placement[], score: number) => {
     const key = moveKey(placements);
     if (seen.has(key)) return;
     seen.add(key);
-
-    const after = applyPlacements(board, placements);
-    const score = scoreOf(after, placements, board);
     found.push({ placements, score, value: score });
   };
 
@@ -97,11 +95,25 @@ export function chain(
       before: provisional,
     });
 
+    /*
+     * The opening link is the single-span search itself, already validated and
+     * scored against this very board, so it is taken as it stands.
+     *
+     * All of it, not just the few links worth building on. `breadth` limits
+     * what is branched from, never what is offered: this list is what
+     * difficulty reads, and its bands are fractions of the best score, so
+     * cutting it back to the strongest handful and their extensions leaves an
+     * easy player nothing weak left to choose.
+     */
+    if (laid.length === 0) for (const single of step) offer(single.placements, single.score);
+
     for (const component of step.slice(0, options.breadth)) {
       const placements = [...laid, ...component.placements];
-      if (!validateTurn(board, placements, dictionary, bounds).ok) continue;
 
-      emit(placements);
+      if (laid.length > 0) {
+        if (!validateTurn(board, placements, dictionary, bounds).ok) continue;
+        offer(placements, scoreOf(applyPlacements(board, placements), placements, board));
+      }
 
       if (depth > 1) {
         walk(

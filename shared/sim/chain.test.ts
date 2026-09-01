@@ -69,6 +69,24 @@ describe("chaining", () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
+  /**
+   * Breadth limits what is built on, not what is offered.
+   *
+   * Difficulty reads this list as fractions of the best score, so a list cut
+   * back to the few strongest moves and their extensions leaves an easy player
+   * nothing weak to choose.
+   */
+  test("keeps every single-span move, not just the ones worth building on", () => {
+    const singles = chained(board, ["S", "O", "T", "A", "N"], 1);
+    const keys = new Set(chained(board, ["S", "O", "T", "A", "N"], 2, 1).map((m) =>
+      JSON.stringify([...m.placements].sort((a, b) => a.x - b.x || a.y - b.y))));
+
+    for (const single of singles) {
+      expect(keys).toContain(
+        JSON.stringify([...single.placements].sort((a, b) => a.x - b.x || a.y - b.y)));
+    }
+  });
+
   test("depth 1 is exactly the single-span search", () => {
     const one = chained(board, ["S", "O", "T", "A"], 1);
     expect(one.every((m) => {
