@@ -2761,18 +2761,32 @@ block-solved turn forms more words than a single-span one, so this check now
 does more work per move; the `take(512)` on tiles and the loop over
 `new Set(words)` are both fine at that scale.
 
-- [ ] **Step 3: Measure a live turn**
+- [ ] **Step 3: Measure a live turn — do this FIRST, before Steps 1 and 2**
 
-The bot runs inside a Convex mutation, so its cost is real. Add a temporary
-timing log around the `rank` call, run a game against a bot locally
-(`npm run dev`), and read the Convex logs.
+**This is the step that matters most in this task.** `rank` now defaults to
+`chain: { depth: 2, breadth: 6 }`, and `convex/bots.ts` calls `rank(..., {})`
+from `takeTurn` — an `internalMutation`. So a transaction-scoped server
+function is now doing roughly seven component searches plus up to
+thirty-six whole-board connectivity walks per bot turn. The simulator measured
+per-turn search cost rising about 2.5× (0.26s → 0.64s on a laptop). Nobody has
+timed it inside a Convex deployment.
+
+**Until you have measured it, pass `chain: { depth: 1, breadth: 6 }` from
+`convex/bots.ts`** — that is exactly today's single-span behaviour and cannot
+regress the live game while you work.
+
+Then measure: add a temporary timing log around the `rank` call, run a game
+against a bot locally (`npm run dev`), and read the Convex logs.
 
 Budget: there is already a deliberate `THINKING_MS = 1600` pause before the
-turn, so anything under about a second is invisible to the player. If `rank`
-comes in slower, turn the knobs down **for the live bot only** — start with
-`chain: { depth: 2, breadth: 4 }`, then `squares: { maxK: 3, maxBlocks: 8 }`.
-Do not change the defaults in `shared/`; the simulator should keep measuring
-the strongest bot.
+turn, so anything under about a second is invisible to the player. Raise the
+live bot to `depth: 2` only once the measurement supports it, and step down
+through `chain: { depth: 2, breadth: 4 }` then
+`squares: { maxK: 3, maxBlocks: 8 }` if it does not. **Do not change the
+defaults in `shared/`** — the simulator should keep measuring the strongest
+bot, and the live bot is where the budget bites.
+
+Record the measured per-turn time in your report either way.
 
 Remove the timing log before committing.
 
