@@ -109,51 +109,47 @@ describe("the bot", () => {
 });
 
 describe("choosing by difficulty", () => {
+  // A realistic spread: 100 down to 5. Bands land cleanly —
+  // hard [85,100] = indices 0-3, medium [55,85] = 3-9, easy [30,55] = 9-14.
   const moves: Move[] = Array.from({ length: 20 }, (_, i) => ({
     placements: [],
-    score: 100 - i,
-    value: 100 - i,
+    score: 100 - i * 5,
+    value: 100 - i * 5,
   }));
 
-  /** Where in the ranking each difficulty lands, over many draws. */
-  const sample = (difficulty: Parameters<typeof chooseRanked>[1]) => {
+  const sample = (difficulty: Parameters<typeof chooseRanked>[1], list = moves) => {
     let seed = 7;
     const rng = () => {
       seed = (seed * 1664525 + 1013904223) >>> 0;
       return seed / 2 ** 32;
     };
 
-    const picks = Array.from({ length: 4000 }, () => {
-      const chosen = chooseRanked(moves, difficulty, rng);
-      return moves.indexOf(chosen!);
-    });
-
+    const picks = Array.from({ length: 4000 }, () => chooseRanked(list, difficulty, rng)!);
+    const best = list[0].value;
     return {
-      best: picks.filter((i) => i === 0).length / picks.length,
-      mean: picks.reduce((sum, i) => sum + i, 0) / picks.length,
+      meanFraction: picks.reduce((sum, m) => sum + m.value / best, 0) / picks.length,
+      lowestFraction: Math.min(...picks.map((m) => m.value / best)),
+      highestFraction: Math.max(...picks.map((m) => m.value / best)),
     };
   };
 
-  test("hard takes its best move most of the time, but not always", () => {
-    const { best } = sample("hard");
+  test("hard gives up little of what is on offer", () => {
+    const { lowestFraction, meanFraction } = sample("hard");
 
-    expect(best).toBeGreaterThan(0.6);
-    expect(best).toBeLessThan(0.85);
+    expect(lowestFraction).toBeGreaterThanOrEqual(0.85);
+    expect(meanFraction).toBeGreaterThan(0.9);
   });
 
-  test("easy spreads its choice well down the list", () => {
-    const easy = sample("easy");
-    const hard = sample("hard");
+  test("easy plays well below the best available", () => {
+    const { lowestFraction, highestFraction } = sample("easy");
 
-    expect(easy.best).toBeLessThan(0.2);
-    expect(easy.mean).toBeGreaterThan(hard.mean * 3);
+    expect(highestFraction).toBeLessThanOrEqual(0.55);
+    expect(lowestFraction).toBeGreaterThanOrEqual(0.3);
   });
 
   test("medium sits between them", () => {
-    const { mean } = sample("medium");
-
-    expect(mean).toBeGreaterThan(sample("hard").mean);
-    expect(mean).toBeLessThan(sample("easy").mean);
+    expect(sample("medium").meanFraction).toBeLessThan(sample("hard").meanFraction);
+    expect(sample("medium").meanFraction).toBeGreaterThan(sample("easy").meanFraction);
   });
 
   test("with one move on offer, every difficulty plays it", () => {
@@ -161,6 +157,39 @@ describe("choosing by difficulty", () => {
 
     for (const level of ["easy", "medium", "hard"] as const) {
       expect(chooseRanked(only, level, () => 0.99)).toBe(only[0]);
+    }
+  });
+
+  test("an empty band widens upward rather than failing to play", () => {
+    // Everything is close to the best, so easy's [0.30, 0.55] catches nothing.
+    const tight: Move[] = Array.from({ length: 5 }, (_, i) => ({
+      placements: [],
+      score: 100 - i,
+      value: 100 - i,
+    }));
+
+    const chosen = chooseRanked(tight, "easy", () => 0.99);
+    // The nearest move above the band: the weakest on offer, never null.
+    expect(chosen).toBe(tight[4]);
+  });
+
+  test("falls back to rank position when nothing scores above zero", () => {
+    const bleak: Move[] = Array.from({ length: 10 }, (_, i) => ({
+      placements: [],
+      score: 5,
+      value: -i,
+    }));
+
+    // Fractions of a negative best invert the ordering, so position decides.
+    // Hard takes from the top of the list; easy from further down.
+    expect(bleak.indexOf(chooseRanked(bleak, "hard", () => 0.01)!)).toBeLessThan(3);
+    expect(bleak.indexOf(chooseRanked(bleak, "easy", () => 0.01)!)).toBeGreaterThan(3);
+  });
+
+  test("never returns null for a non-empty list", () => {
+    for (const level of ["easy", "medium", "hard"] as const) {
+      expect(chooseRanked(moves, level, () => 0.999)).not.toBeNull();
+      expect(chooseRanked(moves, level, () => 0)).not.toBeNull();
     }
   });
 });

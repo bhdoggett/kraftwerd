@@ -175,22 +175,28 @@ export interface MoveOptions {
 export type Difficulty = "easy" | "medium" | "hard";
 
 /**
- * How sharply a player prefers its best move.
+ * How much of what is on offer a player is willing to give up.
  *
- * The bot sees every legal move and can rank them; playing the top one every
- * time makes an opponent nobody can beat and nobody enjoys. So the rank is a
- * weighting rather than a decision: weight falls away as exp(-rank / tau), and
- * tau is the difficulty. Small tau means the best move nearly always; large
- * tau spreads the choice down the list.
- *
- * Even hard is not perfect — it takes its best move about seven times in ten,
- * which is roughly what a strong player who is not concentrating does.
+ * Banding by score rather than by rank position, because rank is a weak
+ * proxy: in a list of four hundred moves the first and the fortieth may both
+ * score 21, and a rank band would call them far apart. A fraction of the best
+ * available means what it sounds like — a hard player leaves about a seventh
+ * of the points on the table, an easy one over half.
  */
-const TAU: Record<Difficulty, number> = {
-  easy: 8,
-  medium: 2.5,
-  hard: 0.8,
+const BANDS: Record<Difficulty, [number, number]> = {
+  hard: [0.85, 1.0],
+  medium: [0.55, 0.85],
+  easy: [0.3, 0.55],
 };
+
+/**
+ * How sharply a player prefers the top of its band.
+ *
+ * The band decides how good a move the bot is willing to play; this decides
+ * how it picks among the moves it has settled for. One value for every
+ * difficulty — the band already carries the difference.
+ */
+const TAU = 2.5;
 
 /**
  * Choose among ranked moves, best first, by difficulty.
@@ -205,16 +211,43 @@ export function chooseRanked(
 ): Move | null {
   if (moves.length === 0) return null;
 
-  const tau = TAU[difficulty];
-  const weights = moves.map((_, i) => Math.exp(-i / tau));
+  const [lo, hi] = BANDS[difficulty];
+  const best = moves[0].value;
+  let band: readonly Move[];
+
+  if (best <= 0) {
+    /*
+     * Every move is a bad one. Fractions of a non-positive best invert the
+     * ordering -- half of -10 is -5, which is better, not worse -- so the
+     * band is read as positions down the list instead.
+     */
+    const from = Math.floor((1 - hi) * moves.length);
+    const to = Math.max(from + 1, Math.ceil((1 - lo) * moves.length));
+    band = moves.slice(from, to);
+  } else {
+    band = moves.filter((m) => m.value >= lo * best && m.value <= hi * best);
+
+    /*
+     * Nothing in the band: too few moves, or all of them bunched above it.
+     * Widen upward to the weakest move that still clears the floor -- the
+     * closest thing to what was asked for. Never downward, and never no move
+     * at all: a bot with something legal to play has to play it.
+     */
+    if (band.length === 0) {
+      const above = moves.filter((m) => m.value >= lo * best);
+      band = above.length > 0 ? [above[above.length - 1]] : [moves[0]];
+    }
+  }
+
+  const weights = band.map((_, i) => Math.exp(-i / TAU));
   const total = weights.reduce((sum, w) => sum + w, 0);
 
   let roll = rng() * total;
   for (const [i, weight] of weights.entries()) {
     roll -= weight;
-    if (roll < 0) return moves[i]!;
+    if (roll < 0) return band[i];
   }
-  return moves[moves.length - 1]!;
+  return band[band.length - 1];
 }
 
 export function bestMove(
