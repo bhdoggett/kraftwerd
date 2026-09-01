@@ -3,32 +3,61 @@
  *
  * Usage: node scripts/simulate.ts [games] [players]
  */
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { makeDictionary } from "../shared/engine/dictionary.ts";
-import { indexWords } from "../shared/sim/bot.ts";
-import { playGame, type GameResult } from "../shared/sim/game.ts";
+import { cpus } from "node:os";
+import { Worker } from "node:worker_threads";
+import { type GameResult } from "../shared/sim/game.ts";
 import type { Variant } from "../shared/sim/variants.ts";
 import { RACK } from "../shared/config.ts";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const games = Number(process.argv[2] ?? 40);
 const players = Number(process.argv[3] ?? 2);
 
-const words: string[] = JSON.parse(
-  readFileSync(join(ROOT, "shared", "data", "words.json"), "utf8"),
-);
-const dictionary = makeDictionary(words);
-const index = indexWords(words, 7);
+// The words file, the dictionary and its index are no longer needed on the
+// main thread: each worker builds its own copy once and plays every game it
+// is given against it (see scripts/sim-worker.ts).
+const WORKER = new URL("./sim-worker.ts", import.meta.url);
 
-/** Deterministic, so two variants meet the same draws. */
-function seeded(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 2 ** 32;
-  };
+/**
+ * A pool of workers, kept alive across variants.
+ *
+ * Starting one per variant would pay to build the dictionary six times over.
+ */
+function makePool(size: number) {
+  // Forward the running process's own execArgv rather than hardcoding
+  // ["--import", "tsx"]: tsx is not a project dependency here, so a bare
+  // "tsx" specifier doesn't resolve from a worker thread and the worker dies
+  // with ERR_MODULE_NOT_FOUND before it can play a single game. This process
+  // was itself launched by `npx tsx`, which already put the loader's
+  // absolute --require/--import flags (pointing at npx's cache) on
+  // process.execArgv -- reusing them makes each worker load TypeScript the
+  // exact same way the main thread does, however tsx happened to get here.
+  const workers = Array.from({ length: size }, () => new Worker(WORKER, { execArgv: process.execArgv }));
+
+  const play = (variant: Variant, players: number, count: number) =>
+    new Promise<GameResult[]>((resolve, reject) => {
+      const results: GameResult[] = new Array(count);
+      let next = 0;
+      let done = 0;
+
+      const give = (worker: Worker) => {
+        if (next >= count) return;
+        worker.postMessage({ variant, players, index: next++ });
+      };
+
+      for (const worker of workers) {
+        worker.removeAllListeners("message");
+        worker.removeAllListeners("error");
+        worker.on("message", ({ index, result }: { index: number; result: GameResult }) => {
+          results[index] = result;
+          if (++done === count) resolve(results);
+          else give(worker);
+        });
+        worker.on("error", reject);
+        give(worker);
+      }
+    });
+
+  return { play, close: () => Promise.all(workers.map((w) => w.terminate())) };
 }
 
 /** Who won, by seat: ties count for each leader. */
@@ -115,13 +144,14 @@ const pct = (xs: number[], p: number) => {
 };
 
 const rows: Record<string, string>[] = [];
+const pool = makePool(Math.min(cpus().length, games));
 
+// Kept serial: this loop is where the "secs" column comes from, and running
+// two variants' games concurrently would blur that number across variants.
+// The parallelism lives inside pool.play, across games within one variant.
 for (const variant of VARIANTS) {
-  const results: GameResult[] = [];
   const started = Date.now();
-  for (let i = 0; i < games; i++) {
-    results.push(playGame(variant, players, dictionary, index, seeded(i + 1)));
-  }
+  const results = await pool.play(variant, players, games);
 
   const winning = results.map((r) => Math.max(...r.scores));
   const margins = results.map((r) => {
@@ -165,6 +195,8 @@ for (const variant of VARIANTS) {
   });
   console.error(`  ${variant.name}: done`);
 }
+
+await pool.close();
 
 console.log(`\n${games} games, ${players} players, identical draws across variants\n`);
 console.table(rows);
