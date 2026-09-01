@@ -636,10 +636,18 @@ depth-2 chain at breadth 6 costs seven searches — 0.7s per bot turn, and the
 simulator does ~20 turns a game across thousands of games. **Nothing after
 this task is affordable until this one lands.**
 
+A CPU profile has already been taken and is in Step 1. Two costs dominate and
+neither is where an earlier draft of this plan looked: a whole-board
+connectivity walk run per candidate (26.6%), and a `Set` allocated per
+posting-list intersection (18.7%).
+
 **Files:**
 - Create: `shared/sim/components.ts`
 - Create: `shared/sim/components.test.ts`
 - Modify: `shared/sim/bot.ts` (`rank` delegates to `components`)
+- Modify: `shared/sim/words.ts` (allocation-free posting-list intersection)
+- Modify: `shared/sim/words.test.ts` (the sortedness invariant `meet` relies on)
+- Modify: `shared/engine/legality.ts` (`Bounds.connected`)
 
 **Interfaces:**
 - Consumes: Task 1's `words.ts`, Task 2's `Move`.
@@ -652,34 +660,35 @@ this task is affordable until this one lands.**
     a trap waiting for the next edit. Put them at the bottom of the dependency
     graph instead.
   - `export interface Anchor { x: number; y: number }`
-  - `export function anchors(board: Board, shape: BoardShape, size: number): Set<string>` — cell keys worth building through: occupied cells and their orthogonal neighbours, or just the centre on an empty board.
+  - `export function anchors(board: Board, shape: BoardShape, size: number): Set<string>` — cell keys worth building through: occupied cells and their orthogonal neighbours, or just the centre on an empty board. Extracted as a named function; it does **not** drive span enumeration (see Step 1 — that measured as worthless).
   - `export function components(board: Board, hand: Hand, dictionary: Dictionary, words: WordIndex, shape: BoardShape, size: number, scoreOf: ValueFn, options: { maxLength?: number; before?: Board }): Move[]` — every single-span move, sorted by value descending, **deduplicated**. `before` defaults to `board` and is what `scoreOf` measures against; chaining passes the turn's starting board.
   - `export function moveKey(placements: readonly Placement[]): string` — a turn's identity, independent of the order its tiles were found in.
   - `export interface Hand { letters: readonly string[]; blanks: number }` (moved from `bot.ts`, re-exported there)
 
-- [ ] **Step 1: Profile before changing anything**
+- [ ] **Step 1: Read the profile — it is already taken**
 
-Do not optimise on my guess. Find out where the 100ms goes:
+Do not re-profile. A CPU profile of `scripts/simulate.ts 3 2` was captured and
+aggregated by self time. **These are measurements, not guesses:**
 
-```bash
-npx tsx --cpu-prof --cpu-prof-dir=/tmp/botprof scripts/simulate.ts 3 2
-```
+| Cost | Share of 69.6s sampled |
+|---|---|
+| `isOneMass` (`shared/engine/legality.ts`) | **26.6%** |
+| `candidates` (`shared/sim/words.ts`) | **18.7%** |
+| `fit` | 13.3% |
+| `validateTurn`, excluding `isOneMass` | 8.5% |
+| `rank` | 7.0% |
+| `applyPlacements` | 4.9% |
+| `wordsFormed` / `runsThrough` | 7.1% combined |
+| `withOneCovered` | 3.4% |
 
-Open the `.cpuprofile` in Chrome DevTools (Performance → Load profile).
+**Span enumeration does not appear at all.** `spans` never registers a sample.
+An earlier draft of this plan made anchor-first enumeration the centrepiece of
+this task; the profile says it would buy nothing, so it has been dropped. The
+two changes below target 45% of runtime instead.
 
-**The two suspects, in order of my confidence:**
+Everything else in the search — the letter-mask prefilter, the rack-subset
+walk, the length loop — is already cheap. Do not touch it.
 
-1. **`validateTurn` calls `isOneMass`, which BFS-walks the entire board, for
-   every candidate move.** The bot generates thousands of candidates a turn
-   and connectivity is the same answer nearly every time. This is O(tiles) per
-   candidate when it could be O(1).
-2. **Span enumeration reads every span on the board** — `spans(size, length)`
-   yields all 2,700 of them across lengths 2–7 — and only then checks
-   `touchesLive`. Early and mid game most of the board is nowhere near play.
-
-Record which dominates. If the profile says something else entirely, follow
-the profile and adapt the steps below; the budget assertion in Step 6 is the
-real requirement.
 
 - [ ] **Step 2: Write the equivalence test**
 
@@ -783,12 +792,13 @@ Expected: FAIL — `Cannot find module './components'`.
 
 - [ ] **Step 4: Create `components.ts`**
 
-Move `Span`, `spans`, `Hand`, `fit`, and the body of `rank` (minus the sort
-and the lookahead block) into `shared/sim/components.ts`. Keep every doc
-comment. Then apply the two changes:
+Move `Span`, `spans`, `Hand`, `fit`, `Move`, `ValueFn` and the body of `rank`
+(minus the sort and the lookahead block) into `shared/sim/components.ts`. Keep
+every doc comment. `spans` moves across **unchanged** — the profile says its
+cost is nil.
 
-**(a) `anchors`, replacing the inline `live` set.** Same contents, but now a
-named export so chaining and the tests can use it:
+**(a) `anchors`, replacing the inline `live` set.** Same contents, now a named
+export so the tests and later tasks can use it:
 
 ```ts
 /**
@@ -817,7 +827,12 @@ export function anchors(board: Board, shape: BoardShape, size: number): Set<stri
 }
 ```
 
-**(b) `moveKey`, and dedupe with it.** The same turn is reachable from more
+Use it exactly as `rank` used the inline set — including the `touchesLive`
+check inside the span loop. **Do not invert the enumeration to run from
+anchors outward.** It measured as worthless and it risks silently losing
+moves, which is the worst failure this search can have.
+
+**(b) `moveKey`, and dedupe with it.** The same turn is reachable down more
 than one span, and the search returns it once per route:
 
 ```ts
@@ -839,57 +854,19 @@ export function moveKey(placements: readonly Placement[]): string {
 ```
 
 Hold a `Set<string>` in `components` and skip a move whose key is already in
-it, before the `validateTurn` call — the duplicate would only be validated and
-scored to be thrown away.
+it — **before** `validateTurn` and before `applyPlacements`. Those are 8.5%
+and 4.9% of runtime; a duplicate should not pay either.
 
-**(c) Enumerate spans from anchors, not from the whole board.** Replace
-`spans(size, length)` with a generator that only yields spans containing at
-least one anchor, deduped:
+**(c) Skip the connectivity walk — the single biggest win, 26.6%.**
 
-```ts
-/**
- * Every straight run of `length` cells that contains a live square.
- *
- * Walking the whole board and asking afterwards whether each span touched
- * play meant reading two and a half thousand spans a turn, nearly all of them
- * nowhere near a tile. Starting from the live squares and working outward
- * asks the same question the other way round.
- */
-function* spansThrough(
-  live: ReadonlySet<string>,
-  size: number,
-  length: number,
-): Generator<Span> {
-  const seen = new Set<string>();
+`validateTurn` calls `isOneMass`, which breadth-first walks the entire board,
+once for every candidate the search weighs. The answer is the same nearly
+every time, and the search has already established it: `fit` fills *every*
+position of its span, so after the move the span is one contiguous line, and
+`fit` returns null unless that line overlaps or abuts the existing mass. A
+board that was one mass plus a contiguous line touching it is one mass.
 
-  for (const key of live) {
-    const [ax, ay] = key.split(",").map(Number) as [number, number];
-
-    for (const [dx, dy] of [[1, 0], [0, 1]] as const) {
-      // Offsets that put the anchor somewhere inside the span.
-      for (let back = 0; back < length; back++) {
-        const x = ax - back * dx;
-        const y = ay - back * dy;
-        if (x < 0 || y < 0) continue;
-        if (x + (length - 1) * dx >= size || y + (length - 1) * dy >= size) continue;
-
-        const id = `${x},${y},${dx}`;
-        if (seen.has(id)) continue;
-        seen.add(id);
-        yield { x, y, dx, dy, length };
-      }
-    }
-  }
-}
-```
-
-The `touchesLive` check inside the span-reading loop now always passes, so
-delete it and the variable. Keep the `blockedSquare` and `free > tiles`
-checks.
-
-**(d) If the profile named `isOneMass` as the cost**, add a fast path. The
-bot's `fit` already establishes that a move touches the existing mass, so
-full-board connectivity is settled. Add to `validateTurn`'s `Bounds`:
+Add to `Bounds` in `shared/engine/legality.ts`:
 
 ```ts
 /**
@@ -897,14 +874,15 @@ full-board connectivity is settled. Add to `validateTurn`'s `Bounds`:
  *
  * Only for a caller that has already established the move touches the mass --
  * the bot's search, which checks exactly that in `fit` before it gets here,
- * and which would otherwise pay a BFS of the whole board for every one of the
- * thousands of candidates it weighs a turn. The move is still checked in
- * every other respect.
+ * and which would otherwise pay a walk of the whole board for every one of
+ * the thousands of candidates it weighs a turn. It measured at a quarter of
+ * the search's entire running time. The move is still checked in every other
+ * respect.
  */
 connected?: boolean;
 ```
 
-In `validateTurn`, guard the existing call:
+and guard the existing call:
 
 ```ts
 if (bounds.connected !== true && !isOneMass(after, from)) {
@@ -912,8 +890,55 @@ if (bounds.connected !== true && !isOneMass(after, from)) {
 }
 ```
 
-`components` passes `connected: true`. **`convex/bots.ts` must not** — the
-authoritative check on the move a bot actually plays stays complete.
+`components` passes `connected: true`. **`convex/bots.ts` must not**, and
+neither may the block solver in Task 7 — the authoritative check on a move a
+bot actually plays stays complete. Task 5's property test re-validates every
+move with the full rules and no shortcut, which is the empirical net under
+this reasoning.
+
+**(d) Intersect posting lists without allocating — 18.7%.**
+
+`candidates` builds a `new Set(list)` per intersection step, over posting
+lists that run to thousands of entries, once per span per length:
+
+```ts
+let hits = lists[0]!;
+for (const list of lists.slice(1)) {
+  const other = new Set(list);
+  hits = hits.filter((i) => other.has(i));
+```
+
+Posting lists are built by pushing `index.words.length` as each word is
+appended, so **every posting list is already sorted ascending**. Two sorted
+lists intersect by linear merge with no allocation at all:
+
+```ts
+/** Intersection of two ascending lists, into a fresh ascending list. */
+function meet(a: readonly number[], b: readonly number[]): number[] {
+  const out: number[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    const x = a[i];
+    const y = b[j];
+    if (x === y) {
+      out.push(x!);
+      i++;
+      j++;
+    } else if (x! < y!) i++;
+    else j++;
+  }
+  return out;
+}
+```
+
+Rewrite `candidates`' loop to use it, keeping the smallest-list-first sort
+(which makes the merges shrink fast) and the early `break` on empty. Add a
+test to `shared/sim/words.test.ts` asserting the sortedness `meet` depends on:
+that every posting list in an index is strictly ascending. That invariant is
+the load-bearing assumption; if a future change breaks it, this silently
+returns wrong words.
+
 
 - [ ] **Step 5: Make `rank` delegate**
 
@@ -973,15 +998,18 @@ test("stays inside its time budget on a busy board", () => {
 ```
 
 Note this uses the small `WORDS` list, so it is a relative guard rather than a
-real-dictionary measurement. Also record the real number:
+real-dictionary measurement — and with a tiny dictionary the posting lists are
+short, so it will barely exercise the `candidates` win. Also record the real
+number:
 
 ```bash
 time npx tsx scripts/simulate.ts 5 2
 ```
 
-Write the before and after seconds into the commit message. The target is a
-material drop; if it has not moved, the profile in Step 1 was misread — go
-back to it rather than proceeding.
+Write the before and after seconds into the commit message. The two changes
+target 45% of measured runtime, so expect a substantial drop. **If the number
+has not moved materially, stop and report rather than proceeding** — chaining
+is unaffordable without this and every later task compounds the cost.
 
 - [ ] **Step 7: Run the whole suite**
 
@@ -993,8 +1021,9 @@ equivalence check that this refactor found the same moves.
 
 ```bash
 git add shared/sim/components.ts shared/sim/components.test.ts \
-        shared/sim/bot.ts shared/engine/legality.ts
-git commit -m "perf(bot): search out from the live squares
+        shared/sim/bot.ts shared/sim/words.ts shared/sim/words.test.ts \
+        shared/engine/legality.ts
+git commit -m "perf(bot): stop rewalking the board for every candidate
 
 Sim of 5 games: <before>s -> <after>s."
 ```
