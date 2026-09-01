@@ -20,8 +20,23 @@ export { indexWords, type LengthIndex, type WordIndex } from "./words.js";
 
 export interface Move {
   placements: Placement[];
+  /** Points the turn actually scores, by the rules. */
   score: number;
+  /** score less any penalty — what ranking and difficulty read. */
+  value: number;
 }
+
+/**
+ * Scores a candidate turn. Called with the board *after* the placements have
+ * landed (so a crossing or extended word scores in full), the placements
+ * themselves, and the board *before* them (so a caller can tell what was
+ * already there, e.g. for stacking bonuses).
+ */
+export type ValueFn = (
+  after: Board,
+  placements: readonly Placement[],
+  before: Board,
+) => number;
 
 type Span = { x: number; y: number; dx: number; dy: number; length: number };
 
@@ -130,7 +145,7 @@ function fit(
 
 export interface MoveOptions {
   /** Scores a legal turn. Lets a variant reward letters differently. */
-  value?: (board: Board, placements: readonly Placement[]) => number;
+  value?: ValueFn;
   /** Longest word to consider. Longer words cost time and are rarely played. */
   maxLength?: number;
   /**
@@ -211,7 +226,8 @@ export function bestMove(
   size: number,
   options: MoveOptions = {},
 ): Move | null {
-  const value = options.value ?? ((b, p) => scoreTurn(b, p).total);
+  const scoreOf: ValueFn =
+    options.value ?? ((after, p, before) => scoreTurn(after, p, { before }).total);
 
   // Two passes: tiles first, blanks only if the rack alone cannot play. That
   // is both how a decent player treats a blank and what keeps this quick —
@@ -223,11 +239,11 @@ export function bestMove(
     words,
     shape,
     size,
-    value,
+    scoreOf,
     options,
   );
   if (withTiles !== null || hand.blanks === 0) return withTiles;
-  return search(board, hand, dictionary, words, shape, size, value, options);
+  return search(board, hand, dictionary, words, shape, size, scoreOf, options);
 }
 
 function search(
@@ -237,10 +253,10 @@ function search(
   words: WordIndex,
   shape: BoardShape,
   size: number,
-  value: (board: Board, placements: readonly Placement[]) => number,
+  scoreOf: ValueFn,
   options: MoveOptions,
 ): Move | null {
-  return rank(board, hand, dictionary, words, shape, size, value, options)[0] ?? null;
+  return rank(board, hand, dictionary, words, shape, size, scoreOf, options)[0] ?? null;
 }
 
 /**
@@ -257,7 +273,7 @@ export function rank(
   words: WordIndex,
   shape: BoardShape,
   size: number,
-  value: (board: Board, placements: readonly Placement[]) => number,
+  scoreOf: ValueFn,
   options: MoveOptions,
 ): Move[] {
   const tiles = hand.letters.length + hand.blanks;
@@ -365,13 +381,14 @@ export function rank(
         });
         if (!legality.ok) continue;
 
-        const score = value(board, laid.placements);
-        found.push({ placements: laid.placements, score });
+        const after = applyPlacements(board, laid.placements);
+        const score = scoreOf(after, laid.placements, board);
+        found.push({ placements: laid.placements, score, value: score });
       }
     }
   }
 
-  found.sort((a, b) => b.score - a.score);
+  found.sort((a, b) => b.value - a.value);
 
   const ahead = options.lookahead;
   if (ahead === undefined || found.length === 0) return found;
@@ -390,14 +407,14 @@ export function rank(
       words,
       shape,
       size,
-      value,
+      scoreOf,
       { maxLength: options.maxLength },
     );
 
-    return { ...move, score: move.score - ahead.weight * (reply?.score ?? 0) };
+    return { ...move, value: move.value - ahead.weight * (reply?.score ?? 0) };
   });
 
   // Re-ranked by what each move nets, with the rest of the list behind them.
-  looked.sort((a, b) => b.score - a.score);
+  looked.sort((a, b) => b.value - a.value);
   return [...looked, ...found.slice(ahead.breadth ?? 6)];
 }

@@ -1,11 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { boardShapeNamed, OPEN_BOARD } from "../boards";
 import { makeBoard } from "../engine/board";
+import { applyPlacements } from "../engine/legality";
 import { scoreTurn } from "../engine/score";
 import { makeDictionary } from "../engine/dictionary";
 import { bestMove, chooseRanked, indexWords, rank, type Move } from "./bot";
 
-const WORDS = ["AT", "ATE", "EAT", "TEA", "CAT", "ACE", "TEN", "AN", "NET"];
+const WORDS = ["AT", "AS", "ATE", "EAT", "TEA", "CAT", "CATS", "ACE", "TEN", "AN", "NET"];
 const dictionary = makeDictionary(WORDS);
 const words = indexWords(WORDS, 7);
 const shape = boardShapeNamed(OPEN_BOARD, 15);
@@ -49,12 +50,69 @@ describe("the bot", () => {
     // Longer words score more here, so a four-tile play beats a two-tile one.
     expect(move!.placements.length).toBeGreaterThan(2);
   });
+
+  test("reports what a move scores separately from what it is worth", () => {
+    const moves = rank(
+      makeBoard([]),
+      { letters: ["C", "A", "T"], blanks: 0 },
+      dictionary,
+      words,
+      shape,
+      15,
+      (b, p) => scoreTurn(b, p).total,
+      {},
+    );
+
+    expect(moves.length).toBeGreaterThan(0);
+    // With no judgement configured the two agree, and both are real points.
+    for (const move of moves) {
+      expect(move.value).toBe(move.score);
+      expect(move.score).toBeGreaterThan(0);
+    }
+  });
+
+  test("lookahead lowers a move's value without touching its score", () => {
+    const board = makeBoard([..."CAT"].map((letter, i) => ({
+      x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
+    })));
+
+    const plain = rank(board, { letters: ["E"], blanks: 0 }, dictionary, words,
+      shape, 15, (b, p) => scoreTurn(b, p, { before: board }).total, {});
+    const wary = rank(board, { letters: ["E"], blanks: 0 }, dictionary, words,
+      shape, 15, (b, p) => scoreTurn(b, p, { before: board }).total,
+      { lookahead: { rack: ["A", "E", "T"], weight: 1 } });
+
+    // Same move, same points; only the opinion of it moves.
+    const key = (m: Move) => JSON.stringify(m.placements);
+    const top = wary[0];
+    const before = plain.find((m) => key(m) === key(top))!;
+    expect(top.score).toBe(before.score);
+    expect(top.value).toBeLessThanOrEqual(before.value);
+  });
+
+  test("scores a move against the board its tiles are on", () => {
+    const board = makeBoard([..."CAT"].map((letter, i) => ({
+      x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
+    })));
+
+    const moves = rank(board, { letters: ["S"], blanks: 0 }, dictionary, words,
+      shape, 15, (after, p, before) => scoreTurn(after, p, { before }).total, {});
+
+    // Every move must report what a fresh scoring of the same placements gives.
+    // The search used to score against the board *before* the move, so a tile
+    // forming a crossing word scored as a lone letter.
+    for (const move of moves) {
+      const after = applyPlacements(board, move.placements);
+      expect(move.score).toBe(scoreTurn(after, move.placements, { before: board }).total);
+    }
+  });
 });
 
 describe("choosing by difficulty", () => {
   const moves: Move[] = Array.from({ length: 20 }, (_, i) => ({
     placements: [],
     score: 100 - i,
+    value: 100 - i,
   }));
 
   /** Where in the ranking each difficulty lands, over many draws. */
@@ -99,7 +157,7 @@ describe("choosing by difficulty", () => {
   });
 
   test("with one move on offer, every difficulty plays it", () => {
-    const only = [{ placements: [], score: 5 }];
+    const only = [{ placements: [], score: 5, value: 5 }];
 
     for (const level of ["easy", "medium", "hard"] as const) {
       expect(chooseRanked(only, level, () => 0.99)).toBe(only[0]);
