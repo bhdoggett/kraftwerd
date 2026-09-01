@@ -46,14 +46,24 @@ export interface TurnValue {
  * prize goes to whoever gets there, which is a race. "always" makes it a
  * standing property of the letter, which is a different game: hold the Q,
  * play it repeatedly, and the board fills with Zs.
+ *
+ * `board` is the board the placements have already landed on, so a crossing or
+ * extended word scores in full. `before` is the board the turn started from,
+ * and only a caller that has one need pass it. Leaving it out makes `scoreTurn`
+ * derive a stand-in by deleting the placed cells, which erases the tile
+ * *underneath* a stacked placement: the stack bonus goes unpaid, and a block
+ * that was already complete looks newly closed and pays a second time. Every
+ * stacking and square figure the simulator reported before this argument
+ * existed was wrong for exactly that reason.
  */
 export function turnValue(
   board: Board,
   placements: readonly Placement[],
   variant: Variant,
   claimed: ReadonlySet<string>,
+  before?: Board,
 ): TurnValue {
-  const base = scoreTurn(board, placements).total;
+  const base = scoreTurn(board, placements, { before }).total;
 
 
   if (variant.multiplier === "none") return { score: base, doubled: [] };

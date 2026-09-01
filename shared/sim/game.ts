@@ -91,7 +91,7 @@ export function playGame(
       shape,
       size,
       {
-        value: (b, p) => turnValue(b, p, variant, claimed).score,
+        value: (after, p, before) => turnValue(after, p, variant, claimed, before).score,
         // A stand-in hand for imagining the reply: common letters, so what is
         // measured is how open the board is left rather than one real rack.
         lookahead:
@@ -112,14 +112,19 @@ export function playGame(
     }
     consecutivePasses = 0;
 
-    const { score, doubled } = turnValue(board, move.placements, variant, claimed);
+    const boardBefore = board;
+    board = applyPlacements(board, move.placements);
+
+    // Scored against the board the move *makes*, with the board it started
+    // from alongside it. Both matter: the after-board is where a word the move
+    // extended is read in full, and the before-board is the only record of what
+    // a stacked tile landed on. This used to pass the pre-move board as the
+    // first argument and nothing as the last, and so got both halves wrong.
+    const { score, doubled } = turnValue(board, move.placements, variant, claimed, boardBefore);
     for (const letter of doubled) claimed.add(letter);
     for (const p of move.placements) {
       if (!p.isBlank && RARE.includes(p.letter)) rarePlayed.push(p.letter);
     }
-
-    const boardBefore = board;
-    board = applyPlacements(board, move.placements);
 
     // Squares are counted where they are scored, so the totals line up with
     // what a player would have seen.

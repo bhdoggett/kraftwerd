@@ -4,6 +4,7 @@ import { applyPlacements } from "../engine/legality.js";
 import { scoreTurn } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
 import type { WordIndex } from "./words.js";
+import { chain } from "./chain.js";
 import { components, type Hand, type Move, type ValueFn } from "./components.js";
 
 export { indexWords, type LengthIndex, type WordIndex } from "./words.js";
@@ -52,6 +53,11 @@ export interface MoveOptions {
     /** How many candidates to look this closely at. Each costs a search. */
     breadth?: number;
   };
+  /**
+   * How many plays may make up one turn, and how many candidates each step
+   * considers. Depth 1 is the single-span search this started as.
+   */
+  chain?: { depth: number; breadth: number };
 }
 
 export type Difficulty = "easy" | "medium" | "hard";
@@ -191,9 +197,14 @@ export function rank(
   scoreOf: ValueFn,
   options: MoveOptions,
 ): Move[] {
-  const found = components(board, hand, dictionary, words, shape, size, scoreOf, {
-    maxLength: options.maxLength,
-  });
+  // Chaining at depth 1 already returns exactly the single-span moves, so the
+  // branch is only there to skip the wrapper's bookkeeping.
+  const chaining = options.chain ?? { depth: 2, breadth: 6 };
+  const found = chaining.depth <= 1
+    ? components(board, hand, dictionary, words, shape, size, scoreOf,
+        { maxLength: options.maxLength, before: board })
+    : chain(board, hand, dictionary, words, shape, size, scoreOf,
+        { ...chaining, maxLength: options.maxLength });
 
   const ahead = options.lookahead;
   if (ahead === undefined || found.length === 0) return found;
