@@ -3,7 +3,8 @@ import { boardShapeNamed, OPEN_BOARD } from "../boards";
 import { makeBoard, type Board } from "../engine/board";
 import { makeDictionary } from "../engine/dictionary";
 import { applyPlacements, validateTurn } from "../engine/legality";
-import { scoreTurn } from "../engine/score";
+import { scoreTurn, type Placement } from "../engine/score";
+import { newSquares } from "../engine/squares";
 import { indexWords } from "./words";
 import { chain } from "./chain";
 
@@ -94,5 +95,66 @@ describe("chaining", () => {
       const cols = new Set(m.placements.map((p) => p.x));
       return rows.size === 1 || cols.size === 1;
     })).toBe(true);
+  });
+});
+
+/** Every non-empty selection of `placements` bar the whole of it. */
+function* properSubsets(placements: readonly Placement[]): Generator<Placement[]> {
+  for (let mask = 1; mask < (1 << placements.length) - 1; mask++) {
+    yield placements.filter((_, i) => (mask & (1 << i)) !== 0);
+  }
+}
+
+/**
+ * The point of the whole exercise: square bonuses compound.
+ *
+ * Two plays that separately complete nothing can together complete a k x k,
+ * and it is only worth chaining them if that k^2 is actually collected. That
+ * turns on scoring the accumulated turn once against the board it began on --
+ * score each link against the link before it and the square falls between the
+ * two, belonging to neither.
+ */
+describe("chaining into a square", () => {
+  /*
+   * ON already down along the bottom. Three tiles finish the 2x2 at columns
+   * 7-8, rows 7-8 -- but they make an L, so no straight line holds them and no
+   * single play lays them. AN across row 7 leaves the square a corner short;
+   * TON along row 8 leaves it two corners short.
+   *
+   *        7    8    9
+   *   7    A    N    .
+   *   8    T   [O]  [N]
+   */
+  const board = makeBoard([
+    { x: 8, y: 8, letter: "O", isBlank: false, stacked: 1 },
+    { x: 9, y: 8, letter: "N", isBlank: false, stacked: 1 },
+  ]);
+
+  test("collects a square no part of the turn could have closed", () => {
+    const closing = chained(board, ["A", "N", "T"]).filter((move) =>
+      newSquares(board, applyPlacements(board, move.placements), move.placements).includes(2),
+    );
+
+    expect(closing.length).toBeGreaterThan(0);
+
+    for (const move of closing) {
+      // An L, not a line: this turn is not reachable as a single play.
+      expect(new Set(move.placements.map((p) => p.x)).size).toBeGreaterThan(1);
+      expect(new Set(move.placements.map((p) => p.y)).size).toBeGreaterThan(1);
+
+      // Nor as a play that happened to close it and a play that tidied up:
+      // no part of the turn closes anything on its own.
+      for (const part of properSubsets(move.placements)) {
+        expect(newSquares(board, applyPlacements(board, part), part)).toEqual([]);
+      }
+
+      // And the four points are in the score, not merely in the geometry.
+      const scored = scoreTurn(applyPlacements(board, move.placements), move.placements, {
+        before: board,
+      });
+      expect(scored.squarePoints).toBe(4);
+      expect(move.score).toBe(scored.total);
+      expect(move.score).toBeGreaterThan(scored.wordPoints);
+    }
   });
 });
