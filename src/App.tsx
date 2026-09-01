@@ -99,23 +99,37 @@ export default function App() {
 }
 
 /*
- * A position part-way through a game, for the sign-in page.
+ * A position from a real game, for the sign-in page.
  *
- * Chosen to show the two things that make this game its own: a tile laid over
- * another (the O closing a square, lit rather than faced) and a solid block
- * that scores again for being solid.
+ * Kept exactly as it was played, colours included, because it says what the
+ * game is better than a diagram drawn to say it: two players' tiles woven
+ * into each other, squares built on until they are full, and solid blocks of
+ * tiles that score again for being solid.
  */
 const DEMO_ROWS = [
-  "CAT..",
-  "ARE..",
-  "TENS.",
-  "...I.",
-  "...T.",
+  ".BI...",
+  "ER....",
+  "FAR...",
+  ".TEN.I",
+  "..MORN",
+  ".GIN..",
 ];
-/** The last play: SIT, hung off the S. */
-const DEMO_PLAYED = ["3,2", "3,3", "3,4"];
-/** A square somebody has already closed by playing over it. */
-const DEMO_FULL = ["1,1"];
+
+/** Whose tile each square is: seat 0 plays cyan, seat 1 magenta. */
+const DEMO_SEATS: Record<string, number> = {
+  "1,0": 1, "2,0": 1,
+  "0,1": 0, "1,1": 1,
+  "0,2": 0, "1,2": 1, "2,2": 0,
+  "1,3": 1, "2,3": 1, "3,3": 0, "5,3": 1,
+  "2,4": 0, "3,4": 0, "4,4": 1, "5,4": 1,
+  "1,5": 1, "2,5": 0, "3,5": 1,
+};
+
+/**
+ * Squares somebody has already built on: full, so the face goes back to bare
+ * board and the letter lights up in the colour of whoever closed it.
+ */
+const DEMO_FULL = ["1,1", "0,2", "1,2", "1,3", "3,3", "2,4", "1,5", "3,5"];
 
 function SignInForm() {
   const [error, setError] = useState<string | null>(null);
@@ -127,25 +141,26 @@ function SignInForm() {
     <div className={styles.auth}>
       {showRules && <RulesDialog onClose={() => setShowRules(false)} />}
 
-      <div className={styles.hero}>
-        <MiniBoard
-          rows={DEMO_ROWS}
-          seat={1}
-          played={DEMO_PLAYED}
-          full={DEMO_FULL}
-          size={34}
-        />
-      </div>
+      <div className={styles.card}>
+        <div className={styles.hero}>
+          <MiniBoard
+            rows={DEMO_ROWS}
+            seats={DEMO_SEATS}
+            full={DEMO_FULL}
+            size={34}
+          />
+        </div>
 
-      <p className={styles.tagline}>
-        Build words on a crossword grid, and score again for every solid square
-        of tiles you complete.
-      </p>
-      <p className={styles.betaNote}>
-        Still in beta: the rules change from week to week, and scores from
-        games played under older ones may be cleared. Play it for the games,
-        not for the numbers.
-      </p>
+        <p className={styles.tagline}>
+          Words in both directions, a point a letter. Then fill a 2×2 block of
+          tiles and take 4 more — a 3×3 takes 9.
+        </p>
+        <p className={styles.betaNote}>
+          Still in beta: the rules change from week to week, and scores from
+          games played under older ones may be cleared. Play it for the games,
+          not for the numbers.
+        </p>
+      </div>
       <button
         type="button"
         className={styles.google}

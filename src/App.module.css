@@ -93,9 +93,20 @@
 
 /* --- sign in --- */
 
+/*
+ * The column: a card holding the board and what the game is, then the buttons
+ * loose underneath it. Boxing the buttons in with the board made one object
+ * out of a thing to look at and a thing to press.
+ */
 .auth {
   max-width: 420px;
   margin: var(--space-8) auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);

@@ -8,6 +8,12 @@ interface MiniBoardProps {
   seat?: number;
   /** Squares laid this turn, as "x,y" — shown in a second player's colour. */
   played?: readonly string[];
+  /**
+   * Whose tile each square is, as "x,y" to a seat number. For a position from
+   * a real game, where the colours are the players rather than "mine" and
+   * "theirs"; anything not named here falls back to `seat`.
+   */
+  seats?: Readonly<Record<string, number>>;
   /** Squares with a tile on a tile: full, and lit rather than faced. */
   full?: readonly string[];
   /** Squares to ring, for pointing at the thing being explained. */
@@ -30,6 +36,7 @@ export function MiniBoard({
   rows,
   seat = 1,
   played = [],
+  seats,
   full = [],
   ring = [],
   size = 28,
@@ -59,7 +66,7 @@ export function MiniBoard({
                 empty ? "" : board.tile,
                 ring.includes(at) ? styles.ring : "",
               ].join(" ")}
-              data-seat={played.includes(at) ? 2 : seat}
+              data-seat={seats?.[at] ?? (played.includes(at) ? 2 : seat)}
               {...(isFull ? { "data-stack": "2" } : {})}
             >
               {!empty && <span className={board.glyph}>{letter}</span>}

@@ -27,8 +27,8 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         </div>
 
         <p>
-          Build words on a crossword grid, and score again for every solid
-          square of tiles you complete.
+          Words in both directions, a point a letter. Then fill a 2×2 block of
+          tiles and take 4 more — a 3×3 takes 9.
         </p>
 
         <h3 className={styles.section}>Placing tiles</h3>
@@ -119,9 +119,10 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
 
         <h3 className={styles.section}>Scoring: squares</h3>
         <p>
-          Any solid block of tiles scores again on the turn it is
-          completed: <strong>a k×k block is worth k²</strong>, and bigger
-          blocks contain smaller ones, which all count.
+          A block of tiles with no gap in it scores again on the turn it is
+          completed: <strong>a k×k block is worth k²</strong> — 4 for a 2×2,
+          9 for a 3×3 — and bigger blocks contain smaller ones, which all
+          count.
         </p>
         <div className={styles.diagrams}>
           <MiniBoard
