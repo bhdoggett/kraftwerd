@@ -1089,7 +1089,7 @@ describe("every move the search offers is legal", () => {
    * boards the bot actually meets rather than ones invented for the test.
    * Every move offered at every step is checked, not just the one taken.
    */
-  test.each([1, 2, 3, 4, 5, 6, 7, 8])("game seeded %i", (seed) => {
+  test.each([1, 2, 3, 4, 5, 6, 7, 8])("game seeded %i", { timeout: 60_000 }, (seed) => {
     const rng = seeded(seed);
     let board: Board = makeBoard([]);
     let checked = 0;
@@ -1125,7 +1125,7 @@ describe("every move the search offers is legal", () => {
 });
 
 describe("every move the search offers scores what it claims", () => {
-  test("score matches a fresh scoring of the same placements", () => {
+  test("score matches a fresh scoring of the same placements", { timeout: 60_000 }, () => {
     const rng = seeded(99);
     let board: Board = makeBoard([]);
 
@@ -1152,8 +1152,20 @@ describe("every move the search offers scores what it claims", () => {
 - [ ] **Step 2: Run it**
 
 Run: `npx vitest run --project engine shared/sim/legality.property.test.ts`
-Expected: PASS. It should take a few seconds — it indexes the real
-dictionary once and plays eight short games.
+Expected: PASS.
+
+**This test is slow by design and needs an explicit timeout.** Vitest's
+default is 5 seconds per test; this one indexes the real 59k-word dictionary
+once, then plays eight games of up to 25 turns, re-validating *every* move
+offered at *every* turn with the full rules and no `connected` shortcut —
+tens of thousands of `validateTurn` calls. The `{ timeout: 60_000 }` in the
+test signatures above is required, not defensive. Report the wall-clock time
+you actually observe.
+
+If it runs so long it is painful (say beyond a minute or two), reduce the
+number of seeds rather than the number of turns — board depth is what finds
+the interesting moves, and a shallower board tests less. Say what you changed
+and why.
 
 If it **fails now**, before chaining exists, you have found a pre-existing bug
 in the current search. Stop and fix that first; do not build on it.
