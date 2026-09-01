@@ -192,12 +192,20 @@
   font-weight: 700;
 }
 
-.play:hover:not(:disabled) {
+.play:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--valid-hover);
   border-color: var(--valid-hover);
 }
 
-.play:disabled {
+/*
+ * Off, either way it is off. A button that is only aria-disabled can still be
+ * pressed, which is the point of it: pressing this while somebody else is
+ * thinking is a fair question, and the answer is who it is waiting on. It has
+ * to look exactly as dead as a truly disabled one, or the difference would
+ * read as a button that sometimes works.
+ */
+.play:disabled,
+.play[aria-disabled="true"] {
   opacity: 0.35;
   cursor: default;
 }

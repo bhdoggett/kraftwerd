@@ -45,6 +45,12 @@ interface RackProps {
   passing: boolean;
   onPlay: () => void;
   canPlay: boolean;
+  /**
+   * Set when pressing the button is worth answering rather than ignoring --
+   * it is somebody else's turn, and who it is waiting on is what the press is
+   * asking. The button still reads as off; it just is not deaf.
+   */
+  playAnswers?: boolean;
   playing: boolean;
 }
 
@@ -72,6 +78,7 @@ export function Rack({
   passing,
   onPlay,
   canPlay,
+  playAnswers = false,
   playing,
 }: RackProps) {
   const isSelected = (s: Selection) =>
@@ -228,7 +235,10 @@ export function Rack({
           type="button"
           className={styles.play}
           onClick={onPlay}
-          disabled={!canPlay}
+          // Only truly disabled when there is nothing to say: a disabled
+          // button fires no click, and so cannot answer the press.
+          disabled={!canPlay && !playAnswers}
+          aria-disabled={!canPlay}
         >
           {playing ? "Playing…" : "Play"}
         </button>

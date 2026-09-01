@@ -469,6 +469,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const myTurn =
     me !== undefined && game.status === "active" && me.seat === game.currentSeat;
 
+  /** Whoever the game is waiting on, so a press on Play can name them. */
+  const playerOnTurn =
+    game.status === "active"
+      ? view.players.find((p) => p.seat === game.currentSeat)
+      : undefined;
+
 
 
   /**
@@ -490,7 +496,11 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   /** Drag a tile out of the rack. The blank drags blank; it is asked about
    * only once it lands somewhere. */
   function grab(selection: Selection, event: ReactPointerEvent) {
-    if (!myTurn || me === undefined) return;
+    // Not gated on whose turn it is: sorting your own rack is thinking, and
+    // thinking is most of what you do while you wait. Dropping one on the
+    // board is what needs the turn, and `place` still asks for it -- off your
+    // turn a tile dragged onto a square simply goes back where it came from.
+    if (me === undefined) return;
     // The blank has to be answered before anything else can be moved.
     if (blankAt !== null) return;
 
@@ -571,7 +581,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   }
 
   function place(x: number, y: number) {
-    if (!myTurn || selected === null || me === undefined) return;
+    if (selected === null || me === undefined) return;
 
     if (selected.kind === "blank") {
       // A full square takes nothing, and a blank cannot be the tile that
@@ -759,13 +769,17 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             pending={ready ? [] : pending}
             seatOf={seatOf}
             yourSeat={view.yourSeat}
-            canPlace={!reviewing && myTurn && selected !== null && !choosingBlank}
+            /* Not gated on the turn: a play can be laid out and priced while
+               you wait, which is when there is time to think about it.
+               Playing it is what needs the turn -- the Play button stays off,
+               and the server would refuse it anyway. */
+            canPlace={!reviewing && selected !== null && !choosingBlank}
             onPlace={place}
             onPickUp={pickUp}
             awaitingBlankAt={blankAt}
             goodCells={wordCells.good}
             badCells={wordCells.bad}
-            onGrabStaged={!reviewing && myTurn ? grabStaged : undefined}
+            onGrabStaged={!reviewing ? grabStaged : undefined}
           />
 
           {/* Floats over the board rather than sitting in the column: a message
@@ -867,8 +881,17 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             onPass={togglePass}
             canPass={myTurn && view.tilesLeft === 0}
             passing={passing}
-            onPlay={() => void submit()}
+            onPlay={() => {
+              // Pressing Play while somebody else is thinking is a fair
+              // question, and this is the answer to it.
+              if (!myTurn) {
+                refuse(playerOnTurn === undefined ? "Not your turn yet." : `It's ${playerOnTurn.name}'s turn.`);
+                return;
+              }
+              void submit();
+            }}
             canPlay={myTurn && pending.length > 0 && !submitting && legality?.ok === true}
+            playAnswers={!myTurn}
             playing={submitting}
           />
         )}
