@@ -9,13 +9,13 @@ const players = [
   { userId: "u2", seat: 1, score: 31, name: "Bob", isYou: false, tilesInHand: 3 },
 ];
 
-function draw(status: "lobby" | "active" | "finished") {
+function draw(status: "lobby" | "active" | "finished", tilesLeft = 0) {
   render(
     <Scoreboard
       players={players}
       currentSeat={0}
       tileCount={12}
-      tilesLeft={20}
+      tilesLeft={tilesLeft}
       bagSize={71}
       status={status}
     />,
@@ -23,7 +23,7 @@ function draw(status: "lobby" | "active" | "finished") {
 }
 
 describe("what everyone is holding", () => {
-  test("says how many tiles each player has in hand", () => {
+  test("says how many tiles each player has in hand once the bag is dry", () => {
     draw("active");
 
     expect(screen.getByLabelText("7 tiles in hand").textContent).toBe("7");
@@ -34,6 +34,14 @@ describe("what everyone is holding", () => {
     draw("finished");
 
     expect(screen.getByLabelText("3 tiles in hand").textContent).toBe("3");
+  });
+
+  test("says nothing while the bag can still fill every hand", () => {
+    // Every rack refills after every play, so the count would read seven on
+    // every row and mean nothing.
+    draw("active", 20);
+
+    expect(screen.queryByLabelText(/tiles in hand/)).toBeNull();
   });
 
   test("says nothing about hands before the game has dealt any", () => {

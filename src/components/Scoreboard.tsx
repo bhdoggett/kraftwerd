@@ -85,11 +85,16 @@ export function Scoreboard({
             </span>
           )}
           {/*
-            How many tiles they are holding. It matters most at the end --
-            whoever goes out takes what everyone else is still holding -- but
-            it is worth knowing all game, so it is here all game.
+            How many tiles they are holding, once the bag can no longer top
+            anyone up.
+
+            Not before: while there are tiles to draw, every hand refills to a
+            full rack after every play, so the number is seven on every row
+            and says nothing. Once the bag is dry the hands start to differ,
+            and what is left in them decides the game -- whoever goes out
+            takes what everyone else is still holding.
           */}
-          {status !== "lobby" && (
+          {(tilesLeft === 0 || status === "finished") && status !== "lobby" && (
             <span
               className={styles.tiles}
               aria-label={`${p.tilesInHand} ${p.tilesInHand === 1 ? "tile" : "tiles"} in hand`}
