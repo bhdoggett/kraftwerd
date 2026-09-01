@@ -53,8 +53,12 @@ export const BLANKS_PER_GAME = 3;
  * began with. Records count only games at the current version, which means a
  * rules change costs nobody their game history: the games stay, replayable and
  * intact, and stop counting toward a score they never competed for.
+ *
+ * 1: fifty tiles, a rack of eight.
+ * 2: seventy-one tiles, a rack of seven. Version 1 was live and played on
+ *    under the old bag, so those scores are not competing with these.
  */
-export const RULES_VERSION = 1;
+export const RULES_VERSION = 2;
 
 /**
  * How long an invite link works for. Long enough to sit in a message over a
