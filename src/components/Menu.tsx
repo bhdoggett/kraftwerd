@@ -126,12 +126,27 @@ export function Menu() {
           {isAuthenticated && (
             <>
               <div className={styles.divider} />
-              {viewer?.isGuest === true ? (
-                /*
-                 * A guest has nothing to sign back in to, so offering them the
-                 * way out is offering them a locked door. What they want from
-                 * this menu is the way in.
-                 */
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.item}
+                onClick={() => {
+                  setOpen(false);
+                  // Leave the game route behind, so signing back in lands in
+                  // the lobby rather than a game the next person may not be in.
+                  void authClient.signOut().then(() => navigate({ name: "lobby" }));
+                }}
+              >
+                Sign out
+              </button>
+
+              {/*
+                A guest is offered the way in as well as the way out. Signing
+                out of a guest account is a door that does not open again --
+                there is no email or password to come back with -- so the
+                other way is worth putting in front of them here.
+              */}
+              {viewer?.isGuest === true && (
                 <button
                   type="button"
                   role="menuitem"
@@ -144,21 +159,7 @@ export function Menu() {
                     });
                   }}
                 >
-                  Create an account
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={styles.item}
-                  onClick={() => {
-                    setOpen(false);
-                    // Leave the game route behind, so signing back in lands in
-                    // the lobby rather than a game the next person may not be in.
-                    void authClient.signOut().then(() => navigate({ name: "lobby" }));
-                  }}
-                >
-                  Sign out
+                  Create account
                 </button>
               )}
             </>
