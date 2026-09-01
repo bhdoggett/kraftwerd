@@ -192,7 +192,9 @@
   padding: var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: transparent;
+  /* Raised, like the card above them: standing on the page rather than in a
+     panel, a button the page's own colour reads as part of the page. */
+  background: var(--surface-raised);
   color: var(--text);
   font-weight: 600;
   font-size: 0.9rem;
@@ -212,7 +214,7 @@
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
   font-weight: 600;
   transition:

@@ -152,13 +152,13 @@ function SignInForm() {
         </div>
 
         <p className={styles.tagline}>
-          Words in both directions, a point a letter. Then fill a 2×2 block of
-          tiles and take 4 more — a 3×3 takes 9.
+          Make awesome word squares.
+          <br />
+          Play with your friends.
         </p>
         <p className={styles.betaNote}>
-          Still in beta: the rules change from week to week, and scores from
-          games played under older ones may be cleared. Play it for the games,
-          not for the numbers.
+          Still in beta: the rules are still in flux as we try to make this
+          game as fun as it can possibly be.
         </p>
       </div>
       <button
