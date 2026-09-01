@@ -52,23 +52,34 @@ describe("the bot", () => {
   });
 
   test("reports what a move scores separately from what it is worth", () => {
-    const moves = rank(
-      makeBoard([]),
-      { letters: ["C", "A", "T"], blanks: 0 },
-      dictionary,
-      words,
-      shape,
-      15,
-      (b, p) => scoreTurn(b, p).total,
-      {},
-    );
+    const ranked = (options: Parameters<typeof rank>[7]) =>
+      rank(
+        makeBoard([]),
+        { letters: ["C", "A", "T"], blanks: 0 },
+        dictionary,
+        words,
+        shape,
+        15,
+        (b, p) => scoreTurn(b, p).total,
+        options,
+      );
 
-    expect(moves.length).toBeGreaterThan(0);
-    // With no judgement configured the two agree, and both are real points.
-    for (const move of moves) {
+    const greedy = ranked({ exposure: false });
+    expect(greedy.length).toBeGreaterThan(0);
+    // Judgement off, the two agree, and both are real points.
+    for (const move of greedy) {
       expect(move.value).toBe(move.score);
       expect(move.score).toBeGreaterThan(0);
     }
+
+    // Judgement on, only the opinion moves: every one of these opening plays
+    // leaves an extendable word behind, so all of them are worth less than
+    // they score, and not one of them scores differently for it.
+    const judged = ranked({});
+    const scores = (moves: Move[]) =>
+      new Map(moves.map((m) => [JSON.stringify(m.placements), m.score]));
+    expect(scores(judged)).toEqual(scores(greedy));
+    for (const move of judged) expect(move.value).toBeLessThan(move.score);
   });
 
   test("lookahead lowers a move's value without touching its score", () => {

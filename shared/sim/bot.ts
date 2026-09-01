@@ -7,6 +7,7 @@ import type { WordIndex } from "./words.js";
 import { blockMoves } from "./blocks.js";
 import { chain } from "./chain.js";
 import { components, moveKey, type Hand, type Move, type ValueFn } from "./components.js";
+import { exposure, type ExposureWeights } from "./judgement.js";
 
 export { indexWords, type LengthIndex, type WordIndex } from "./words.js";
 export {
@@ -61,6 +62,15 @@ export interface MoveOptions {
   chain?: { depth: number; breadth: number };
   /** How far to go looking for k x k blocks to finish. */
   squares?: { maxK: number; maxBlocks: number };
+  /**
+   * How heavily to weigh what a move leaves behind. `false` is the greedy
+   * player: most points now, whatever it opens up.
+   *
+   * On by default, and cheap enough to be — unlike `lookahead`, which buys the
+   * same judgement with a whole search per candidate, this is counted off the
+   * grid. See `exposure` in judgement.ts.
+   */
+  exposure?: Partial<ExposureWeights> | false;
 }
 
 export type Difficulty = "easy" | "medium" | "hard";
@@ -234,6 +244,15 @@ export function rank(
   for (const move of blocks) {
     if (known.has(moveKey(move.placements))) continue;
     merged.push(move);
+  }
+
+  // What a move scores is not what it is worth: the points stand, and the
+  // opinion of them is what the ranking reads.
+  if (options.exposure !== false) {
+    for (const move of merged) {
+      move.value = move.score - exposure(board, move.placements, shape, size,
+        options.exposure ?? {});
+    }
   }
   merged.sort((a, b) => b.value - a.value);
 
