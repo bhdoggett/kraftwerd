@@ -355,10 +355,14 @@ export function Board({
       style={{ "--cell-scale": zoom } as React.CSSProperties}
       onPointerDown={(e) => {
         pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        // Cleared for every press, not only for one starting on a staged
+        // tile: the flag outlived the drag that set it, and the click it went
+        // on swallowing was the next tap on any square -- which is how a tile
+        // is placed without dragging one.
+        dragged.current = false;
         // A staged tile is dragged, not panned from.
         if ((e.target as HTMLElement).closest("[data-staged]") !== null) {
           press.current = { x: e.clientX, y: e.clientY };
-          dragged.current = false;
           return;
         }
         if (pointers.current.size > 1) return;

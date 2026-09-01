@@ -22,6 +22,16 @@ export default defineConfig({
       },
       {
         test: {
+          // Components, in a DOM. The interactions here are pointer sequences
+          // -- press, move, release -- and the flags they set survive between
+          // gestures, which is not something reading the code catches.
+          name: "ui",
+          environment: "happy-dom",
+          include: ["src/**/*.test.tsx"],
+        },
+      },
+      {
+        test: {
           name: "hooks",
           environment: "node",
           include: [".claude/hooks/**/*.test.mjs"],
