@@ -94,6 +94,24 @@
   font-size: 0.7rem;
 }
 
+/*
+ * Tiles in hand, drawn as a small square: a number on its own beside the score
+ * reads as a second score, and the shape says which of the two this is
+ * without a word of label.
+ */
+.tiles {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .score {
   font-variant-numeric: tabular-nums;
   font-weight: 700;

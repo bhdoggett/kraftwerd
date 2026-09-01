@@ -7,6 +7,12 @@ interface Standing {
   score: number;
   name: string;
   isYou: boolean;
+  /**
+   * Tiles in hand. The count, never the letters -- how many someone is
+   * holding is public, the way a rack of tiles on a table is; what is on them
+   * is not.
+   */
+  tilesInHand: number;
 }
 
 interface ScoreboardProps {
@@ -76,6 +82,19 @@ export function Scoreboard({
           {p.seat === currentSeat && status === "active" && (
             <span className={styles.playing} aria-label="to play">
               ▸
+            </span>
+          )}
+          {/*
+            How many tiles they are holding. It matters most at the end --
+            whoever goes out takes what everyone else is still holding -- but
+            it is worth knowing all game, so it is here all game.
+          */}
+          {status !== "lobby" && (
+            <span
+              className={styles.tiles}
+              aria-label={`${p.tilesInHand} ${p.tilesInHand === 1 ? "tile" : "tiles"} in hand`}
+            >
+              {p.tilesInHand}
             </span>
           )}
           <span className={styles.score}>{p.score}</span>
