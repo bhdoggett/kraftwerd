@@ -1,0 +1,102 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, test } from "vitest";
+import { boardShapeNamed, OPEN_BOARD } from "../boards";
+import { makeBoard, type Board } from "../engine/board";
+import { makeDictionary } from "../engine/dictionary";
+import { applyPlacements, validateTurn } from "../engine/legality";
+import { scoreTurn } from "../engine/score";
+import { indexWords } from "./words";
+import { rank } from "./bot";
+
+/*
+ * The real dictionary, because a toy one makes toy boards -- and the moves
+ * worth catching are the ones that only appear when there is enough of a board
+ * to build on.
+ */
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const all: string[] = JSON.parse(
+  readFileSync(join(ROOT, "shared", "data", "words.json"), "utf8"),
+);
+const dictionary = makeDictionary(all);
+const words = indexWords(all.filter((w) => w.length <= 7), 7);
+const shape = boardShapeNamed(OPEN_BOARD, 15);
+const bounds = { width: 15, height: 15, blocked: shape.blocked, centre: shape.centre };
+
+const LETTERS = "AAAABBCCDDEEEEEFFGGHHIIIIJKLLMMNNNOOOOPPQRRRSSSTTTUUVWXYZ";
+
+function seeded(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 2 ** 32;
+  };
+}
+
+describe("every move the search offers is legal", () => {
+  /*
+   * Boards are grown by playing the search's own moves, so they are the
+   * boards the bot actually meets rather than ones invented for the test.
+   * Every move offered at every step is checked, not just the one taken.
+   */
+  test.each([1, 2, 3, 4, 5, 6, 7, 8])("game seeded %i", { timeout: 60_000 }, (seed) => {
+    const rng = seeded(seed);
+    let board: Board = makeBoard([]);
+    let checked = 0;
+
+    for (let turn = 0; turn < 25; turn++) {
+      const letters = Array.from({ length: 7 }, () =>
+        LETTERS[Math.floor(rng() * LETTERS.length)]);
+      const blanks = turn % 5 === 0 ? 1 : 0;
+      const before = board;
+
+      const moves = rank(board, { letters, blanks }, dictionary, words, shape, 15,
+        (b, p) => scoreTurn(b, p, { before }).total, {});
+
+      for (const move of moves) {
+        // The real check, with no `connected` shortcut: the full rules.
+        const legality = validateTurn(before, move.placements, dictionary, bounds);
+        if (!legality.ok) {
+          throw new Error(
+            `illegal move offered on turn ${turn}: ` +
+            `${JSON.stringify(move.placements)} — ${JSON.stringify(legality.faults)}`,
+          );
+        }
+        checked++;
+      }
+
+      if (moves.length === 0) break;
+      const picked = moves[Math.floor(rng() * moves.length)];
+      board = applyPlacements(board, picked.placements);
+    }
+
+    // A test that checked nothing would pass silently.
+    expect(checked).toBeGreaterThan(50);
+  });
+});
+
+describe("every move the search offers scores what it claims", () => {
+  test("score matches a fresh scoring of the same placements", { timeout: 60_000 }, () => {
+    const rng = seeded(99);
+    let board: Board = makeBoard([]);
+
+    for (let turn = 0; turn < 12; turn++) {
+      const letters = Array.from({ length: 7 }, () =>
+        LETTERS[Math.floor(rng() * LETTERS.length)]);
+      const before = board;
+
+      const moves = rank(board, { letters, blanks: 0 }, dictionary, words, shape, 15,
+        (b, p) => scoreTurn(b, p, { before }).total, {});
+      if (moves.length === 0) break;
+
+      for (const move of moves.slice(0, 40)) {
+        const after = applyPlacements(before, move.placements);
+        expect(move.score).toBe(scoreTurn(after, move.placements, { before }).total);
+      }
+
+      const top = moves[0];
+      board = applyPlacements(board, top.placements);
+    }
+  });
+});
