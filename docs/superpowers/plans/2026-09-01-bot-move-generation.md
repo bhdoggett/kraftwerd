@@ -54,9 +54,11 @@ Convex (`convex/bots.ts` runs the live bot inside a mutation),
   ./node_modules/.bin/eslint shared convex scripts | tail -2
   ```
 
-  That reports **43 problems** at this plan's baseline (commit `69a0c19`).
-  Your task must leave it at 43 or fewer. A verbatim move of code carrying an
-  error keeps the count the same — that is correct, not a regression.
+  **Run it before you start and record the number; your task must not exceed
+  it.** The count ratchets down as the branch progresses — 43 at this plan's
+  baseline (`69a0c19`), 41 after Task 3 — so a fixed target would let a late
+  task quietly regress. A verbatim move of code carrying an error keeps the
+  count the same; that is correct, not a regression.
 
 ---
 
