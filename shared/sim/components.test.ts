@@ -7,8 +7,11 @@ import { validateTurn } from "../engine/legality";
 import { indexWords } from "./words";
 import { anchors, components, moveKey } from "./components";
 
-const WORDS = ["AT", "ATE", "EAT", "TEA", "CAT", "CATS", "COT", "COTS", "ACE",
-  "TEN", "AN", "NET", "TO", "ON", "NO", "SO", "OAT", "OATS", "SAT", "SEA"];
+// ATS earns its place: it is what makes the S on the end of CAT reachable
+// down two different spans, which is the duplicate the search has to collapse.
+const WORDS = ["AT", "ATE", "ATS", "EAT", "TEA", "CAT", "CATS", "COT", "COTS",
+  "ACE", "TEN", "AN", "NET", "TO", "ON", "NO", "SO", "OAT", "OATS", "SAT",
+  "SEA"];
 const dictionary = makeDictionary(WORDS);
 const words = indexWords(WORDS, 7);
 const shape = boardShapeNamed(OPEN_BOARD, 15);
@@ -83,8 +86,59 @@ describe("the component search", () => {
     // the end of CAT is found as part of CATS and again as part of ATS. The
     // search used to return it twice, which lets the difficulty bands count
     // one move as several.
-    const keys = find(board, ["S", "O", "A"]).map((m) => moveKey(m.placements));
+    const moves = find(board, ["S", "O", "A"]);
+    const keys = moves.map((m) => moveKey(m.placements));
     expect(new Set(keys).size).toBe(keys.length);
+
+    // Named outright, so this fails if the fixture ever stops producing the
+    // duplicate rather than quietly passing on a list that has none.
+    const onTheEnd = moveKey([{ x: 9, y: 7, letter: "S", isBlank: false }]);
+    expect(keys.filter((k) => k === onTheEnd)).toEqual([onTheEnd]);
+  });
+
+  test("measures a move against the board the turn started from", () => {
+    const board = makeBoard([..."CAT"].map((letter, i) => ({
+      x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
+    })));
+
+    /*
+     * Chaining hands the search a board that already carries the earlier links
+     * of the turn, but wants each candidate scored against the board the turn
+     * began on. Nothing else tells `scoreOf` what was already there, so a
+     * stacking bonus turns on this argument arriving intact.
+     */
+    const started = makeBoard([{ x: 6, y: 7, letter: "C", isBlank: false }]);
+    const seen: Board[] = [];
+
+    const moves = components(board, { letters: ["S"], blanks: 0 }, dictionary,
+      words, shape, 15,
+      (after, p, before) => {
+        seen.push(before);
+        return scoreTurn(after, p, { before }).total;
+      },
+      { before: started });
+
+    expect(moves.length).toBeGreaterThan(0);
+    expect(seen.length).toBe(moves.length);
+    expect(seen.every((b) => b === started)).toBe(true);
+  });
+
+  test("measures against the board it was handed when no other is given", () => {
+    const board = makeBoard([..."CAT"].map((letter, i) => ({
+      x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
+    })));
+    const seen: Board[] = [];
+
+    components(board, { letters: ["S"], blanks: 0 }, dictionary, words, shape,
+      15,
+      (after, p, before) => {
+        seen.push(before);
+        return scoreTurn(after, p, { before }).total;
+      },
+      {});
+
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((b) => b === board)).toBe(true);
   });
 
   test("stays inside its time budget on a busy board", () => {

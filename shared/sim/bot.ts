@@ -11,7 +11,6 @@ export {
   anchors,
   components,
   moveKey,
-  type Anchor,
   type Hand,
   type Move,
   type ValueFn,

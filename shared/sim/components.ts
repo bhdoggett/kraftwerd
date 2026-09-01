@@ -38,11 +38,6 @@ export interface Hand {
   blanks: number;
 }
 
-export interface Anchor {
-  x: number;
-  y: number;
-}
-
 type Span = { x: number; y: number; dx: number; dy: number; length: number };
 
 /** Every straight run of `length` cells that fits on the board. */

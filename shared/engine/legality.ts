@@ -7,7 +7,15 @@ export interface Dictionary {
   has(word: string): boolean;
 }
 
-/** The board a turn is played on: its size, its blocked squares, its centre. */
+/**
+ * The board a turn is played on, and what the caller vouches for.
+ *
+ * Mostly properties of the board itself -- how big it is, which squares are
+ * blocked, where the centre is. `connected` is different in kind: it is not
+ * something true of the board but an assertion by the caller that it has
+ * already done a check `validateTurn` would otherwise do. Read its own comment
+ * before setting it.
+ */
 export interface Bounds {
   width: number;
   height: number;
@@ -16,14 +24,32 @@ export interface Bounds {
   /** The opening play must cover this square. */
   centre?: { x: number; y: number };
   /**
-   * Skip the whole-board connectivity walk.
+   * Skip the whole-board connectivity walk. The caller asserts the result.
    *
-   * Only for a caller that has already established the move touches the mass --
-   * the bot's search, which checks exactly that in `fit` before it gets here,
-   * and which would otherwise pay a walk of the whole board for every one of
-   * the thousands of candidates it weighs a turn. It measured at a quarter of
-   * the search's entire running time. The move is still checked in every other
-   * respect.
+   * Set this only if all four of these hold. They are what make skipping the
+   * walk sound, and none of them is checked:
+   *
+   * 1. The placements, together with any board tiles among them, fill one
+   *    unbroken straight line -- no gaps, and not two separate clusters. Two
+   *    clusters, one abutting the mass and one floating free, satisfy "the
+   *    move touches the mass" and are still disconnected.
+   * 2. That line overlaps or orthogonally abuts the tiles already down (or the
+   *    board is empty, in which case the line is the whole mass).
+   * 3. No square in the line is blocked, so the line really is contiguous on
+   *    the shape being played. Note `blocked` is *not* consulted by the bot's
+   *    `fit`; its caller screens the span first.
+   * 4. The board before the move was itself one mass.
+   *
+   * The bot's single-span search establishes all of these -- `fit` fills every
+   * position of its span and rejects a span that neither overlaps nor abuts the
+   * mass, and `components` rejects a span holding a blocked square before `fit`
+   * ever sees it. A caller that assembles placements from more than one region
+   * does not, and must leave this unset.
+   *
+   * It is worth the care: the walk crosses the whole board, once for every one
+   * of the thousands of candidates the search weighs in a turn, and measured at
+   * a quarter of the search's entire running time. The move is still checked in
+   * every other respect.
    */
   connected?: boolean;
 }
