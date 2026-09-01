@@ -102,8 +102,12 @@ hard — which is what justifies the payouts in §4.
 board. A letter in both an across and a down word counts in each, as in
 Scrabble.
 
-**Blanks are worth nothing**, wherever they sit — they still complete words and
-squares, they just contribute no letter to the score.
+**Blanks score like any other letter.** They used to score nothing, which made
+a blank a cheap way to fill a square rather than a letter you were glad to
+have. The restraint is elsewhere: a blank may not be the tile that fills a
+stack (§4.6), so it cannot end an argument over a square that it could not
+otherwise win. At `STACK_CAP` 2 that means a blank never lands on another
+tile at all.
 
 This is what makes reading the board matter. One tile added to `RISE` scores
 `RISEN` in full: five points for one tile.
@@ -183,7 +187,7 @@ is a risk.
 ### 4.5 Order of operations
 
 ```
-1. sum every letter of every word formed  -> word points (blanks count 0)
+1. sum every letter of every word formed  -> word points (blanks count too)
 2. diff square sets                       -> + Σ k² for new squares
 3. sum                                    -> turn score
 ```

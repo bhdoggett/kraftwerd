@@ -4,10 +4,10 @@ import { applyPlacements } from "../engine/legality.js";
 import { scoreTurn } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
 import type { WordIndex } from "./words.js";
-import { blockMoves } from "./blocks.js";
+import { blankMoves, blockMoves } from "./blocks.js";
 import { chain } from "./chain.js";
 import { components, moveKey, type Hand, type Move, type ValueFn } from "./components.js";
-import { exposure, type ExposureWeights } from "./judgement.js";
+import { blankPrice, exposure, type ExposureWeights } from "./judgement.js";
 
 export { indexWords, type LengthIndex, type WordIndex } from "./words.js";
 export {
@@ -71,6 +71,10 @@ export interface MoveOptions {
    * grid. See `exposure` in judgement.ts.
    */
   exposure?: Partial<ExposureWeights> | false;
+  /** What a blank must beat to be worth spending. `false` never spends one. */
+  blanks?: { reserve: number } | false;
+  /** Let the general search spend blanks too. Slow; for measurement. */
+  blanksEverywhere?: boolean;
 }
 
 export type Difficulty = "easy" | "medium" | "hard";
@@ -160,23 +164,20 @@ export function bestMove(
   size: number,
   options: MoveOptions = {},
 ): Move | null {
+  /*
+   * One search. There used to be two — tiles first, blanks only if the rack
+   * alone could not play at all — which is not restraint but paralysis: a
+   * blank that closes a 3x3 is worth nine points and was never once spent on
+   * one. `blankPrice` says the same thing properly, so the ranking decides.
+   *
+   * The default value function scores against `before` as well. It did not,
+   * which is the same blind spot Task 6 fixed in the simulator: without it a
+   * stacked tile's bonus goes unpaid and an already-complete block looks newly
+   * closed.
+   */
   const scoreOf: ValueFn =
     options.value ?? ((after, p, before) => scoreTurn(after, p, { before }).total);
 
-  // Two passes: tiles first, blanks only if the rack alone cannot play. That
-  // is both how a decent player treats a blank and what keeps this quick —
-  // with blanks in hand every word is a candidate for every square.
-  const withTiles = search(
-    board,
-    { ...hand, blanks: 0 },
-    dictionary,
-    words,
-    shape,
-    size,
-    scoreOf,
-    options,
-  );
-  if (withTiles !== null || hand.blanks === 0) return withTiles;
   return search(board, hand, dictionary, words, shape, size, scoreOf, options);
 }
 
@@ -213,11 +214,12 @@ export function rank(
   // Chaining at depth 1 already returns exactly the single-span moves, so the
   // branch is only there to skip the wrapper's bookkeeping.
   const chaining = options.chain ?? { depth: 2, breadth: 6 };
+  const everywhere = options.blanksEverywhere === true && options.blanks !== false;
   const found = chaining.depth <= 1
     ? components(board, hand, dictionary, words, shape, size, scoreOf,
-        { maxLength: options.maxLength, before: board })
+        { maxLength: options.maxLength, before: board, blanks: everywhere })
     : chain(board, hand, dictionary, words, shape, size, scoreOf,
-        { ...chaining, maxLength: options.maxLength });
+        { ...chaining, maxLength: options.maxLength, blanks: everywhere });
 
   /*
    * The squares neither of the above can reach.
@@ -238,33 +240,67 @@ export function rank(
   const blocks = blockMoves(board, hand, dictionary, words, shape, size, scoreOf,
     options.squares ?? {});
 
-  // Both searches reach some of the same turns; the key settles it.
+  /*
+   * The one place a blank is offered on its own.
+   *
+   * The general search does not spend blanks, because with one in hand every
+   * word of a length is a candidate for every span of it. This asks a much
+   * smaller question -- twenty-six letters against the handful of squares that
+   * are the last gap in a block -- and leaves the price to say whether any of
+   * them is worth it.
+   */
+  const blanks = options.blanks === false
+    ? []
+    : blankMoves(board, hand, dictionary, shape, size, scoreOf, options.squares ?? {});
+
+  // The stages reach some of the same turns; the key settles it.
   const merged = [...found];
   const known = new Set(found.map((m) => moveKey(m.placements)));
-  for (const move of blocks) {
-    if (known.has(moveKey(move.placements))) continue;
+  for (const move of [...blocks, ...blanks]) {
+    const key = moveKey(move.placements);
+    if (known.has(key)) continue;
+    known.add(key);
     merged.push(move);
   }
 
-  // What a move scores is not what it is worth: the points stand, and the
-  // opinion of them is what the ranking reads.
-  if (options.exposure !== false) {
-    for (const move of merged) {
-      move.value = move.score - exposure(board, move.placements, shape, size,
-        options.exposure ?? {});
+  /*
+   * What a move scores is not what it is worth: the points stand, and the
+   * opinion of them is all the ranking reads.
+   *
+   * `blanks: false` is a refusal rather than a price, so it cannot be written
+   * as an infinite one -- an infinity times a move that spends no blank is
+   * NaN, and NaN sorts nowhere. The moves are marked and dropped instead.
+   */
+  const reserve = options.blanks === false ? undefined : options.blanks?.reserve;
+  for (const move of merged) {
+    const usesBlank = move.placements.some((p) => p.isBlank);
+    if (options.blanks === false && usesBlank) {
+      move.value = Number.NEGATIVE_INFINITY;
+      continue;
     }
+
+    const penalty =
+      (options.exposure === false
+        ? 0
+        : exposure(board, move.placements, shape, size, options.exposure ?? {})) +
+      (usesBlank ? blankPrice(board, move.placements, reserve) : 0);
+    move.value = move.score - penalty;
   }
-  merged.sort((a, b) => b.value - a.value);
+
+  const playable = options.blanks === false
+    ? merged.filter((m) => m.value !== Number.NEGATIVE_INFINITY)
+    : merged;
+  playable.sort((a, b) => b.value - a.value);
 
   const ahead = options.lookahead;
-  if (ahead === undefined || merged.length === 0) return merged;
+  if (ahead === undefined || playable.length === 0) return playable;
 
   /*
    * Only the strongest few are looked at this closely: each costs a whole
    * search of its own, and a move outside the top handful is not going to win
    * once a penalty is subtracted from it.
    */
-  const looked = merged.slice(0, ahead.breadth ?? 6).map((move) => {
+  const looked = playable.slice(0, ahead.breadth ?? 6).map((move) => {
     const after = applyPlacements(board, move.placements);
     const reply = search(
       after,
@@ -282,5 +318,5 @@ export function rank(
 
   // Re-ranked by what each move nets, with the rest of the list behind them.
   looked.sort((a, b) => b.value - a.value);
-  return [...looked, ...merged.slice(ahead.breadth ?? 6)];
+  return [...looked, ...playable.slice(ahead.breadth ?? 6)];
 }

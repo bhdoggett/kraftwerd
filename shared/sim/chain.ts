@@ -61,7 +61,7 @@ export function chain(
   shape: BoardShape,
   size: number,
   scoreOf: ValueFn,
-  options: { depth: number; breadth: number; maxLength?: number },
+  options: { depth: number; breadth: number; maxLength?: number; blanks?: boolean },
 ): Move[] {
   const found: Move[] = [];
   const seen = new Set<string>();
@@ -93,6 +93,7 @@ export function chain(
     const step = components(provisional, left, dictionary, words, shape, size, scoreOf, {
       maxLength: options.maxLength,
       before: provisional,
+      blanks: options.blanks,
     });
 
     /*

@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { boardShapeNamed, OPEN_BOARD } from "../boards";
+import { GAME } from "../config";
 import { makeBoard } from "../engine/board";
-import { DEFAULT_EXPOSURE, exposure } from "./judgement";
+import { blankPrice, DEFAULT_EXPOSURE, exposure } from "./judgement";
 
 const shape = boardShapeNamed(OPEN_BOARD, 15);
 const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
@@ -44,5 +45,34 @@ describe("exposure", () => {
 
   test("the defaults are the ones the spec names", () => {
     expect(DEFAULT_EXPOSURE).toEqual({ nearBlock: 0.6, openRun: 0.15, stackable: 0.1 });
+  });
+});
+
+describe("the price of a blank", () => {
+  const spent = [{ x: 7, y: 7, letter: "E", isBlank: true }];
+
+  test("costs nothing when no blank is spent", () => {
+    expect(blankPrice(makeBoard([]), [at(7, 7, "E")], 8)).toBe(0);
+  });
+
+  test("is dear early, when most of the game is still to come", () => {
+    expect(blankPrice(makeBoard([]), spent, 8)).toBeCloseTo(8);
+  });
+
+  test("falls to nothing as the board fills", () => {
+    // A blank still in hand when the game ends is worth exactly zero, so its
+    // reserve price has to reach zero with it.
+    const nearlyDone = makeBoard(
+      Array.from({ length: GAME.endThreshold }, (_, i) => at(i % 15, Math.floor(i / 15), "A")),
+    );
+    expect(blankPrice(nearlyDone, spent, 8)).toBe(0);
+  });
+
+  test("charges for each blank spent", () => {
+    const two = [
+      { x: 7, y: 7, letter: "E", isBlank: true },
+      { x: 8, y: 7, letter: "M", isBlank: true },
+    ];
+    expect(blankPrice(makeBoard([]), two, 8)).toBeCloseTo(16);
   });
 });

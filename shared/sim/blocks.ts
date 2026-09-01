@@ -340,3 +340,62 @@ export function blockMoves(
   found.sort((a, b) => b.value - a.value);
   return found;
 }
+
+/**
+ * Single-tile blank plays, where a blank is worth what it costs.
+ *
+ * A blank in the general search makes every word a candidate for every span,
+ * which is why it used to be a last resort. But there is a short list of
+ * squares where one tile plainly pays -- the last gap in a block -- and
+ * twenty-six letters against a handful of squares is nothing. The price in
+ * `blankPrice` decides whether any of them is worth taking.
+ *
+ * Here, rather than in a module of its own, because the shortlist is exactly
+ * what `candidateBlocks` already computes.
+ */
+export function blankMoves(
+  board: Board,
+  hand: Hand,
+  dictionary: Dictionary,
+  shape: BoardShape,
+  size: number,
+  scoreOf: ValueFn,
+  options: { maxK?: number; maxBlocks?: number } = {},
+): Move[] {
+  if (hand.blanks === 0) return [];
+
+  const bounds = { width: size, height: size, blocked: shape.blocked, centre: shape.centre };
+  const found: Move[] = [];
+  const seen = new Set<string>();
+
+  // Asking for blocks a single tile can finish names the squares directly:
+  // `candidateBlocks` drops the finished ones and anything needing more than
+  // the tiles it is given, so every block it returns here has exactly one gap.
+  const gaps = candidateBlocks(board, shape, size, 1, options.maxK ?? 3)
+    .slice(0, options.maxBlocks ?? 12)
+    .map((block) => block.empties[0]);
+
+  for (const { x, y } of gaps) {
+    // The rule as written, not as it happens to read today: a blank may not be
+    // the tile that fills a stack. At STACK_CAP 2 that is the same as "empty
+    // squares only"; at 3 it would not be.
+    const priorStack = board.get(cellKey(x, y))?.stacked ?? 0;
+    if (priorStack + 1 >= STACK_CAP && priorStack > 0) continue;
+
+    for (const letter of ALPHABET) {
+      const placements = [{ x, y, letter, isBlank: true }];
+      // One square can be the last gap of a 2x2 and of a 3x3 at once.
+      const key = moveKey(placements);
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      if (!validateTurn(board, placements, dictionary, bounds).ok) continue;
+
+      const after = applyPlacements(board, placements);
+      const score = scoreOf(after, placements, board);
+      found.push({ placements, score, value: score });
+    }
+  }
+
+  return found;
+}

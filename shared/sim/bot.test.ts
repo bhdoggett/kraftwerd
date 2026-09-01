@@ -6,7 +6,8 @@ import { scoreTurn } from "../engine/score";
 import { makeDictionary } from "../engine/dictionary";
 import { bestMove, chooseRanked, indexWords, rank, type Move } from "./bot";
 
-const WORDS = ["AT", "AS", "ATE", "EAT", "TEA", "CAT", "CATS", "ACE", "TEN", "AN", "NET"];
+// TO is here so the 2x2 at (7,7) in the blank tests spells something both ways.
+const WORDS = ["AT", "AS", "ATE", "EAT", "TEA", "CAT", "CATS", "ACE", "TEN", "AN", "NET", "TO"];
 const dictionary = makeDictionary(WORDS);
 const words = indexWords(WORDS, 7);
 const shape = boardShapeNamed(OPEN_BOARD, 15);
@@ -31,12 +32,55 @@ describe("the bot", () => {
     expect(move!.placements.every((p) => !(p.x === 7 && p.y === 7))).toBe(true);
   });
 
-  test("spends a blank when the rack cannot cover a word on its own", () => {
-    const board = makeBoard([{ x: 7, y: 7, letter: "A", isBlank: false }]);
-    const move = play(board, ["C"], 1);
+  test("spends a blank to close a square, and holds it for a cheap word", () => {
+    const near = makeBoard([
+      { x: 7, y: 7, letter: "A", isBlank: false },
+      { x: 8, y: 7, letter: "T", isBlank: false },
+      { x: 7, y: 8, letter: "T", isBlank: false },
+    ]);
 
-    expect(move).not.toBeNull();
-    expect(move!.placements.some((p) => p.isBlank)).toBe(true);
+    const closing = bestMove(near, { letters: [], blanks: 1 }, dictionary, words, shape, 15);
+    expect(closing!.placements.some((p) => p.isBlank)).toBe(true);
+
+    // On a bare board there is nothing worth a blank; a tile play wins instead.
+    const opening = bestMove(makeBoard([]), { letters: ["C", "A", "T"], blanks: 1 },
+      dictionary, words, shape, 15);
+    expect(opening!.placements.some((p) => p.isBlank)).toBe(false);
+  });
+
+  test("the general search leaves blanks alone unless it is asked", () => {
+    // CAT off a lone A, with the blank standing in for the T. The old rule
+    // played this the moment the rack alone could not; now a blank in the
+    // general search would make every word of a length a candidate for every
+    // span of it, so the move is simply not offered.
+    const board = makeBoard([{ x: 7, y: 7, letter: "A", isBlank: false }]);
+    const hand = { letters: ["C"], blanks: 1 };
+
+    expect(bestMove(board, hand, dictionary, words, shape, 15)).toBeNull();
+
+    const wide = bestMove(board, hand, dictionary, words, shape, 15,
+      { blanksEverywhere: true });
+    expect(wide!.placements.some((p) => p.isBlank)).toBe(true);
+  });
+
+  test("a blank is never spent when the option refuses it", () => {
+    const near = makeBoard([
+      { x: 7, y: 7, letter: "A", isBlank: false },
+      { x: 8, y: 7, letter: "T", isBlank: false },
+      { x: 7, y: 8, letter: "T", isBlank: false },
+    ]);
+
+    // The refusal is a refusal, not an infinite price: an infinity against a
+    // move that spends no blank would be NaN, and NaN sorts nowhere.
+    const refused = rank(near, { letters: [], blanks: 1 }, dictionary, words, shape, 15,
+      (after, p, before) => scoreTurn(after, p, { before }).total, { blanks: false });
+    expect(refused).toHaveLength(0);
+
+    const open = rank(makeBoard([]), { letters: ["C", "A", "T"], blanks: 1 }, dictionary,
+      words, shape, 15, (after, p, before) => scoreTurn(after, p, { before }).total,
+      { blanks: false });
+    expect(open.length).toBeGreaterThan(0);
+    for (const move of open) expect(Number.isNaN(move.value)).toBe(false);
   });
 
   test("passes when nothing can be played", () => {

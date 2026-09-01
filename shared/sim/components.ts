@@ -188,6 +188,15 @@ function fit(
  * `before` is the board the turn started from and is what `scoreOf` measures
  * against; it defaults to `board`, and differs only when a chained search is
  * partway through a turn and `board` already carries earlier links.
+ *
+ * `blanks` opens the search to them, and is off. A blank makes every word of a
+ * length a candidate for every span of it -- there is no rack to filter
+ * against, so `rackPool` becomes the whole index and the letter-mask test that
+ * throws out most words before `fit` sees them is skipped. The chained search
+ * runs this once per link, so that multiplies. Blanks reach the board through
+ * the block solver, which is shortlisted and can afford them, and through the
+ * targeted single-gap pass in `blankMoves`; the knob is here so the simulator
+ * can measure what that targeting misses.
  */
 export function components(
   board: Board,
@@ -197,19 +206,22 @@ export function components(
   shape: BoardShape,
   size: number,
   scoreOf: ValueFn,
-  options: { maxLength?: number; before?: Board },
+  options: { maxLength?: number; before?: Board; blanks?: boolean },
 ): Move[] {
-  const tiles = hand.letters.length + hand.blanks;
+  const rack: Hand =
+    options.blanks === true ? hand : { letters: hand.letters, blanks: 0 };
+
+  const tiles = rack.letters.length + rack.blanks;
   const longest = Math.min(options.maxLength ?? 7, tiles + 4);
-  const sortedRack = [...hand.letters].sort();
+  const sortedRack = [...rack.letters].sort();
   const before = options.before ?? board;
   const found: Move[] = [];
   const seen = new Set<string>();
 
   const live = anchors(board, shape, size);
 
-  const rackMask = hand.letters.reduce((mask, l) => mask | (1 << (l.charCodeAt(0) - 65)), 0);
-  const anyLetter = hand.blanks > 0;
+  const rackMask = rack.letters.reduce((mask, l) => mask | (1 << (l.charCodeAt(0) - 65)), 0);
+  const anyLetter = rack.blanks > 0;
 
   for (let length = 2; length <= longest; length++) {
     const index = words.byLength.get(length);
@@ -280,7 +292,7 @@ export function components(
         // stand in. Cheapest rejection there is, so it goes first.
         if (!anyLetter && (index.masks[i]! & ~(rackMask | spanMask)) !== 0) continue;
 
-        const laid = fit(board, span, index.words[i]!, hand);
+        const laid = fit(board, span, index.words[i]!, rack);
         if (laid === null) continue;
 
         // A turn found down an earlier span is the same turn, and validating

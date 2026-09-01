@@ -6,7 +6,7 @@
  * "completer takes it" (design.md §4.4) makes that half most of the skill. A
  * block left one tile short is not a near miss, it is a gift.
  */
-import { STACK_CAP } from "../config.js";
+import { GAME, STACK_CAP } from "../config.js";
 import { cellKey, type Board } from "../engine/board.js";
 import type { Placement } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
@@ -144,4 +144,40 @@ export function exposure(
   }
 
   return penalty;
+}
+
+/** What a blank is worth keeping, so spending one has to beat it. */
+export const DEFAULT_BLANK_RESERVE = 8;
+
+/**
+ * What spending a blank costs beyond the tiles it lays.
+ *
+ * The old rule spent a blank only when nothing else could be played at all,
+ * which is not restraint but paralysis: a blank that closes a 3x3 is worth
+ * nine points and was never once spent on one. A price says the same thing
+ * properly -- hold it while something better is still likely to come along.
+ *
+ * The price falls as the board fills, because the chance of that something
+ * falls with it. This is not a taste for tidy arithmetic: a blank is a
+ * whole-game allowance (design.md §5), so its only value is the best turn it
+ * still has left to be spent on, and once the game ends there are no turns
+ * left. A blank still in hand at the end is worth exactly nothing, so its
+ * reserve price has to reach nothing at the same moment -- `GAME.endThreshold`
+ * tiles on the board -- or the bot ends games holding tiles it was charged to
+ * keep. Straight-line decay in tiles placed, which is the only measure of
+ * how far through a game the board is that does not need the bag.
+ *
+ * The default reserve is about what closing a 2x2 pays, so early on a blank is
+ * spent for something square-shaped or not at all.
+ */
+export function blankPrice(
+  board: Board,
+  placements: readonly Placement[],
+  reserve: number = DEFAULT_BLANK_RESERVE,
+): number {
+  const spent = placements.filter((p) => p.isBlank).length;
+  if (spent === 0) return 0;
+
+  const left = Math.max(0, GAME.endThreshold - board.size);
+  return reserve * (left / GAME.endThreshold) * spent;
 }
