@@ -4,8 +4,9 @@ import { applyPlacements } from "../engine/legality.js";
 import { scoreTurn } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
 import type { WordIndex } from "./words.js";
+import { blockMoves } from "./blocks.js";
 import { chain } from "./chain.js";
-import { components, type Hand, type Move, type ValueFn } from "./components.js";
+import { components, moveKey, type Hand, type Move, type ValueFn } from "./components.js";
 
 export { indexWords, type LengthIndex, type WordIndex } from "./words.js";
 export {
@@ -58,6 +59,8 @@ export interface MoveOptions {
    * considers. Depth 1 is the single-span search this started as.
    */
   chain?: { depth: number; breadth: number };
+  /** How far to go looking for k x k blocks to finish. */
+  squares?: { maxK: number; maxBlocks: number };
 }
 
 export type Difficulty = "easy" | "medium" | "hard";
@@ -206,15 +209,36 @@ export function rank(
     : chain(board, hand, dictionary, words, shape, size, scoreOf,
         { ...chaining, maxLength: options.maxLength });
 
+  /*
+   * The squares neither of the above can reach.
+   *
+   * A word square is a set of placements no subset of which is a legal play,
+   * so it is invisible to a search built out of legal plays -- which is both
+   * of the searches above. It is worth a separate pass because k^2 is the
+   * largest single lever in the scoring, and because the pass is cheap: a
+   * shortlist of blocks, each a few gaps deep.
+   */
+  const blocks = blockMoves(board, hand, dictionary, words, shape, size, scoreOf,
+    options.squares ?? {});
+
+  // Both searches reach some of the same turns; the key settles it.
+  const merged = [...found];
+  const known = new Set(found.map((m) => moveKey(m.placements)));
+  for (const move of blocks) {
+    if (known.has(moveKey(move.placements))) continue;
+    merged.push(move);
+  }
+  merged.sort((a, b) => b.value - a.value);
+
   const ahead = options.lookahead;
-  if (ahead === undefined || found.length === 0) return found;
+  if (ahead === undefined || merged.length === 0) return merged;
 
   /*
    * Only the strongest few are looked at this closely: each costs a whole
    * search of its own, and a move outside the top handful is not going to win
    * once a penalty is subtracted from it.
    */
-  const looked = found.slice(0, ahead.breadth ?? 6).map((move) => {
+  const looked = merged.slice(0, ahead.breadth ?? 6).map((move) => {
     const after = applyPlacements(board, move.placements);
     const reply = search(
       after,
@@ -232,5 +256,5 @@ export function rank(
 
   // Re-ranked by what each move nets, with the rest of the list behind them.
   looked.sort((a, b) => b.value - a.value);
-  return [...looked, ...found.slice(ahead.breadth ?? 6)];
+  return [...looked, ...merged.slice(ahead.breadth ?? 6)];
 }
