@@ -12,6 +12,29 @@ import { RACK } from "../shared/config.ts";
 const games = Number(process.argv[2] ?? 40);
 const players = Number(process.argv[3] ?? 2);
 
+/*
+ * Nothing to play is refused, not run.
+ *
+ * The pool is sized `Math.min(cpus().length, games)`, so zero games is zero
+ * workers -- and `play` dispatches from a loop over the workers, so with none
+ * it posts no message, registers no listener, and returns a promise nothing
+ * can ever settle. The serial version this replaced finished on that input;
+ * this one stops dead at the first `await`.
+ *
+ * Refused rather than resolved with an empty result set because every figure
+ * in the table is a per-game mean: a zero-game run has nothing to report but
+ * NaN, and a table of NaN answers the question worse than saying so does. A
+ * non-numeric argument arrives as NaN and fails in exactly the same way, and
+ * zero players walks off the end of `hands` in playGame, so one test covers
+ * all three.
+ */
+if (!Number.isInteger(games) || games < 1 || !Number.isInteger(players) || players < 1) {
+  console.error(
+    "usage: simulate.ts [games] [players] — both must be whole numbers of at least 1",
+  );
+  process.exit(1);
+}
+
 // The words file, the dictionary and its index are no longer needed on the
 // main thread: each worker builds its own copy once and plays every game it
 // is given against it (see scripts/sim-worker.ts).
