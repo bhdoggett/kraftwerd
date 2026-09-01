@@ -28,7 +28,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { displayName, requireUser } from "./auth_helpers";
+import { currentUser, displayName, refuseGuest, requireUser } from "./auth_helpers";
 import { placement } from "./schema";
 
 /**
@@ -146,8 +146,13 @@ export const createGame = mutation({
     bots: v.optional(v.array(difficulty)),
   },
   handler: async (ctx, args) => {
-    const userId = await requireUser(ctx);
+    const me = await currentUser(ctx);
+    const userId = me._id;
     const bots = args.bots ?? [];
+
+    // A seat this game will wait for a person to take. A guest may fill every
+    // seat itself, with machines, and no more than that.
+    if (args.playerCount - 1 - bots.length > 0) refuseGuest(me);
 
     if (args.playerCount < GAME.minPlayers || args.playerCount > GAME.maxPlayers) {
       throw new ConvexError(`Games take ${GAME.minPlayers}-${GAME.maxPlayers} players`);
@@ -294,7 +299,9 @@ export const createGameWithFriends = mutation({
 export const joinGame = mutation({
   args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
-    const userId = await requireUser(ctx);
+    const me = await currentUser(ctx);
+    refuseGuest(me);
+    const userId = me._id;
 
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) throw new ConvexError("No such game");
@@ -528,7 +535,10 @@ export const passTurn = mutation({
 export const respondToInvite = mutation({
   args: { gameId: v.id("games"), accept: v.boolean() },
   handler: async (ctx, args) => {
-    const userId = await requireUser(ctx);
+    const viewer = await currentUser(ctx);
+    // Taking a seat somebody kept for you is the same promise as joining.
+    if (args.accept) refuseGuest(viewer);
+    const userId = viewer._id;
 
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) throw new ConvexError("No such game");

@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { FRIEND_LINK_DAYS } from "../shared/config.js";
-import { currentUser, displayName } from "./auth_helpers";
+import { currentUser, displayName, refuseGuest } from "./auth_helpers";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 
 /** Most friendships anyone will have; keeps every query bounded. */
@@ -70,6 +70,8 @@ export const requestFriend = mutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     const me = await currentUser(ctx);
+    // A guest has no game to play with a friend, so no friends to make.
+    refuseGuest(me);
     const email = args.email.trim().toLowerCase();
 
     if (email === "") throw new ConvexError("Enter an email address");
@@ -226,6 +228,8 @@ export const createFriendLink = mutation({
   args: {},
   handler: async (ctx) => {
     const me = await currentUser(ctx);
+    // A guest has no game to play with a friend, so no friends to make.
+    refuseGuest(me);
     const expiresAt = linkLife();
 
     const existing = await linkFor(ctx, me._id);
@@ -253,6 +257,8 @@ export const acceptFriendLink = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     const me = await currentUser(ctx);
+    // A guest has no game to play with a friend, so no friends to make.
+    refuseGuest(me);
 
     const link = await ctx.db
       .query("friendLinks")

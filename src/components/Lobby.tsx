@@ -1,12 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { Difficulty } from "../../shared/config";
 import { CreateGame } from "./CreateGame";
+import { GuestGame } from "./GuestGame";
 import { DevTools } from "./DevTools";
 import { NewGame } from "./NewGame";
-import { useStartGame } from "../lib/useStartGame";
+import { claimPromisedGame, useStartGame } from "../lib/useStartGame";
 import styles from "./Lobby.module.css";
 
 export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
@@ -50,6 +51,30 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     else setSetup({ ...game, invited: friendIds.length + bots.length });
   }
 
+  /*
+   * The game a guest was promised on the way in.
+   *
+   * Made here rather than beside the button that promised it: signing in
+   * swaps the whole tree, so that button is gone before there is an account
+   * to make a game with.
+   */
+  const promised = useRef(false);
+  useEffect(() => {
+    if (promised.current) return;
+    const kind = claimPromisedGame();
+    if (kind === null) return;
+    promised.current = true;
+    // Out of the effect body, since making the game sets state as it goes.
+    queueMicrotask(() =>
+      kind === "solo"
+        ? void startGame(1, [], [])
+        : void startGame(2, [], ["medium"]),
+    );
+    // Once, on arrival: startGame changes on every render, and this is not a
+    // thing to redo when it does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className={styles.lobby}>
       {setup && (
@@ -72,19 +97,30 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         New game
       </button>
 
-      {creating && (
-        <CreateGame
-          onStart={(playerCount, friendIds, bots) =>
-            void startGame(playerCount, friendIds, bots)
-          }
-          onCancel={() => {
-            setCreating(false);
-            clearError();
-          }}
-          starting={starting}
-          error={startError}
-        />
-      )}
+      {creating &&
+        (viewer?.isGuest === true ? (
+          <GuestGame
+            onStart={(playerCount, bots) => void startGame(playerCount, [], bots)}
+            onCancel={() => {
+              setCreating(false);
+              clearError();
+            }}
+            starting={starting}
+            error={startError}
+          />
+        ) : (
+          <CreateGame
+            onStart={(playerCount, friendIds, bots) =>
+              void startGame(playerCount, friendIds, bots)
+            }
+            onCancel={() => {
+              setCreating(false);
+              clearError();
+            }}
+            starting={starting}
+            error={startError}
+          />
+        ))}
 
       {invitations.length > 0 && (
         <section className={styles.section}>

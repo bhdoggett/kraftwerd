@@ -1,6 +1,7 @@
 import { createClient, type AuthFunctions, type GenericCtx } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth/minimal";
+import { anonymous } from "better-auth/plugins/anonymous";
 import { components, internal } from "./_generated/api";
 import { env } from "./_generated/server";
 import type { DataModel } from "./_generated/dataModel";
@@ -51,11 +52,15 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
     // transaction, so game documents can hold a real Id<"users">.
     user: {
       onCreate: async (ctx, doc) => {
+        // Better Auth's own field, from the anonymous plugin below.
+        const guest = (doc as { isAnonymous?: boolean | null }).isAnonymous === true;
+
         const userId = await ctx.db.insert("users", {
           authId: doc._id,
           email: doc.email,
           name: doc.name ?? undefined,
           image: doc.image ?? undefined,
+          ...(guest ? { isGuest: true } : {}),
         });
         // Anyone who asked to be their friend before they had an account.
         await claimInvites(ctx, userId, doc.email);
@@ -86,5 +91,26 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     // Google only. No password flow means no password storage, no reset
     // emails, and nothing to phish.
     socialProviders,
-    plugins: [crossDomain({ siteUrl }), convex({ authConfig })],
+    plugins: [
+      /*
+       * A guest account, so the game can be played before it is joined.
+       *
+       * Signing in with Google is a lot to ask of somebody who has not seen
+       * the game yet, and the board on the sign-in page can only show them so
+       * much. A guest gets a real account with a made-up address: real enough
+       * to hold a game, and gone when the browser forgets the session.
+       *
+       * A guest who goes on to make a real account starts fresh there; the
+       * game they tried is left behind with the guest, which is what a trial
+       * game is for. The guest row is kept rather than deleted, though --
+       * Better Auth would remove it, and the game it played would be left
+       * pointing at somebody who no longer exists.
+       */
+      anonymous({
+        generateName: () => "Guest",
+        disableDeleteAnonymousUser: true,
+      }),
+      crossDomain({ siteUrl }),
+      convex({ authConfig }),
+    ],
   });

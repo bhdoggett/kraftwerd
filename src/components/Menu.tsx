@@ -1,4 +1,5 @@
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { useEffect, useRef, useState } from "react";
 import { authClient } from "../lib/auth-client";
 import { navigate } from "../router";
@@ -24,6 +25,7 @@ export function Menu() {
   const [rules, setRules] = useState(false);
   const [friends, setFriends] = useState(false);
   const { isAuthenticated } = useConvexAuth();
+  const viewer = useQuery(api.users.viewer);
   const [theme, setTheme] = useTheme();
   const wrap = useRef<HTMLDivElement>(null);
 
@@ -124,19 +126,41 @@ export function Menu() {
           {isAuthenticated && (
             <>
               <div className={styles.divider} />
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.item}
-                onClick={() => {
-                  setOpen(false);
-                  // Leave the game route behind, so signing back in lands in
-                  // the lobby rather than a game the next person may not be in.
-                  void authClient.signOut().then(() => navigate({ name: "lobby" }));
-                }}
-              >
-                Sign out
-              </button>
+              {viewer?.isGuest === true ? (
+                /*
+                 * A guest has nothing to sign back in to, so offering them the
+                 * way out is offering them a locked door. What they want from
+                 * this menu is the way in.
+                 */
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.item}
+                  onClick={() => {
+                    setOpen(false);
+                    void authClient.signIn.social({
+                      provider: "google",
+                      callbackURL: window.location.href,
+                    });
+                  }}
+                >
+                  Create an account
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.item}
+                  onClick={() => {
+                    setOpen(false);
+                    // Leave the game route behind, so signing back in lands in
+                    // the lobby rather than a game the next person may not be in.
+                    void authClient.signOut().then(() => navigate({ name: "lobby" }));
+                  }}
+                >
+                  Sign out
+                </button>
+              )}
             </>
           )}
         </div>

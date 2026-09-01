@@ -687,6 +687,84 @@ describe("the lobby's game lists", () => {
     expect(bob.past[0]?.youWon).toBe(true);
   });
 
+  describe("a guest plays the game, not other people", () => {
+    /** A guest, and somebody with a real account. */
+    async function table() {
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        await ctx.db.insert("users", { authId: "auth|guest", name: "Guest", isGuest: true });
+        await ctx.db.insert("users", { authId: "auth|real", name: "Real" });
+      });
+      return {
+        t,
+        asGuest: t.withIdentity({ subject: "auth|guest" }),
+        asReal: t.withIdentity({ subject: "auth|real" }),
+      };
+    }
+
+    test("may play alone", async () => {
+      const { asGuest } = await table();
+
+      const game = await asGuest.mutation(api.games.createGame, { playerCount: 1 });
+
+      expect(game.playerCount).toBe(1);
+    });
+
+    test("may play the computer", async () => {
+      const { asGuest } = await table();
+
+      const game = await asGuest.mutation(api.games.createGame, {
+        playerCount: 2,
+        bots: ["medium"],
+      });
+
+      expect(game.playerCount).toBe(2);
+    });
+
+    test("may not leave a seat open for a person", async () => {
+      // The seat would wait forever: a guest account has no way back into it
+      // once the browser forgets the session.
+      const { asGuest } = await table();
+
+      await expect(
+        asGuest.mutation(api.games.createGame, { playerCount: 2 }),
+      ).rejects.toThrow("Make an account");
+    });
+
+    test("may not take a seat at somebody else's table", async () => {
+      const { asGuest, asReal } = await table();
+      const { gameId } = await asReal.mutation(api.games.createGame, { playerCount: 2 });
+
+      await expect(
+        asGuest.mutation(api.games.joinGame, { gameId }),
+      ).rejects.toThrow("Make an account");
+    });
+
+    test("may not make friends, which is the other way to a table", async () => {
+      const { asGuest } = await table();
+
+      await expect(asGuest.mutation(api.friends.createFriendLink, {})).rejects.toThrow(
+        "Make an account",
+      );
+    });
+  });
+
+  test("a guest is told they are one, and everyone else is not", async () => {
+    // What the menu asks of this: a guest is offered the way in to a real
+    // account, where anyone else is offered the way out of theirs.
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|guest", name: "Guest", isGuest: true });
+      await ctx.db.insert("users", { authId: "auth|real", name: "Real" });
+    });
+
+    const asGuest = t.withIdentity({ subject: "auth|guest" });
+    const asReal = t.withIdentity({ subject: "auth|real" });
+
+    expect((await asGuest.query(api.users.viewer))?.isGuest).toBe(true);
+    expect((await asReal.query(api.users.viewer))?.isGuest).toBe(false);
+  });
+
   test("a game abandoned before it began is not counted or kept", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {

@@ -53,3 +53,37 @@ export function useStartGame() {
 
   return { start, starting, error, clearError: () => setError(null) };
 }
+
+/** The game a guest asked for on the way in. */
+export type PromisedGame = "solo" | "computer";
+
+/**
+ * What a guest asked for before they had an account.
+ *
+ * Set as the guest account is made and read once the lobby has loaded under
+ * it. It travels through sessionStorage rather than through props because
+ * signing in swaps the whole tree: the button that made the promise is gone
+ * by the time there is an account to keep it with.
+ */
+const GUEST_START = "kraftwerd:play-first";
+
+export function promiseAGame(kind: PromisedGame) {
+  try {
+    window.sessionStorage.setItem(GUEST_START, kind);
+  } catch {
+    // Private browsing: they land in the lobby and press New game, which is
+    // one press more than they were promised and no worse than that.
+  }
+}
+
+/** Claims that promise, and says what was asked for. */
+export function claimPromisedGame(): PromisedGame | null {
+  try {
+    const kind = window.sessionStorage.getItem(GUEST_START);
+    if (kind !== "solo" && kind !== "computer") return null;
+    window.sessionStorage.removeItem(GUEST_START);
+    return kind;
+  } catch {
+    return null;
+  }
+}

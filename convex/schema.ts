@@ -27,6 +27,12 @@ export default defineSchema({
     name: v.optional(v.string()),
     image: v.optional(v.string()),
     /**
+     * An account made to try the game before signing up for one. Stamped as
+     * the row is created rather than asked of Better Auth on every read: it
+     * cannot change for a given account -- making a real one makes a new row.
+     */
+    isGuest: v.optional(v.boolean()),
+    /**
      * Lifetime stats. Optional because rows created before stats existed have
      * none, and an absent count reads the same as zero.
      */

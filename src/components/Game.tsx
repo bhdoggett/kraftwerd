@@ -148,6 +148,8 @@ function describeTurn(turn: {
 
 export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => void }) {
   const view = useQuery(api.games.getGame, { gameId });
+  /** Only for what a guest may not do; the game itself does not care. */
+  const viewer = useQuery(api.users.viewer);
   const placeTiles = useMutation(api.games.placeTiles);
   const resignGame = useMutation(api.games.resignGame);
   const tradeTiles = useMutation(api.games.tradeTiles);
@@ -1000,7 +1002,11 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             {game.playerCount} seats filled
             {invitees.length > 0 && <> — yet to accept: {invitees.join(", ")}</>}
             . Nobody can place tiles until the game is full.
-            {view.canJoin ? (
+            {view.canJoin && viewer?.isGuest === true ? (
+              // A guest cannot hold a seat: the mutation refuses it, and being
+              // told why here beats pressing a button that says no.
+              <> Playing with people needs an account — make one from the menu.</>
+            ) : view.canJoin ? (
               <>
                 {" "}
                 <button

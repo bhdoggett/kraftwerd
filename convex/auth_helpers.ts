@@ -32,6 +32,22 @@ export async function requireUser(
   return (await currentUser(ctx))._id;
 }
 
+/**
+ * A guest may play the game, but not other people.
+ *
+ * A guest account has no way back into it: no email, no password, no Google
+ * -- only a cookie in one browser. That is fine for a game against the
+ * computer and unfair to everybody else, since the other player at the table
+ * would be left in a game whose opponent can never move again, with nothing
+ * they can do about it. Refused at the mutation rather than only hidden in
+ * the interface: it is the mutation that would strand the game.
+ */
+export function refuseGuest(user: Doc<"users">): void {
+  if (user.isGuest === true) {
+    throw new ConvexError("Make an account to play with other people");
+  }
+}
+
 /** Prefer a real name, fall back to the local part of the email. */
 export function displayName(user: Doc<"users"> | null): string {
   if (user === null) return "Unknown";

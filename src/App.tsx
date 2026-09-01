@@ -11,6 +11,7 @@ import { Menu } from "./components/Menu";
 import { MiniBoard } from "./components/MiniBoard";
 import { RulesDialog } from "./components/Rules";
 import { authClient } from "./lib/auth-client";
+import { promiseAGame, type PromisedGame } from "./lib/useStartGame";
 import { navigate, useRoute } from "./router";
 
 /*
@@ -55,10 +56,20 @@ export default function App() {
           {/* Two tiles, in the colours seats 2 and 1 play in: the mark is made
               of the same pieces the game is. */}
           <h1 className={styles.brand} aria-label="kraftwerd">
-            <span className={styles.markTile} data-seat="2" data-face="brand" aria-hidden="true">
+            <span
+              className={styles.markTile}
+              data-seat="2"
+              data-face="brand"
+              aria-hidden="true"
+            >
               K
             </span>
-            <span className={styles.markTile} data-seat="1" data-face="brand" aria-hidden="true">
+            <span
+              className={styles.markTile}
+              data-seat="1"
+              data-face="brand"
+              aria-hidden="true"
+            >
               W
             </span>
           </h1>
@@ -91,7 +102,9 @@ export default function App() {
           )}
         </Authenticated>
         <Unauthenticated>
-          <SignInForm />
+          {/* A guest account is offered on the way in, not on the way to
+              somebody else's game: a guest cannot take a seat at one. */}
+          <SignInForm canGuest={route.name === "lobby"} />
         </Unauthenticated>
       </main>
     </div>
@@ -106,23 +119,28 @@ export default function App() {
  * into each other, squares built on until they are full, and solid blocks of
  * tiles that score again for being solid.
  */
-const DEMO_ROWS = [
-  ".BI...",
-  "ER....",
-  "FAR...",
-  ".TEN.I",
-  "..MORN",
-  ".GIN..",
-];
+const DEMO_ROWS = [".BI...", "ER....", "FAR...", ".TEN.I", "..MORN", ".GIN.."];
 
 /** Whose tile each square is: seat 0 plays cyan, seat 1 magenta. */
 const DEMO_SEATS: Record<string, number> = {
-  "1,0": 1, "2,0": 1,
-  "0,1": 0, "1,1": 1,
-  "0,2": 0, "1,2": 1, "2,2": 0,
-  "1,3": 1, "2,3": 1, "3,3": 0, "5,3": 1,
-  "2,4": 0, "3,4": 0, "4,4": 1, "5,4": 1,
-  "1,5": 1, "2,5": 0, "3,5": 1,
+  "1,0": 1,
+  "2,0": 1,
+  "0,1": 0,
+  "1,1": 1,
+  "0,2": 0,
+  "1,2": 1,
+  "2,2": 0,
+  "1,3": 1,
+  "2,3": 1,
+  "3,3": 0,
+  "5,3": 1,
+  "2,4": 0,
+  "3,4": 0,
+  "4,4": 1,
+  "5,4": 1,
+  "1,5": 1,
+  "2,5": 0,
+  "3,5": 1,
 };
 
 /**
@@ -131,9 +149,11 @@ const DEMO_SEATS: Record<string, number> = {
  */
 const DEMO_FULL = ["1,1", "0,2", "1,2", "1,3", "3,3", "2,4", "1,5", "3,5"];
 
-function SignInForm() {
+function SignInForm({ canGuest }: { canGuest: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
+  /** The game a guest is waiting on, so its button says so rather than sitting there. */
+  const [guest, setGuest] = useState<PromisedGame | null>(null);
   const status = useQuery(api.users.authStatus);
   const configured = status?.googleConfigured ?? true;
 
@@ -157,8 +177,8 @@ function SignInForm() {
           Play with your friends.
         </p>
         <p className={styles.betaNote}>
-          Still in beta: the rules are still in flux as we try to make this
-          game as fun as it can possibly be.
+          Still in beta: the rules are still in flux as we try to make this game
+          as fun as it can possibly be.
         </p>
       </div>
       <button
@@ -167,8 +187,7 @@ function SignInForm() {
         disabled={!configured}
         onClick={() => {
           setError(null);
-          void authClient
-            .signIn
+          void authClient.signIn
             .social({
               provider: "google",
               // Back to the page they were on, not the root: someone opening
@@ -192,6 +211,43 @@ function SignInForm() {
         </div>
       )}
       {error && <div className={styles.error}>Could not sign in: {error}</div>}
+
+      {/*
+        A game before an account. Signing in is a lot to ask of somebody who
+        has not seen the game yet, and a picture of a board can only say so
+        much -- so this hands them a real one and asks afterwards.
+
+        Both ways in, because they are different games: on your own it is a
+        puzzle to take apart, and against the computer somebody is taking the
+        squares you wanted.
+      */}
+      {canGuest && (
+        <div className={styles.guests}>
+          {(["solo", "computer"] as const).map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              className={styles.guest}
+              disabled={guest !== null}
+              onClick={() => {
+                setError(null);
+                setGuest(kind);
+                promiseAGame(kind);
+                void authClient.signIn.anonymous().catch((err: unknown) => {
+                  setGuest(null);
+                  setError(err instanceof Error ? err.message : String(err));
+                });
+              }}
+            >
+              {guest === kind
+                ? "Dealing…"
+                : kind === "solo"
+                  ? "Play on your own"
+                  : "Play the computer"}
+            </button>
+          ))}
+        </div>
+      )}
 
       <button
         type="button"

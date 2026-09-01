@@ -28,6 +28,8 @@ export const viewer = query({
           id: user._id,
           name: user.name ?? user.email ?? null,
           image: user.image ?? null,
+          /** An account made to try the game, with no way back into it. */
+          isGuest: user.isGuest === true,
           stats: {
             wins: current ? (user.wins ?? 0) : 0,
             gamesPlayed: current ? (user.gamesPlayed ?? 0) : 0,

@@ -205,3 +205,48 @@
   color: var(--text);
   border-color: var(--border-strong);
 }
+
+/*
+ * A guest's two games, as two things to press rather than a form to fill in.
+ * Each says what it is on the second line, since "on your own" and "against
+ * the computer" are the whole decision and both deserve a sentence.
+ */
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--text);
+  text-align: left;
+  font-size: 1rem;
+}
+
+.choice:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.choice:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.choiceHint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+/* The hint keeps its own colour when the button around it is being hovered. */
+.choice:hover:not(:disabled) .choiceHint {
+  color: var(--text-muted);
+}

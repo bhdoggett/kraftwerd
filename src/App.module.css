@@ -188,6 +188,36 @@
  * the game needs this more than they need the sign-in, so it reads as the
  * second thing on the page, not the last.
  */
+/*
+ * The way in for somebody who has not signed in. Quieter than the sign-in
+ * button and louder than the rules: it is the second thing to try, not the
+ * first, and not the last either.
+ */
+/* Side by side: two ways into the same thing, neither the lesser one. */
+.guests {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.guest {
+  flex: 1;
+  padding: var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.guest:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.guest:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .howTo {
   padding: var(--space-3);
   border: 1px solid var(--border-strong);
