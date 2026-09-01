@@ -31,4 +31,25 @@ describe("the word index", () => {
   test("returns null when nothing is fixed", () => {
     expect(candidates(index.byLength.get(3)!, [])).toBeNull();
   });
+
+  /*
+   * `candidates` intersects posting lists by linear merge, which is only
+   * correct because they are ascending -- they are built by pushing each
+   * word's index as it is appended. If that ever stops being true the merge
+   * quietly returns the wrong words rather than failing, so it is pinned here.
+   */
+  test("keeps every posting list strictly ascending", () => {
+    const many = indexWords(
+      ["CAT", "COT", "CATS", "COTS", "AT", "TO", "OAT", "OATS", "SAT", "SEA",
+       "TEA", "EAT", "ATE", "ACE", "TEN", "NET", "AN", "ON", "NO", "SO"],
+      7,
+    );
+
+    for (const [length, byLength] of many.byLength) {
+      for (const [key, list] of byLength.posting) {
+        const ascending = list.every((at, i) => i === 0 || at > list[i - 1]);
+        expect({ length, key, ascending }).toEqual({ length, key, ascending: true });
+      }
+    }
+  });
 });

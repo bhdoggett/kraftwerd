@@ -128,16 +128,42 @@ export function withOneCovered(
   return [...pool];
 }
 
+/**
+ * Intersection of two ascending lists, into a fresh ascending list.
+ *
+ * Posting lists are built by pushing `index.words.length` as each word is
+ * appended, so they arrive ascending and a linear merge answers the same
+ * question a `Set` did — without allocating one per intersection step, which
+ * measured at a fifth of the bot search's entire running time.
+ */
+function meet(a: readonly number[], b: readonly number[]): number[] {
+  const out: number[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    const x = a[i];
+    const y = b[j];
+    if (x === y) {
+      out.push(x);
+      i++;
+      j++;
+    } else if (x < y) i++;
+    else j++;
+  }
+  return out;
+}
+
 export function candidates(index: LengthIndex, fixed: [number, string][]): number[] | null {
   if (fixed.length === 0) return null;
 
   const lists = fixed.map(([i, ch]) => index.posting.get(`${i}:${ch}`) ?? []);
+  // Smallest first, so each merge starts from the shortest list there is and
+  // the result only shrinks from there.
   lists.sort((a, b) => a.length - b.length);
 
   let hits = lists[0]!;
   for (const list of lists.slice(1)) {
-    const other = new Set(list);
-    hits = hits.filter((i) => other.has(i));
+    hits = meet(hits, list);
     if (hits.length === 0) break;
   }
   return hits;

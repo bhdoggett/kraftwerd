@@ -15,6 +15,17 @@ export interface Bounds {
   blocked?: ReadonlySet<string>;
   /** The opening play must cover this square. */
   centre?: { x: number; y: number };
+  /**
+   * Skip the whole-board connectivity walk.
+   *
+   * Only for a caller that has already established the move touches the mass --
+   * the bot's search, which checks exactly that in `fit` before it gets here,
+   * and which would otherwise pay a walk of the whole board for every one of
+   * the thousands of candidates it weighs a turn. It measured at a quarter of
+   * the search's entire running time. The move is still checked in every other
+   * respect.
+   */
+  connected?: boolean;
 }
 
 /**
@@ -224,7 +235,7 @@ export function validateTurn(
   }
 
   const from = bounds.centre === undefined ? undefined : cellKey(bounds.centre.x, bounds.centre.y);
-  if (!isOneMass(after, from)) {
+  if (bounds.connected !== true && !isOneMass(after, from)) {
     faults.push({ reason: "disconnected" });
   }
 
