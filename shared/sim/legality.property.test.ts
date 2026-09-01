@@ -60,7 +60,8 @@ describe("every move the search offers is legal", () => {
         if (!legality.ok) {
           throw new Error(
             `illegal move offered on turn ${turn}: ` +
-            `${JSON.stringify(move.placements)} — ${JSON.stringify(legality.faults)}`,
+            `${JSON.stringify(move.placements)} — ${JSON.stringify(legality.faults)} — ` +
+            `board: ${JSON.stringify([...before.entries()])}`,
           );
         }
         checked++;
@@ -76,8 +77,20 @@ describe("every move the search offers is legal", () => {
   });
 });
 
-describe("every move the search offers scores what it claims", () => {
-  test("score matches a fresh scoring of the same placements", { timeout: 60_000 }, () => {
+describe("the search reports what its own scoring callback computed", () => {
+  /*
+   * Both sides call scoreTurn on the same inputs, so this cannot catch an
+   * arithmetic bug in scoreTurn itself -- it only checks that the search
+   * hands its callback the board and `before` it claims to, i.e. board-and-
+   * placement plumbing, not scoring correctness. It is not worthless: the
+   * callback reads its own `before` argument rather than closing over one,
+   * so a chained turn that let `before` drift to an intermediate board
+   * (instead of staying pinned to the board the whole turn started on)
+   * would make the two sides differ. Do not over-trust it for more than
+   * that.
+   */
+  test("move.score matches its own callback's scoring of the claimed board and placements",
+    { timeout: 60_000 }, () => {
     const rng = seeded(99);
     let board: Board = makeBoard([]);
 
@@ -87,7 +100,7 @@ describe("every move the search offers scores what it claims", () => {
       const before = board;
 
       const moves = rank(board, { letters, blanks: 0 }, dictionary, words, shape, 15,
-        (b, p) => scoreTurn(b, p, { before }).total, {});
+        (after, p, turnBefore) => scoreTurn(after, p, { before: turnBefore }).total, {});
       if (moves.length === 0) break;
 
       for (const move of moves.slice(0, 40)) {
