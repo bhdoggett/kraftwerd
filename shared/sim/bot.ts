@@ -169,11 +169,6 @@ export function bestMove(
    * alone could not play at all — which is not restraint but paralysis: a
    * blank that closes a 3x3 is worth nine points and was never once spent on
    * one. `blankPrice` says the same thing properly, so the ranking decides.
-   *
-   * The default value function scores against `before` as well. It did not,
-   * which is the same blind spot Task 6 fixed in the simulator: without it a
-   * stacked tile's bonus goes unpaid and an already-complete block looks newly
-   * closed.
    */
   const scoreOf: ValueFn =
     options.value ?? ((after, p, before) => scoreTurn(after, p, { before }).total);
