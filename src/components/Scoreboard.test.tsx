@@ -64,4 +64,19 @@ describe("what everyone is holding", () => {
 
     expect(screen.getByLabelText("1 tile in hand").textContent).toBe("1");
   });
+
+  test("says nothing for a hand it cannot honestly count", () => {
+    render(
+      <Scoreboard
+        players={players.map((p) => ({ ...p, tilesInHand: null }))}
+        currentSeat={0}
+        tileCount={12}
+        tilesLeft={0}
+        bagSize={71}
+        status="finished"
+      />,
+    );
+
+    expect(screen.queryByLabelText(/tiles in hand/)).toBeNull();
+  });
 });

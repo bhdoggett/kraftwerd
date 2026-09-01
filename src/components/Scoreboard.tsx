@@ -11,8 +11,12 @@ interface Standing {
    * Tiles in hand. The count, never the letters -- how many someone is
    * holding is public, the way a rack of tiles on a table is; what is on them
    * is not.
+   *
+   * Null when it cannot honestly be said: a review steps the board and the
+   * scores back through the game, but a turn does not record what was in
+   * anyone's hand at the time, so the only count available is today's.
    */
-  tilesInHand: number;
+  tilesInHand: number | null;
 }
 
 interface ScoreboardProps {
@@ -94,7 +98,9 @@ export function Scoreboard({
             and what is left in them decides the game -- whoever goes out
             takes what everyone else is still holding.
           */}
-          {(tilesLeft === 0 || status === "finished") && status !== "lobby" && (
+          {(tilesLeft === 0 || status === "finished") &&
+            status !== "lobby" &&
+            p.tilesInHand !== null && (
             <span
               className={styles.tiles}
               aria-label={`${p.tilesInHand} ${p.tilesInHand === 1 ? "tile" : "tiles"} in hand`}

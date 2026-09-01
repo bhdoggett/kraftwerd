@@ -24,7 +24,7 @@ import styles from "./Game.module.css";
 import { Rack, type Selection } from "./Rack";
 import { userMessage } from "../lib/errors";
 import { markCells } from "../lib/boardFeedback";
-import { boardAfter } from "../lib/replay";
+import { boardAfter, scoresAfter } from "../lib/replay";
 import { moveToPosition, rackSlotUnder, shuffled } from "../lib/rackGeometry";
 import { moveStagedTo, stageAt } from "../lib/staging";
 import { useWakeLock } from "../lib/useWakeLock";
@@ -797,6 +797,17 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const shown = ready ? boardAfter(turns, step) : view.tiles;
   const lastTurn = step > 0 ? turns[step - 1] : undefined;
 
+  /*
+   * Scores as they stood at this point in the review, so they count up with
+   * the board instead of sitting at the final total from the first frame.
+   *
+   * The last frame keeps the real scores: the game's end hands whoever went
+   * out what everyone else was still holding, and that swing is not a turn,
+   * so counting turns alone would stop a few points short of how it ended.
+   */
+  const reviewScores =
+    ready && step < turns.length ? scoresAfter(turns, step) : null;
+
   return (
     <div className={styles.layout}>
       <div className={styles.main}>
@@ -878,7 +889,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                     setStepAt(null);
                   }}
                 >
-                  Back to the game
+                  Done
                 </button>
                 <span className={styles.reviewSays}>
                   {lastTurn === undefined
@@ -1094,10 +1105,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           players={view.players.map((p) => ({
             userId: p.userId,
             seat: p.seat,
-            score: p.score,
+            score: reviewScores === null ? p.score : (reviewScores.get(p.userId) ?? 0),
             name: p.name,
             isYou: p.letters !== null,
-            tilesInHand: p.letterCount,
+            // Not while a review is mid-game: the hand it would name is the
+            // one held now, not the one held then.
+            tilesInHand: reviewScores === null ? p.letterCount : null,
           }))}
           currentSeat={game.currentSeat}
           tileCount={game.tileCount}
