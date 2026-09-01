@@ -39,36 +39,34 @@ describe("validateTurn", () => {
 
     expect(
       validateTurn(board, [at(0, 0, "X"), at(1, 0, "Q")], dict("CAT"), bounds),
-    ).toEqual({ ok: false, reason: "invalid-words", words: ["XQ"] });
+    ).toEqual({ ok: false, faults: [{ reason: "invalid-words", words: ["XQ"] }] });
   });
 
   test("rejects a tile outside the board", () => {
     expect(validateTurn(makeBoard([]), [at(20, 0, "A")], dict(), bounds)).toEqual({
       ok: false,
-      reason: "out-of-bounds",
-      at: { x: 20, y: 0 },
+      faults: [{ reason: "out-of-bounds", at: { x: 20, y: 0 } }],
     });
   });
 
   test("rejects a negative coordinate", () => {
     expect(validateTurn(makeBoard([]), [at(0, -1, "A")], dict(), bounds)).toEqual({
       ok: false,
-      reason: "out-of-bounds",
-      at: { x: 0, y: -1 },
+      faults: [{ reason: "out-of-bounds", at: { x: 0, y: -1 } }],
     });
   });
 
   test("rejects a turn that places nothing", () => {
     expect(validateTurn(makeBoard([]), [], dict(), bounds)).toEqual({
       ok: false,
-      reason: "empty-turn",
+      faults: [{ reason: "empty-turn" }],
     });
   });
 
   test("rejects two tiles on the same cell", () => {
     expect(
       validateTurn(makeBoard([]), [at(2, 2, "A"), at(2, 2, "B")], dict(), bounds),
-    ).toEqual({ ok: false, reason: "duplicate-cell", at: { x: 2, y: 2 } });
+    ).toEqual({ ok: false, faults: [{ reason: "duplicate-cell", at: { x: 2, y: 2 } }] });
   });
 
   test("rejects a play that does not touch the existing mass", () => {
@@ -80,7 +78,7 @@ describe("validateTurn", () => {
     // a legal word, but placed miles away touching nothing
     expect(
       validateTurn(board, [at(15, 15, "T"), at(16, 15, "O")], dict("AT", "TO"), bounds),
-    ).toEqual({ ok: false, reason: "disconnected" });
+    ).toEqual({ ok: false, faults: [{ reason: "disconnected" }] });
   });
 
   test("accepts a play that touches the existing mass", () => {
@@ -99,7 +97,7 @@ describe("validateTurn", () => {
 
     expect(validateTurn(makeBoard([]), placements, dict("AT", "TO"), bounds)).toEqual({
       ok: false,
-      reason: "disconnected",
+      faults: [{ reason: "disconnected" }],
     });
   });
 
@@ -128,7 +126,7 @@ describe("validateTurn", () => {
     const placements = [at(0, 0, "A"), at(1, 0, "T"), at(0, 1, "T"), at(1, 1, "O")];
     const result = validateTurn(makeBoard([]), placements, dict("AT"), bounds);
 
-    expect(result).toEqual({ ok: false, reason: "invalid-words", words: ["TO"] });
+    expect(result).toEqual({ ok: false, faults: [{ reason: "invalid-words", words: ["TO"] }] });
   });
 
   test("rejects when a placement breaks a word it did not create", () => {
@@ -140,8 +138,7 @@ describe("validateTurn", () => {
 
     expect(validateTurn(board, [at(2, 0, "Z")], dict("AT"), bounds)).toEqual({
       ok: false,
-      reason: "invalid-words",
-      words: ["ATZ"],
+      faults: [{ reason: "invalid-words", words: ["ATZ"] }],
     });
   });
 
@@ -156,8 +153,7 @@ describe("validateTurn", () => {
   test("rejects a lone opening tile that is not a word", () => {
     expect(validateTurn(makeBoard([]), [at(5, 5, "Q")], dict("A", "I"), bounds)).toEqual({
       ok: false,
-      reason: "invalid-words",
-      words: ["Q"],
+      faults: [{ reason: "invalid-words", words: ["Q"] }],
     });
   });
 });
@@ -188,15 +184,14 @@ describe("a board with blocked squares and a centre", () => {
   test("rejects a tile on a blocked square", () => {
     expect(validateTurn(makeBoard([]), [at(1, 1, "A")], dict("A"), shaped)).toEqual({
       ok: false,
-      reason: "blocked",
-      at: { x: 1, y: 1 },
+      faults: [{ reason: "blocked", at: { x: 1, y: 1 } }],
     });
   });
 
   test("rejects an opening play that misses the centre", () => {
     expect(
       validateTurn(makeBoard([]), [at(0, 0, "A"), at(1, 0, "T")], dict("AT"), shaped),
-    ).toEqual({ ok: false, reason: "missing-centre" });
+    ).toEqual({ ok: false, faults: [{ reason: "missing-centre" }] });
   });
 
   test("accepts an opening play that covers the centre", () => {
@@ -220,8 +215,10 @@ describe("a board with blocked squares and a centre", () => {
     // (1,1) is blocked, so a word cannot run through it.
     const board = makeBoard([{ x: 2, y: 2, letter: "A" }]);
 
+    // Two faults, since the play is wrong twice over: the tiles do not join
+    // up, and the column they make down (2,1)-(2,2) spells TA.
     expect(validateTurn(board, [at(0, 1, "A"), at(2, 1, "T")], dict("AT", "A"), shaped)).toEqual(
-      { ok: false, reason: "disconnected" },
+      { ok: false, faults: [{ reason: "disconnected" }, { reason: "invalid-words", words: ["TA"] }] },
     );
   });
 });
@@ -257,7 +254,7 @@ describe("laying a tile on top of another", () => {
       bounds,
     );
 
-    expect(result).toEqual({ ok: false, reason: "invalid-words", words: ["CZT"] });
+    expect(result).toEqual({ ok: false, faults: [{ reason: "invalid-words", words: ["CZT"] }] });
   });
 
   test("cannot bury a whole word: something of it has to survive", () => {
@@ -273,7 +270,7 @@ describe("laying a tile on top of another", () => {
       bounds,
     );
 
-    expect(result).toEqual({ ok: false, reason: "erased", words: ["CAT"] });
+    expect(result).toEqual({ ok: false, faults: [{ reason: "erased", words: ["CAT"] }] });
   });
 
   test("leaving one letter of it standing is enough", () => {
@@ -311,7 +308,7 @@ describe("laying a tile on top of another", () => {
       bounds,
     );
 
-    expect(result).toEqual({ ok: false, reason: "erased", words: ["AN"] });
+    expect(result).toEqual({ ok: false, faults: [{ reason: "erased", words: ["AN"] }] });
   });
 
   test("a tile has to change the letter under it", () => {
@@ -324,7 +321,7 @@ describe("laying a tile on top of another", () => {
       bounds,
     );
 
-    expect(result).toEqual({ ok: false, reason: "unchanged", at: { x: 8, y: 7 } });
+    expect(result).toEqual({ ok: false, faults: [{ reason: "unchanged", at: { x: 8, y: 7 } }] });
   });
 
   test("a blank standing for the same letter is refused too", () => {
@@ -335,7 +332,7 @@ describe("laying a tile on top of another", () => {
       bounds,
     );
 
-    expect(result).toEqual({ ok: false, reason: "unchanged", at: { x: 8, y: 7 } });
+    expect(result).toEqual({ ok: false, faults: [{ reason: "unchanged", at: { x: 8, y: 7 } }] });
   });
 
   test("two tiles still cannot go on the same square", () => {
@@ -349,7 +346,7 @@ describe("laying a tile on top of another", () => {
       bounds,
     );
 
-    expect(result).toEqual({ ok: false, reason: "duplicate-cell", at: { x: 8, y: 7 } });
+    expect(result).toEqual({ ok: false, faults: [{ reason: "duplicate-cell", at: { x: 8, y: 7 } }] });
   });
 });
 
@@ -369,7 +366,7 @@ describe("blanks on a stack", () => {
       bounds,
     );
 
-    expect(result).toEqual({ ok: false, reason: "blank-on-stack", at: { x: 7, y: 7 } });
+    expect(result).toEqual({ ok: false, faults: [{ reason: "blank-on-stack", at: { x: 7, y: 7 } }] });
   });
 
   test("a real letter may close it, and a blank may start one", () => {
@@ -415,6 +412,69 @@ describe("the stack cap", () => {
       bounds,
     );
 
-    expect(result).toEqual({ ok: false, reason: "stack-full", at: { x: 8, y: 7 } });
+    expect(result).toEqual({ ok: false, faults: [{ reason: "stack-full", at: { x: 8, y: 7 } }] });
+  });
+});
+
+describe("more than one thing wrong", () => {
+  const shaped: Bounds = { width: 15, height: 15, centre: { x: 7, y: 7 } };
+
+  test("says both, when a play is wrong in two ways at once", () => {
+    // An opening word that misses the centre and is not a word either.
+    const result = validateTurn(
+      makeBoard([]),
+      [at(1, 1, "X"), at(2, 1, "Q")],
+      dict("CAT"),
+      shaped,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      faults: [{ reason: "missing-centre" }, { reason: "invalid-words", words: ["XQ"] }],
+    });
+  });
+
+  test("gathers every bad word into one fault rather than one each", () => {
+    const result = validateTurn(
+      makeBoard([]),
+      [at(7, 7, "X"), at(8, 7, "Q"), at(7, 8, "Z")],
+      dict("CAT"),
+      shaped,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      faults: [{ reason: "invalid-words", words: ["XQ", "XZ"] }],
+    });
+  });
+
+  test("names a kind once however many tiles are wrong that way", () => {
+    const result = validateTurn(
+      makeBoard([]),
+      [at(20, 0, "A"), at(21, 0, "T")],
+      dict("AT"),
+      shaped,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      faults: [{ reason: "out-of-bounds", at: { x: 20, y: 0 } }],
+    });
+  });
+
+  test("holds the words back until the tiles are somewhere they could be", () => {
+    // Two tiles on one square: the board they would make is not a board to
+    // read words off, so it is not read.
+    const result = validateTurn(
+      makeBoard([]),
+      [at(7, 7, "X"), at(7, 7, "Q")],
+      dict("CAT"),
+      shaped,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      faults: [{ reason: "duplicate-cell", at: { x: 7, y: 7 } }],
+    });
   });
 });

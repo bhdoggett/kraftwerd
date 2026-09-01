@@ -5,7 +5,12 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { cellKey, makeBoard } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
-import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
+import {
+  applyPlacements,
+  validateTurn,
+  wordsFormed,
+  type Fault,
+} from "../../shared/engine/legality";
 import { boardShapeNamed } from "../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { STACK_CAP, RACK } from "../../shared/config";
@@ -46,10 +51,8 @@ function breakdownOf(score: TurnScore) {
     }));
 }
 
-/** Why a staged play is not yet legal, in words a player can act on. */
-function describeLegality(
-  legality: Exclude<ReturnType<typeof validateTurn>, { ok: true }>,
-): string {
+/** One thing wrong with a staged play, in words a player can act on. */
+function describeFault(legality: Fault): string {
   switch (legality.reason) {
     case "empty-turn":
       return "Place at least one tile.";
@@ -1114,16 +1117,26 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
               that, scrolled near the bottom, the browser clamps the scroll and
               the whole board appears to jump.
             */}
-            <p
+            {/* One line per thing wrong, since a play can be wrong in more
+                than one way -- disconnected and not a word at once. Each line
+                still gathers its own kind, so a play with three bad words
+                says so once. */}
+            <div
               className={[
-                styles.reason,
+                styles.reasons,
                 legality === null || legality.ok ? styles.reasonQuiet : "",
               ].join(" ")}
             >
-              {legality !== null && !legality.ok
-                ? describeLegality(legality)
-                : "Checking your play…"}
-            </p>
+              {legality !== null && !legality.ok ? (
+                legality.faults.map((fault) => (
+                  <p key={fault.reason} className={styles.reason}>
+                    {describeFault(fault)}
+                  </p>
+                ))
+              ) : (
+                <p className={styles.reason}>Checking your play…</p>
+              )}
+            </div>
 
             {preview && breakdownOf(preview).length > 0 && (
               <div className={styles.bonus}>

@@ -17,19 +17,38 @@ export interface Bounds {
   centre?: { x: number; y: number };
 }
 
-export type Legality =
-  | { ok: true }
-  | { ok: false; reason: "empty-turn" }
-  | { ok: false; reason: "out-of-bounds"; at: { x: number; y: number } }
-  | { ok: false; reason: "duplicate-cell"; at: { x: number; y: number } }
-  | { ok: false; reason: "stack-full"; at: { x: number; y: number } }
-  | { ok: false; reason: "blocked"; at: { x: number; y: number } }
-  | { ok: false; reason: "missing-centre" }
-  | { ok: false; reason: "disconnected" }
-  | { ok: false; reason: "invalid-words"; words: string[] }
-  | { ok: false; reason: "erased"; words: string[] }
-  | { ok: false; reason: "unchanged"; at: { x: number; y: number } }
-  | { ok: false; reason: "blank-on-stack"; at: { x: number; y: number } };
+/**
+ * One thing wrong with a turn.
+ *
+ * A turn can be wrong in more than one way at once -- disconnected and
+ * spelling something that is not a word, say -- so these are collected rather
+ * than reported one at a time. At most one of each kind: three tiles off the
+ * board is one thing to fix, not three.
+ */
+export type Fault =
+  | { reason: "empty-turn" }
+  | { reason: "out-of-bounds"; at: { x: number; y: number } }
+  | { reason: "duplicate-cell"; at: { x: number; y: number } }
+  | { reason: "stack-full"; at: { x: number; y: number } }
+  | { reason: "blocked"; at: { x: number; y: number } }
+  | { reason: "missing-centre" }
+  | { reason: "disconnected" }
+  | { reason: "invalid-words"; words: string[] }
+  | { reason: "erased"; words: string[] }
+  | { reason: "unchanged"; at: { x: number; y: number } }
+  | { reason: "blank-on-stack"; at: { x: number; y: number } };
+
+export type Legality = { ok: true } | { ok: false; faults: Fault[] };
+
+/** The first of each kind, in the order they were found. */
+function oneOfEach(faults: readonly Fault[]): Fault[] {
+  const seen = new Set<Fault["reason"]>();
+  return faults.filter((fault) => {
+    if (seen.has(fault.reason)) return false;
+    seen.add(fault.reason);
+    return true;
+  });
+}
 
 const NEIGHBOURS = [
   { dx: 1, dy: 0 },
@@ -125,34 +144,55 @@ export function validateTurn(
   dictionary: Dictionary,
   bounds: Bounds,
 ): Legality {
-  if (placements.length === 0) return { ok: false, reason: "empty-turn" };
+  if (placements.length === 0) return { ok: false, faults: [{ reason: "empty-turn" }] };
 
+  /*
+   * Where the tiles are: whether each one may occupy the square it is on.
+   *
+   * Checked across every placement before anything is concluded from the
+   * board they would make. A tile on a square it cannot have leaves that
+   * board meaningless -- two tiles claiming one square, or a letter sitting
+   * outside the grid -- so these are answered on their own, and the words are
+   * not second-guessed until the tiles are somewhere they could be.
+   */
+  const misplaced: Fault[] = [];
   const claimed = new Set<string>();
   for (const p of placements) {
     const at = { x: p.x, y: p.y };
     const key = cellKey(p.x, p.y);
 
     if (p.x < 0 || p.y < 0 || p.x >= bounds.width || p.y >= bounds.height) {
-      return { ok: false, reason: "out-of-bounds", at };
+      misplaced.push({ reason: "out-of-bounds", at });
+      continue;
     }
     if (bounds.blocked?.has(key) === true) {
-      return { ok: false, reason: "blocked", at };
+      misplaced.push({ reason: "blocked", at });
+      continue;
     }
-    if (claimed.has(key)) return { ok: false, reason: "duplicate-cell", at };
+    if (claimed.has(key)) {
+      misplaced.push({ reason: "duplicate-cell", at });
+      continue;
+    }
+    claimed.add(key);
 
+    // One fault per tile, hence the continues: a square that is full and holds
+    // the letter you are laying on it is one square to move off, not two
+    // things to read.
+    //
     // Laying a letter back on itself leaves the board exactly as it was, and
     // would collect for every word the square sits in a second time. A tile
     // that lands on a tile has to change it.
     if (before.get(key)?.letter === p.letter) {
-      return { ok: false, reason: "unchanged", at };
+      misplaced.push({ reason: "unchanged", at });
+      continue;
     }
-    claimed.add(key);
 
     // A square holds at most STACK_CAP tiles over its lifetime, this one
     // included. Once it is full, nothing may land there again.
     const priorStack = before.get(key)?.stacked ?? 0;
     if (priorStack >= STACK_CAP) {
-      return { ok: false, reason: "stack-full", at };
+      misplaced.push({ reason: "stack-full", at });
+      continue;
     }
 
     /*
@@ -164,34 +204,35 @@ export function validateTurn(
      * square with a blank is fine: the next player can still build on it.
      */
     if (p.isBlank && priorStack + 1 >= STACK_CAP && priorStack > 0) {
-      return { ok: false, reason: "blank-on-stack", at };
+      misplaced.push({ reason: "blank-on-stack", at });
+      continue;
     }
   }
 
+  if (misplaced.length > 0) return { ok: false, faults: oneOfEach(misplaced) };
+
   const after = applyPlacements(before, placements);
+  const faults: Fault[] = [];
 
   // The opening word starts at the centre, as in a crossword. Everything after
   // it is anchored by connectivity to that first word.
   if (before.size === 0 && bounds.centre !== undefined) {
     const centre = cellKey(bounds.centre.x, bounds.centre.y);
     if (!placements.some((p) => cellKey(p.x, p.y) === centre)) {
-      return { ok: false, reason: "missing-centre" };
+      faults.push({ reason: "missing-centre" });
     }
   }
 
   const from = bounds.centre === undefined ? undefined : cellKey(bounds.centre.x, bounds.centre.y);
   if (!isOneMass(after, from)) {
-    return { ok: false, reason: "disconnected" };
+    faults.push({ reason: "disconnected" });
   }
 
   const buried = wordsBuriedWhole(before, placements);
-  if (buried.length > 0) return { ok: false, reason: "erased", words: [...new Set(buried)] };
+  if (buried.length > 0) faults.push({ reason: "erased", words: [...new Set(buried)] });
 
   const bad = wordsFormed(after, placements).filter((w) => !dictionary.has(w));
+  if (bad.length > 0) faults.push({ reason: "invalid-words", words: [...new Set(bad)] });
 
-  if (bad.length > 0) {
-    return { ok: false, reason: "invalid-words", words: [...new Set(bad)] };
-  }
-
-  return { ok: true };
+  return faults.length === 0 ? { ok: true } : { ok: false, faults };
 }

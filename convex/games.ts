@@ -11,7 +11,12 @@ import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
 import { gameName } from "../shared/gameNames.js";
 import { cellKey, makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
-import { applyPlacements, validateTurn, wordsFormed } from "../shared/engine/legality.js";
+import {
+  applyPlacements,
+  validateTurn,
+  wordsFormed,
+  type Fault,
+} from "../shared/engine/legality.js";
 import { draw, newBag, returnTiles, tilesLeft, type Bag } from "../shared/engine/bag.js";
 import { scoreTurn, type Placement } from "../shared/engine/score.js";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -640,7 +645,7 @@ async function playTurn(
     const dictionary = await lookUp(ctx, wordsFormed(after, placements));
 
     const legality = validateTurn(before, placements, dictionary, boardShape(game));
-    if (!legality.ok) throw new ConvexError(describe(legality));
+    if (!legality.ok) throw new ConvexError(describe(legality.faults));
 
     const score = scoreTurn(after, placements, { before });
 
@@ -961,7 +966,17 @@ async function advanceTurn(
   }
 }
 
-function describe(legality: Exclude<ReturnType<typeof validateTurn>, { ok: true }>): string {
+/*
+ * A turn can be wrong in more than one way, and the client shows each on its
+ * own line. Here they are one string, since a thrown error is one string --
+ * joined rather than trimmed to the first, so a caller outside the app is
+ * told everything that is wrong with what it sent.
+ */
+function describe(faults: readonly Fault[]): string {
+  return faults.map(describeFault).join("; ");
+}
+
+function describeFault(legality: Fault): string {
   switch (legality.reason) {
     case "empty-turn":
       return "Place at least one tile";
