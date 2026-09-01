@@ -1,9 +1,12 @@
 /**
  * The single-span search: every move that lays one straight word.
  *
- * Split out of `bot.ts` because it is called far more often than once a turn.
- * The chained search runs it once per link, and the block solver leans on it
- * too, so what it costs is multiplied by everything built on top of it.
+ * Split out of `bot.ts` because it is called far more often than once a turn:
+ * the chained search runs it once per link, so what it costs is multiplied by
+ * everything built on top of it. The block solver is not one of those things --
+ * it works letter by letter off the rack, because the words it is spelling are
+ * not known until the block is full -- and takes only `moveKey` and the types
+ * from here.
  */
 import { STACK_CAP } from "../config.js";
 import { cellKey, type Board } from "../engine/board.js";

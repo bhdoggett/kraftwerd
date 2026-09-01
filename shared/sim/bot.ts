@@ -212,11 +212,18 @@ export function rank(
   /*
    * The squares neither of the above can reach.
    *
-   * A word square is a set of placements no subset of which is a legal play,
-   * so it is invisible to a search built out of legal plays -- which is both
-   * of the searches above. It is worth a separate pass because k^2 is the
-   * largest single lever in the scoring, and because the pass is cheap: a
-   * shortlist of blocks, each a few gaps deep.
+   * Not every word square is out of their reach -- most are not. A block whose
+   * remaining gaps lie in one line is an ordinary span, and a block whose gaps
+   * can be filled a legal play at a time is what chaining is for; between them
+   * they take almost all of the squares that come up. What is left is the
+   * block whose gaps are non-collinear *and* individually illegal -- the four
+   * corners of a 3x3, where one corner alone spells a two-letter fragment that
+   * is not a word. No search built out of legal plays can lay the first tile
+   * of one, because there is no legal first tile.
+   *
+   * Those are rare, and measured, this pass earns little (see the note in
+   * blocks.ts). It is kept because it is about 1% of the search's time and it
+   * is the only thing that can reach them at all.
    */
   const blocks = blockMoves(board, hand, dictionary, words, shape, size, scoreOf,
     options.squares ?? {});

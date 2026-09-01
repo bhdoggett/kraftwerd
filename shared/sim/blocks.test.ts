@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { boardShapeNamed, OPEN_BOARD } from "../boards";
 import { cellKey, makeBoard, type Board } from "../engine/board";
 import { makeDictionary } from "../engine/dictionary";
-import { validateTurn } from "../engine/legality";
+import { applyPlacements, validateTurn } from "../engine/legality";
 import { scoreTurn } from "../engine/score";
 import { indexWords } from "./words";
 import { blockMoves, candidateBlocks } from "./blocks";
@@ -47,6 +47,116 @@ describe("candidate blocks", () => {
     ]);
     expect(candidateBlocks(board, shape, 15, 7, 2)
       .some((b) => b.k === 2 && b.x === 7 && b.y === 7)).toBe(false);
+  });
+
+  /*
+   * An empty board has nothing to join, so the reachability test can never
+   * pass on one -- which is why the centre test has to be asked first. Written
+   * the other way round the whole opening branch is dead code and `blockMoves`
+   * returns nothing on turn one. A reordering is exactly the kind of fix a
+   * later edit undoes without noticing, because both orders read plausibly.
+   */
+  test("offers the opening square, and only blocks covering the centre", () => {
+    const blocks = candidateBlocks(makeBoard([]), shape, 15, 7, 4);
+
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const block of blocks) {
+      expect(shape.centre.x).toBeGreaterThanOrEqual(block.x);
+      expect(shape.centre.x).toBeLessThan(block.x + block.k);
+      expect(shape.centre.y).toBeGreaterThanOrEqual(block.y);
+      expect(shape.centre.y).toBeLessThan(block.y + block.k);
+    }
+  });
+});
+
+describe("the opening square", () => {
+  test("a 2x2 can be laid on an empty board, and is legal", () => {
+    // AC over CA: both rows and both columns read a word.
+    const empty = makeBoard([]);
+    const moves = solve(empty, ["A", "C", "C", "A"]);
+    const opening = moves.find((m) => m.placements.length === 4);
+
+    expect(opening).toBeDefined();
+    expect(validateTurn(empty, opening!.placements, dictionary, bounds)).toEqual({ ok: true });
+    // The opening has to cover the centre, and a 2x2 pays 4.
+    expect(opening!.placements.some((p) => p.x === shape.centre.x && p.y === shape.centre.y))
+      .toBe(true);
+    expect(opening!.score).toBeGreaterThanOrEqual(4);
+  });
+});
+
+/**
+ * The turns that are the whole reason this module exists.
+ *
+ * Most word squares are reachable without it: a block whose gaps lie in one
+ * line is an ordinary span, and one whose gaps can be filled a legal play at a
+ * time is what chaining is for. The four corners of a 3x3 are neither. Put a
+ * single corner down and its row and its column are each a two-letter fragment
+ * of a three-letter word -- and if the fragment is not itself a word, there is
+ * no legal first tile, so no search that composes legal plays can begin.
+ *
+ * The fixture's dictionary is deliberately just the three words of the square.
+ * Add the fragments back -- `AC`, `EM`, `MU` are all real enough -- and the
+ * corners become individually legal and the turn decomposes. That is not a
+ * weakness of the test; it is the measured reason these turns are rare in real
+ * play, written down where it can be seen.
+ */
+describe("turns that are legal only as a whole", () => {
+  const SQUARE = ["ACE", "CAM", "EMU"];
+  const squareDict = makeDictionary(SQUARE);
+  const squareWords = indexWords(SQUARE, 7);
+
+  //     6   7   8        CAM already down, across and down, as a plus.
+  // 6   .   C   .        The four corners are missing, and only the four
+  // 7   C   A   M        together are a legal turn.
+  // 8   .   M   .
+  const board = makeBoard([
+    { x: 7, y: 6, letter: "C", isBlank: false }, { x: 6, y: 7, letter: "C", isBlank: false },
+    { x: 7, y: 7, letter: "A", isBlank: false }, { x: 8, y: 7, letter: "M", isBlank: false },
+    { x: 7, y: 8, letter: "M", isBlank: false },
+  ]);
+
+  const corners = () =>
+    blockMoves(board, { letters: ["A", "E", "E", "U"], blanks: 0 }, squareDict, squareWords,
+      shape, 15, (after, p, before) => scoreTurn(after, p, { before }).total, {})
+      .find((m) => m.placements.length === 4);
+
+  test("the solver finds the four corners", () => {
+    const full = corners();
+
+    expect(full).toBeDefined();
+    expect(new Set(full!.placements.map((p) => `${p.x},${p.y},${p.letter}`)))
+      .toEqual(new Set(["6,6,A", "8,6,E", "6,8,E", "8,8,U"]));
+    // Not one line, so no single span reaches it either.
+    expect(new Set(full!.placements.map((p) => p.x)).size).toBeGreaterThan(1);
+    expect(new Set(full!.placements.map((p) => p.y)).size).toBeGreaterThan(1);
+  });
+
+  test("no part of it is a legal play, so no chain of legal plays builds it", () => {
+    const placements = corners()!.placements;
+    const squareBounds = { ...bounds };
+
+    // The turn itself stands up.
+    expect(validateTurn(board, placements, squareDict, squareBounds)).toEqual({ ok: true });
+
+    // All fourteen proper, non-empty parts of it do not. A chained search has
+    // to lay a legal play first; here there is none to lay.
+    let legalParts = 0;
+    for (let mask = 1; mask < (1 << placements.length) - 1; mask++) {
+      const part = placements.filter((_, i) => (mask & (1 << i)) !== 0);
+      if (validateTurn(board, part, squareDict, squareBounds).ok) legalParts++;
+    }
+    expect(legalParts).toBe(0);
+  });
+
+  test("and it pays for the 3x3 and all four 2x2s", () => {
+    const full = corners()!;
+    const scored = scoreTurn(applyPlacements(board, full.placements), full.placements,
+      { before: board });
+
+    // Every corner is the last tile of a different 2x2: 4 x 4, plus the 3x3.
+    expect(scored.squarePoints).toBe(4 * 4 + 9);
+    expect(full.score).toBe(scored.total);
   });
 });
 
