@@ -99,8 +99,24 @@ const THINKING_MS = 1_600;
 
 /** Hold until the turn has taken as long as a turn should take. */
 async function untilThoughtThrough(since: number) {
-  const left = THINKING_MS - (Date.now() - since);
-  if (left > 0) await new Promise((resolve) => setTimeout(resolve, left));
+  const thought = Date.now() - since;
+  const left = THINKING_MS - thought;
+  if (left > 0) {
+    await new Promise((resolve) => setTimeout(resolve, left));
+    return;
+  }
+
+  /*
+   * The search ran past the pause, so this is a turn somebody actually waited
+   * on rather than one that hid inside it.
+   *
+   * Worth a line in the log, because it is the only signal a slow turn gives
+   * any more. While the turn was a mutation, one that ran long failed and said
+   * so; an action just takes longer and says nothing. This is what replaces
+   * that, and it fires at the point a person starts noticing rather than at
+   * the point the platform gives up.
+   */
+  console.warn(`bot turn thought for ${thought}ms, past the ${THINKING_MS}ms pause`);
 }
 
 /**
@@ -317,40 +333,31 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
     (after, placements, before) => scoreTurn(after, placements, { before }).total,
     /*
      * Two plays per turn, from four candidates a step -- not the six `rank`
-     * defaults to. And `reletter: 0`, the fill-only block solver, where the
-     * simulator keeps the default of two.
+     * defaults to. The block solver is back to the default `reletter: 2`.
      *
-     * Both of these are the one-second transaction's doing, and both are now
-     * open questions rather than settled ones. What they were measured against,
-     * for whoever revisits them:
+     * Re-lettering had been measured to buy *nothing*: the twelve blocks at
+     * the front of the shortlist are the ones with the fewest gaps, which is
+     * to say the most standing letters, and a rewrite budget of two cannot
+     * rescue six standing letters that do not fit a word square -- zero extra
+     * 3x3s over 208 turns. That measurement was taken before the live bot
+     * spent a blank at all, and a blank is what makes a rewrite worth having:
+     * it is twenty-six ways to take a branch on a standing tile, which is both
+     * why re-lettering costs so much more with one in hand and why it now
+     * closes squares it could not reach before.
      *
-     *   depth 1, breadth 6:  38 turns, mean 201ms, worst 274ms
-     *   depth 2, breadth 6:  69 turns, mean 321ms, worst 902ms
-     *   depth 2, breadth 4: 117 turns, mean 283ms, worst 596ms
+     * Measured here, fourteen whole bot-against-bot games an allowance, one
+     * blank in hand throughout, everything else as it ships:
      *
-     * Those three are a historical A/B of a bot that is no longer this one --
-     * taken at no blanks and `reletter: 2` -- so read them against each other
-     * and not as today's cost. Breadth 6 was ruled out for one turn in seventy
-     * at 902ms, which was dangerous against a 1s deadline and is nothing at all
-     * against latency alone.
+     *   reletter 0: 374 turns, 316ms mean, 459ms p95, 700ms worst, 1.43 3x3+/game
+     *   reletter 2: 346 turns, 492ms mean, 905ms p95, 1103ms worst, 2.71 3x3+/game
      *
-     * Re-lettering, separately, was measured to buy *nothing* under the shipped
-     * `maxBlocks: 12`: the twelve blocks at the front of the shortlist are the
-     * ones with the fewest gaps, which is to say the most standing letters, and
-     * a rewrite budget of two cannot rescue six standing letters that do not
-     * fit a word square -- zero extra 3x3s over 208 turns. What it costs is not
-     * nothing, and with a blank in hand it is a great deal more than the 3.8%
-     * it looked like without one:
-     *
-     *   reletter 2: 156 turns, mean 367ms, p95 682ms, worst 954ms
-     *   reletter 0: 149 turns, mean 282ms, p95 431ms, worst 654ms
-     *
-     * A rewrite is a branch the solver takes on a standing tile, and a blank is
-     * twenty-six ways to take it. So this one is not merely a deadline: it is
-     * still zero for nothing under the current `maxBlocks`, and raising
-     * `maxBlocks` is what would give it something to do.
+     * Nearly double the squares for 176ms of mean thinking, and the thinking
+     * is free: the pause is 1,600ms and holds the search inside it, so not one
+     * turn in either run was something a person waited on. The old reason to
+     * refuse this -- that 954ms was dangerously near a 1s deadline -- names a
+     * deadline that no longer exists.
      */
-    { chain: { depth: 2, breadth: 4 }, squares: { reletter: 0 } },
+    { chain: { depth: 2, breadth: 4 } },
   );
 
   /*
