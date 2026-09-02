@@ -17,7 +17,7 @@ import type { Dictionary } from "../engine/legality.js";
 import { scoreTurn } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
 import type { WordIndex } from "./words.js";
-import { blankMoves, blockMoves } from "./blocks.js";
+import { blankMoves, blockMoves, type BlockOptions } from "./blocks.js";
 import { chain } from "./chain.js";
 import { components, moveKey, type Hand, type Move, type ValueFn } from "./components.js";
 import { blankPrice, exposure, type ExposureWeights } from "./judgement.js";
@@ -47,11 +47,12 @@ export interface MoveOptions {
    * may spend on one.
    *
    * Every field optional, and forwarded whole to `blockMoves`: a caller under
-   * a time limit needs to be able to tighten `nodeLimit` alone without
-   * restating the two defaults it is happy with. See blocks.ts, which owns
-   * every default here.
+   * a time limit needs to be able to tighten `nodeLimit` or `reletter` alone
+   * without restating the defaults it is happy with. See blocks.ts, which owns
+   * every default here, `reletter` -- how many standing tiles one turn may
+   * write over -- included.
    */
-  squares?: { maxK?: number; maxBlocks?: number; nodeLimit?: number };
+  squares?: BlockOptions;
   /**
    * How heavily to weigh what a move leaves behind. `false` is the greedy
    * player: most points now, whatever it opens up.

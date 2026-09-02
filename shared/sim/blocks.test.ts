@@ -14,9 +14,17 @@ const words = indexWords(WORDS, 7);
 const shape = boardShapeNamed(OPEN_BOARD, 15);
 const bounds = { width: 15, height: 15, blocked: shape.blocked, centre: shape.centre };
 
-const solve = (board: Board, letters: string[], blanks = 0) =>
+const solveWith = (
+  board: Board,
+  letters: string[],
+  blanks = 0,
+  options: { maxK?: number; maxBlocks?: number; nodeLimit?: number; reletter?: number } = {},
+) =>
   blockMoves(board, { letters, blanks }, dictionary, words, shape, 15,
-    (after, p, before) => scoreTurn(after, p, { before }).total, {});
+    (after, p, before) => scoreTurn(after, p, { before }).total, options);
+
+const solve = (board: Board, letters: string[], blanks = 0) =>
+  solveWith(board, letters, blanks);
 
 describe("candidate blocks", () => {
   test("ignores blocks with no way to reach the board", () => {
@@ -36,7 +44,7 @@ describe("candidate blocks", () => {
   test("ignores blocks needing more tiles than the rack holds", () => {
     const board = makeBoard([{ x: 7, y: 7, letter: "A", isBlank: false }]);
     for (const block of candidateBlocks(board, shape, 15, 3, 3)) {
-      expect(block.empties.length).toBeLessThanOrEqual(3);
+      expect(block.gaps.length).toBeLessThanOrEqual(3);
     }
   });
 
@@ -229,5 +237,159 @@ describe("the block solver", () => {
     const full = moves.find((m) => m.placements.length === 3);
     expect(full).toBeDefined();
     expect(full!.placements.some((p) => p.isBlank)).toBe(true);
+  });
+});
+
+/**
+ * Rewriting a standing letter, which is the one thing the solver could not do.
+ *
+ * The board below is the ACE/CAM/EMU square with one letter wrong: an X where
+ * the E belongs. No rack completes it by filling gaps alone, because the gaps
+ * are the bottom row and the top row already reads ACX. Allow one standing
+ * tile to be written over and the square is reachable again.
+ *
+ * A full block is deliberately not the case being widened: `newSquareBlocks`
+ * pays only when a block is filled after and was not filled before, so
+ * rearranging a complete square earns nothing. Every case here has a gap.
+ */
+describe("re-lettering a standing tile", () => {
+  //     6   7   8
+  // 6   A   C   X     X where the E of ACE belongs
+  // 7   C   A   M
+  // 8   .   .   .     the three gaps
+  const spoiled = (stackedOnX = 1) => makeBoard([
+    { x: 6, y: 6, letter: "A", isBlank: false }, { x: 7, y: 6, letter: "C", isBlank: false },
+    { x: 8, y: 6, letter: "X", isBlank: false, stacked: stackedOnX },
+    { x: 6, y: 7, letter: "C", isBlank: false }, { x: 7, y: 7, letter: "A", isBlank: false },
+    { x: 8, y: 7, letter: "M", isBlank: false },
+  ]);
+
+  const rewrites = (board: Board, move: { placements: { x: number; y: number }[] }) =>
+    move.placements.filter((p) => board.has(cellKey(p.x, p.y)));
+
+  test("candidate blocks name the standing tiles a turn may write over", () => {
+    const board = spoiled();
+    const block = candidateBlocks(board, shape, 15, 7, 3)
+      .find((b) => b.k === 3 && b.x === 6 && b.y === 6)!;
+
+    expect(block).toBeDefined();
+    expect(new Set(block.gaps.map((c) => cellKey(c.x, c.y))))
+      .toEqual(new Set(["6,8", "7,8", "8,8"]));
+    expect(new Set(block.rewritable.map((c) => cellKey(c.x, c.y))))
+      .toEqual(new Set(["6,6", "7,6", "8,6", "6,7", "7,7", "8,7"]));
+  });
+
+  test("a tile already stacked to the cap is not offered for rewriting", () => {
+    // STACK_CAP is 2, so the X below has had its one and only second tile.
+    const board = spoiled(2);
+    const block = candidateBlocks(board, shape, 15, 7, 3)
+      .find((b) => b.k === 3 && b.x === 6 && b.y === 6)!;
+
+    expect(block.rewritable.map((c) => cellKey(c.x, c.y))).not.toContain("8,6");
+  });
+
+  test("with no budget the square stays out of reach, as it was", () => {
+    const board = spoiled();
+    const moves = solveWith(board, ["E", "M", "U", "E"], 0, { reletter: 0 });
+
+    expect(moves.every((m) => rewrites(board, m).length === 0)).toBe(true);
+    expect(moves.some((m) => m.placements.length === 4)).toBe(false);
+  });
+
+  test("one rewrite reaches it: the X becomes the E and the bottom row lands", () => {
+    const board = spoiled();
+    const full = solveWith(board, ["E", "M", "U", "E"], 0, { reletter: 1 })
+      .find((m) => m.placements.length === 4);
+
+    expect(full).toBeDefined();
+    expect(new Set(full!.placements.map((p) => `${p.x},${p.y},${p.letter}`)))
+      .toEqual(new Set(["8,6,E", "6,8,E", "7,8,M", "8,8,U"]));
+    expect(validateTurn(board, full!.placements, dictionary, bounds)).toEqual({ ok: true });
+  });
+
+  test("and it pays, because the block was not filled before", () => {
+    const board = spoiled();
+    const full = solveWith(board, ["E", "M", "U", "E"], 0, { reletter: 1 })
+      .find((m) => m.placements.length === 4)!;
+    const scored = scoreTurn(applyPlacements(board, full.placements), full.placements,
+      { before: board });
+
+    // The 3x3 and the two 2x2s its bottom row closes.
+    expect(scored.squarePoints).toBeGreaterThanOrEqual(9 + 4);
+  });
+
+  test("a tile at the cap blocks the only rewrite that would work", () => {
+    const board = spoiled(2);
+    expect(solveWith(board, ["E", "M", "U", "E"], 0, { reletter: 1 })
+      .some((m) => m.placements.length === 4)).toBe(false);
+  });
+
+  test("a blank is never the tile that lands on a standing one", () => {
+    // The rule as written, not as it reads today: a blank may not fill a
+    // stack. At STACK_CAP 2 that bars every rewrite; at 3 it would not.
+    const board = spoiled();
+    const moves = solveWith(board, ["E", "M", "U"], 1, { reletter: 2 });
+
+    for (const move of moves) {
+      for (const p of move.placements) {
+        if (board.has(cellKey(p.x, p.y))) expect(p.isBlank).toBe(false);
+      }
+    }
+    // The blank still does its old work in the gaps.
+    expect(moves.some((m) => m.placements.some((p) => p.isBlank))).toBe(true);
+  });
+
+  test("never re-lays a letter as itself, and never claims a cell twice", () => {
+    const board = spoiled();
+    for (const move of solveWith(board, ["E", "M", "U", "E", "A"], 0, { reletter: 2 })) {
+      const cells = move.placements.map((p) => cellKey(p.x, p.y));
+      expect(new Set(cells).size).toBe(cells.length);
+      for (const p of move.placements) {
+        expect(board.get(cellKey(p.x, p.y))?.letter).not.toBe(p.letter);
+      }
+    }
+  });
+
+  test("spends no more tiles than the rack holds, and no more rewrites than the budget",
+    () => {
+    const board = spoiled();
+    const rack = ["E", "M", "U", "E", "A"];
+    for (const move of solveWith(board, rack, 1, { reletter: 2 })) {
+      expect(move.placements.length).toBeLessThanOrEqual(rack.length + 1);
+      expect(rewrites(board, move).length).toBeLessThanOrEqual(2);
+
+      // Every non-blank placement comes out of the rack, counting duplicates.
+      const left = [...rack];
+      let blanks = 1;
+      for (const p of move.placements) {
+        const at = p.isBlank ? -1 : left.indexOf(p.letter);
+        if (at >= 0) left.splice(at, 1);
+        else expect(blanks--).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  test("will not bury a word whole, however well the letters would fit", () => {
+    // AT stands alone. CA over AC is a legal 2x2 word square and needs both
+    // of its squares, which would erase AT from the board entirely.
+    const board = makeBoard([
+      { x: 6, y: 6, letter: "A", isBlank: false }, { x: 7, y: 6, letter: "T", isBlank: false },
+    ]);
+
+    const moves = solveWith(board, ["C", "A", "A", "C"], 0, { reletter: 2 });
+    for (const move of moves) {
+      expect(validateTurn(board, move.placements, dictionary, bounds)).toEqual({ ok: true });
+      expect(rewrites(board, move).length).toBeLessThan(2);
+    }
+  });
+
+  test("every solution stands up to the full rules", () => {
+    const board = spoiled();
+    const moves = solveWith(board, ["E", "M", "U", "E", "A", "C"], 1, { reletter: 2 });
+
+    expect(moves.length).toBeGreaterThan(0);
+    for (const move of moves) {
+      expect(validateTurn(board, move.placements, dictionary, bounds)).toEqual({ ok: true });
+    }
   });
 });
