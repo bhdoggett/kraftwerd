@@ -78,8 +78,30 @@ function thinking() {
  */
 const BLANKS_PER_TURN = 1;
 
-/** A pause long enough to read as a turn being taken. */
+/**
+ * A pause long enough to read as a turn being taken.
+ *
+ * Held *inside* the turn rather than in front of it. It used to be the delay
+ * `scheduleIfBot` scheduled with, which meant thinking was added to it: a
+ * 1,135ms turn behind a 1,600ms delay kept somebody waiting 2,735ms, and the
+ * more the bot thought the worse it got. Now the turn starts at once and holds
+ * until this much has passed since it began, so the thinking happens inside
+ * the pause instead of after it and the wait is 1,600ms whatever the search
+ * costs — until the search costs more than that, at which point the pause is
+ * over and the move lands as soon as it is ready.
+ *
+ * This needs a clock that runs, which is the other thing the conversion
+ * bought: `Date.now()` is frozen inside a mutation and advances inside an
+ * action. Measured on this deployment — a spin loop saw 63ms, a 50ms sleep saw
+ * 51ms.
+ */
 const THINKING_MS = 1_600;
+
+/** Hold until the turn has taken as long as a turn should take. */
+async function untilThoughtThrough(since: number) {
+  const left = THINKING_MS - (Date.now() - since);
+  if (left > 0) await new Promise((resolve) => setTimeout(resolve, left));
+}
 
 /**
  * How many times a turn will read the board, think, and try to play it.
@@ -113,6 +135,7 @@ const ATTEMPTS = 3;
 export const takeTurn = internalAction({
   args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
+    const startedAt = Date.now();
     /** The seat this turn is being taken for, kept for the pass below. */
     let userId: Id<"users"> | null = null;
 
@@ -142,6 +165,13 @@ export const takeTurn = internalAction({
         // leaves passing — which advancing with no tiles amounts to.
         const placements = (await chooseMove(ctx, state)) ?? [];
 
+        // The move is ready; the pause is not necessarily over. Waiting here
+        // rather than before thinking is what keeps a slow turn from being a
+        // slow turn *and* a long pause. On a second attempt this has already
+        // elapsed and returns at once, which is right -- the person waiting
+        // has been waiting since the first.
+        await untilThoughtThrough(startedAt);
+
         await ctx.runMutation(internal.games.playForBot, {
           gameId: args.gameId,
           userId,
@@ -161,6 +191,7 @@ export const takeTurn = internalAction({
     // the turn has already gone elsewhere this writes nothing.
     if (userId === null) return null;
     try {
+      await untilThoughtThrough(startedAt);
       await ctx.runMutation(internal.games.playForBot, {
         gameId: args.gameId,
         userId,
@@ -406,9 +437,10 @@ export const scheduleIfBot = internalMutation({
       .unique();
     if (player?.bot === undefined) return null;
 
-    // Scheduling an action is the same call as scheduling a mutation; the only
-    // difference is that what runs is not in a transaction.
-    await ctx.scheduler.runAfter(THINKING_MS, internal.bots.takeTurn, {
+    // At once, not after THINKING_MS: the turn holds the pause itself, so that
+    // the time it spends thinking comes out of the pause rather than being
+    // added to it. See THINKING_MS.
+    await ctx.scheduler.runAfter(0, internal.bots.takeTurn, {
       gameId: args.gameId,
     });
     return null;
