@@ -1,3 +1,17 @@
+/**
+ * A player that takes the best turn it can see, less what that turn gives away.
+ *
+ * Not a strong player — it never sets up a square for next turn, and it reads
+ * only one move deep — but a consistent one, which is what a balance
+ * measurement needs. Two identical bots playing thousands of games say more
+ * about the rules than about either of them.
+ *
+ * What it does read is what a turn leaves behind (`exposure`) and what a blank
+ * is worth keeping (`blankPrice`), both in judgement.ts. Neither touches
+ * `score`: a move's points are its points, and every penalty lands on `value`,
+ * which is all the ranking and the difficulty bands ever look at.
+ */
+
 import type { Board } from "../engine/board.js";
 import type { Dictionary } from "../engine/legality.js";
 import { applyPlacements } from "../engine/legality.js";
@@ -18,20 +32,6 @@ export {
   type Move,
   type ValueFn,
 } from "./components.js";
-
-/**
- * A player that takes the best turn it can see, less what that turn gives away.
- *
- * Not a strong player — it never sets up a square for next turn, and it reads
- * only one move deep — but a consistent one, which is what a balance
- * measurement needs. Two identical bots playing thousands of games say more
- * about the rules than about either of them.
- *
- * What it does read is what a turn leaves behind (`exposure`) and what a blank
- * is worth keeping (`blankPrice`), both in judgement.ts. Neither touches
- * `score`: a move's points are its points, and every penalty lands on `value`,
- * which is all the ranking and the difficulty bands ever look at.
- */
 
 export interface MoveOptions {
   /** Scores a legal turn. Lets a variant reward letters differently. */
