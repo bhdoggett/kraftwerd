@@ -1137,7 +1137,16 @@ describe("computer players", () => {
     expect(left.bags).toEqual([]);
   });
 
-  test("the machine plays a real word off what is already there", async () => {
+  /*
+   * A real search over the real dictionary, so these two are seconds rather
+   * than milliseconds and the 5s default is not enough headroom. Widening the
+   * live bot's block shortlist (`maxBlocks: 40`, `maxK: 3`) roughly tripled
+   * them, and on a cold full-project run -- 24 files competing for cores --
+   * they timed out at 5932ms and 5230ms while passing in isolation at 2983ms
+   * and 4016ms. The cap is generous on purpose: what it is protecting against
+   * is a search that never returns, not one that is merely slow.
+   */
+  test("the machine plays a real word off what is already there", { timeout: 30_000 }, async () => {
     vi.useFakeTimers();
     try {
       const { t, asAlice } = await table();
@@ -1198,7 +1207,7 @@ describe("computer players", () => {
     }
   });
 
-  test("it keeps playing once the board has words to cross", async () => {
+  test("it keeps playing once the board has words to cross", { timeout: 30_000 }, async () => {
     vi.useFakeTimers();
     try {
       const { t, asAlice } = await table();
