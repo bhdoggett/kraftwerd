@@ -445,48 +445,66 @@ is held *inside* the turn rather than in front of it — so any search finishing
 inside 1,600ms costs the person waiting exactly nothing. Every cap was then
 measured again rather than simply lifted.
 
-Two of the three are gone. The live bot's block solver may rewrite standing
-letters again (`reletter: 2`, the simulator's default), and the shortlist cap
-that was the real constraint is raised from twelve blocks to forty. Measured
-over twenty-eight whole games an allowance, that took it from 1.39 3×3s a game
-to 3.50 and from 340 points to 392, for 191ms of mean thinking and five turns in
-772 — 0.6% — that ran past the pause and were therefore waited on at all.
+**One of the three closed, and two new ones opened.** Over twenty-eight whole
+games an allowance the live bot went from 1.39 3×3s a game to 3.50 and from 340
+points to 392, for 191ms of mean thinking and five turns in 772 — 0.6% — that
+ran past the pause and were therefore waited on at all. That aggregate is
+several times the noise floor and can be read flatly. What follows about
+individual knobs cannot: a per-game square count is noisy enough that the same
+configuration measured 1.89 over twenty-eight games and 2.71 over fourteen, so
+every single-knob attribution below is judgement supported by direction, not
+measurement.
 
-Three divergences survive, and none of them is a deadline any more.
+The caveat that closed is `reletter`: the live bot's block solver may rewrite
+standing letters again, at the simulator's default of two. Four divergences now
+stand in its place, and they do not all point the same way.
 
 The live bot's search is told about **one blank a turn** where the simulated
-players may spend all three at once. This is now the measurement rather than the
-cap: at two blanks the bot gains twelve points and loses squares while a ninth
-of its turns become visible waits of up to 3.6 seconds; at three it is worse
-than one at everything — 1.71 3×3s a game against 2.71, fewer points, and a
-third of all turns spent in front of somebody. `blankPrice` charges for a blank
-so that it is not spent lightly, and handing the search more of them mostly buys
-blank-heavy moves that crowd better ones out of the shortlist. The cost is all
-in the block solver, the only stage that spends a blank: a 2×2 on an empty board
-is four cells tried against the rack and all twenty-six letters, which at three
-blanks is some 39,000 solutions to price.
+players may spend all three. This is now the measurement rather than the cap: at
+two blanks the bot gains twelve points and loses squares while a ninth of its
+turns become visible waits of up to 3.6 seconds; at three it is worse than one
+at everything — 1.71 3×3s a game against 2.71, fewer points, and a third of all
+turns spent in front of somebody. `blankPrice` charges for a blank so that it is
+not spent lightly, and handing the search more of them mostly buys blank-heavy
+moves that crowd better ones out of the shortlist. The cost is all in the block
+solver, the only stage that spends a blank: a 2×2 on an empty board is four
+cells tried against the rack and all twenty-six letters, which at three blanks
+is some 39,000 solutions to price. **Live is weaker.**
 
 The live bot **chains two plays from four candidates a step**, against the
 simulator's six. Six is affordable now — 44ms and one turn in 703 past the pause
 — but twenty-eight games cannot tell the two apart: 1.89 3×3s and 348 points at
 breadth 4 against 1.86 and 344 at breadth 6. The cheaper one stays for want of
-any reason to pay more.
+any reason to pay more. **Live is nominally weaker, measurably level.**
+
+The live bot searches **forty block candidates where the simulator takes
+twelve**. This is a new divergence and, on the sweep, the larger of the two that
+favour live: `maxBlocks: 12` was what actually bound the solver, and both sides
+had it until this change. It also widens the single-gap shortlist `blankMoves`
+works from, twelve to forty, which is in the numbers and is a separate effect.
+**Live is stronger.**
 
 And the live bot caps block candidates at **k = 3** where the simulator takes
-the default of 4. This is the one divergence that runs the other way.
-`candidateBlocks` sorts by k descending, so a long shortlist fills from the
-front with 4×4 candidates, and a 4×4 essentially never solves — sixteen cells
-against a rack of seven. Capping k spends the shortlist on 3×3s instead of on
-proving 4×4s impossible, and is both cheaper and stronger for it: 3.50 3×3s a
-game against 2.82, at 512ms mean thinking against 631ms. The simulator should
-take this too; the change that measured it was not allowed to touch `shared/`
-defaults.
+the default of 4. `candidateBlocks` sorts by k descending, so a long shortlist
+fills from the front with 4×4 candidates, and a 4×4 essentially never solves —
+sixteen cells against a rack of seven. Capping k spends the shortlist on 3×3s
+instead of on proving 4×4s impossible, which is measurably cheaper (512ms
+against 631ms) and plausibly stronger. Note what it does not do: it bounds the
+block solver's *targets*, not the board. The span and chain searches can still
+complete a 4×4 incidentally, and `newSquareBlocks` still pays 16 when they do.
+**Live is stronger.**
 
-So the table above is no longer straightforwardly a ceiling. Two of the three
-caveats have been removed, one of the survivors makes the live bot stronger than
-the simulated one rather than weaker, and the remaining two are each measured to
-cost nothing. What it measures is now close to the bot people sit down against,
-which is what was always intended.
+So the table above is no longer a ceiling, and it is not a floor either. Two of
+the four axes make the live bot the stronger square-builder, and together they
+are most of the 1.39 → 3.50 gap — which means **the balance figures above
+measure a materially weaker square-builder than the one that ships**. The two
+axes on which live is still capped are each measured to cost nothing. The
+honest summary is that the two players are closer than they were and no longer
+differ in one direction, and that anyone reading the 3×3 row above against the
+live game should read it as low. Converging them properly means the simulator
+taking `maxBlocks: 40` and `maxK: 3` — the change that measured them was not
+allowed to touch `shared/` defaults, and doing it will need the property test's
+60-second cap raised in the same commit.
 
 ## 7. Data model — implemented in `convex/schema.ts`
 
