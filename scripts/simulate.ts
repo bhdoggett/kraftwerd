@@ -1,7 +1,14 @@
 /**
  * Play a lot of games, so a rules change can be argued about with numbers.
  *
- * Usage: node scripts/simulate.ts [games] [players]
+ * Usage: node scripts/simulate.ts [games] [players] [name filter]
+ *
+ * The filter is a substring of a variant's name, and exists because the six
+ * variants are six full sweeps: on eight cores, 200 games of all six is the
+ * better part of an hour, while the one row design.md §6 quotes is eight
+ * minutes. Seeds are keyed on the game index alone (see sim-worker.ts), so a
+ * filtered run plays exactly the games an unfiltered one would have played for
+ * that variant, and the row it prints is the row the full sweep would print.
  */
 import { cpus } from "node:os";
 import { Worker } from "node:worker_threads";
@@ -158,7 +165,22 @@ const VARIANTS: Variant[] = [
   { name: "62 / 42%", bag: 62, multiplier: "none", weights: makeBag(62, 0.42) },
 ];
 
-for (const v of VARIANTS) {
+const filter = process.argv[4];
+const CHOSEN = filter === undefined
+  ? VARIANTS
+  : VARIANTS.filter((v) => v.name.includes(filter));
+
+// A filter matching nothing would otherwise print an empty table and read as
+// "the variants are all identical" rather than "you typed the name wrong".
+if (CHOSEN.length === 0) {
+  console.error(
+    `no variant name contains ${JSON.stringify(filter)} — have: ` +
+      VARIANTS.map((v) => JSON.stringify(v.name)).join(", "),
+  );
+  process.exit(1);
+}
+
+for (const v of CHOSEN) {
   const w = v.weights!;
   const total = Object.values(w).reduce((a, b) => a + b, 0);
   const vowels = [..."AEIOU"].reduce((n, c) => n + (w[c] ?? 0), 0);
@@ -200,7 +222,7 @@ const pool = makePool(Math.min(cpus().length, games));
 // Kept serial: this loop is where the "secs" column comes from, and running
 // two variants' games concurrently would blur that number across variants.
 // The parallelism lives inside pool.play, across games within one variant.
-for (const variant of VARIANTS) {
+for (const variant of CHOSEN) {
   const started = Date.now();
   const results = await pool.play(variant, players, games);
 
