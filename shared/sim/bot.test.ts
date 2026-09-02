@@ -157,8 +157,11 @@ describe("the bot", () => {
     const key = (m: Move) => JSON.stringify(m.placements);
     const top = wary[0];
     const before = plain.find((m) => key(m) === key(top))!;
+    // Strictly less: equal would also be what a null reply, a zero weight or a
+    // dropped penalty looks like, and lookahead has been rigged into a no-op
+    // by an options default once already.
     expect(top.score).toBe(before.score);
-    expect(top.value).toBeLessThanOrEqual(before.value);
+    expect(top.value).toBeLessThan(before.value);
   });
 
   test("lookahead leaves the whole list best-first, not just the part it read", () => {
