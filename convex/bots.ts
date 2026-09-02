@@ -343,32 +343,49 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
      */
     (after, placements, before) => scoreTurn(after, placements, { before }).total,
     /*
-     * Two plays per turn, from four candidates a step -- not the six `rank`
-     * defaults to. The block solver is back to the default `reletter: 2`.
+     * Measured on this deployment, twenty-eight whole bot-against-bot games an
+     * allowance, one blank in hand throughout. "Past the pause" counts turns
+     * whose thinking ran beyond the 1,600ms THINKING_MS holds -- which is to
+     * say the only turns anybody waits on, since everything under it happens
+     * inside a pause that was going to be spent anyway:
      *
-     * Re-lettering had been measured to buy *nothing*: the twelve blocks at
-     * the front of the shortlist are the ones with the fewest gaps, which is
-     * to say the most standing letters, and a rewrite budget of two cannot
-     * rescue six standing letters that do not fit a word square -- zero extra
-     * 3x3s over 208 turns. That measurement was taken before the live bot
-     * spent a blank at all, and a blank is what makes a rewrite worth having:
-     * it is twenty-six ways to take a branch on a standing tile, which is both
-     * why re-lettering costs so much more with one in hand and why it now
-     * closes squares it could not reach before.
+     *                          mean   worst   past pause   3x3+/game   pts/game
+     *   reletter 0, blocks 12  321ms   698ms      0/720       1.39        340
+     *   reletter 2, blocks 12  470ms  1370ms      0/725       1.89        348
+     *   reletter 2, blocks 24  559ms  1764ms      2/709       2.64        373
+     *   reletter 2, blocks 40  631ms  2250ms      7/716       2.82        372
+     *   blocks 24, maxK 3      450ms  1958ms      2/730       3.21        382
+     *   blocks 40, maxK 3      512ms  1920ms      5/772       3.50        392
+     *   blocks 64, maxK 3      621ms  1882ms      7/738       3.32        380
      *
-     * Measured here, fourteen whole bot-against-bot games an allowance, one
-     * blank in hand throughout, everything else as it ships:
+     * `maxBlocks: 12` was what actually bound the solver, and lifting it is
+     * most of the gain. `maxK: 3` is the surprise: it is both cheaper and
+     * stronger than leaving k at the default 4. `candidateBlocks` sorts by k
+     * descending, so a longer shortlist fills up from the front with 4x4
+     * candidates, and a 4x4 essentially never solves -- sixteen cells against
+     * a rack of seven. Capping k spends the whole shortlist on 3x3s instead of
+     * spending most of it proving 4x4s impossible. Beyond forty the shortlist
+     * dilutes again and both squares and points come back down.
      *
-     *   reletter 0: 374 turns, 316ms mean, 459ms p95, 700ms worst, 1.43 3x3+/game
-     *   reletter 2: 346 turns, 492ms mean, 905ms p95, 1103ms worst, 2.71 3x3+/game
+     * Together with `reletter` these take the bot from 1.39 3x3s a game to
+     * 3.50 and from 340 points to 392, for 191ms of mean thinking and five
+     * turns in 772 -- 0.6% -- that a person actually waits on.
      *
-     * Nearly double the squares for 176ms of mean thinking, and the thinking
-     * is free: the pause is 1,600ms and holds the search inside it, so not one
-     * turn in either run was something a person waited on. The old reason to
-     * refuse this -- that 954ms was dangerously near a 1s deadline -- names a
-     * deadline that no longer exists.
+     * `maxK: 3` is a divergence from the simulator, which keeps the default of
+     * four. It is the one divergence here that makes the live bot the
+     * *stronger* player, and the right fix is for the simulator to take it
+     * too; this task was not allowed to change `shared/` defaults.
+     *
+     * Two plays per turn from four candidates a step, against the simulator's
+     * six, is the other survivor. Six is affordable now -- it costs 44ms and
+     * one turn in 703 past the pause -- but twenty-eight games say it buys
+     * nothing: breadth 4 gave 1.89 3x3s and 348 points, breadth 6 gave 1.86
+     * and 344. Indistinguishable, so the cheaper one stays. (At fourteen games
+     * these two looked 0.6 squares apart in each direction on different runs,
+     * which is what a per-game count does at that sample size -- read nothing
+     * here off fourteen games.)
      */
-    { chain: { depth: 2, breadth: 4 } },
+    { chain: { depth: 2, breadth: 4 }, squares: { maxBlocks: 40, maxK: 3 } },
   );
 
   /*
