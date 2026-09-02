@@ -436,12 +436,25 @@ rather than either player's, and it is the open question §9 should be read
 against. It is not new to this measurement, but it is now measured against a
 player strong enough for the number to mean something.
 
-Two caveats on reading these against the live game. The simulated players hold
-the full three blanks; the live bot is given none, because searching with blanks
-in hand overruns the one-second budget a Convex mutation gets (see the comment
-in `convex/bots.ts`). And the live bot chains two plays from four candidates a
-step, against the simulator's six. Both make the live bot the weaker player, so
-these figures are a ceiling.
+Three caveats on reading these against the live game, and they are one trade in
+three places: the simulator is spending time a Convex mutation does not have. A
+mutation is stopped at a second, and a stopped bot turn is not a slow turn but a
+failed one that nothing reschedules. So: the simulated players hold three blanks
+and may spend them as the rules allow, all in one turn if they like, while the
+live bot holds the same three but its search is told about one at a time — a
+search cap, not a rule — because each blank is twenty-six letters against every
+span. Measured on the opening move, fifteen games an allowance, one blank
+finished every time at 425ms mean and 751ms worst, two timed out five times in
+fifteen, and three timed out every time. The live bot's block solver is
+fill-only (`reletter: 0`) where the simulator's may rewrite up to two standing
+letters, which with a blank in hand costs far more than it sounds: over whole
+games it took the worst turn from 954ms to 654ms, having already been measured
+to close no extra 3x3s. And the live bot chains two plays from four candidates a
+step, against the simulator's six. Every one of these makes the live bot the
+weaker player, so these figures are still a ceiling — the direction has not
+changed, only the reasons. That the two diverge at all is worth saying out loud,
+because the intent was that they should not: what this table measures is a
+slightly stronger bot than anyone actually sits down against.
 
 ## 7. Data model — implemented in `convex/schema.ts`
 
