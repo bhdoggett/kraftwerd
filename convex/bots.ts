@@ -94,11 +94,23 @@ const BLANKS_PER_TURN = 1;
  * bought: `Date.now()` is frozen inside a mutation and advances inside an
  * action. Measured on this deployment — a spin loop saw 63ms, a 50ms sleep saw
  * 51ms.
+ *
+ * It is not free, though, and it was when it was a scheduler delay. A held
+ * action is billed action compute for as long as it is held: up to 1.6s a
+ * turn, around thirteen turns a game, where `runAfter(THINKING_MS)` cost
+ * nothing at all. Worth knowing before raising this number.
  */
 const THINKING_MS = 1_600;
 
-/** Hold until the turn has taken as long as a turn should take. */
-async function untilThoughtThrough(since: number) {
+/**
+ * Hold until the turn has taken as long as a turn should take.
+ *
+ * `first` says whether this is the turn's first search. Only that one can
+ * report anything useful about cost: a later attempt starts with the pause
+ * already spent by the earlier one, so it would report "past the pause" every
+ * time however fast it ran, and drown the signal in noise.
+ */
+async function untilThoughtThrough(since: number, first: boolean) {
   const thought = Date.now() - since;
   const left = THINKING_MS - thought;
   if (left > 0) {
@@ -116,7 +128,9 @@ async function untilThoughtThrough(since: number) {
    * that, and it fires at the point a person starts noticing rather than at
    * the point the platform gives up.
    */
-  console.warn(`bot turn thought for ${thought}ms, past the ${THINKING_MS}ms pause`);
+  if (first) {
+    console.warn(`bot turn thought for ${thought}ms, past the ${THINKING_MS}ms pause`);
+  }
 }
 
 /**
@@ -148,8 +162,22 @@ async function untilThoughtThrough(since: number) {
  */
 const ATTEMPTS = 3;
 
+/**
+ * How many times a turn that could not read the board at all will come back
+ * and try again, and how long it waits first.
+ *
+ * Separate from `ATTEMPTS` because it is a different failure. `ATTEMPTS`
+ * covers a board that moved between reading it and writing to it, which
+ * resolves within one turn; this covers not being able to read it, which is a
+ * deployment having a bad minute and wants a slower, longer-lived retry. The
+ * count rides along in the argument because an action holds no state between
+ * runs.
+ */
+const READ_ATTEMPTS = 5;
+const READ_BACKOFF_MS = 10_000;
+
 export const takeTurn = internalAction({
-  args: { gameId: v.id("games") },
+  args: { gameId: v.id("games"), reads: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const startedAt = Date.now();
     /** The seat this turn is being taken for, kept for the pass below. */
@@ -165,8 +193,13 @@ export const takeTurn = internalAction({
        * action, and Convex does not retry a failed scheduled action -- so the
        * seat would never move again, which is the exact failure this whole
        * conversion exists to remove. A read that fails rounds the loop like a
-       * write that fails, and what survives all three attempts falls through
-       * to the pass below.
+       * write that fails.
+       *
+       * What happens after all three depends on how far the turn got. If any
+       * attempt learned whose seat it is, the pass below takes the turn. If
+       * none did -- every `turnState` threw -- there is nobody to pass for,
+       * and the turn reschedules itself instead of returning quietly, because
+       * returning quietly is the stuck seat.
        */
       try {
         const state = await ctx.runQuery(internal.bots.turnState, {
@@ -186,7 +219,7 @@ export const takeTurn = internalAction({
         // slow turn *and* a long pause. On a second attempt this has already
         // elapsed and returns at once, which is right -- the person waiting
         // has been waiting since the first.
-        await untilThoughtThrough(startedAt);
+        await untilThoughtThrough(startedAt, attempt === 1);
 
         await ctx.runMutation(internal.games.playForBot, {
           gameId: args.gameId,
@@ -202,12 +235,35 @@ export const takeTurn = internalAction({
       }
     }
 
-    // Out of attempts. Pass, so the seat moves on rather than stopping the
-    // game here. `playForBot` checks the seat before recording a pass, so if
-    // the turn has already gone elsewhere this writes nothing.
-    if (userId === null) return null;
+    /*
+     * Not one attempt got as far as learning whose turn this is, so there is
+     * no seat to pass for and nothing has been written.
+     *
+     * Try again later rather than returning, which would leave the seat
+     * exactly as stuck as a timed-out mutation used to. `reads` bounds it:
+     * a deployment where `turnState` cannot be read at all is broken in a way
+     * this cannot fix, and rescheduling forever would only add log noise and a
+     * bill to the outage.
+     */
+    if (userId === null) {
+      const reads = (args.reads ?? 0) + 1;
+      if (reads > READ_ATTEMPTS) {
+        console.error(`bot turn could not read the board ${reads} times; giving up`);
+        return null;
+      }
+      console.warn(`bot turn could not read the board; retrying (${reads})`);
+      await ctx.scheduler.runAfter(READ_BACKOFF_MS, internal.bots.takeTurn, {
+        gameId: args.gameId,
+        reads,
+      });
+      return null;
+    }
+
+    // Out of attempts, but the seat is known. Pass, so it moves on rather than
+    // stopping the game here. `playForBot` checks the seat before recording a
+    // pass, so if the turn has already gone elsewhere this writes nothing.
     try {
-      await untilThoughtThrough(startedAt);
+      await untilThoughtThrough(startedAt, false);
       await ctx.runMutation(internal.games.playForBot, {
         gameId: args.gameId,
         userId,
