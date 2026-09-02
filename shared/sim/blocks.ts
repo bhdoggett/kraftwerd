@@ -31,8 +31,16 @@
  * posed; the problem as posed is mostly empty. Its ceiling is that it may only
  * fill empty squares, so a block whose standing letters do not happen to fit a
  * word square is out of reach however good the rack is.
+ *
+ * That ceiling is `empties`, and it is the one thing to change if STACK_CAP
+ * ever rises above 2. `candidateBlocks` records a square as a gap only when
+ * the board has nothing on it, and every later stage -- `solveBlock`,
+ * `blankMoves` -- fills gaps and nothing else. So no stacking predicate
+ * anywhere below is doing any work, and none is written: a cap of 3 would let
+ * a tile close a block by landing on another, and reaching that play means
+ * widening what counts as a gap, not relaxing a test further down. Whatever
+ * `empties` offers, `validateTurn` still rules on.
  */
-import { STACK_CAP } from "../config.js";
 import { cellKey, type Board, type Coord } from "../engine/board.js";
 import { applyPlacements, validateTurn, type Dictionary } from "../engine/legality.js";
 import type { Placement } from "../engine/score.js";
@@ -258,9 +266,9 @@ function solveBlock(
     }
 
     /*
-     * A blank may stand for anything -- subject to the rule as written, not as
-     * it happens to read today. At STACK_CAP 2 a blank can never land on a
-     * tile, so these gaps always allow one; raise the cap and that changes.
+     * A blank may stand for anything. No stacking rule is consulted because
+     * there is no stack to consult: every gap here came from `block.empties`,
+     * which holds only squares with nothing on them.
      *
      * This is the one place in the search where a blank does its real work.
      * Elsewhere it substitutes for a letter in a word the rack nearly spells,
@@ -268,13 +276,9 @@ function solveBlock(
      * close at all, which is worth k^2.
      */
     if (blanks > 0) {
-      const priorStack = board.get(key)?.stacked ?? 0;
-      const barred = priorStack + 1 >= STACK_CAP && priorStack > 0;
-      if (!barred) {
-        for (const letter of ALPHABET) {
-          if (tried.has(letter)) continue;
-          tryLetter(letter, true, letters, blanks - 1);
-        }
+      for (const letter of ALPHABET) {
+        if (tried.has(letter)) continue;
+        tryLetter(letter, true, letters, blanks - 1);
       }
     }
   };
@@ -379,13 +383,9 @@ export function blankMoves(
     .slice(0, options.maxBlocks ?? 12)
     .map((block) => block.empties[0]);
 
+  // No stacking check: `candidateBlocks` reports gaps, and a gap is a square
+  // with nothing on it. See the note on `empties` in the module comment.
   for (const { x, y } of gaps) {
-    // The rule as written, not as it happens to read today: a blank may not be
-    // the tile that fills a stack. At STACK_CAP 2 that is the same as "empty
-    // squares only"; at 3 it would not be.
-    const priorStack = board.get(cellKey(x, y))?.stacked ?? 0;
-    if (priorStack + 1 >= STACK_CAP && priorStack > 0) continue;
-
     for (const letter of ALPHABET) {
       const placements = [{ x, y, letter, isBlank: true }];
       // One square can be the last gap of a 2x2 and of a 3x3 at once.
