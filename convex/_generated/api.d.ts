@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as auth_helpers from "../auth_helpers.js";
+import type * as bench from "../bench.js";
 import type * as bots from "../bots.js";
 import type * as dev from "../dev.js";
 import type * as friends from "../friends.js";
@@ -26,6 +27,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   auth_helpers: typeof auth_helpers;
+  bench: typeof bench;
   bots: typeof bots;
   dev: typeof dev;
   friends: typeof friends;

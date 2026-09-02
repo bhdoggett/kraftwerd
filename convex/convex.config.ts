@@ -21,6 +21,13 @@ const app = defineApp({
      * Absent everywhere else, so production cannot be seeded or fast-forwarded.
      */
     DEV_TOOLS: v.optional(v.string()),
+    /**
+     * Set to "1" to have every bot turn log what its search cost, which is
+     * what `scripts/bench-bot.sh` reads. Off everywhere by default: it is a
+     * line per turn, and the warning in `untilThoughtThrough` is the signal
+     * production actually wants.
+     */
+    BOT_BENCH: v.optional(v.string()),
   },
 });
 

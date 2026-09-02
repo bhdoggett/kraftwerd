@@ -10,6 +10,7 @@ import { scoreTurn } from "../shared/engine/score.js";
 import { blanksLeft } from "./games.js";
 import { internal } from "./_generated/api";
 import {
+  env,
   internalAction,
   internalMutation,
   internalQuery,
@@ -112,6 +113,8 @@ const THINKING_MS = 1_600;
  */
 async function untilThoughtThrough(since: number, first: boolean) {
   const thought = Date.now() - since;
+  // What `scripts/bench-bot.sh` reads, off unless a deployment asks for it.
+  if (env.BOT_BENCH === "1") console.log(`THINK ${thought}`);
   const left = THINKING_MS - thought;
   if (left > 0) {
     await new Promise((resolve) => setTimeout(resolve, left));
