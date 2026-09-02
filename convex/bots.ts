@@ -444,6 +444,15 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
      * to forty, which is in the numbers above but is not part of the story
      * about 4x4s.
      *
+     * **Both numbers are now also the `shared/sim/blocks.ts` defaults**, so a
+     * `rank` given no `squares` -- the simulator, the property tests -- searches
+     * squares exactly as this does, and the balance table in docs/design.md
+     * measures the bot people actually play. They stay written out here anyway:
+     * this is the file that records what is deployed and why, and a default
+     * changed for the simulator's benefit should not silently become a change
+     * to production. If the two ever differ again, one of the two comments is
+     * lying and the table is measuring something else.
+     *
      * Forty over twenty-four is a coin-flip on this evidence (3.50 against
      * 3.21) and sixty-four is not measurably worse than either. Forty is
      * chosen because it is the best of the three and costs 512ms; no causal
