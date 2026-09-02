@@ -64,6 +64,29 @@ describe("candidate blocks", () => {
    * returns nothing on turn one. A reordering is exactly the kind of fix a
    * later edit undoes without noticing, because both orders read plausibly.
    */
+  /*
+   * The k >= 3 shortlist rule, which nothing else here can see.
+   *
+   * It only fires on a hand of nine tiles or more -- an all-empty 3x3 has nine
+   * gaps, and `gaps.length > tiles` has already dropped it for any smaller
+   * rack -- so every other test in this file, and the live bot's own eight
+   * tiles, pass straight over it. Without this the rule could be deleted and
+   * the suite would stay green.
+   */
+  test("refuses an empty 3x3 even to a hand that could fill one", () => {
+    const empty = makeBoard([]);
+    // Seven letters and three blanks: ten tiles, and a 3x3 wants nine.
+    const blocks = candidateBlocks(empty, shape, 15, 10, 3);
+
+    expect(blocks.length).toBeGreaterThan(0);
+    expect(blocks.every((b) => b.k === 2)).toBe(true);
+
+    // A 3x3 with a letter standing in it is still offered, so the rule is
+    // about emptiness rather than about size.
+    const seeded = makeBoard([{ x: 7, y: 7, letter: "A", isBlank: false }]);
+    expect(candidateBlocks(seeded, shape, 15, 10, 3).some((b) => b.k === 3)).toBe(true);
+  });
+
   test("offers the opening square, and only blocks covering the centre", () => {
     const blocks = candidateBlocks(makeBoard([]), shape, 15, 7, 4);
 
@@ -341,7 +364,12 @@ describe("re-lettering a standing tile", () => {
 
   test("never re-lays a letter as itself, and never claims a cell twice", () => {
     const board = spoiled();
-    for (const move of solveWith(board, ["E", "M", "U", "E", "A"], 0, { reletter: 2 })) {
+    const moves = solveWith(board, ["E", "M", "U", "E", "A"], 0, { reletter: 2 });
+
+    // Without this the loop below is vacuous: a solver that offers nothing
+    // satisfies every claim made about what it offers.
+    expect(moves.length).toBeGreaterThan(0);
+    for (const move of moves) {
       const cells = move.placements.map((p) => cellKey(p.x, p.y));
       expect(new Set(cells).size).toBe(cells.length);
       for (const p of move.placements) {
@@ -354,7 +382,10 @@ describe("re-lettering a standing tile", () => {
     () => {
     const board = spoiled();
     const rack = ["E", "M", "U", "E", "A"];
-    for (const move of solveWith(board, rack, 1, { reletter: 2 })) {
+    const moves = solveWith(board, rack, 1, { reletter: 2 });
+
+    expect(moves.length).toBeGreaterThan(0);
+    for (const move of moves) {
       expect(move.placements.length).toBeLessThanOrEqual(rack.length + 1);
       expect(rewrites(board, move).length).toBeLessThanOrEqual(2);
 
@@ -377,9 +408,18 @@ describe("re-lettering a standing tile", () => {
     ]);
 
     const moves = solveWith(board, ["C", "A", "A", "C"], 0, { reletter: 2 });
+
+    // The refusal is only worth asserting if the solver had something to
+    // refuse from: an empty list buries nothing and proves nothing.
+    expect(moves.length).toBeGreaterThan(0);
     for (const move of moves) {
       expect(validateTurn(board, move.placements, dictionary, bounds)).toEqual({ ok: true });
       expect(rewrites(board, move).length).toBeLessThan(2);
+
+      // The claim itself, rather than a proxy for it: AT is two cells, and no
+      // turn may take both of them.
+      const taken = move.placements.filter((p) => p.y === 6 && (p.x === 6 || p.x === 7));
+      expect(taken.length).toBeLessThan(2);
     }
   });
 

@@ -109,6 +109,14 @@ export interface BlockOptions {
  * turns offered, not one of them better than what the ranked list already
  * held -- so the cut stays where it costs least.
  *
+ * That measurement was taken fill-only, before a turn could rewrite a standing
+ * letter, and re-lettering has since made it conditional rather than flatly
+ * true: at a rewrite budget the paragraph below records one extra 3x3 at a cap
+ * of forty. One, for more than three times the blocks searched, on a pass whose
+ * whole yield is about two 3x3s a game. So the conclusion survives its evidence
+ * being narrowed -- the cap still stays -- but it is a judgement about a poor
+ * trade now, not a measurement of nothing at all.
+ *
  * That cut, and not `reletter`, is what decides whether re-lettering ever gets
  * to do anything. Measured over 208 turns played on the live bot's own options,
  * the twelve blocks at the front are the ones with fewest gaps, which is to say
@@ -176,13 +184,26 @@ export function candidateBlocks(
          * square of it can still change, so a block with nothing in it settles
          * nothing until a whole row or column is filled, and the walk is nine
          * levels of pure generation before the first word is ever checked. With
-         * a blank in hand each level tries the rack *and* all twenty-six.
+         * a blank in hand each level tries the rack *and* all twenty-six. What
+         * the expense buys is close to nothing -- nine tiles spelling six
+         * interlocking words out of near-wildcards. The solver's worth is
+         * finishing squares somebody started.
          *
-         * That is the opening move with blanks, and it was measured: every 3x3
-         * over the centre qualifies at once and `bots:takeTurn` timed out at a
-         * second, every time. What the expense buys is close to nothing -- nine
-         * tiles spelling six interlocking words out of near-wildcards. The
-         * solver's worth is finishing squares somebody started.
+         * Be clear about when this actually fires, because it is easy to
+         * overrate. `!holdsTile` at k >= 3 means every cell is empty, so
+         * `gaps.length` is k^2 >= 9 -- and the test above has already dropped
+         * anything with more gaps than tiles. So the rule bites only on a hand
+         * of nine tiles or more. The live bot holds seven letters and is told
+         * about one blank (`BLANKS_PER_TURN` in convex/bots.ts), which is
+         * eight: **as the live bot is configured today this line never fires,
+         * and the opening move was fixed by that blank cap, not by this.** It
+         * fires in the simulator, which holds seven and three, and it fires
+         * live the moment `BLANKS_PER_TURN` rises to two.
+         *
+         * Kept because that is exactly the configuration it was written for and
+         * the one a deadline would push us back toward -- but its value there
+         * is contingent, and saying otherwise would be inviting someone to
+         * trust it to hold a budget it is not currently holding.
          *
          * k=2 is deliberately exempt: four gaps against seven tiles is cheap,
          * and it is the opening play. `blockMoves` on an empty board offers the
