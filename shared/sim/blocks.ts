@@ -81,7 +81,16 @@ export interface Candidate {
 /** How far the block pass may go. Every field optional; this module owns the
  * defaults, and `MoveOptions.squares` in bot.ts forwards this whole shape. */
 export interface BlockOptions {
+  /**
+   * Largest block the solver will aim at. Three by default; the argument for
+   * not making it four is on `candidateBlocks`.
+   */
   maxK?: number;
+  /**
+   * How much of the shortlist to search. Forty by default, which is what the
+   * live bot passes, so an unconfigured `rank` -- the simulator, the property
+   * tests -- searches squares exactly as the deployed bot does.
+   */
   maxBlocks?: number;
   nodeLimit?: number;
   /**
@@ -104,31 +113,32 @@ export interface BlockOptions {
  * biggest block goes first, and among blocks of a size the one asking for
  * fewest tiles, since that is both the likeliest to close and the cheapest to
  * search. The list is then cut by the caller, and the cut bites: a mid-game
- * board yields around a hundred of these, of which `maxBlocks` sees twelve.
- * Raising the cap to take all of them was measured and bought nothing -- more
- * turns offered, not one of them better than what the ranked list already
- * held -- so the cut stays where it costs least.
+ * board yields around a hundred of these, of which `maxBlocks` sees forty.
  *
- * That measurement was taken fill-only, before a turn could rewrite a standing
- * letter, and re-lettering has since made it conditional rather than flatly
- * true: at a rewrite budget the paragraph below records one extra 3x3 at a cap
- * of forty. One, for more than three times the blocks searched, on a pass whose
- * whole yield is about two 3x3s a game. So the conclusion survives its evidence
- * being narrowed -- the cap still stays -- but it is a judgement about a poor
- * trade now, not a measurement of nothing at all.
+ * Forty, and `maxK` 3, because the cut is what decides whether the pass is
+ * worth having and an earlier cap of twelve was measured as the thing binding
+ * it. A cap of twelve fills from the front of this ordering, which is the
+ * blocks with fewest gaps, which is to say the ones with the most standing
+ * letters -- and a rewrite budget of two cannot rescue six standing letters
+ * that do not fit a word square. Over 208 turns on the live bot's options,
+ * budget 2 at a cap of twelve found five extra turns and no extra 3x3; at
+ * forty it found a hundred and seven, and one more 3x3. The blocks
+ * re-lettering pays on are the ones with room in them, and this ordering puts
+ * those last. Over twenty-eight whole live games an allowance the same lift
+ * ran 1.89 3x3s a game to 2.82, and capping k at 3 on top of it to 3.50.
  *
- * That cut, and not `reletter`, is what decides whether re-lettering ever gets
- * to do anything. Measured over 208 turns played on the live bot's own options,
- * the twelve blocks at the front are the ones with fewest gaps, which is to say
- * the ones with the most standing letters -- and a rewrite budget of two cannot
- * rescue six standing letters that do not fit a word square. At twelve, budget 2
- * found five extra turns and no extra 3x3; at forty it found a hundred and
- * seven, and one more 3x3. The blocks re-lettering pays on are the ones with
- * room in them, and this ordering puts those last.
+ * `maxK` 3 rather than 4 for a mechanical reason: this sorts by k descending,
+ * so a long shortlist fills from the front with 4x4 candidates, and a 4x4
+ * essentially never solves -- sixteen cells against a rack of seven. Capping k
+ * spends the shortlist on 3x3s instead of on proving 4x4s impossible, which is
+ * why it is *cheaper* as well (512ms against 631ms a turn, live, over seven
+ * hundred turns apiece). It bounds this solver's targets, not the board: the
+ * span and chain searches can still complete a 4x4 incidentally, and
+ * `newSquareBlocks` still pays k^2 = 16 when they do.
  *
  * Ordering by fewest gaps *across* sizes was measured too, and is worse: it
- * fills the twelve with 2x2s, which re-letters happily and closes fewer 3x3s
- * than before. k first is right; the cap is what would have to move.
+ * fills the shortlist with 2x2s, which re-letters happily and closes fewer
+ * 3x3s than before. k first is right; the cap was what had to move.
  */
 export function candidateBlocks(
   board: Board,
@@ -508,8 +518,8 @@ export function blockMoves(
   options: BlockOptions = {},
 ): Move[] {
   const tiles = hand.letters.length + hand.blanks;
-  const blocks = candidateBlocks(board, shape, size, tiles, options.maxK ?? 4)
-    .slice(0, options.maxBlocks ?? 12);
+  const blocks = candidateBlocks(board, shape, size, tiles, options.maxK ?? 3)
+    .slice(0, options.maxBlocks ?? 40);
   const reletter = options.reletter ?? 2;
 
   /*
@@ -573,6 +583,12 @@ export function blockMoves(
  *
  * Here, rather than in a module of its own, because the shortlist is exactly
  * what `candidateBlocks` already computes.
+ *
+ * It shares `options.squares` with `blockMoves`, so `maxBlocks` widens this
+ * shortlist too -- deliberately, since that is how the live bot has run since
+ * it started passing forty, and the two passes reading one number is what
+ * keeps "the squares the search will look at" a single idea. `maxK` did not
+ * move: this pass has defaulted to 3 since it was written.
  */
 export function blankMoves(
   board: Board,
@@ -593,7 +609,7 @@ export function blankMoves(
   // `candidateBlocks` drops the finished ones and anything needing more than
   // the tiles it is given, so every block it returns here has exactly one gap.
   const gaps = candidateBlocks(board, shape, size, 1, options.maxK ?? 3)
-    .slice(0, options.maxBlocks ?? 12)
+    .slice(0, options.maxBlocks ?? 40)
     .map((block) => block.gaps[0]);
 
   /*
