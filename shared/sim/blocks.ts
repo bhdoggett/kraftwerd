@@ -108,6 +108,19 @@ export interface BlockOptions {
  * Raising the cap to take all of them was measured and bought nothing -- more
  * turns offered, not one of them better than what the ranked list already
  * held -- so the cut stays where it costs least.
+ *
+ * That cut, and not `reletter`, is what decides whether re-lettering ever gets
+ * to do anything. Measured over 208 turns played on the live bot's own options,
+ * the twelve blocks at the front are the ones with fewest gaps, which is to say
+ * the ones with the most standing letters -- and a rewrite budget of two cannot
+ * rescue six standing letters that do not fit a word square. At twelve, budget 2
+ * found five extra turns and no extra 3x3; at forty it found a hundred and
+ * seven, and one more 3x3. The blocks re-lettering pays on are the ones with
+ * room in them, and this ordering puts those last.
+ *
+ * Ordering by fewest gaps *across* sizes was measured too, and is worse: it
+ * fills the twelve with 2x2s, which re-letters happily and closes fewer 3x3s
+ * than before. k first is right; the cap is what would have to move.
  */
 export function candidateBlocks(
   board: Board,
