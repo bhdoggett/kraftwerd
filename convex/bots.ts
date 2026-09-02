@@ -7,6 +7,7 @@ import { makeDictionary } from "../shared/engine/dictionary.js";
 import { applyPlacements, wordsFormed, type Dictionary } from "../shared/engine/legality.js";
 import { chooseRanked, indexWords, rank, type Move, type WordIndex } from "../shared/sim/bot.js";
 import { scoreTurn } from "../shared/engine/score.js";
+import { blanksLeft } from "./games.js";
 import { internal } from "./_generated/api";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
@@ -51,6 +52,13 @@ function thinking() {
   );
   return { dictionary, words };
 }
+
+/**
+ * Blanks the search may consider spending in one turn, out of the three a
+ * player holds for the game. See the note at the call site: two does not fit
+ * in a one-second mutation.
+ */
+const BLANKS_PER_TURN = 1;
 
 /** A pause long enough to read as a turn being taken. */
 const THINKING_MS = 1_600;
@@ -120,34 +128,49 @@ async function chooseMove(
   const moves = rank(
     board,
     /*
-     * No blanks, and not for want of a place to keep them: `players.blanks`
-     * carries the allowance and `games.ts` spends it correctly. It is a time
-     * budget.
+     * One blank a turn, out of an allowance of three.
      *
-     * A mutation is a transaction, and Convex stops one at a second. Seven
-     * letters and three blanks is ten tiles, and a 3x3 wants nine -- so a hand
-     * holding blanks is the first that can fill one from nothing, and on the
-     * opening move `blockMoves` duly shortlists every 3x3 over the centre and
-     * runs the solver on each. Measured in this deployment, that turn does not
-     * finish: `bots:takeTurn` failed with "Function execution timed out
-     * (maximum duration: 1s)" on an empty board, every time it was tried.
-     * Nothing reschedules a failed turn, so the game would simply stop.
+     * The bot plays blanks at all now, which it did not; and it will not spend
+     * two in one turn, which is a deadline and not a rule. A mutation is a
+     * transaction and Convex stops one at a second, and a stopped turn is not
+     * slow, it fails -- nothing reschedules it, so the game sticks on this seat
+     * for good.
      *
-     * Clamping `squares` does not rescue it -- `{ maxK: 3, maxBlocks: 4 }` and
-     * `{ maxK: 2, maxBlocks: 12 }` both still timed out. What would is a node
-     * budget on the solver, or a shortlist that refuses a block with nothing
-     * standing in it yet.
+     * Two things had to give before even one blank fitted.
      *
-     * The budget is reachable from here now: `squares.nodeLimit` on the
-     * options, forwarded to `blockMoves`. Nobody has measured whether a
-     * bounded solver actually brings the opening turn inside the second,
-     * though, and the failure it would be traded against is a game that stops
-     * for good. So the lever exists, untried, and the live bot goes on playing
-     * its letters until someone measures it against a deployment. The
-     * simulator still plays blanks, so its numbers are a ceiling rather than
-     * what a person meets.
+     * The first was the block solver. Seven letters and three blanks is ten
+     * tiles and a 3x3 wants nine, so a hand holding blanks was the first that
+     * could raise a square out of nothing: on the opening move `blockMoves`
+     * shortlisted every 3x3 over the centre and ran a nine-deep solver on each
+     * against a rack that was most of the alphabet. That turn timed out every
+     * time it was tried, and clamping `squares` did not rescue it
+     * (`{ maxK: 3, maxBlocks: 4 }` and `{ maxK: 2, maxBlocks: 12 }` both still
+     * died). `candidateBlocks` now refuses a k >= 3 block with nothing standing
+     * in it -- k = 2 untouched, so the 2x2 opening play still stands.
+     *
+     * The second was `reletter`, below.
+     *
+     * What is left after both is the ordinary span search, where a blank is
+     * twenty-six letters against every span, and that is what fixes the count
+     * at one. Measured in this deployment on the opening move, fifteen games an
+     * allowance, reading `userExecutionTime` from `convex logs --jsonl` because
+     * `Date.now()` is frozen inside a mutation:
+     *
+     *   blanks 0:  254ms mean, 337ms worst, no failures
+     *   blanks 1:  425ms mean, 751ms worst, no failures
+     *   blanks 2:  835ms mean, five of fifteen timed out
+     *   blanks 3: 1002ms mean, fifteen of fifteen timed out
+     *
+     * Two is not a near miss, it is a third of turn one lost. So the search is
+     * told about one blank, and the other two wait for later turns. A turn
+     * spending two blanks at once was never much of a turn -- `blankPrice`
+     * charges for them precisely so they are not spent lightly -- and the
+     * alternative on offer was none at all.
+     *
+     * `squares.nodeLimit` is still there and still unused: the block pass is no
+     * longer where the time goes, so bounding it would buy nothing.
      */
-    { letters: player.letters, blanks: 0 },
+    { letters: player.letters, blanks: Math.min(blanksLeft(player), BLANKS_PER_TURN) },
     dictionary,
     words,
     shape,
@@ -181,8 +204,25 @@ async function chooseMove(
      * the worst turn seen at about three fifths of the budget. What it costs in
      * strength against breadth 6 was not measured -- the simulator is where
      * that question belongs, and it still runs the default.
+     *
+     * `reletter: 0` is the fill-only block solver, and the live bot takes it
+     * where the simulator keeps the default of two. Re-lettering was measured
+     * to buy nothing under the shipped `maxBlocks: 12`: the twelve blocks at
+     * the front of the shortlist are the ones with the fewest gaps, which is to
+     * say the most standing letters, and a rewrite budget of two cannot rescue
+     * six standing letters that do not fit a word square -- zero extra 3x3s
+     * over 208 turns. What it costs is not nothing, and with a blank in hand it
+     * is a great deal more than the 3.8% it looked like without one. Measured
+     * here over whole bot-against-bot games, one blank in hand throughout:
+     *
+     *   reletter 2: 156 turns, mean 367ms, p95 682ms, worst 954ms
+     *   reletter 0: 149 turns, mean 282ms, p95 431ms, worst 654ms
+     *
+     * A rewrite is a branch the solver takes on a standing tile, and a blank is
+     * twenty-six ways to take it. Zero for nothing is the trade, and it is what
+     * puts a blank in the bot's hand at the cost the seven letters already had.
      */
-    { chain: { depth: 2, breadth: 4 } },
+    { chain: { depth: 2, breadth: 4 }, squares: { reletter: 0 } },
   );
 
   /*

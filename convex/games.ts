@@ -737,7 +737,7 @@ async function wakeBot(ctx: MutationCtx, gameId: Id<"games">) {
 }
 
 /** Blanks a player has left, reading rows made before they became a count. */
-function blanksLeft(player: Doc<"players">): number {
+export function blanksLeft(player: Doc<"players">): number {
   return player.blanks ?? (player.blank ? 1 : 0);
 }
 
