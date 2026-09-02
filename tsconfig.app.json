@@ -4,6 +4,12 @@
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    /* The property test under shared/sim reads its dictionary fixture off
+     * disk, so this project needs node builtins. Test files live in the
+     * same project as the code they cover so that they are typechecked by
+     * the same gate; the price is that browser code under src/ could import
+     * a node builtin without a type error, which the Vite build catches. */
+    "types": ["node"],
     "module": "ESNext",
     "skipLibCheck": true,
 
