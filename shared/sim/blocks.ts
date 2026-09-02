@@ -167,6 +167,29 @@ export function candidateBlocks(
          */
         if (blocked || gaps.length === 0 || gaps.length > tiles) continue;
 
+        /*
+         * From k=3 up, a block with nothing standing in it is not searched.
+         *
+         * Not a rule about legality -- such a block is perfectly playable -- but
+         * about what the search can afford. Standing letters are what the
+         * dictionary prunes against: `solveBlock` judges a run only once no
+         * square of it can still change, so a block with nothing in it settles
+         * nothing until a whole row or column is filled, and the walk is nine
+         * levels of pure generation before the first word is ever checked. With
+         * a blank in hand each level tries the rack *and* all twenty-six.
+         *
+         * That is the opening move with blanks, and it was measured: every 3x3
+         * over the centre qualifies at once and `bots:takeTurn` timed out at a
+         * second, every time. What the expense buys is close to nothing -- nine
+         * tiles spelling six interlocking words out of near-wildcards. The
+         * solver's worth is finishing squares somebody started.
+         *
+         * k=2 is deliberately exempt: four gaps against seven tiles is cheap,
+         * and it is the opening play. `blockMoves` on an empty board offers the
+         * 2x2 over the centre, and a test holds it there.
+         */
+        if (k >= 3 && !holdsTile) continue;
+
         if (board.size === 0) {
           /*
            * Nothing is on the board at all, so there is nothing to join: the
