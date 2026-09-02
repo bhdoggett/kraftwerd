@@ -209,20 +209,19 @@ what keeps a board from ever getting stuck: every square stays reachable,
 even a closed-off one, because you can always rebuild through it.
 
 **Stack cap.** A square may hold at most `STACK_CAP` tiles over its lifetime
-— three, so it can change hands twice and then settles. A fourth attempt on
-a maxed-out square is refused outright, before word or connectivity checks
+— two, so it can change hands once and then settles. A third attempt on a
+maxed-out square is refused outright, before word or connectivity checks
 even run.
 
 **Stack bonus.** Landing on an already-occupied square pays extra, equal to
-how deep the stack now runs: **+2** for the first tile stacked on top, **+3**
-for the second (the cap). A tile landing on an empty square earns none of
-this. The bonus scales with `STACK_CAP` by construction — raise the cap and
-the top bonus follows it.
+how deep the stack now runs: **+2** for the tile stacked on top, which at a
+cap of two is also the last tile that square will ever take. A tile landing
+on an empty square earns none of this. The bonus scales with `STACK_CAP` by
+construction — raise the cap and the top bonus follows it.
 
 ```
 fresh square      : 0
-1st tile stacked   : +2
-2nd tile stacked   : +3   (the square is now full)
+1st tile stacked  : +2   (the square is now full)
 ```
 
 Both live in `shared/config.ts` (`STACK_CAP`) and `shared/engine/score.ts`
@@ -419,11 +418,11 @@ identical bots, 200 games:
 | seat 0 / seat 1 win % | 62 / 38 |
 | mean score, seat 0 / seat 1 | 184 / 171 |
 | turns per game | 26 |
-| tiles laid per game | 54 |
+| squares occupied per game | 54 |
 | passes per game | 3.2 |
 | 3x3 or larger per game | **1.99** |
 | best turn, mean per game | 42 |
-| best turn seen | 45 |
+| best turn, 95th percentile | 45 |
 
 The number that moved is the last-but-two: a 3x3 went from a thing that
 essentially never happened to two a game. It was never a rule change that
