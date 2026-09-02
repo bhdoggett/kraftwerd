@@ -161,6 +161,32 @@ describe("the bot", () => {
     expect(top.value).toBeLessThanOrEqual(before.value);
   });
 
+  test("lookahead leaves the whole list best-first, not just the part it read", () => {
+    const board = makeBoard([..."CAT"].map((letter, i) => ({
+      x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
+    })));
+
+    /*
+     * The penalty comes off the head of the list only, so the moves it was
+     * taken from can fall below moves it never touched. A narrow `breadth`
+     * and a heavy `weight` make that certain rather than incidental.
+     *
+     * `rank` must hand back a list that is still best-first: `search` reads
+     * position zero as the move to play, and `chooseRanked` bands as a
+     * fraction of the head's value -- at `hard`, whose ceiling is that value,
+     * a stronger move further down is filtered out of its own band.
+     */
+    const looked = rank(board, { letters: ["E", "A", "T"], blanks: 0 }, dictionary,
+      words, shape, 15, (b, p) => scoreTurn(b, p, { before: board }).total,
+      { lookahead: { rack: ["A", "E", "T"], weight: 4, breadth: 2 } });
+
+    expect(looked.length).toBeGreaterThan(2);
+    expect(Math.max(...looked.map((m) => m.value))).toBe(looked[0].value);
+    for (const [i, move] of looked.entries()) {
+      if (i > 0) expect(move.value).toBeLessThanOrEqual(looked[i - 1].value);
+    }
+  });
+
   test("scores a move against the board its tiles are on", () => {
     const board = makeBoard([..."CAT"].map((letter, i) => ({
       x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
@@ -255,6 +281,24 @@ describe("choosing by difficulty", () => {
     // Hard takes from the top of the list; easy from further down.
     expect(bleak.indexOf(chooseRanked(bleak, "hard", () => 0.01)!)).toBeLessThan(3);
     expect(bleak.indexOf(chooseRanked(bleak, "easy", () => 0.01)!)).toBeGreaterThan(3);
+  });
+
+  test("bands on the best move, wherever in the list it sits", () => {
+    /*
+     * A list whose strongest move is not its first. Reading the head as the
+     * best gives hard a band of [25.5, 30], which excludes the 50 -- the one
+     * move a hard player is least entitled to miss.
+     */
+    const jumbled: Move[] = [
+      { placements: [], score: 30, value: 30 },
+      { placements: [], score: 20, value: 20 },
+      { placements: [], score: 10, value: 10 },
+      { placements: [], score: 50, value: 50 },
+    ];
+
+    for (const rng of [() => 0, () => 0.99]) {
+      expect(chooseRanked(jumbled, "hard", rng)).toBe(jumbled[3]);
+    }
   });
 
   test("never returns null for a non-empty list", () => {

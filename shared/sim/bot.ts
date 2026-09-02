@@ -117,7 +117,7 @@ const BANDS: Record<Difficulty, [number, number]> = {
 const TAU = 2.5;
 
 /**
- * Choose among ranked moves, best first, by difficulty.
+ * Choose among ranked moves by difficulty.
  *
  * `rng` returns a float in [0, 1). Exported for its own tests: the shape of
  * this distribution is the whole of how hard the game feels.
@@ -129,8 +129,22 @@ export function chooseRanked(
 ): Move | null {
   if (moves.length === 0) return null;
 
+  /*
+   * Ordered here rather than taken on trust from the caller.
+   *
+   * Both branches below read the list as best-first: one takes the head as
+   * the best on offer and bands as a fraction of it, the other reads the band
+   * off positions down the list. Hand either an unsorted list and the band is
+   * computed from the wrong number -- for `hard`, whose ceiling is the best
+   * itself, the genuinely strongest move is then filtered out of its own
+   * band. This is exported, so that is a caller's honest mistake rather than
+   * an impossible one, and sorting an already-sorted list costs nothing next
+   * to the search that produced it.
+   */
+  const ordered = [...moves].sort((a, b) => b.value - a.value);
+
   const [lo, hi] = BANDS[difficulty];
-  const best = moves[0].value;
+  const best = ordered[0].value;
   let band: readonly Move[];
 
   if (best <= 0) {
@@ -139,11 +153,11 @@ export function chooseRanked(
      * ordering -- half of -10 is -5, which is better, not worse -- so the
      * band is read as positions down the list instead.
      */
-    const from = Math.floor((1 - hi) * moves.length);
-    const to = Math.max(from + 1, Math.ceil((1 - lo) * moves.length));
-    band = moves.slice(from, to);
+    const from = Math.floor((1 - hi) * ordered.length);
+    const to = Math.max(from + 1, Math.ceil((1 - lo) * ordered.length));
+    band = ordered.slice(from, to);
   } else {
-    band = moves.filter((m) => m.value >= lo * best && m.value <= hi * best);
+    band = ordered.filter((m) => m.value >= lo * best && m.value <= hi * best);
 
     /*
      * Nothing in the band: too few moves, or all of them bunched above it.
@@ -152,8 +166,8 @@ export function chooseRanked(
      * at all: a bot with something legal to play has to play it.
      */
     if (band.length === 0) {
-      const above = moves.filter((m) => m.value >= lo * best);
-      band = above.length > 0 ? [above[above.length - 1]] : [moves[0]];
+      const above = ordered.filter((m) => m.value >= lo * best);
+      band = above.length > 0 ? [above[above.length - 1]] : [ordered[0]];
     }
   }
 
@@ -341,7 +355,17 @@ export function rank(
     return { ...move, value: move.value - ahead.weight * (reply?.score ?? 0) };
   });
 
-  // Re-ranked by what each move nets, with the rest of the list behind them.
-  looked.sort((a, b) => b.value - a.value);
-  return [...looked, ...playable.slice(ahead.breadth ?? 6)];
+  /*
+   * Re-ranked across the whole list, not just the head of it.
+   *
+   * Only the first few had a penalty taken off them, so a move the lookahead
+   * never reached can now be worth more than every move it did. Sorting the
+   * looked-at few among themselves and then putting the untouched tail behind
+   * them would leave `rank` returning a list whose first entry is not its
+   * best, and every caller -- `search`, `chooseRanked` -- reads position zero
+   * as the best on offer.
+   */
+  const reranked = [...looked, ...playable.slice(ahead.breadth ?? 6)];
+  reranked.sort((a, b) => b.value - a.value);
+  return reranked;
 }
