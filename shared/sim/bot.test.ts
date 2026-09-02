@@ -142,51 +142,26 @@ describe("the bot", () => {
     for (const move of judged) expect(move.value).toBeLessThan(move.score);
   });
 
-  test("lookahead lowers a move's value without touching its score", () => {
-    const board = makeBoard([..."CAT"].map((letter, i) => ({
-      x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
-    })));
-
-    const plain = rank(board, { letters: ["E"], blanks: 0 }, dictionary, words,
-      shape, 15, (b, p) => scoreTurn(b, p, { before: board }).total, {});
-    const wary = rank(board, { letters: ["E"], blanks: 0 }, dictionary, words,
-      shape, 15, (b, p) => scoreTurn(b, p, { before: board }).total,
-      { lookahead: { rack: ["A", "E", "T"], weight: 1 } });
-
-    // Same move, same points; only the opinion of it moves.
-    const key = (m: Move) => JSON.stringify(m.placements);
-    const top = wary[0];
-    const before = plain.find((m) => key(m) === key(top))!;
-    // Strictly less: equal would also be what a null reply, a zero weight or a
-    // dropped penalty looks like, and lookahead has been rigged into a no-op
-    // by an options default once already.
-    expect(top.score).toBe(before.score);
-    expect(top.value).toBeLessThan(before.value);
-  });
-
-  test("lookahead leaves the whole list best-first, not just the part it read", () => {
+  test("rank returns the merged list best-first by value", () => {
     const board = makeBoard([..."CAT"].map((letter, i) => ({
       x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
     })));
 
     /*
-     * The penalty comes off the head of the list only, so the moves it was
-     * taken from can fall below moves it never touched. A narrow `breadth`
-     * and a heavy `weight` make that certain rather than incidental.
-     *
-     * `rank` must hand back a list that is still best-first: `search` reads
-     * position zero as the move to play, and `chooseRanked` bands as a
-     * fraction of the head's value -- at `hard`, whose ceiling is that value,
-     * a stronger move further down is filtered out of its own band.
+     * `rank` merges three generators -- the general search, block moves, and
+     * blank moves -- and must hand back a list that is still best-first:
+     * `search` reads position zero as the move to play, and `chooseRanked`
+     * bands as a fraction of the head's value -- at `hard`, whose ceiling is
+     * that value, a stronger move further down would be filtered out of its
+     * own band.
      */
-    const looked = rank(board, { letters: ["E", "A", "T"], blanks: 0 }, dictionary,
-      words, shape, 15, (b, p) => scoreTurn(b, p, { before: board }).total,
-      { lookahead: { rack: ["A", "E", "T"], weight: 4, breadth: 2 } });
+    const ranked = rank(board, { letters: ["E", "A", "T"], blanks: 0 }, dictionary,
+      words, shape, 15, (b, p) => scoreTurn(b, p, { before: board }).total, {});
 
-    expect(looked.length).toBeGreaterThan(2);
-    expect(Math.max(...looked.map((m) => m.value))).toBe(looked[0].value);
-    for (const [i, move] of looked.entries()) {
-      if (i > 0) expect(move.value).toBeLessThanOrEqual(looked[i - 1].value);
+    expect(ranked.length).toBeGreaterThan(2);
+    expect(Math.max(...ranked.map((m) => m.value))).toBe(ranked[0].value);
+    for (const [i, move] of ranked.entries()) {
+      if (i > 0) expect(move.value).toBeLessThanOrEqual(ranked[i - 1].value);
     }
   });
 

@@ -92,12 +92,6 @@ export function playGame(
       size,
       {
         value: (after, p, before) => turnValue(after, p, variant, claimed, before).score,
-        // A stand-in hand for imagining the reply: common letters, so what is
-        // measured is how open the board is left rather than one real rack.
-        lookahead:
-          variant.lookahead === undefined || variant.lookahead === 0
-            ? undefined
-            : { rack: ["A", "E", "I", "R", "S", "T", "N"], weight: variant.lookahead },
       },
     );
 

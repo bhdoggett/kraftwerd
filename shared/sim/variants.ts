@@ -22,11 +22,6 @@ export interface Variant {
   multiplier: Multiplier;
   /** Board size, to see whether play is running out of room. */
   size?: number;
-  /**
-   * How heavily a player weighs what a move leaves for the next one. Zero, or
-   * absent, is the greedy player: most points now, whatever it opens up.
-   */
-  lookahead?: number;
 }
 
 export interface TurnValue {

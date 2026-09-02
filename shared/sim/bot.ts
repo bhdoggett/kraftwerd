@@ -14,7 +14,6 @@
 
 import type { Board } from "../engine/board.js";
 import type { Dictionary } from "../engine/legality.js";
-import { applyPlacements } from "../engine/legality.js";
 import { scoreTurn } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
 import type { WordIndex } from "./words.js";
@@ -39,28 +38,6 @@ export interface MoveOptions {
   /** Longest word to consider. Longer words cost time and are rarely played. */
   maxLength?: number;
   /**
-   * Look at what a move leaves behind before taking it.
-   *
-   * A greedy player takes the most points on offer and hands the board over
-   * however open it leaves things — which is exactly the question "is going
-   * first a disadvantage" turns on, since every tile placed is material for
-   * whoever moves next. With this set, each candidate is worth what it scores
-   * less what the best reply to it would score.
-   *
-   * The reply is measured against a stand-in rack rather than the opponent's
-   * real one: the bot should not see their letters, and what is being
-   * measured is how exposed the board is left, not what one hand can do to
-   * it.
-   */
-  lookahead?: {
-    /** The stand-in rack a reply is imagined from. */
-    rack: readonly string[];
-    /** How much of the reply's score to hold against a move. */
-    weight: number;
-    /** How many candidates to look this closely at. Each costs a search. */
-    breadth?: number;
-  };
-  /**
    * How many plays may make up one turn, and how many candidates each step
    * considers. Depth 1 is the single-span search this started as.
    */
@@ -79,9 +56,9 @@ export interface MoveOptions {
    * How heavily to weigh what a move leaves behind. `false` is the greedy
    * player: most points now, whatever it opens up.
    *
-   * On by default, and cheap enough to be — unlike `lookahead`, which buys the
-   * same judgement with a whole search per candidate, this is counted off the
-   * grid. See `exposure` in judgement.ts.
+   * On by default, and cheap enough to be: this is counted off the grid
+   * rather than bought with a search per candidate. See `exposure` in
+   * judgement.ts.
    */
   exposure?: Partial<ExposureWeights> | false;
   /** What a blank must beat to be worth spending. `false` never spends one. */
@@ -314,58 +291,5 @@ export function rank(
     : merged;
   playable.sort((a, b) => b.value - a.value);
 
-  const ahead = options.lookahead;
-  if (ahead === undefined || playable.length === 0) return playable;
-
-  /*
-   * Only the strongest few are looked at this closely: each costs a whole
-   * search of its own, and a move outside the top handful is not going to win
-   * once a penalty is subtracted from it.
-   */
-  const looked = playable.slice(0, ahead.breadth ?? 6).map((move) => {
-    const after = applyPlacements(board, move.placements);
-    /*
-     * The imagined opponent is greedy, whatever this bot is.
-     *
-     * `exposure: false` is pinned rather than inherited, and it matters: an
-     * options object with no `exposure` key means exposure is *on*, so leaving
-     * it out silently modelled an opponent who declines the biggest grab
-     * because of what it would expose *him* to. That understates the threat,
-     * which is the one quantity this whole block exists to estimate -- what is
-     * on offer to the next player is the most they could take, not the most a
-     * cautious player would.
-     *
-     * It is also the only internally consistent pairing. `reply.score` is read
-     * off the move the search picked, and the search picks by `value`; with
-     * exposure off and no blank in the stand-in rack the two are the same
-     * number, so the move chosen is the move being reported. Choosing by one
-     * criterion and reporting another would make this quietly meaningless.
-     */
-    const reply = search(
-      after,
-      { letters: ahead.rack, blanks: 0 },
-      dictionary,
-      words,
-      shape,
-      size,
-      scoreOf,
-      { maxLength: options.maxLength, exposure: false },
-    );
-
-    return { ...move, value: move.value - ahead.weight * (reply?.score ?? 0) };
-  });
-
-  /*
-   * Re-ranked across the whole list, not just the head of it.
-   *
-   * Only the first few had a penalty taken off them, so a move the lookahead
-   * never reached can now be worth more than every move it did. Sorting the
-   * looked-at few among themselves and then putting the untouched tail behind
-   * them would leave `rank` returning a list whose first entry is not its
-   * best, and every caller -- `search`, `chooseRanked` -- reads position zero
-   * as the best on offer.
-   */
-  const reranked = [...looked, ...playable.slice(ahead.breadth ?? 6)];
-  reranked.sort((a, b) => b.value - a.value);
-  return reranked;
+  return playable;
 }
