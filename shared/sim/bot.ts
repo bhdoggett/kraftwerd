@@ -20,12 +20,17 @@ export {
 } from "./components.js";
 
 /**
- * A player that takes the best turn it can see.
+ * A player that takes the best turn it can see, less what that turn gives away.
  *
- * Not a strong player — it never sets up a square for next turn, and it spends
- * blanks the moment they pay — but a consistent one, which is what a balance
+ * Not a strong player — it never sets up a square for next turn, and it reads
+ * only one move deep — but a consistent one, which is what a balance
  * measurement needs. Two identical bots playing thousands of games say more
  * about the rules than about either of them.
+ *
+ * What it does read is what a turn leaves behind (`exposure`) and what a blank
+ * is worth keeping (`blankPrice`), both in judgement.ts. Neither touches
+ * `score`: a move's points are its points, and every penalty lands on `value`,
+ * which is all the ranking and the difficulty bands ever look at.
  */
 
 export interface MoveOptions {
@@ -297,6 +302,23 @@ export function rank(
    */
   const looked = playable.slice(0, ahead.breadth ?? 6).map((move) => {
     const after = applyPlacements(board, move.placements);
+    /*
+     * The imagined opponent is greedy, whatever this bot is.
+     *
+     * `exposure: false` is pinned rather than inherited, and it matters: an
+     * options object with no `exposure` key means exposure is *on*, so leaving
+     * it out silently modelled an opponent who declines the biggest grab
+     * because of what it would expose *him* to. That understates the threat,
+     * which is the one quantity this whole block exists to estimate -- what is
+     * on offer to the next player is the most they could take, not the most a
+     * cautious player would.
+     *
+     * It is also the only internally consistent pairing. `reply.score` is read
+     * off the move the search picked, and the search picks by `value`; with
+     * exposure off and no blank in the stand-in rack the two are the same
+     * number, so the move chosen is the move being reported. Choosing by one
+     * criterion and reporting another would make this quietly meaningless.
+     */
     const reply = search(
       after,
       { letters: ahead.rack, blanks: 0 },
@@ -305,7 +327,7 @@ export function rank(
       shape,
       size,
       scoreOf,
-      { maxLength: options.maxLength },
+      { maxLength: options.maxLength, exposure: false },
     );
 
     return { ...move, value: move.value - ahead.weight * (reply?.score ?? 0) };

@@ -36,15 +36,42 @@ describe("exposure", () => {
   });
 
   test("weights can be turned off individually", () => {
+    // The move leaves a 2x2 one short *and* an open two-letter run, so both
+    // live terms are charged and each can be shown to carry its own weight.
     const before = makeBoard([at(7, 7, "A"), at(8, 7, "T")]);
-    const off = exposure(before, [at(7, 8, "T")], shape, 15,
-      { nearBlock: 0, openRun: 0, stackable: 0 });
+    const placements = [at(7, 8, "T")];
+    const all = exposure(before, placements, shape, 15);
 
-    expect(off).toBe(0);
+    const noBlocks = exposure(before, placements, shape, 15, { nearBlock: 0 });
+    const noRuns = exposure(before, placements, shape, 15, { openRun: 0 });
+
+    expect(noBlocks).toBeGreaterThan(0);
+    expect(noBlocks).toBeLessThan(all);
+    expect(noRuns).toBeGreaterThan(0);
+    expect(noRuns).toBeLessThan(all);
+    // Each accounts for the whole of what the other leaves out.
+    expect(noBlocks + noRuns).toBeCloseTo(all);
+
+    expect(exposure(before, placements, shape, 15,
+      { nearBlock: 0, openRun: 0, stackable: 0 })).toBe(0);
+  });
+
+  test("stackable is off, and off is a decision rather than an omission", () => {
+    // At STACK_CAP 2 the term is true of every placement on an empty square and
+    // false for every one that stacks -- a flat tax that separates nothing, and
+    // backwards, since it charges less for stacking than for playing fresh. It
+    // stays in the interface for a cap above 2, so it must still work.
+    expect(DEFAULT_EXPOSURE.stackable).toBe(0);
+
+    const before = makeBoard([at(7, 7, "A"), at(8, 7, "T")]);
+    const placements = [at(7, 8, "T")];
+
+    expect(exposure(before, placements, shape, 15, { stackable: 1 }))
+      .toBeCloseTo(exposure(before, placements, shape, 15) + placements.length);
   });
 
   test("the defaults are the ones the spec names", () => {
-    expect(DEFAULT_EXPOSURE).toEqual({ nearBlock: 0.6, openRun: 0.15, stackable: 0.1 });
+    expect(DEFAULT_EXPOSURE).toEqual({ nearBlock: 0.6, openRun: 0.15, stackable: 0 });
   });
 });
 

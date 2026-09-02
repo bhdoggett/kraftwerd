@@ -16,21 +16,37 @@ export interface ExposureWeights {
   nearBlock: number;
   /** Per letter, for a word left extendable. */
   openRun: number;
-  /** Per tile left able to be stacked on. */
+  /**
+   * Per tile left able to be stacked on. Zero by default -- see below; it
+   * means nothing at `STACK_CAP` 2.
+   */
   stackable: number;
 }
 
 /**
  * Starting weights, to be tuned in the simulator rather than trusted.
  *
- * A donated 2x2 costs about 2.4 against a move, which is roughly what it is
- * worth to take one. These exist so the first measurement has something to
- * measure; they are not claims.
+ * A donated 2x2 costs 2.4 against a move. That is a floor on what it is worth,
+ * not a match for it: by design.md §4.5 the tile that closes a 2x2 collects 4
+ * in square bonus *plus* the word points of both runs it completes, so the
+ * real gift is nearer 8. Set where it is because a penalty that outweighs the
+ * points on offer stops the bot playing at all near a block; it is deliberately
+ * shy, and it is not a claim.
+ *
+ * `stackable` is 0, and that is not tuning but arithmetic. The term charges a
+ * placement whose square could still take another tile -- and at `STACK_CAP` 2
+ * that is true of every placement on an empty square and false for every one
+ * that stacks. So it is a flat per-tile tax that separates nothing, and it
+ * separates nothing in the wrong direction: it charges *less* for stacking,
+ * which is the aggressive move, than for playing fresh. Kept rather than
+ * deleted because it starts discriminating the moment the cap rises above 2 --
+ * then a tile laid on a square with room left really does leave something
+ * behind, and the weight is here waiting.
  */
 export const DEFAULT_EXPOSURE: ExposureWeights = {
   nearBlock: 0.6,
   openRun: 0.15,
-  stackable: 0.1,
+  stackable: 0,
 };
 
 /**

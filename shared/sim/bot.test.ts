@@ -32,20 +32,36 @@ describe("the bot", () => {
     expect(move!.placements.every((p) => !(p.x === 7 && p.y === 7))).toBe(true);
   });
 
-  test("spends a blank to close a square, and holds it for a cheap word", () => {
+  test("spends a blank on a square only when the square beats the price", () => {
+    /*
+     * One board, one hand, two reserves. The blank has something real to beat
+     * and the tile play has something real to lose to, so the only thing
+     * deciding between them is `blankPrice`.
+     *
+     * Three corners of a 2x2, gap at (8,8). The blank closes it as TO/TO: two
+     * words and a 2x2, eight points. The E instead plays ATE along row 7 for
+     * three, and leaves nothing one tile short.
+     */
     const near = makeBoard([
       { x: 7, y: 7, letter: "A", isBlank: false },
       { x: 8, y: 7, letter: "T", isBlank: false },
       { x: 7, y: 8, letter: "T", isBlank: false },
     ]);
+    const hand = { letters: ["E"], blanks: 1 };
+    const play = (reserve: number) =>
+      bestMove(near, hand, dictionary, words, shape, 15, { blanks: { reserve } })!;
 
-    const closing = bestMove(near, { letters: [], blanks: 1 }, dictionary, words, shape, 15);
-    expect(closing!.placements.some((p) => p.isBlank)).toBe(true);
+    // Cheap blank: eight points for the square is worth more than holding it.
+    const cheap = play(2);
+    expect(cheap.placements.some((p) => p.isBlank)).toBe(true);
+    expect(cheap.placements).toEqual([{ x: 8, y: 8, letter: "O", isBlank: true }]);
 
-    // On a bare board there is nothing worth a blank; a tile play wins instead.
-    const opening = bestMove(makeBoard([]), { letters: ["C", "A", "T"], blanks: 1 },
-      dictionary, words, shape, 15);
-    expect(opening!.placements.some((p) => p.isBlank)).toBe(false);
+    // Dear blank: the same square is no longer worth it, so the tile wins --
+    // and it is declining an offer, not failing to find one.
+    const dear = play(8);
+    expect(dear.placements.some((p) => p.isBlank)).toBe(false);
+    expect(dear.placements).toEqual([{ x: 9, y: 7, letter: "E", isBlank: false }]);
+    expect(dear.score).toBeLessThan(cheap.score);
   });
 
   test("the general search leaves blanks alone unless it is asked", () => {
