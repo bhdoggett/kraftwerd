@@ -287,37 +287,48 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
     /*
      * One blank a turn, out of an allowance of three.
      *
-     * This was a deadline and is now a measurement waiting to be taken. It was
-     * set when the turn ran inside a one-second transaction, where two blanks
-     * cost 835ms mean and timed out five times in fifteen openings, and three
-     * timed out fifteen times in fifteen. The turn no longer runs there, so
-     * none of those numbers rule anything out any more -- they were failures
-     * against a ceiling that has gone.
+     * This was a deadline. It is now a measurement, and the measurement says
+     * the same thing for a different reason: the search is told about one
+     * blank because more than one buys nothing and is the only knob that
+     * pushes a turn past the pause somebody is watching.
      *
-     * It is left at one deliberately, because it should be widened against
-     * fresh measurements of *latency* rather than reinstated from measurements
-     * of a deadline. What matters now is how long a person is willing to watch
-     * a machine think: THINKING_MS is 1600 and hides anything under it, and
-     * beyond that a bot's turn simply reads as slow.
+     * Fourteen whole bot-against-bot games an allowance, everything else as it
+     * ships. "Past the pause" counts turns whose thinking ran beyond the
+     * 1,600ms THINKING_MS holds, which is to say turns a person waited on:
      *
-     * Where the cost actually lives, since an earlier version of this comment
-     * got it wrong and blamed the span search: **the live span search cannot
-     * spend a blank at all.** `rank` computes `everywhere` from
-     * `blanksEverywhere`, this call site does not set it, so `components` and
-     * `chain` are handed a rack with `blanks: 0` and every driver inside them
-     * derives from that. Proven rather than argued -- with
-     * `squares: { maxBlocks: 0 }`, which switches the block pass and
-     * `blankMoves` off together, the opening move returns *the same 2,888 moves
-     * in the same 32ms at blanks 0, 1 and 3*. Identical to the move. All of the
-     * blank cost is `blockMoves`: on an empty board a 2x2 is four cells, each
-     * tried against the rack and all twenty-six, which at three blanks is some
-     * 39,000 solutions, each then priced by `exposure` and `blankPrice`.
+     *   blanks 1: 346 turns,  492ms mean,  1103ms worst,   0/346 past the pause,
+     *             2.71 3x3+/game, 356 pts/game
+     *   blanks 2: 362 turns,  797ms mean,  3594ms worst,  39/362 past the pause,
+     *             2.50 3x3+/game, 368 pts/game
+     *   blanks 3: 336 turns, 1272ms mean,  5933ms worst, 110/336 past the pause,
+     *             1.71 3x3+/game, 341 pts/game
+     *
+     * Two is a wash -- twelve points for a ninth of turns becoming a visible
+     * wait of up to 3.6 seconds. Three is worse than one at everything: fewer
+     * squares, fewer points, and a third of all turns spent in front of
+     * somebody. `blankPrice` charges for a blank precisely so it is not spent
+     * lightly, and handing the search more of them mostly buys blank-heavy
+     * moves that crowd better ones out of the shortlist.
+     *
+     * Where the cost lives, since an earlier version of this comment got it
+     * wrong and blamed the span search: **the live span search cannot spend a
+     * blank at all.** `rank` computes `everywhere` from `blanksEverywhere`,
+     * this call site does not set it, so `components` and `chain` are handed a
+     * rack with `blanks: 0` and every driver inside them derives from that.
+     * Proven rather than argued -- with `squares: { maxBlocks: 0 }`, which
+     * switches the block pass and `blankMoves` off together, the opening move
+     * returns *the same 2,888 moves in the same 32ms at blanks 0, 1 and 3*.
+     * All of the blank cost is `blockMoves`: on an empty board a 2x2 is four
+     * cells, each tried against the rack and all twenty-six, which at three
+     * blanks is some 39,000 solutions, each then priced by `exposure` and
+     * `blankPrice`.
      *
      * So `squares.nodeLimit` is the lever if that cost ever needs bounding.
-     * Measured locally on the opening at three blanks: the default 20,000 costs
-     * 474ms, 2,000 costs 293ms, 500 costs 102ms. It is not set because at one
-     * blank it does not bind -- 2,000 and 20,000 return the same 9,108 moves --
-     * so it would buy nothing today and cost strength the moment it did bind.
+     * Measured locally on the opening at three blanks: the default 20,000
+     * costs 474ms, 2,000 costs 293ms, 500 costs 102ms. It is not set because
+     * at one blank it does not bind -- 2,000 and 20,000 return the same 9,108
+     * moves -- so it would buy nothing today and cost strength the moment it
+     * did bind.
      */
     { letters: state.letters, blanks: Math.min(state.blanks, BLANKS_PER_TURN) },
     dictionary,
