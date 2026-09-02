@@ -39,9 +39,11 @@ let words: WordIndex | undefined;
 function thinking() {
   dictionary ??= makeDictionary(ALL_WORDS);
   /*
-   * Only up to seven letters may be laid: a rack holds eight, and a word that
-   * long is beyond both what the rack can spell and what the search can
-   * afford. Crossing words are checked against the whole dictionary above.
+   * Only words up to seven letters are indexed, seven being the most tiles a
+   * turn can lay: a rack holds seven. A longer word is not out of reach in
+   * principle -- it would run through letters already standing -- but those
+   * lengths cost more search than a one-second mutation can afford. Crossing
+   * words are checked against the whole dictionary above.
    */
   words ??= indexWords(
     ALL_WORDS.filter((word) => word.length <= 7),

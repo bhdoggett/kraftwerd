@@ -83,10 +83,17 @@ export const STACK_CAP = 2;
 /**
  * How well a computer player plays.
  *
- * It sees every legal move either way; the difficulty is how strongly it
- * prefers the best one. Even `hard` takes its top move only about seven times
- * in ten — an opponent that always finds the best word is not one anybody
- * enjoys losing to.
+ * It sees every legal move at every level; the difficulty is how much of what
+ * it sees it is willing to give up. Each level is a band of the best value on
+ * offer — `hard` plays between 85% and 100% of it, `medium` between 55% and
+ * 85%, `easy` between 30% and 55% — and inside its band every level leans on
+ * the top of it equally hard. So a level is a standard of play rather than a
+ * degree of carelessness, which is what makes it legible from a game: an
+ * opponent that always finds the best word is not one anybody enjoys losing
+ * to, and one that plays a fixed fraction of it loses in a way that reads as
+ * a level rather than as luck.
+ *
+ * The bands themselves are in shared/sim/bot.ts, which is where to tune them.
  */
 export const DIFFICULTIES = ["easy", "medium", "hard"] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
