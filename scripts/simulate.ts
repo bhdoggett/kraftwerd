@@ -141,7 +141,16 @@ function makeBag(size: number, vowelShare: number): Record<string, number> {
 const CURRENT = RACK.weights as Record<string, number>;
 
 const VARIANTS: Variant[] = [
-  { name: "now: 50 / 26% vowels", bag: 50, multiplier: "none", weights: CURRENT },
+  /*
+   * The shipped bag, whatever it currently is, and so the row every other row
+   * is read against. Named rather than described: `weights` is the hand-written
+   * file, `makeBag` in game.ts uses those contents exactly and ignores `bag`
+   * when they are given, and this row was labelled "50 / 26% vowels" for long
+   * enough after the bag became seventy-one tiles at 38% that the figure was
+   * copied into design.md §6 as a statement about the current rules. The line
+   * printed above the table has the real composition, computed.
+   */
+  { name: "now: the shipped bag", bag: 50, multiplier: "none", weights: CURRENT },
   { name: "50 / 33%", bag: 50, multiplier: "none", weights: makeBag(50, 0.33) },
   { name: "50 / 42%", bag: 50, multiplier: "none", weights: makeBag(50, 0.42) },
   { name: "62 / 26%", bag: 62, multiplier: "none", weights: makeBag(62, 0.26) },
