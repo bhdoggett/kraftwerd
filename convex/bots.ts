@@ -152,11 +152,11 @@ async function chooseMove(
      *
      * What is left after both is the ordinary span search, where a blank is
      * twenty-six letters against every span, and that is what fixes the count
-     * at one. Measured in this deployment on the opening move, fifteen games an
-     * allowance, reading `userExecutionTime` from `convex logs --jsonl` because
-     * `Date.now()` is frozen inside a mutation:
+     * at one. Measured in this deployment on the opening move -- the case that
+     * failed first -- fifteen games an allowance, on the options below, reading
+     * `userExecutionTime` from `convex logs --jsonl` because `Date.now()` is
+     * frozen inside a mutation and cannot time anything:
      *
-     *   blanks 0:  254ms mean, 337ms worst, no failures
      *   blanks 1:  425ms mean, 751ms worst, no failures
      *   blanks 2:  835ms mean, five of fifteen timed out
      *   blanks 3: 1002ms mean, fifteen of fifteen timed out
@@ -166,6 +166,12 @@ async function chooseMove(
      * spending two blanks at once was never much of a turn -- `blankPrice`
      * charges for them precisely so they are not spent lightly -- and the
      * alternative on offer was none at all.
+     *
+     * What ships, measured as it ships, on players holding the real allowance
+     * of three: twenty opening moves at 353ms mean and 464ms worst, and 326
+     * turns of whole bot-against-bot games at 321ms mean, 484ms p95 and 646ms
+     * worst. Nothing failed. That is the ground the bot already stood on at
+     * `blanks: 0` -- 283ms mean, 596ms worst -- and it plays blanks now.
      *
      * `squares.nodeLimit` is still there and still unused: the block pass is no
      * longer where the time goes, so bounding it would buy nothing.
