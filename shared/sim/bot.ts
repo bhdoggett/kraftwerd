@@ -65,8 +65,16 @@ export interface MoveOptions {
    * considers. Depth 1 is the single-span search this started as.
    */
   chain?: { depth: number; breadth: number };
-  /** How far to go looking for k x k blocks to finish. */
-  squares?: { maxK: number; maxBlocks: number };
+  /**
+   * How far to go looking for k x k blocks to finish, and how long the solver
+   * may spend on one.
+   *
+   * Every field optional, and forwarded whole to `blockMoves`: a caller under
+   * a time limit needs to be able to tighten `nodeLimit` alone without
+   * restating the two defaults it is happy with. See blocks.ts, which owns
+   * every default here.
+   */
+  squares?: { maxK?: number; maxBlocks?: number; nodeLimit?: number };
   /**
    * How heavily to weigh what a move leaves behind. `false` is the greedy
    * player: most points now, whatever it opens up.
