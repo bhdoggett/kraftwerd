@@ -405,6 +405,45 @@ to 52% in one step, without ever rejecting a real word.
   last uncontested snipe.
 - Highest total score wins.
 
+**These numbers were re-measured in September 2026**, after the bot learned to
+chain plays and build squares deliberately. Everything measured before that was
+measured against a player that could only lay one word along one line, and so
+almost never completed a 3x3 — 0.00–0.15 per game across 120 games. Any balance
+conclusion drawn from the older figures is worth re-checking against these.
+
+`npx tsx scripts/simulate.ts 200 2`, current rules (50 tiles, 26% vowels), two
+identical bots, 200 games:
+
+| | |
+| --- | --- |
+| seat 0 / seat 1 win % | 62 / 38 |
+| mean score, seat 0 / seat 1 | 184 / 171 |
+| turns per game | 26 |
+| tiles laid per game | 54 |
+| passes per game | 3.2 |
+| 3x3 or larger per game | **1.99** |
+| best turn, mean per game | 42 |
+| best turn seen | 45 |
+
+The number that moved is the last-but-two: a 3x3 went from a thing that
+essentially never happened to two a game. It was never a rule change that
+suppressed them, only a player that could not reach them, which is worth
+remembering before reading any of the rest of this as a statement about the
+rules.
+
+Going first is worth something — 62/38 across 200 games, on a mean-score gap of
+only 13 points. Both bots play the same way, so this is the board's advantage
+rather than either player's, and it is the open question §9 should be read
+against. It is not new to this measurement, but it is now measured against a
+player strong enough for the number to mean something.
+
+Two caveats on reading these against the live game. The simulated players hold
+the full three blanks; the live bot is given none, because searching with blanks
+in hand overruns the one-second budget a Convex mutation gets (see the comment
+in `convex/bots.ts`). And the live bot chains two plays from four candidates a
+step, against the simulator's six. Both make the live bot the weaker player, so
+these figures are a ceiling.
+
 ## 7. Data model — implemented in `convex/schema.ts`
 
 ```

@@ -3,12 +3,16 @@
  *
  * Every other stage of the search composes plays that each stand up on their
  * own -- a span the single-span search validated, or a sequence of them the
- * chained search stacked up. A word square is not reachable that way. Six
- * words reading across and down out of nine letters is a set of placements
- * where no proper subset is a legal turn: the letter in the middle of the top
- * row spells nothing until the letter beside it lands, and the letter beside
- * it spells nothing until the one below does. There is no order in which to
- * play them one at a time.
+ * chained search stacked up. Most word squares are reachable that way, and
+ * chaining reaches them: a block whose remaining gaps lie in one line is an
+ * ordinary span, and a block whose gaps can be filled a legal play at a time
+ * is exactly what chaining is for.
+ *
+ * What is left over is the block whose gaps are non-collinear *and*
+ * individually illegal -- the four corners of a 3x3, where one corner alone
+ * spells a two-letter fragment that is not a word, so there is no legal first
+ * tile and no order in which to play them one at a time. Those are rare (see
+ * the count below), and this is the only stage that can reach them at all.
  *
  * So the squares are gone at directly. That is affordable because k is small
  * and the shortlist is capped. A 3x3 is nine cells, of which the board usually

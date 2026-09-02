@@ -117,13 +117,63 @@ async function chooseMove(
   const { dictionary, words } = thinking();
   const moves = rank(
     board,
+    /*
+     * No blanks, and not for want of a place to keep them: `players.blanks`
+     * carries the allowance and `games.ts` spends it correctly. It is a time
+     * budget.
+     *
+     * A mutation is a transaction, and Convex stops one at a second. Seven
+     * letters and three blanks is ten tiles, and a 3x3 wants nine -- so a hand
+     * holding blanks is the first that can fill one from nothing, and on the
+     * opening move `blockMoves` duly shortlists every 3x3 over the centre and
+     * runs the solver on each. Measured in this deployment, that turn does not
+     * finish: `bots:takeTurn` failed with "Function execution timed out
+     * (maximum duration: 1s)" on an empty board, every time it was tried.
+     * Nothing reschedules a failed turn, so the game would simply stop.
+     *
+     * Clamping `squares` does not rescue it -- `{ maxK: 3, maxBlocks: 4 }` and
+     * `{ maxK: 2, maxBlocks: 12 }` both still timed out -- and what would is a
+     * node budget on the solver, or a shortlist that refuses a block with
+     * nothing standing in it yet. That belongs in `blocks.ts`, not here. Until
+     * then the live bot plays its letters. The simulator still plays blanks,
+     * so its numbers are a ceiling rather than what a person meets.
+     */
     { letters: player.letters, blanks: 0 },
     dictionary,
     words,
     shape,
     game.boardSize,
-    (b, p) => scoreTurn(b, p, { before: board }).total,
-    {},
+    /*
+     * `before` comes from the search rather than being closed over. A turn may
+     * now be several plays long, and each play is scored against the board it
+     * actually lands on; the search pins `before` to the board the whole turn
+     * started from, which is what stacking bonuses are measured against.
+     */
+    (after, placements, before) => scoreTurn(after, placements, { before }).total,
+    /*
+     * Two plays per turn, from four candidates a step -- not the six `rank`
+     * defaults to.
+     *
+     * The simulator keeps the default: it has cores to spend and is measuring
+     * the strongest player. Here the budget is that same one-second
+     * transaction, and it was measured in this deployment over whole bot-
+     * against-bot games, reading the platform's own execution times ---
+     * `Date.now()` is frozen inside a mutation and cannot time anything.
+     *
+     *   depth 1, breadth 6:  38 turns, mean 201ms, worst 274ms
+     *   depth 2, breadth 6:  69 turns, mean 321ms, worst 902ms
+     *   depth 2, breadth 4: 117 turns, mean 283ms, worst 596ms
+     *
+     * Latency is not what rules breadth 6 out -- THINKING_MS is 1600 and hides
+     * any of these. The deadline is. A turn that overruns does not come back
+     * slow, it fails, and nothing reschedules it, so the game stops on the
+     * bot's move; and one worst turn in seventy at 902ms is close enough to a
+     * second to expect that eventually. Breadth 4 keeps the chaining and puts
+     * the worst turn seen at about three fifths of the budget. What it costs in
+     * strength against breadth 6 was not measured -- the simulator is where
+     * that question belongs, and it still runs the default.
+     */
+    { chain: { depth: 2, breadth: 4 } },
   );
 
   /*
