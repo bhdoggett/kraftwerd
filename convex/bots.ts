@@ -150,12 +150,10 @@ async function chooseMove(
      *
      * The second was `reletter`, below.
      *
-     * What is left after both is the ordinary span search, where a blank is
-     * twenty-six letters against every span, and that is what fixes the count
-     * at one. Measured in this deployment on the opening move -- the case that
-     * failed first -- fifteen games an allowance, on the options below, reading
-     * `userExecutionTime` from `convex logs --jsonl` because `Date.now()` is
-     * frozen inside a mutation and cannot time anything:
+     * What fixes the count at one is measured in this deployment on the opening
+     * move -- the case that failed first -- fifteen games an allowance, on the
+     * options below, reading `userExecutionTime` from `convex logs --jsonl`
+     * because `Date.now()` is frozen inside a mutation and cannot time anything:
      *
      *   blanks 1:  425ms mean, 751ms worst, no failures
      *   blanks 2:  835ms mean, five of fifteen timed out
@@ -167,14 +165,35 @@ async function chooseMove(
      * charges for them precisely so they are not spent lightly -- and the
      * alternative on offer was none at all.
      *
-     * What ships, measured as it ships, on players holding the real allowance
-     * of three: twenty opening moves at 353ms mean and 464ms worst, and 326
-     * turns of whole bot-against-bot games at 321ms mean, 484ms p95 and 646ms
-     * worst. Nothing failed. That is the ground the bot already stood on at
-     * `blanks: 0` -- 283ms mean, 596ms worst -- and it plays blanks now.
+     * Where that cost actually lives, since an earlier version of this comment
+     * got it wrong and blamed the span search: **the live span search cannot
+     * spend a blank at all.** `rank` computes `everywhere` from
+     * `blanksEverywhere`, this call site does not set it, so `components` and
+     * `chain` are handed a rack with `blanks: 0` and every driver inside them
+     * derives from that. Proven rather than argued -- with
+     * `squares: { maxBlocks: 0 }`, which switches the block pass and
+     * `blankMoves` off together, the opening move returns *the same 2,888 moves
+     * in the same 32ms at blanks 0, 1 and 3*. Identical to the move. All of the
+     * blank cost is `blockMoves`: on an empty board a 2x2 is four cells, each
+     * tried against the rack and all twenty-six, which at three blanks is some
+     * 39,000 solutions, each then priced by `exposure` and `blankPrice`.
      *
-     * `squares.nodeLimit` is still there and still unused: the block pass is no
-     * longer where the time goes, so bounding it would buy nothing.
+     * So `squares.nodeLimit` is the lever, and the earlier dismissal of it here
+     * was backwards. Measured locally on the opening at three blanks: the
+     * default 20,000 costs 474ms, 2,000 costs 293ms, 500 costs 102ms. It is not
+     * set because at one blank it does not bind -- 2,000 and 20,000 return the
+     * same 9,108 moves -- so it would buy nothing today and cost strength the
+     * moment it did bind. It is the first thing to reach for if
+     * `BLANKS_PER_TURN` ever rises, and the reason not to widen that number
+     * without it.
+     *
+     * What ships, measured as it ships, on players holding the real allowance
+     * of three: two runs of twenty and fifteen opening moves worst-cased at
+     * 464ms and 751ms, and 326 turns of whole bot-against-bot games at 321ms
+     * mean, 484ms p95, 646ms worst. Nothing failed in any of them. Read the
+     * headroom off the worse number, not the better one: 751ms is three
+     * quarters of the budget, and what is being risked is not a slow turn but a
+     * seat that never moves again.
      */
     { letters: player.letters, blanks: Math.min(blanksLeft(player), BLANKS_PER_TURN) },
     dictionary,
@@ -201,6 +220,11 @@ async function chooseMove(
      *   depth 1, breadth 6:  38 turns, mean 201ms, worst 274ms
      *   depth 2, breadth 6:  69 turns, mean 321ms, worst 902ms
      *   depth 2, breadth 4: 117 turns, mean 283ms, worst 596ms
+     *
+     * Those three are a historical A/B of a bot that is no longer this one --
+     * taken at no blanks and `reletter: 2`, both of which have since changed --
+     * so read them against each other and not as today's cost. What the shipped
+     * configuration costs is in the blanks note above.
      *
      * Latency is not what rules breadth 6 out -- THINKING_MS is 1600 and hides
      * any of these. The deadline is. A turn that overruns does not come back
