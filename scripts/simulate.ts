@@ -166,6 +166,25 @@ const pct = (xs: number[], p: number) => {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0;
 };
 
+/**
+ * Standard error of a per-game mean, so the table says how much of itself to
+ * believe.
+ *
+ * Reported for the 3x3+ column because that is the column arguments get had
+ * over and the one whose per-game spread is widest relative to its mean: a
+ * game that closes none and a game that closes five are both ordinary. Two
+ * runs differing by less than about 2 SE are not distinguishable, and without
+ * this printed alongside, the difference gets read as a result anyway -- which
+ * has happened. Sample standard deviation over sqrt(n); one game reports 0
+ * because a single sample has no spread to measure, not because it is precise.
+ */
+const stderr = (xs: number[]) => {
+  if (xs.length < 2) return 0;
+  const m = mean(xs);
+  const variance = xs.reduce((a, x) => a + (x - m) ** 2, 0) / (xs.length - 1);
+  return Math.sqrt(variance / xs.length);
+};
+
 const rows: Record<string, string>[] = [];
 const pool = makePool(Math.min(cpus().length, games));
 
@@ -212,6 +231,7 @@ for (const variant of VARIANTS) {
     "top turn": pct(results.map((r) => r.bestTurn), 0.95).toFixed(0),
     "rare/game": mean(rare).toFixed(2),
     "3x3+": mean(bigSquares).toFixed(2),
+    "3x3+ se": stderr(bigSquares).toFixed(2),
     "dry %": ((results.filter((r) => r.ranDry).length / games) * 100).toFixed(0),
     "edge gap": mean(results.map((r) => r.edgeMargin)).toFixed(1),
     secs: ((Date.now() - started) / 1000).toFixed(1),
