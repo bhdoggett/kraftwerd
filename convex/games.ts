@@ -610,6 +610,25 @@ export const playForBot = internalMutation({
     if (game === null || game.status !== "active") return null;
 
     if (args.placements.length === 0) {
+      /*
+       * A pass is the one thing here that does not go through `playTurn`, and
+       * so the one thing whose seat nothing else checks.
+       *
+       * That was harmless while a bot's turn was a transaction of its own: it
+       * could not have read a board that had since moved. It is not harmless
+       * now that the turn is an action -- a bot that decides to pass and is
+       * overtaken by a person playing would otherwise spend that person's turn
+       * instead of its own. Refuse quietly rather than throwing: the caller's
+       * turn has simply already happened.
+       */
+      const passer = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", args.gameId).eq("userId", args.userId),
+        )
+        .unique();
+      if (passer === null || passer.seat !== game.currentSeat) return null;
+
       await noteSkippedTurn(ctx, game, args.userId, "pass");
       await advanceTurn(ctx, game, 0);
       await wakeBot(ctx, args.gameId);
