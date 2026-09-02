@@ -58,9 +58,12 @@ function thinking() {
   /*
    * Only words up to seven letters are indexed, seven being the most tiles a
    * turn can lay: a rack holds seven. A longer word is not out of reach in
-   * principle -- it would run through letters already standing -- but the
-   * lengths beyond seven cost search for very little board. Crossing words are
-   * checked against the whole dictionary above.
+   * principle -- it would run through letters already standing -- but those
+   * lengths were cut when a turn had a second to finish in, and that reason has
+   * gone with the rest. It is another thing to measure rather than another
+   * thing to keep. Crossing words are checked against the whole dictionary
+   * above, so nothing the bot plays is limited to seven letters; only what it
+   * looks for is.
    */
   words ??= indexWords(
     ALL_WORDS.filter((word) => word.length <= 7),
