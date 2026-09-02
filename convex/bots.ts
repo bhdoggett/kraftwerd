@@ -134,11 +134,18 @@ async function chooseMove(
      * Nothing reschedules a failed turn, so the game would simply stop.
      *
      * Clamping `squares` does not rescue it -- `{ maxK: 3, maxBlocks: 4 }` and
-     * `{ maxK: 2, maxBlocks: 12 }` both still timed out -- and what would is a
-     * node budget on the solver, or a shortlist that refuses a block with
-     * nothing standing in it yet. That belongs in `blocks.ts`, not here. Until
-     * then the live bot plays its letters. The simulator still plays blanks,
-     * so its numbers are a ceiling rather than what a person meets.
+     * `{ maxK: 2, maxBlocks: 12 }` both still timed out. What would is a node
+     * budget on the solver, or a shortlist that refuses a block with nothing
+     * standing in it yet.
+     *
+     * The budget is reachable from here now: `squares.nodeLimit` on the
+     * options, forwarded to `blockMoves`. Nobody has measured whether a
+     * bounded solver actually brings the opening turn inside the second,
+     * though, and the failure it would be traded against is a game that stops
+     * for good. So the lever exists, untried, and the live bot goes on playing
+     * its letters until someone measures it against a deployment. The
+     * simulator still plays blanks, so its numbers are a ceiling rather than
+     * what a person meets.
      */
     { letters: player.letters, blanks: 0 },
     dictionary,
