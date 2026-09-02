@@ -437,9 +437,14 @@ against. It is not new to this measurement, but it is now measured against a
 player strong enough for the number to mean something.
 
 Three caveats on reading these against the live game, and they are one trade in
-three places: the simulator is spending time a Convex mutation does not have. A
-mutation is stopped at a second, and a stopped bot turn is not a slow turn but a
-failed one that nothing reschedules. So: the simulated players hold three blanks
+three places: the live bot's search is capped where the simulator's is not. Each
+cap was set against a deadline that no longer exists — the bot's turn used to be
+a Convex mutation, stopped at one second of user code, and a stopped turn was not
+a slow turn but a failed one that nothing rescheduled. It is now an action, with
+a ceiling in the minutes rather than the second. The caps below outlived their
+reason and are being lifted against fresh measurement rather than removed on
+faith; the figures quoted in each are what they were set against, not what they
+cost today. So: the simulated players hold three blanks
 and may spend them as the rules allow, all in one turn if they like, while the
 live bot holds the same three but its search is told about one at a time — a
 search cap, not a rule — because of what a blank costs the block solver, which

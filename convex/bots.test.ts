@@ -95,9 +95,12 @@ describe("what a turn reads", () => {
 describe("a move that arrives too late", () => {
   test("a play for a seat that has moved on is refused", async () => {
     const { t, gameId } = await table(["AD"]);
-    const [alice, bot] = await seatsOf(t, gameId);
+    const [, bot] = await seatsOf(t, gameId);
 
     // The game is on seat 0. The machine at seat 1 tries to play anyway.
+    // The message matters: the retry loop is built on this refusal and no
+    // other, and a play refused for some different reason would retry three
+    // times and then pass a turn the bot could have taken.
     await expect(
       t.mutation(internal.games.playForBot, {
         gameId,
@@ -107,8 +110,14 @@ describe("a move that arrives too late", () => {
           { x: CENTRE + 1, y: CENTRE, letter: "D", isBlank: false },
         ],
       }),
-    ).rejects.toThrow();
-    expect(alice.seat).toBe(0);
+    ).rejects.toThrow("Not your turn");
+
+    // Nothing was written on the way to the refusal: the seat is where it was
+    // and the board is still empty.
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game!.currentSeat).toBe(0);
+    expect(game!.turnNumber).toBe(0);
+    expect(await t.run(async (ctx) => ctx.db.query("tiles").take(10))).toEqual([]);
   });
 
   test("a pass for a seat that has moved on writes nothing", async () => {

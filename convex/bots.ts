@@ -96,11 +96,17 @@ const THINKING_MS = 1_600;
  * passes: a pass is a turn taken and the game goes on, where a turn that gives
  * up silently is the stuck seat this whole conversion exists to avoid.
  *
- * In practice this loop should not run twice. A bot's turn is only scheduled
- * when the bot is the one on the move, so the only thing that can overtake it
- * is a person playing out of turn, which the rules do not allow, or a resign
- * or a quit — in which case `turnState` returns null on the next pass and the
- * turn ends without writing anything at all.
+ * That pass is not free, and it is the reason to keep the number small rather
+ * than large. A bot that had a legal move and passed anyway adds one to
+ * `consecutivePasses`, and `playerCount * 2` of those in a row ends the game.
+ * Three exhausted attempts is a bad turn; thirty would be a lost game.
+ *
+ * No overtaker is currently constructible. A bot's turn is only scheduled when
+ * the bot is on the move, a person cannot play out of turn, and `resignGame`
+ * goes through `finishGame`, so a resign leaves `turnState` returning null
+ * rather than a board that has moved. The loop is insurance against write
+ * paths that do not exist yet, and against a read that simply does not come
+ * back — which is why it wraps the reads too.
  */
 const ATTEMPTS = 3;
 
@@ -111,19 +117,31 @@ export const takeTurn = internalAction({
     let userId: Id<"users"> | null = null;
 
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-      const state = await ctx.runQuery(internal.bots.turnState, {
-        gameId: args.gameId,
-      });
-      // Not a bot's turn any more: a person may have quit, or the seat moved
-      // on while this was waiting to run. Nothing to play and nothing to pass.
-      if (state === null) return null;
-      userId = state.userId;
-
-      // Nothing playable. Trading is the only other move, and an empty bag
-      // leaves passing — which advancing with no tiles amounts to.
-      const placements = (await chooseMove(ctx, state)) ?? [];
-
+      /*
+       * The reads are inside the `try` with the write, and deliberately.
+       *
+       * `turnState` and the per-candidate `wordsMissing` are function calls
+       * across the network now, where they used to be `ctx.db` reads that
+       * could not fail on their own. A throw from either would fail the
+       * action, and Convex does not retry a failed scheduled action -- so the
+       * seat would never move again, which is the exact failure this whole
+       * conversion exists to remove. A read that fails rounds the loop like a
+       * write that fails, and what survives all three attempts falls through
+       * to the pass below.
+       */
       try {
+        const state = await ctx.runQuery(internal.bots.turnState, {
+          gameId: args.gameId,
+        });
+        // Not a bot's turn any more: a person may have quit, or the seat moved
+        // on while this was waiting to run. Nothing to play, nothing to pass.
+        if (state === null) return null;
+        userId = state.userId;
+
+        // Nothing playable. Trading is the only other move, and an empty bag
+        // leaves passing — which advancing with no tiles amounts to.
+        const placements = (await chooseMove(ctx, state)) ?? [];
+
         await ctx.runMutation(internal.games.playForBot, {
           gameId: args.gameId,
           userId,
@@ -131,9 +149,9 @@ export const takeTurn = internalAction({
         });
         return null;
       } catch (error) {
-        // The board moved under the move, or the game refused it for some
-        // other reason. Round the loop: the next read sees whatever overtook
-        // this, and the search answers that board instead.
+        // The board moved under the move, or a read did not come back. Round
+        // the loop: the next read sees whatever overtook this, and the search
+        // answers that board instead.
         console.warn(`bot turn ${attempt} of ${ATTEMPTS} refused`, error);
       }
     }
