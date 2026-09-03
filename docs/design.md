@@ -404,37 +404,58 @@ to 52% in one step, without ever rejecting a real word.
   last uncontested snipe.
 - Highest total score wins.
 
-**These numbers were re-measured in September 2026**, after the bot learned to
-chain plays and build squares deliberately. Everything measured before that was
-measured against a player that could only lay one word along one line, and so
-almost never completed a 3x3 — 0.00–0.15 per game across 120 games. Any balance
-conclusion drawn from the older figures is worth re-checking against these.
+**These numbers were re-measured in September 2026**, twice. First after the bot
+learned to chain plays and build squares deliberately — everything measured
+before that was measured against a player that could only lay one word along one
+line, and so almost never completed a 3x3, 0.00–0.15 per game across 120 games.
+Then again once the simulator's block search became the deployed one: `maxBlocks
+40, maxK 3` are now the defaults in `shared/sim/blocks.ts` rather than something
+only `convex/bots.ts` passed, so an unconfigured `rank` — the simulator, the
+property tests — searches squares exactly as the bot people play does. Any
+balance conclusion drawn from figures older than this is worth re-checking
+against these.
 
-`npx tsx scripts/simulate.ts 200 2`, current rules (50 tiles, 26% vowels), two
-identical bots, 200 games:
+`npx tsx scripts/simulate.ts 200 2 shipped`, the shipped bag — seventy-one
+tiles, twenty-seven of them vowels, 38%; the fifty above is the end threshold,
+which is a different number — two identical bots, 200 games:
 
 | | |
 | --- | --- |
-| seat 0 / seat 1 win % | 62 / 38 |
-| mean score, seat 0 / seat 1 | 184 / 171 |
-| turns per game | 26 |
-| squares occupied per game | 54 |
-| passes per game | 3.2 |
-| 3x3 or larger per game | **1.99** |
-| best turn, mean per game | 42 |
-| best turn, 95th percentile | 45 |
+| seat 0 / seat 1 win % | 41 / 60 |
+| mean score, seat 0 / seat 1 | 187 / 199 |
+| turns per game | 25 |
+| squares occupied per game | 55 |
+| passes per game | 3.3 |
+| 3x3 or larger per game | **3.55 ± 0.08** |
+| best turn, mean per game | 46 |
+| best turn, 95th percentile | 59 |
 
-The number that moved is the last-but-two: a 3x3 went from a thing that
-essentially never happened to two a game. It was never a rule change that
-suppressed them, only a player that could not reach them, which is worth
-remembering before reading any of the rest of this as a statement about the
-rules.
+**Read that ± before comparing anything to anything.** It is the standard error
+of the per-game mean, printed by the simulator itself, and at 200 games it is
+0.08: two runs less than about 0.16 squares a game apart are one run. The live
+sweep quoted below ran twenty-eight games an allowance, where the same figure is
+around 0.4 and the floor is over a square a game — which is why the aggregates
+there can be stated flatly and the individual steps cannot.
 
-Going first is worth something — 62/38 across 200 games, on a mean-score gap of
-only 13 points. Both bots play the same way, so this is the board's advantage
-rather than either player's, and it is the open question §9 should be read
-against. It is not new to this measurement, but it is now measured against a
-player strong enough for the number to mean something.
+The number that moved is the last-but-two. A 3x3 was 0.00–0.15 a game against a
+bot that could only lay one word along one line, 1.99 once it could chain plays
+and aim at squares, and 3.55 now. Only part of that last step belongs to the
+block search: 1.99 was measured on an older build, so the controlled figure is a
+before-and-after over the same twenty games either side of the defaults moving,
+**1.90 → 3.05**, several times the floor at that sample. None of it is a rules
+change: nothing in the rules ever suppressed squares, only players that could
+not reach them.
+
+Going **second** is worth something — 60/41 across 200 games (ties split, each
+seat rounded on its own), on a mean-score gap of 12 points. At this sample a win
+rate has a standard error of about 3.5 points, so a ten-point edge over even is
+real. This is the reverse of what this table said when the seat advantage ran
+62/38 the other way, and the reversal is not the block-search change: a run at
+the old defaults immediately before it came out 20/80 to seat 1 as well — twenty
+games, so thin on its own, but pointing the same way. Both
+bots play the same way, so it is the board's advantage rather than either
+player's, and it is the open question §9 should be read against — with the
+direction now needing an explanation it did not need before.
 
 Three caveats used to attach here, all of them one trade in three places: the
 live bot's search was capped where the simulator's was not, because the bot's
@@ -445,19 +466,29 @@ is held *inside* the turn rather than in front of it — so any search finishing
 inside 1,600ms costs the person waiting exactly nothing. Every cap was then
 measured again rather than simply lifted.
 
-**One of the three closed, and two new ones opened.** Over twenty-eight whole
-games an allowance the live bot went from 1.39 3×3s a game to 3.50 and from 340
-points to 392, for 191ms of mean thinking and five turns in 772 — 0.6% — that
-ran past the pause and were therefore waited on at all. That aggregate is
-several times the noise floor and can be read flatly. What follows about
-individual knobs cannot: a per-game square count is noisy enough that the same
-configuration measured 1.89 over twenty-eight games and 2.71 over fourteen, so
-every single-knob attribution below is judgement supported by direction, not
-measurement.
+**One of the three closed, two new ones opened, and both of the new ones have
+now closed as well.** Over twenty-eight whole games an allowance the live bot
+went from 1.39 3×3s a game to 3.50 and from 340 points to 392, for 191ms of
+mean thinking and
+five turns in 772 — 0.6% — that ran past the pause and were therefore waited on
+at all. That aggregate is several times its own noise floor and can be read
+flatly. What that sweep said about individual knobs cannot: a per-game square
+count at twenty-eight games is noisy enough that the same configuration measured
+1.89 once and 2.71 another time, so every single-knob attribution it made was
+judgement supported by direction.
 
-The caveat that closed is `reletter`: the live bot's block solver may rewrite
-standing letters again, at the simulator's default of two. Four divergences now
-stand in its place, and they do not all point the same way.
+The caveat that closed was `reletter`: the live bot's block solver may rewrite
+standing letters, at the simulator's default of two. The two that opened and
+have since closed are the block shortlist, `maxBlocks: 40` and `maxK: 3`, which
+the live bot passed and the simulator did not until those became the `shared/`
+defaults. That is the change this table was re-measured for, and the table is
+the check on the sweep that motivated it: an entirely separate population of
+games, on the simulator's own scoring, puts the same configuration at 3.55 3×3s
+a game against the sweep's 3.50. The sweep's aggregate was right, and the ±0.08
+above says the simulator agrees with it well inside the sweep's own resolution.
+
+**Two divergences still stand, and neither of them leaves the simulator the
+stronger player.**
 
 The live bot's search is told about **one blank a turn** where the simulated
 players may spend all three. This is now the measurement rather than the cap: at
@@ -469,7 +500,10 @@ not spent lightly, and handing the search more of them mostly buys blank-heavy
 moves that crowd better ones out of the shortlist. The cost is all in the block
 solver, the only stage that spends a blank: a 2×2 on an empty board is four
 cells tried against the rack and all twenty-six letters, which at three blanks
-is some 39,000 solutions to price. **Live is weaker.**
+is some 39,000 solutions to price. **Live is capped, and measurably better for
+it** — the simulator's three blanks are the setting the sweep found worst, so
+this divergence makes the table above understate the deployed bot rather than
+flatter it.
 
 The live bot **chains two plays from four candidates a step**, against the
 simulator's six. Six is affordable now — 44ms and one turn in 703 past the pause
@@ -477,34 +511,25 @@ simulator's six. Six is affordable now — 44ms and one turn in 703 past the pau
 breadth 4 against 1.86 and 344 at breadth 6. The cheaper one stays for want of
 any reason to pay more. **Live is nominally weaker, measurably level.**
 
-The live bot searches **forty block candidates where the simulator takes
-twelve**. This is a new divergence and, on the sweep, the larger of the two that
-favour live: `maxBlocks: 12` was what actually bound the solver, and both sides
-had it until this change. It also widens the single-gap shortlist `blankMoves`
-works from, twelve to forty, which is in the numbers and is a separate effect.
-**Live is stronger.**
+What the two closed divergences were, since the argument for the settings still
+has to live somewhere. `maxBlocks: 12` was what actually bound the block solver,
+and lifting it to forty is the larger part of the gain; it also widens the
+single-gap shortlist `blankMoves` works from, twelve to forty, which is a
+separate effect in the same number and is intended. `maxK: 3` is measured
+cheaper and judged no weaker: `candidateBlocks` sorts by k descending, so a
+long shortlist fills from the front with 4×4 candidates, and a 4×4 essentially
+never solves — sixteen cells against a rack of seven — so capping k spends the
+shortlist on 3×3s instead of on proving 4×4s impossible, at 512ms a turn against
+631ms. Note what the cap does not do: it bounds the block solver's *targets*,
+not the board. The span and chain searches can still complete a 4×4
+incidentally, and `newSquareBlocks` still pays 16 when they do.
 
-And the live bot caps block candidates at **k = 3** where the simulator takes
-the default of 4. `candidateBlocks` sorts by k descending, so a long shortlist
-fills from the front with 4×4 candidates, and a 4×4 essentially never solves —
-sixteen cells against a rack of seven. Capping k spends the shortlist on 3×3s
-instead of on proving 4×4s impossible, which is measurably cheaper (512ms
-against 631ms) and plausibly stronger. Note what it does not do: it bounds the
-block solver's *targets*, not the board. The span and chain searches can still
-complete a 4×4 incidentally, and `newSquareBlocks` still pays 16 when they do.
-**Live is stronger.**
-
-So the table above is no longer a ceiling, and it is not a floor either. Two of
-the four axes make the live bot the stronger square-builder, and together they
-are most of the 1.39 → 3.50 gap — which means **the balance figures above
-measure a materially weaker square-builder than the one that ships**. The two
-axes on which live is still capped are each measured to cost nothing. The
-honest summary is that the two players are closer than they were and no longer
-differ in one direction, and that anyone reading the 3×3 row above against the
-live game should read it as low. Converging them properly means the simulator
-taking `maxBlocks: 40` and `maxK: 3` — the change that measured them was not
-allowed to touch `shared/` defaults, and doing it will need the property test's
-60-second cap raised in the same commit.
+So the table above is now a fair reading of the bot people play, and if it errs
+it errs low. The two axes that remain are the two on which the live bot is
+capped: one measured level, one measured to be an improvement rather than a
+handicap. Nothing left on this list makes the simulated player the stronger
+square-builder, which is the property that made the older version of this table
+unsafe to argue rules from.
 
 ## 7. Data model — implemented in `convex/schema.ts`
 
