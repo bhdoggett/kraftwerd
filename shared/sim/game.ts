@@ -6,7 +6,8 @@ import { makeBoard } from "../engine/board.js";
 import type { Board } from "../engine/board.js";
 import { refill } from "../engine/rack.js";
 import { newSquares } from "../engine/squares.js";
-import { bestMove, type WordIndex } from "./bot.js";
+import { chooseRanked, rank, type Difficulty, type WordIndex } from "./bot.js";
+import type { ValueFn } from "./components.js";
 import { bagFlat, bagFromWeights, draw, tilesLeft, type Bag } from "./bag.js";
 import { RARE, turnValue, type Variant } from "./variants.js";
 
@@ -54,12 +55,28 @@ function topUp(player: Player, bag: Bag | null, rng: () => number) {
   player.letters.push(...draw(bag, RACK.size - player.letters.length, rng));
 }
 
+/**
+ * Play one game out, bot against bot.
+ *
+ * `difficulties` seats the players: seat i plays at `difficulties[i %
+ * difficulties.length]`, so one entry sets the whole table and two seat a hard
+ * bot against an easy one. It defaults to `hard` rather than to the best move
+ * available, which is the stronger player and not one anybody can be dealt.
+ *
+ * `rng` does double duty — tiles and move choice — deliberately. A game is
+ * reproducible from its seed alone, and adding a second stream for the choice
+ * would be a second thing to seed and a second thing to get wrong. It does
+ * mean the draws a game sees depend on how many turns had a move to choose
+ * among, so figures from before difficulty existed are not seed-comparable
+ * with figures from after it; see docs/design.md §6.
+ */
 export function playGame(
   variant: Variant,
   players: number,
   dictionary: Dictionary,
   words: WordIndex,
   rng: () => number,
+  difficulties: readonly Difficulty[] = ["hard"],
 ): GameResult {
   const size = variant.size ?? GAME.boardSize;
   const shape = boardShapeNamed(OPEN_BOARD, size);
@@ -81,19 +98,36 @@ export function playGame(
   let bestTurn = 0;
   let consecutivePasses = 0;
 
+  /*
+   * Reads `claimed` as it stands when a move is scored, not as it stood when
+   * this was written: the set is mutated in place below, and a variant that
+   * pays for a rare letter only the first time depends on that.
+   */
+  const scoreOf: ValueFn = (after, p, before) =>
+    turnValue(after, p, variant, claimed, before).score;
+
   while (turns < 200) {
-    const player = hands[turns % players]!;
-    const move = bestMove(
+    const seat = turns % players;
+    const player = hands[seat];
+
+    /*
+     * Ranked, then drawn from by difficulty — the same two steps convex/bots.ts
+     * takes, and for the same reason. Taking `rank(...)[0]` instead, which is
+     * what `bestMove` does and what this used to call, makes a player that is
+     * perfect over its own ranking: stronger than `hard` and not a difficulty
+     * anyone can be dealt, so the table it produced described nobody.
+     */
+    const moves = rank(
       board,
       { letters: player.letters, blanks: player.blanks },
       dictionary,
       words,
       shape,
       size,
-      {
-        value: (after, p, before) => turnValue(after, p, variant, claimed, before).score,
-      },
+      scoreOf,
+      {},
     );
+    const move = chooseRanked(moves, difficulties[seat % difficulties.length], rng);
 
     turns++;
 

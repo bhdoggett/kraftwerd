@@ -1,7 +1,7 @@
 /**
  * Play a lot of games, so a rules change can be argued about with numbers.
  *
- * Usage: node scripts/simulate.ts [games] [players] [name filter]
+ * Usage: node scripts/simulate.ts [games] [players] [name filter] [difficulty]
  *
  * The filter is a substring of a variant's name, and exists because the six
  * variants are six full sweeps: on eight cores, 200 games of all six is the
@@ -9,12 +9,19 @@
  * minutes. Seeds are keyed on the game index alone (see sim-worker.ts), so a
  * filtered run plays exactly the games an unfiltered one would have played for
  * that variant, and the row it prints is the row the full sweep would print.
+ *
+ * The difficulty is what the bots play at, `hard` by default, and it is a
+ * comma-separated list read seat by seat: `easy` seats every player at easy,
+ * `hard,easy` puts a hard bot in seat 0 against an easy one in seat 1. It is
+ * not part of any seed, so the same game index meets the same bag at every
+ * difficulty; what differs is which of the moves on offer gets played.
  */
 import { cpus } from "node:os";
 import { Worker } from "node:worker_threads";
 import { type GameResult } from "../shared/sim/game.ts";
+import type { Difficulty } from "../shared/sim/bot.ts";
 import type { Variant } from "../shared/sim/variants.ts";
-import { RACK } from "../shared/config.ts";
+import { DIFFICULTIES, RACK } from "../shared/config.ts";
 
 const games = Number(process.argv[2] ?? 40);
 const players = Number(process.argv[3] ?? 2);
@@ -63,7 +70,12 @@ function makePool(size: number) {
   // exact same way the main thread does, however tsx happened to get here.
   const workers = Array.from({ length: size }, () => new Worker(WORKER, { execArgv: process.execArgv }));
 
-  const play = (variant: Variant, players: number, count: number) =>
+  const play = (
+    variant: Variant,
+    players: number,
+    count: number,
+    difficulties: readonly Difficulty[],
+  ) =>
     new Promise<GameResult[]>((resolve, reject) => {
       const results: GameResult[] = new Array(count);
       let next = 0;
@@ -71,7 +83,7 @@ function makePool(size: number) {
 
       const give = (worker: Worker) => {
         if (next >= count) return;
-        worker.postMessage({ variant, players, index: next++ });
+        worker.postMessage({ variant, players, index: next++, difficulties });
       };
 
       for (const worker of workers) {
@@ -170,6 +182,24 @@ const VARIANTS: Variant[] = [
   { name: "62 / 42%", bag: 62, multiplier: "none", weights: makeBag(62, 0.42) },
 ];
 
+/*
+ * What the bots play at, seat by seat.
+ *
+ * Refused rather than defaulted on a typo: `nightmare` silently becoming
+ * `hard` would print a table labelled with a difficulty it did not measure,
+ * and the whole point of the argument is that the label is true.
+ */
+const DIFFICULTIES_ARG = (process.argv[5] ?? "hard").split(",").map((s) => s.trim());
+const bad = DIFFICULTIES_ARG.filter((d) => !(DIFFICULTIES as readonly string[]).includes(d));
+if (bad.length > 0) {
+  console.error(
+    `unknown difficulty ${bad.map((d) => JSON.stringify(d)).join(", ")} — have: ` +
+      DIFFICULTIES.join(", "),
+  );
+  process.exit(1);
+}
+const LEVELS = DIFFICULTIES_ARG as Difficulty[];
+
 const filter = process.argv[4];
 const CHOSEN = filter === undefined
   ? VARIANTS
@@ -235,7 +265,7 @@ const pool = makePool(Math.min(cpus().length, games));
 // The parallelism lives inside pool.play, across games within one variant.
 for (const variant of CHOSEN) {
   const started = Date.now();
-  const results = await pool.play(variant, players, games);
+  const results = await pool.play(variant, players, games, LEVELS);
 
   const winning = results.map((r) => Math.max(...r.scores));
   const margins = results.map((r) => {
@@ -286,8 +316,15 @@ await pool.close();
 // "Identical draws" is the claim that makes the rows comparable, so it is only
 // printed when there are rows to compare; on a filtered run it would be a
 // guarantee about nothing.
+// Seat by seat rather than as the argument was typed: one entry seats every
+// player, so echoing "easy" back would not say how many easy bots played.
+const seating = Array.from(
+  { length: players },
+  (_, i) => `seat ${i} ${LEVELS[i % LEVELS.length]!}`,
+).join(", ");
+
 console.log(
-  `\n${games} games, ${players} players` +
+  `\n${games} games, ${players} players, ${seating}` +
     (CHOSEN.length > 1 ? ", identical draws across variants" : "") +
     "\n",
 );

@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parentPort } from "node:worker_threads";
 import { makeDictionary } from "../shared/engine/dictionary.ts";
-import { indexWords } from "../shared/sim/bot.ts";
+import { indexWords, type Difficulty } from "../shared/sim/bot.ts";
 import { playGame } from "../shared/sim/game.ts";
 import type { Variant } from "../shared/sim/variants.ts";
 
@@ -37,8 +37,24 @@ function seeded(seed: number) {
 // workers finish. Reintroducing any variant-dependent term here (e.g.
 // mixing in a variant id or a per-worker counter) would silently break the
 // "identical draws across variants" guarantee the simulator's whole
-// comparative method depends on.
-parentPort!.on("message", (task: { variant: Variant; players: number; index: number }) => {
-  const result = playGame(task.variant, task.players, dictionary, index, seeded(task.index + 1));
-  parentPort!.postMessage({ index: task.index, result });
-});
+// comparative method depends on. The difficulties below are no exception:
+// they are passed to playGame and never to the seed.
+parentPort!.on(
+  "message",
+  (task: {
+    variant: Variant;
+    players: number;
+    index: number;
+    difficulties: readonly Difficulty[];
+  }) => {
+    const result = playGame(
+      task.variant,
+      task.players,
+      dictionary,
+      index,
+      seeded(task.index + 1),
+      task.difficulties,
+    );
+    parentPort!.postMessage({ index: task.index, result });
+  },
+);
