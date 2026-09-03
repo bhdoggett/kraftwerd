@@ -37,8 +37,8 @@ function seeded(seed: number) {
 // workers finish. Reintroducing any variant-dependent term here (e.g.
 // mixing in a variant id or a per-worker counter) would silently break the
 // "identical draws across variants" guarantee the simulator's whole
-// comparative method depends on. The difficulties below are no exception:
-// they are passed to playGame and never to the seed.
+// comparative method depends on. The difficulties and chain shape below are
+// no exception: they are passed to playGame and never to the seed.
 parentPort!.on(
   "message",
   (task: {
@@ -46,6 +46,7 @@ parentPort!.on(
     players: number;
     index: number;
     difficulties: readonly Difficulty[];
+    chain?: { depth: number; breadth: number };
   }) => {
     const result = playGame(
       task.variant,
@@ -54,6 +55,7 @@ parentPort!.on(
       index,
       seeded(task.index + 1),
       task.difficulties,
+      task.chain,
     );
     parentPort!.postMessage({ index: task.index, result });
   },

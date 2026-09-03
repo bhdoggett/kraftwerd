@@ -69,6 +69,11 @@ function topUp(player: Player, bag: Bag | null, rng: () => number) {
  * mean the draws a game sees depend on how many turns had a move to choose
  * among, so figures from before difficulty existed are not seed-comparable
  * with figures from after it; see docs/design.md §6.
+ *
+ * `chain` is the shape of the multi-play search: how many components a turn
+ * may be built from, and how many candidates each step branches on. Left out,
+ * `rank` picks its own default -- which is what every figure in design.md §6
+ * was measured at, so passing nothing keeps a run comparable with that table.
  */
 export function playGame(
   variant: Variant,
@@ -77,6 +82,7 @@ export function playGame(
   words: WordIndex,
   rng: () => number,
   difficulties: readonly Difficulty[] = ["hard"],
+  chain?: { depth: number; breadth: number },
 ): GameResult {
   const size = variant.size ?? GAME.boardSize;
   const shape = boardShapeNamed(OPEN_BOARD, size);
@@ -125,7 +131,7 @@ export function playGame(
       shape,
       size,
       scoreOf,
-      {},
+      { chain },
     );
     const move = chooseRanked(moves, difficulties[seat % difficulties.length], rng);
 

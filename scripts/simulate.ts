@@ -1,7 +1,7 @@
 /**
  * Play a lot of games, so a rules change can be argued about with numbers.
  *
- * Usage: node scripts/simulate.ts [games] [players] [name filter] [difficulty]
+ * Usage: node scripts/simulate.ts [games] [players] [filter] [difficulty] [chain]
  *
  * The filter is a substring of a variant's name, and exists because the six
  * variants are six full sweeps: on eight cores, 200 games of all six is the
@@ -15,6 +15,14 @@
  * `hard,easy` puts a hard bot in seat 0 against an easy one in seat 1. It is
  * not part of any seed, so the same game index meets the same bag at every
  * difficulty; what differs is which of the moves on offer gets played.
+ *
+ * The chain argument is `depth,breadth` -- how many separate plays a turn may
+ * be built from, and how many candidates each step branches on. Omitted, the
+ * search picks its own default, which is what every figure in design.md §6
+ * was measured at; pass one and the run is no longer comparable with that
+ * table except against another run at the same shape. Cost is roughly
+ * geometric in breadth, so depth 3 is not a small ask: see the note above the
+ * knobs in convex/bots.ts.
  */
 import { cpus } from "node:os";
 import { Worker } from "node:worker_threads";
@@ -75,6 +83,7 @@ function makePool(size: number) {
     players: number,
     count: number,
     difficulties: readonly Difficulty[],
+    chain?: { depth: number; breadth: number },
   ) =>
     new Promise<GameResult[]>((resolve, reject) => {
       const results: GameResult[] = new Array(count);
@@ -83,7 +92,7 @@ function makePool(size: number) {
 
       const give = (worker: Worker) => {
         if (next >= count) return;
-        worker.postMessage({ variant, players, index: next++, difficulties });
+        worker.postMessage({ variant, players, index: next++, difficulties, chain });
       };
 
       for (const worker of workers) {
@@ -200,6 +209,32 @@ if (bad.length > 0) {
 }
 const LEVELS = DIFFICULTIES_ARG as Difficulty[];
 
+/*
+ * The chain shape, `depth,breadth`, or undefined to let the search choose.
+ *
+ * Undefined rather than a literal default on purpose: the default lives in
+ * `rank`, and copying it here would be a second place to change and a second
+ * place to be wrong about what design.md §6 was measured at.
+ *
+ * Refused rather than defaulted on a bad value, for the same reason the
+ * difficulty is: a run labelled with a shape it did not play is worse than no
+ * run. Depth 1 is legal and means the single-span search, i.e. no chaining.
+ */
+const CHAIN_ARG = process.argv[6];
+let CHAIN: { depth: number; breadth: number } | undefined;
+if (CHAIN_ARG !== undefined) {
+  const parts = CHAIN_ARG.split(",").map((s) => Number(s.trim()));
+  const [d, b] = parts;
+  if (parts.length !== 2 || d === undefined || b === undefined ||
+      !Number.isInteger(d) || !Number.isInteger(b) || d < 1 || b < 1) {
+    console.error(
+      `chain must be "depth,breadth", both integers >= 1 — got ${JSON.stringify(CHAIN_ARG)}`,
+    );
+    process.exit(1);
+  }
+  CHAIN = { depth: d, breadth: b };
+}
+
 const filter = process.argv[4];
 const CHOSEN = filter === undefined
   ? VARIANTS
@@ -265,7 +300,7 @@ const pool = makePool(Math.min(cpus().length, games));
 // The parallelism lives inside pool.play, across games within one variant.
 for (const variant of CHOSEN) {
   const started = Date.now();
-  const results = await pool.play(variant, players, games, LEVELS);
+  const results = await pool.play(variant, players, games, LEVELS, CHAIN);
 
   const winning = results.map((r) => Math.max(...r.scores));
   const margins = results.map((r) => {
@@ -325,6 +360,7 @@ const seating = Array.from(
 
 console.log(
   `\n${games} games, ${players} players, ${seating}` +
+    (CHAIN === undefined ? "" : `, chain depth ${CHAIN.depth} breadth ${CHAIN.breadth}`) +
     (CHOSEN.length > 1 ? ", identical draws across variants" : "") +
     "\n",
 );
