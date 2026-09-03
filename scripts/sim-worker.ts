@@ -46,7 +46,7 @@ parentPort!.on(
     players: number;
     index: number;
     difficulties: readonly Difficulty[];
-    chain?: { depth: number; breadth: number };
+    chain?: { depth: number; breadth: number; enablement?: number };
   }) => {
     const result = playGame(
       task.variant,

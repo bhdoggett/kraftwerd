@@ -5,6 +5,7 @@ import type { Placement } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
 import type { WordIndex } from "./words.js";
 import { components, moveKey, type Hand, type Move, type ValueFn } from "./components.js";
+import { exposure } from "./judgement.js";
 
 /** What is left of a hand after a set of tiles is laid. */
 function spend(hand: Hand, placements: readonly Placement[]): Hand {
@@ -61,7 +62,32 @@ export function chain(
   shape: BoardShape,
   size: number,
   scoreOf: ValueFn,
-  options: { depth: number; breadth: number; maxLength?: number; blanks?: boolean },
+  options: {
+    depth: number;
+    breadth: number;
+    maxLength?: number;
+    blanks?: boolean;
+    /**
+     * Order candidates by what they leave for the NEXT link, not by their own
+     * score. The number is how much a point of `exposure` is worth against a
+     * point of turn score; absent, branching is by score alone, which is what
+     * every figure in design.md section 6 was measured at.
+     *
+     * `exposure` is the opponent-facing penalty, reused here with its sign
+     * flipped -- see the note on it in judgement.ts. It counts blocks left one
+     * tile short, which is a gift to whoever moves next; part-way through a
+     * chain, whoever moves next is this same player.
+     *
+     * It exists because branching by score cannot find what chaining is for.
+     * A component's own score is points collected now; the whole point of a
+     * second link is a square that neither link completes alone, and the setup
+     * play that makes one possible scores badly on its own. So the top of a
+     * score-sorted list is long words that consume the rack, and the cheap tile
+     * that leaves a letter to cross is far down it -- which is why depth 3 buys
+     * nothing until breadth is wide enough to reach that far by brute force.
+     */
+    enablement?: number;
+  },
 ): Move[] {
   const found: Move[] = [];
   const seen = new Set<string>();
@@ -108,7 +134,7 @@ export function chain(
      */
     if (laid.length === 0) for (const single of step) offer(single.placements, single.score);
 
-    for (const component of step.slice(0, options.breadth)) {
+    for (const component of branchesOf(step, provisional, depth)) {
       const placements = [...laid, ...component.placements];
 
       if (laid.length > 0) {
@@ -125,6 +151,32 @@ export function chain(
         );
       }
     }
+  };
+
+  /**
+   * The candidates worth building on, best `breadth` first.
+   *
+   * `depth` here is what is LEFT, so `depth <= 1` is the last link -- nothing
+   * follows it, so there is nothing for it to enable, and what it leaves is a
+   * gift rather than a setup. Ordering by enablement there would be pointing
+   * the sign the wrong way, so it falls back to score.
+   *
+   * Sorts a copy. `step` is what the caller above offers to the difficulty
+   * sampler when this is the first link, and re-ordering that list in place
+   * would be reaching outside what this function is for.
+   */
+  const branchesOf = (step: readonly Move[], provisional: Board, depth: number) => {
+    const w = options.enablement;
+    if (w === undefined || depth <= 1) return step.slice(0, options.breadth);
+
+    return [...step]
+      .map((c) => ({
+        c,
+        key: c.score + w * exposure(provisional, c.placements, shape, size),
+      }))
+      .sort((a, b) => b.key - a.key)
+      .slice(0, options.breadth)
+      .map((x) => x.c);
   };
 
   walk(board, hand, [], options.depth);

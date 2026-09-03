@@ -7,6 +7,7 @@ import { scoreTurn, type Placement } from "../engine/score";
 import { newSquares } from "../engine/squares";
 import { indexWords } from "./words";
 import { chain } from "./chain";
+import { moveKey } from "./components";
 
 const WORDS = ["AT", "TO", "ON", "NO", "AN", "IT", "IS", "SO", "OX", "AX",
   "CAT", "CATS", "OAT", "OATS", "TON", "NOT", "SAT", "SIT", "TIN", "NIT"];
@@ -15,10 +16,12 @@ const words = indexWords(WORDS, 7);
 const shape = boardShapeNamed(OPEN_BOARD, 15);
 const bounds = { width: 15, height: 15, blocked: shape.blocked, centre: shape.centre };
 
-const chained = (board: Board, letters: string[], depth = 2, breadth = 6) =>
+const chained = (
+  board: Board, letters: string[], depth = 2, breadth = 6, enablement?: number,
+) =>
   chain(board, { letters, blanks: 0 }, dictionary, words, shape, 15,
     (after, p, before) => scoreTurn(after, p, { before }).total,
-    { depth, breadth });
+    { depth, breadth, ...(enablement === undefined ? {} : { enablement }) });
 
 describe("chaining", () => {
   /** CAT across the middle: room to play on either side of it. */
@@ -156,5 +159,58 @@ describe("chaining into a square", () => {
       expect(move.score).toBe(scored.total);
       expect(move.score).toBeGreaterThan(scored.wordPoints);
     }
+  });
+});
+
+describe("branching by what a link leaves", () => {
+  const board = makeBoard([..."CAT"].map((letter, i) => ({
+    x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
+  })));
+  const RACK = ["S", "O", "T", "A", "N", "I"];
+  const keys = (moves: { placements: Placement[] }[]) =>
+    new Set(moves.map((m) => moveKey(m.placements)));
+
+  test("explores turns that ordering by score alone never reaches", () => {
+    // Narrow on purpose. Breadth is what starves the setup play: a component
+    // that scores badly and enables a lot sits far down a score-sorted list,
+    // so the only way to reach it at breadth 3 is to stop sorting by score.
+    const byScore = keys(chained(board, RACK, 3, 3));
+    const byLeaving = chained(board, RACK, 3, 3, 3);
+
+    const reached = byLeaving.filter((m) => !byScore.has(moveKey(m.placements)));
+    expect(reached.length).toBeGreaterThan(0);
+
+    // Not merely different -- legal, and genuinely multi-link. A turn only
+    // this ordering finds is worth nothing if it is not a turn.
+    for (const move of reached) {
+      expect(validateTurn(board, move.placements, dictionary, bounds)).toEqual({ ok: true });
+    }
+  });
+
+  test("a weight of zero is the same search as no weight at all", () => {
+    // The guard clause returns early when the option is absent, so this is the
+    // one case that proves the new code path is not perturbing anything by
+    // itself: same key, same order, same moves.
+    expect(keys(chained(board, RACK, 3, 3, 0))).toEqual(keys(chained(board, RACK, 3, 3)));
+  });
+
+  test("a depth-1 search is untouched by the weight", () => {
+    // Not a test of the `depth <= 1` guard, and it must not be read as one:
+    // depth 1 offers every component before any branching happens, so the
+    // slice cannot change the answer whether the guard is there or not.
+    // Removing the guard leaves this passing -- verified by mutation.
+    //
+    // The guard's real effect is on the last link INSIDE a deeper chain, where
+    // the slice does decide which final links get offered. That is measured
+    // rather than tested, and the measurement is a snapshot: against the
+    // dictionary as it stood in September 2026, depth 2 / breadth 4 offered
+    // 436 turns with the guard and 435 without. Rebuild the word list and that
+    // pair of numbers is stale with nothing to catch it -- treat it as an
+    // order of magnitude, not a fact. Reaching it from here would mean loading
+    // the full word list for one move in four hundred, so
+    // the guard is carried on its reasoning -- nothing follows a last link, so
+    // what it leaves is a gift and not a setup -- and this test only pins that
+    // the option cannot perturb a search with no second link at all.
+    expect(keys(chained(board, RACK, 1, 3, 10))).toEqual(keys(chained(board, RACK, 1, 3)));
   });
 });

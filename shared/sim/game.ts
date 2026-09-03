@@ -82,7 +82,7 @@ export function playGame(
   words: WordIndex,
   rng: () => number,
   difficulties: readonly Difficulty[] = ["hard"],
-  chain?: { depth: number; breadth: number },
+  chain?: { depth: number; breadth: number; enablement?: number },
 ): GameResult {
   const size = variant.size ?? GAME.boardSize;
   const shape = boardShapeNamed(OPEN_BOARD, size);

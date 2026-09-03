@@ -70,6 +70,16 @@ export const DEFAULT_EXPOSURE: ExposureWeights = {
  * Only what the move touched is examined. Anything further away was already
  * exposed before the move and is not this move's doing -- the same locality
  * `newSquareBlocks` in shared/engine/squares.ts relies on.
+ *
+ * **Read the sign before reusing this.** What it returns is a penalty only
+ * because of who moves next. A block left one tile short is a gift to whoever
+ * plays after you -- but part-way through a chained turn, whoever plays after
+ * you is still you, and the same number is then an opportunity. `chain` in
+ * chain.ts calls this to order the links it builds on, adding it where `rank`
+ * subtracts it, and the geometry does not change between the two: the tile
+ * that would hand a 2x2 to an opponent is the tile that sets one up for a
+ * second link. Nothing here needs to know which reading is wanted, so nothing
+ * here does; the caller owns the sign.
  */
 export function exposure(
   before: Board,

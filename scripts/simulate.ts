@@ -16,8 +16,11 @@
  * not part of any seed, so the same game index meets the same bag at every
  * difficulty; what differs is which of the moves on offer gets played.
  *
- * The chain argument is `depth,breadth` -- how many separate plays a turn may
- * be built from, and how many candidates each step branches on. Omitted, the
+ * The chain argument is `depth,breadth` or `depth,breadth,enablement` -- how
+ * many separate plays a turn may be built from, how many candidates each step
+ * branches on, and optionally how much a point of what a link LEAVES is worth
+ * against a point of what it scores when choosing which to build on. Omitted,
+ * branching is by score alone. Omitted entirely, the
  * search picks its own default, which is what every figure in design.md §6
  * was measured at; pass one and the run is no longer comparable with that
  * table except against another run at the same shape. Cost is roughly
@@ -83,7 +86,7 @@ function makePool(size: number) {
     players: number,
     count: number,
     difficulties: readonly Difficulty[],
-    chain?: { depth: number; breadth: number },
+    chain?: { depth: number; breadth: number; enablement?: number },
   ) =>
     new Promise<GameResult[]>((resolve, reject) => {
       const results: GameResult[] = new Array(count);
@@ -221,18 +224,25 @@ const LEVELS = DIFFICULTIES_ARG as Difficulty[];
  * run. Depth 1 is legal and means the single-span search, i.e. no chaining.
  */
 const CHAIN_ARG = process.argv[6];
-let CHAIN: { depth: number; breadth: number } | undefined;
+let CHAIN: { depth: number; breadth: number; enablement?: number } | undefined;
 if (CHAIN_ARG !== undefined) {
   const parts = CHAIN_ARG.split(",").map((s) => Number(s.trim()));
-  const [d, b] = parts;
-  if (parts.length !== 2 || d === undefined || b === undefined ||
-      !Number.isInteger(d) || !Number.isInteger(b) || d < 1 || b < 1) {
+  const [d, b, e] = parts;
+  const bad =
+    (parts.length !== 2 && parts.length !== 3) ||
+    d === undefined || b === undefined ||
+    !Number.isInteger(d) || !Number.isInteger(b) || d < 1 || b < 1 ||
+    // The third is a weight, not a count: any finite number, sign included.
+    (parts.length === 3 && (e === undefined || !Number.isFinite(e)));
+  if (bad) {
     console.error(
-      `chain must be "depth,breadth", both integers >= 1 — got ${JSON.stringify(CHAIN_ARG)}`,
+      `chain must be "depth,breadth" or "depth,breadth,enablement" — depth and ` +
+        `breadth integers >= 1, enablement any finite number — got ` +
+        JSON.stringify(CHAIN_ARG),
     );
     process.exit(1);
   }
-  CHAIN = { depth: d, breadth: b };
+  CHAIN = parts.length === 3 ? { depth: d!, breadth: b!, enablement: e } : { depth: d!, breadth: b! };
 }
 
 const filter = process.argv[4];
@@ -360,7 +370,10 @@ const seating = Array.from(
 
 console.log(
   `\n${games} games, ${players} players, ${seating}` +
-    (CHAIN === undefined ? "" : `, chain depth ${CHAIN.depth} breadth ${CHAIN.breadth}`) +
+    (CHAIN === undefined
+      ? ""
+      : `, chain depth ${CHAIN.depth} breadth ${CHAIN.breadth}` +
+        (CHAIN.enablement === undefined ? "" : ` enablement ${CHAIN.enablement}`)) +
     (CHOSEN.length > 1 ? ", identical draws across variants" : "") +
     "\n",
 );
