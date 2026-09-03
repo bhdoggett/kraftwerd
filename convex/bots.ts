@@ -450,8 +450,10 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
      * measures the bot people actually play. They stay written out here anyway:
      * this is the file that records what is deployed and why, and a default
      * changed for the simulator's benefit should not silently become a change
-     * to production. If the two ever differ again, one of the two comments is
-     * lying and the table is measuring something else.
+     * to production. What keeps the two honest is not this paragraph --
+     * `shared/sim/blocks.test.ts` reads the literal below out of this file and
+     * fails if it drifts from `BLOCK_DEFAULTS`. Change one and the test tells
+     * you to make a decision about the other.
      *
      * Forty over twenty-four is a coin-flip on this evidence (3.50 against
      * 3.21) and sixty-four is not measurably worse than either. Forty is

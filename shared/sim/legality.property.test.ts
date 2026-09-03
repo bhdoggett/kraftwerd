@@ -45,7 +45,7 @@ describe("every move the search offers is legal", () => {
    * `maxK` 3) is a change to what this test costs: measured cold inside the
    * full two-project run, the slowest case went from about 4s to 4.99s -- the
    * wider shortlist is nearly free here because these racks carry at most one
-   * blank. Three minutes is thirty-six times that. The old 60s was twelve
+   * blank. Three minutes is thirty-six times that. The old 60s was fifteen
    * times its own measurement and still timed out once when the machine was
    * running several test suites at once, which is the failure this cap is
    * sized against: a safety net that fails spuriously is one the next person

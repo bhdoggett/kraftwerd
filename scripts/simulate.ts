@@ -146,6 +146,11 @@ function makeBag(size: number, vowelShare: number): Record<string, number> {
 }
 
 const CURRENT = RACK.weights as Record<string, number>;
+// Derived, not written down: `makeBag` ignores `bag` whenever `weights` is
+// given and uses the counts exactly, so a literal here is a number nothing
+// checks -- which is how the row came to be labelled fifty tiles while holding
+// seventy-one. Non-null is the part that matters; it means "a finite bag".
+const CURRENT_TILES = Object.values(CURRENT).reduce((a, b) => a + b, 0);
 
 const VARIANTS: Variant[] = [
   /*
@@ -157,7 +162,7 @@ const VARIANTS: Variant[] = [
    * copied into design.md §6 as a statement about the current rules. The line
    * printed above the table has the real composition, computed.
    */
-  { name: "now: the shipped bag", bag: 50, multiplier: "none", weights: CURRENT },
+  { name: "now: the shipped bag", bag: CURRENT_TILES, multiplier: "none", weights: CURRENT },
   { name: "50 / 33%", bag: 50, multiplier: "none", weights: makeBag(50, 0.33) },
   { name: "50 / 42%", bag: 50, multiplier: "none", weights: makeBag(50, 0.42) },
   { name: "62 / 26%", bag: 62, multiplier: "none", weights: makeBag(62, 0.26) },
@@ -203,11 +208,17 @@ const pct = (xs: number[], p: number) => {
  *
  * Reported for the 3x3+ column because that is the column arguments get had
  * over and the one whose per-game spread is widest relative to its mean: a
- * game that closes none and a game that closes five are both ordinary. Two
- * runs differing by less than about 2 SE are not distinguishable, and without
- * this printed alongside, the difference gets read as a result anyway -- which
- * has happened. Sample standard deviation over sqrt(n); one game reports 0
- * because a single sample has no spread to measure, not because it is precise.
+ * game that closes none and a game that closes five are both ordinary.
+ *
+ * This is the error of *one* mean. Telling two runs apart takes the error of
+ * their difference, which carries both: sqrt(2) x SE, so the threshold is
+ * about 2.8 x the number printed here, not 2 x it. Pairing the runs by seed
+ * would beat that, but this computes per-game means and never per-game
+ * differences, so the paired figure is not available and the unpaired one is
+ * what the column supports.
+ *
+ * Sample standard deviation over sqrt(n); one game reports 0 because a single
+ * sample has no spread to measure, not because it is precise.
  */
 const stderr = (xs: number[]) => {
   if (xs.length < 2) return 0;
@@ -272,5 +283,12 @@ for (const variant of CHOSEN) {
 
 await pool.close();
 
-console.log(`\n${games} games, ${players} players, identical draws across variants\n`);
+// "Identical draws" is the claim that makes the rows comparable, so it is only
+// printed when there are rows to compare; on a filtered run it would be a
+// guarantee about nothing.
+console.log(
+  `\n${games} games, ${players} players` +
+    (CHOSEN.length > 1 ? ", identical draws across variants" : "") +
+    "\n",
+);
 console.table(rows);

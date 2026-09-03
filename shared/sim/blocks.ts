@@ -78,6 +78,17 @@ export interface Candidate {
   rewritable: Coord[];
 }
 
+/**
+ * What the block pass does when the caller says nothing.
+ *
+ * Named, exported and asserted against rather than left as two `??` literals,
+ * because these are the numbers `convex/bots.ts` passes explicitly and the
+ * whole point of them being the defaults is that the two agree: the simulator
+ * measures the deployed search only for as long as they do. `blocks.test.ts`
+ * reads the literal out of that call site and fails if it drifts from this.
+ */
+export const BLOCK_DEFAULTS = { maxK: 3, maxBlocks: 40 } as const;
+
 /** How far the block pass may go. Every field optional; this module owns the
  * defaults, and `MoveOptions.squares` in bot.ts forwards this whole shape. */
 export interface BlockOptions {
@@ -518,8 +529,8 @@ export function blockMoves(
   options: BlockOptions = {},
 ): Move[] {
   const tiles = hand.letters.length + hand.blanks;
-  const blocks = candidateBlocks(board, shape, size, tiles, options.maxK ?? 3)
-    .slice(0, options.maxBlocks ?? 40);
+  const blocks = candidateBlocks(board, shape, size, tiles, options.maxK ?? BLOCK_DEFAULTS.maxK)
+    .slice(0, options.maxBlocks ?? BLOCK_DEFAULTS.maxBlocks);
   const reletter = options.reletter ?? 2;
 
   /*
@@ -608,8 +619,8 @@ export function blankMoves(
   // Asking for blocks a single tile can finish names the squares directly:
   // `candidateBlocks` drops the finished ones and anything needing more than
   // the tiles it is given, so every block it returns here has exactly one gap.
-  const gaps = candidateBlocks(board, shape, size, 1, options.maxK ?? 3)
-    .slice(0, options.maxBlocks ?? 40)
+  const gaps = candidateBlocks(board, shape, size, 1, options.maxK ?? BLOCK_DEFAULTS.maxK)
+    .slice(0, options.maxBlocks ?? BLOCK_DEFAULTS.maxBlocks)
     .map((block) => block.gaps[0]);
 
   /*

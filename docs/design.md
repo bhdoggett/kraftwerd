@@ -234,7 +234,11 @@ Both live in `shared/config.ts` (`STACK_CAP`) and `shared/engine/score.ts`
   decision about when, not something to use or waste each turn.
 - Any number of your remaining blanks may go down in one turn.
 - Blank is wild, assigned a letter permanently on placement.
-- **No finite bag.** Letters are randomly generated per draw.
+- **A finite bag**, shared by everyone at the table — `shared/engine/bag.ts`,
+  built from the same weights that once described an endless draw. Read as a
+  bag they mean what they look like: one Z exists, and once it is played it is
+  gone. This is `RULES_VERSION` 2; version 1 was the endless draw, and its
+  scores do not compete with these.
 
 ### 5.1 Distribution
 
@@ -248,6 +252,11 @@ reads as fairer and is easy to check against a published source.
 section at [Letter frequency (Wikipedia)](https://en.wikipedia.org/wiki/Letter_frequency)
 — frequency as letters actually appear running text, not per dictionary
 entry.
+
+**The three paragraphs that follow describe the fifty-tile pool** this
+distribution started as, and are kept because they are where the shape came
+from. The bag that ships is seventy-one tiles — see "Where it stands now"
+below, which is the part to trust if the two disagree.
 
 **J, Q, X, Z are pinned to 1 tile of 50 each**, by decision rather than by
 scaling down their real frequency (which would be under 1 tile anyway at this
@@ -273,37 +282,47 @@ tiles). One tile moved each way — P/M/B up, H/E/A/O down — funds the fix
 without touching J/Q/X/Z, K/V, or the letters that were already well matched
 to their rank (S, T, R, N stayed put; all four rank in the top 7).
 
-Vowel share drops from 32% to 26% of the pool as a result. The floor
-(`minVowels`, below) still guarantees 2 vowels every rack, but leans on that
-guarantee more often now — roughly a third of racks need it to kick in,
-against a little over a fifth before. Worth watching in play: this is the
-lever to loosen first if racks start feeling consonant-heavy.
+Vowel share dropped from 32% to 26% of that fifty-tile pool as a result.
 
-**Weights** (tiles out of a 50-letter pool):
+**Where it stands now.** The pool became a finite bag and then grew twice, and
+the shipped bag is **seventy-one tiles, twenty-seven of them vowels — 38%**:
 
 ```
-T 4   E 4
-A 3  D 3  I 3  N 3  R 3  S 3
-B 2  H 2  L 2  M 2  O 2  P 2
-C 1  F 1  G 1  J 1  K 1  Q 1  U 1  V 1  W 1  X 1  Y 1  Z 1
+E 7
+A 6
+I 5  O 5
+N 4  R 4  T 4  U 4
+D 3  L 3  M 3  S 3
+B 2  C 2  G 2  H 2  P 2  Y 2
+F 1  J 1  K 1  Q 1  V 1  W 1  X 1  Z 1
 ```
 
-Every letter is drawable — nothing is suppressed to zero — and the shape
-still reads as English: T and E lead, the vowels and the common consonants
-sit in the middle, and J/Q/X/Z (by decision) plus K/V (by floor) share the
-bottom at one tile each.
+A deeper bag with more to build from: E came down from nine to seven and the
+letters that make words went up. U at four is deliberate — two was the meanest
+thing in the bag before it, and a U you never draw makes a Q you can never
+play. At seven tiles a rack that is about ten refills across a table. The vowel
+floor (`minVowels`, below) is now held over rather than load-bearing — a bag
+gives what it has and cannot keep drawing until a rack meets a floor — and
+`shared/config.ts` puts about one hand in five short of vowels at this share.
+This is `RULES_VERSION` 2.
+
+Every letter is drawable — nothing is suppressed to zero — and the shape still
+reads as English: E and A lead, the common consonants sit in the middle, and
+J/Q/X/Z share the bottom at one tile each with the letters that round there.
 
 Live in `shared/data/letter-weights.json`, hand-written rather than generated
 — it does not depend on the dictionary, so `scripts/build-dictionary.mjs`
-leaves it alone on every rebuild.
+leaves it alone on every rebuild. **That file is the authority**; the numbers
+above are transcribed from it, and this section has already once been read as
+current when it was describing a bag two versions old.
 
 **Vowel floor and duplicate cap are unchanged** by this — they are about how
 a *rack* reads, not where the weights come from. A 7-letter rack keeps a
-floor of 2 vowels (`minVowels` in `shared/config.ts`): low enough that the
-blank standing in for a vowel is a real option rather than a guarantee, high
-enough that a vowel-less rack stays vanishingly rare. Any single letter is
-still capped at 2 copies per rack, so independent draws can never hand
-someone `EEEEEEE`.
+floor of 2 vowels (`minVowels` in `shared/config.ts`) and a cap of 2 copies of
+any one letter. Both are held over from the endless draw, which could keep
+rolling until a rack met them; a bag cannot, so neither binds any more, and the
+vowel share is set in the bag itself instead. They are documented here because
+they are still in the config, not because they still do anything.
 
 ### 5.2 Dictionary
 
@@ -426,16 +445,38 @@ which is a different number — two identical bots, 200 games:
 | turns per game | 25 |
 | squares occupied per game | 55 |
 | passes per game | 3.3 |
-| 3x3 or larger per game | **3.55 ± 0.08** |
+| 3x3 or larger per game | **3.55** (SE 0.08) |
 | best turn, mean per game | 46 |
 | best turn, 95th percentile | 59 |
 
-**Read that ± before comparing anything to anything.** It is the standard error
+**These games do not end the way the shipped game ends.** Every variant here has
+a bag, and with a bag `shared/sim/game.ts:145-152` ignores `endThreshold`
+entirely and plays until the bag is empty and somebody's hand is out. Live ends
+at fifty tiles on the board (`convex/games.ts`, `schema.ts`). That is why the
+row above reads fifty-five squares occupied under a heading whose first bullet
+says fifty: **every per-game aggregate in the table is taken over about 10% more
+board than a real game offers**, which inflates the totals — squares, points,
+turns — by roughly that much on its own.
+
+It compounds on the 3x3 row specifically. `blankPrice`
+(`shared/sim/judgement.ts`) decays linearly to exactly zero at `endThreshold`,
+so past fifty tiles a blank costs the simulated player nothing at all, and the
+simulated player is holding three of them. The tail of every simulated game is
+played with free blanks in a phase the real game has already ended. **This is a
+mechanism by which the 3x3 column reads high**, and it is the reason the closing
+paragraph below no longer claims the table errs only on the low side.
+
+**Read that SE before comparing anything to anything.** It is the standard error
 of the per-game mean, printed by the simulator itself, and at 200 games it is
-0.08: two runs less than about 0.16 squares a game apart are one run. The live
-sweep quoted below ran twenty-eight games an allowance, where the same figure is
-around 0.4 and the floor is over a square a game — which is why the aggregates
-there can be stated flatly and the individual steps cannot.
+0.08. The threshold for telling two *runs* apart is not that: the difference of
+two means carries both errors, √2 × 0.08 ≈ 0.11, so two runs less than about
+**0.23** squares a game apart are one run. (A seed-paired comparison would
+justify something tighter, but the simulator never computes per-game
+differences, so that is not a number this table can offer.) The live sweep
+quoted below ran twenty-eight games an allowance; scaling by √(200/28) puts its
+standard error near 0.2 — an estimate, since it predates the column — and its
+own repeat measurements of one configuration, 1.89 and 2.71, came out much
+further apart than that, which is the floor to believe.
 
 The number that moved is the last-but-two. A 3x3 was 0.00–0.15 a game against a
 bot that could only lay one word along one line, 1.99 once it could chain plays
@@ -481,14 +522,19 @@ The caveat that closed was `reletter`: the live bot's block solver may rewrite
 standing letters, at the simulator's default of two. The two that opened and
 have since closed are the block shortlist, `maxBlocks: 40` and `maxK: 3`, which
 the live bot passed and the simulator did not until those became the `shared/`
-defaults. That is the change this table was re-measured for, and the table is
-the check on the sweep that motivated it: an entirely separate population of
-games, on the simulator's own scoring, puts the same configuration at 3.55 3×3s
-a game against the sweep's 3.50. The sweep's aggregate was right, and the ±0.08
-above says the simulator agrees with it well inside the sweep's own resolution.
+defaults. That is the change this table was re-measured for. The simulator's
+3.55 and the sweep's 3.50 sit close together, and it is tempting to read one as
+confirming the other — but they are not the same configuration, as the next
+three paragraphs say, and two of the differences push in opposite directions:
+the simulator has three blanks where the sweep had one (worth about a square a
+game against it, by the sweep's own fourteen-game reading) and no game-end
+threshold (worth something in its favour). Two unmeasured effects of opposite
+sign landing four hundredths apart is a coincidence, not corroboration. What the
+re-measurement does establish is the thing it was run for: the simulator now
+searches squares the way the deployed bot does, and the table is a statement
+about that search rather than about a weaker one.
 
-**Two divergences still stand, and neither of them leaves the simulator the
-stronger player.**
+**Three divergences still stand, and they do not point the same way.**
 
 The live bot's search is told about **one blank a turn** where the simulated
 players may spend all three. This is now the measurement rather than the cap: at
@@ -500,16 +546,30 @@ not spent lightly, and handing the search more of them mostly buys blank-heavy
 moves that crowd better ones out of the shortlist. The cost is all in the block
 solver, the only stage that spends a blank: a 2×2 on an empty board is four
 cells tried against the rack and all twenty-six letters, which at three blanks
-is some 39,000 solutions to price. **Live is capped, and measurably better for
-it** — the simulator's three blanks are the setting the sweep found worst, so
-this divergence makes the table above understate the deployed bot rather than
-flatter it.
+is some 39,000 solutions to price. **Live is capped, and the evidence says the
+cap helps rather than hurts** — three concordant metrics and an unambiguous
+timing all point one way. Not "measurably": the 2.71-against-1.71 gap is
+fourteen games a side, and this document has just finished saying that a gap
+that size at twenty-eight games is inside the floor. The direction is well
+supported; the size of it is not established. On this axis the table above
+understates the deployed bot.
 
 The live bot **chains two plays from four candidates a step**, against the
 simulator's six. Six is affordable now — 44ms and one turn in 703 past the pause
 — but twenty-eight games cannot tell the two apart: 1.89 3×3s and 348 points at
 breadth 4 against 1.86 and 344 at breadth 6. The cheaper one stays for want of
 any reason to pay more. **Live is nominally weaker, measurably level.**
+
+And the one that runs the other way: **the simulator always plays the best move
+it found, and the live bot does not.** `bestMove` is `rank(...)[0]`
+(`shared/sim/bot.ts`), so a simulated player is a perfect chooser over its own
+ranking; `convex/bots.ts` draws through `chooseRanked`, which even at `hard`
+samples a band of 85–100% of the best value with a softmax leaning toward the
+top, and the two seats a person meets are whatever difficulties they were set
+to. Nothing measures what that costs, and it is not a knob that can simply be
+matched — a bot that always plays its best move is a different opponent, not a
+better-configured one. **The simulator is the stronger player on this axis**,
+and it is the reason the summary below is not "the table errs low".
 
 What the two closed divergences were, since the argument for the settings still
 has to live somewhere. `maxBlocks: 12` was what actually bound the block solver,
@@ -524,12 +584,24 @@ shortlist on 3×3s instead of on proving 4×4s impossible, at 512ms a turn again
 not the board. The span and chain searches can still complete a 4×4
 incidentally, and `newSquareBlocks` still pays 16 when they do.
 
-So the table above is now a fair reading of the bot people play, and if it errs
-it errs low. The two axes that remain are the two on which the live bot is
-capped: one measured level, one measured to be an improvement rather than a
-handicap. Nothing left on this list makes the simulated player the stronger
-square-builder, which is the property that made the older version of this table
-unsafe to argue rules from.
+So the table above measures the deployed *search*, which is what it was
+re-measured to do, and no longer measures a materially weaker square-builder.
+It does not measure the deployed *game*, and the honest summary is that it errs
+in both directions at once:
+
+- **High**, for two identified reasons: the games run about 10% past the point
+  a real game ends, with `blankPrice` at zero and three blanks in hand for that
+  whole tail; and the simulated player always takes its top-ranked move, where
+  a live bot samples a band.
+- **Low**, for one: the simulated player is handed three blanks a turn, and one
+  is the better setting.
+
+None of the three is quantified. That is a fair statement of what is known, and
+it is a weaker licence than the previous version of this paragraph claimed:
+**this table supports comparisons between rules variants measured the same way,
+and it does not support a claim about the absolute rate anything happens at in a
+real game.** Every variant row shares all three distortions, which is what makes
+the comparison sound and the absolute number soft.
 
 ## 7. Data model — implemented in `convex/schema.ts`
 
