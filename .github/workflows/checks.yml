@@ -1,0 +1,52 @@
+# The checks that used to live in somebody's memory.
+#
+# Contributors send draft pull requests (docs/onboarding-a-contributor.md), so
+# until now the only thing standing between a broken change and main was
+# whether the reviewer happened to run the suite. The one check that WAS
+# automatic is the Coolify build, which runs `npm run typecheck` before
+# `vite build` -- so a type error already fails the deploy. It just failed it
+# at deploy time rather than at review time.
+#
+# What this cannot do, and it is worth writing down: it runs the same commands
+# a person would, so it inherits their blind spots. `npm run typecheck` was
+# green for this entire project's life while running a compiler the project
+# does not declare, and CI would have reported that as a pass every time. This
+# catches regressions in checks that work. It does not tell you a check works.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run pointless.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # .nvmrc, not a literal: vite 8 needs node 20.12+ for `styleText` and
+          # nixpacks has already been caught defaulting to 18. One place to
+          # change the version, shared with local development and the deploy.
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      # Not `npm run lint`, which is red on an untouched tree and so gates
+      # nothing. See the header of the script for what replaced it and why.
+      - name: Lint
+        run: npm run lint:scoped

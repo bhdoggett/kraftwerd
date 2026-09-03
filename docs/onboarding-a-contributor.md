@@ -61,6 +61,34 @@ His work arrives as draft pull requests. GitHub emails you when one opens.
 Review the diff, comment inline, and merge when you are happy. He cannot merge,
 and the ruleset means neither can anything running on his machine.
 
+## The checks
+
+`.github/workflows/checks.yml` runs on every pull request and every push to
+main: types, the whole test suite, then lint. Three things about it are worth
+knowing before you are surprised by one.
+
+**Lint is not `npm run lint`.** That script is red on an untouched tree — 58
+errors, most of them `no-unnecessary-type-assertion` under `src/`, plus a
+parser error on `vitest.config.ts` that no source change fixes. A check that is
+red before you start cannot tell you whether you broke something. What runs
+instead is `npm run lint:scoped`, which lints `shared`, `convex` and `scripts`
+and fails only if the count goes **up**. The ceiling lives in
+`scripts/lint-scoped.sh` and may only ever be lowered. Getting the real script
+to zero and deleting the scoped one is the right end state; most of its errors
+are `--fix`-able.
+
+**`npm run typecheck` is `tsc6 -b`, and the `6` matters.** `package.json`
+declares typescript as `npm:@typescript/typescript6`, which installs only a
+`tsc6` binary. The script said `tsc -b` for most of this project's life, found
+no `tsc` in `node_modules/.bin`, and silently fell through to whatever `tsc`
+was on the machine's PATH — so the type check passed for months while running a
+compiler the project does not declare, hiding three real errors. If you ever
+see a type error locally that CI does not, or the reverse, suspect this first.
+
+**CI is not the only gate, and it is not the strictest.** Coolify's build
+command is `npm run build`, which is `npm run typecheck && vite build`, so a
+type error fails the production deploy whether or not anything else caught it.
+
 ## Revoking access
 
 Remove the repo collaborator, remove him from the Convex team, and delete the
