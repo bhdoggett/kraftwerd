@@ -423,18 +423,7 @@ to 52% in one step, without ever rejecting a real word.
   last uncontested snipe.
 - Highest total score wins.
 
-> **STALE AS OF THE BAND WIDENING.** Every 200-game figure in this section was
-> measured at the previous difficulty bands — hard [0.85, 1.0], medium
-> [0.55, 0.85], easy [0.3, 0.55]. Those are now [0.66, 1.0] / [0.33, 0.66] /
-> [0.05, 0.33], widened because the ladder they produced was only 11% of score
-> end to end and 4% between hard and medium. Every row below therefore
-> describes a bot that no longer exists, and not by a constant offset:
-> `chooseRanked` draws from the same seeded rng as the bag, so a different band
-> means a different number of draws and a different bag sequence. The figures
-> are not seed-comparable with anything measured after the change. Re-measure
-> before quoting any of them.
-
-**These numbers were re-measured in September 2026**, three times. First after the bot
+**These numbers were re-measured in September 2026**, four times. First after the bot
 learned to chain plays and build squares deliberately — everything measured
 before that was measured against a player that could only lay one word along one
 line, and so almost never completed a 3x3, 0.00–0.15 per game across 120 games.
@@ -445,8 +434,15 @@ property tests — searches squares exactly as the bot people play does. And a
 third time once the simulator stopped playing perfectly and started playing at a
 difficulty, which is what makes the table three rows wide; see the closed
 divergence at the end of this section for why that re-measurement was not
-optional. Any balance conclusion drawn from figures older than this is worth
-re-checking against these.
+optional. And a fourth time when the difficulty bands were widened to
+[0.66, 1.0] / [0.33, 0.66] / [0.05, 0.33] from [0.85, 1.0] / [0.55, 0.85] /
+[0.3, 0.55], because the ladder the old ones produced was only 11% of score end
+to end and 4% of it between hard and medium. That last re-measurement could not
+be a correction applied to the old rows: `chooseRanked` draws from the same
+seeded rng as the bag, so a different band means a different number of draws and
+a different bag, and figures from either side of the change are not
+seed-comparable at all. Any balance conclusion drawn from figures older than
+this is worth re-checking against these.
 
 `scripts/simulate.ts 200 2 shipped <difficulty>`, the shipped bag — seventy-one
 tiles, twenty-seven of them vowels, 38%; the fifty above is the end threshold,
@@ -457,31 +453,41 @@ import specifiers against its `.ts` files.
 
 | | hard | medium | easy |
 | --- | --- | --- | --- |
-| seat 0 / seat 1 win % | 40 / 60 | 53 / 47 | 46 / 54 |
-| mean score, seat 0 / seat 1 | 191 / 197 | 185 / 187 | 173 / 173 |
-| winning score | 211 | 201 | 187 |
-| margin | 34 | 30 | 29 |
-| turns per game | 25 | 24 | 24 |
-| squares occupied per game | 55 | 56 | 57 |
-| passes per game | 3.1 | 2.7 | 2.3 |
-| 3x3 or larger per game | **3.62** (SE 0.07) | **3.18** (SE 0.07) | **2.35** (SE 0.06) |
-| best turn, mean per game | 46 | 46 | 44 |
-| best turn, 95th percentile | 58 | 57 | 50 |
-| wall clock, 200 games | 397s | 449s | 668s |
+| seat 0 / seat 1 win % | 43 / 57 | 50 / 50 | 40 / 61 |
+| mean score, seat 0 / seat 1 | 188 / 198 | 176 / 176 | 153 / 162 |
+| winning score | 211 | 189 | 171 |
+| margin | 35 | 27 | 28 |
+| turns per game | 25 | 24 | 25 |
+| squares occupied per game | 55 | 57 | 57 |
+| passes per game | 3.0 | 2.4 | 1.9 |
+| 3x3 or larger per game | **3.60** (SE 0.07) | **2.60** (SE 0.06) | **1.13** (SE 0.06) |
+| best turn, mean per game | 47 | 46 | 37 |
+| best turn, 95th percentile | 57 | 53 | 50 |
+| wall clock, 200 games | 395s | 578s | 1212s |
 
-**The ladder is real.** Both steps clear the resolution floor derived below:
-hard to medium is 0.44 squares a game and medium to easy 0.83, against the
-threshold of about 0.2 derived below. So the bands in `shared/config.ts` do what they claim, and
-a difficulty is a standard of play rather than a label.
+**The ladder is real, and widening the bands roughly tripled it.** Hard to
+medium is now 1.00 squares a game and medium to easy 1.47, against the
+resolution floor of about 0.2 derived below — better than ten times that floor,
+where the old bands managed 0.44 and 0.83. So the bands in `shared/config.ts` do
+what they claim, and a difficulty is a standard of play rather than a label.
 
-**It is also narrow in points, and this table cannot say how narrow.** Mean
-score runs 194 / 186 / 173, about 11% end to end — but every row is a level
-playing *itself*. Nothing here measures hard against easy, which is the only
+**Only the ceiling moved, and that was the prediction.** `hard` kept its top and
+gained a wider floor below it; every other level had its ceiling dropped.
+`hard` accordingly did not move — 194 → 193 mean score, 3.62 → 3.60 squares,
+both inside a single standard error — while medium fell 3.18 → 2.60 and easy
+2.35 → 1.13. That asymmetry is the claim in `shared/sim/bot.ts` that the ceiling
+is the lever and the floor is not, and it was written down before this table was
+measured rather than fitted to it afterwards.
+
+**It is still narrower in points than in squares, and this table cannot say how
+narrow.** Mean score runs 193 / 176 / 158, about 18% end to end where the old
+bands gave 11% — but every row is a level playing *itself*. Nothing here measures hard against easy, which is the only
 number that says whether an easy opponent is beatable by a person. `simulate.ts`
 takes a per-seat list (`hard,easy`) and that run has not been made.
 
-**Weaker play is more expensive, not less** — easy costs 668s against hard's
-397s, on *fewer* turns. A worse move leaves the board sparser, a sparser board
+**Weaker play is more expensive, not less** — easy costs 1212s against hard's
+395s, three times over and on no more turns, having reproduced at the old bands
+in the same direction (668s against 397s) and widened along with them. A worse move leaves the board sparser, a sparser board
 offers more anchors, and more anchors mean a bigger search every turn
 thereafter. It is worth knowing in production, where the pause budget is
 therefore tightest at the difficulty one would least expect, and it is why no
@@ -520,28 +526,37 @@ further apart than that, which is the floor to believe.
 
 The number that moved is the last-but-two. A 3x3 was 0.00–0.15 a game against a
 bot that could only lay one word along one line, 1.99 once it could chain plays
-and aim at squares, and 3.62 now, at `hard`. Only part of that last step belongs to the
+and aim at squares, and 3.60 now, at `hard`. Only part of that last step belongs to the
 block search: 1.99 was measured on an older build, so the controlled figure is a
 before-and-after over the same twenty games either side of the defaults moving,
 **1.90 → 3.05**, several times the floor at that sample. None of it is a rules
 change: nothing in the rules ever suppressed squares, only players that could
 not reach them.
 
-Going **second** is worth something **at `hard`, and only there.** Seat 1 takes
-60% against 40 across 200 games (ties split, each seat rounded on its own), on a
-mean-score gap of 6 points, and that reproduces an earlier 200-game run at 41/60
-— two independent measurements agreeing. At this sample a win rate has a
-standard error of about 3.5 points, so a ten-point edge over even is real.
+Going **second** is worth something, but **not in a pattern anything here
+explains.** Seat 1 takes 57% against 43 at `hard` and 61 against 40 at `easy`,
+each on a mean-score gap of about ten points — while `medium` comes out 50/50
+on two seats scoring 176 apiece. At 200 games a win rate carries a standard
+error near 3.5 points (ties split, each seat rounded on its own), so easy's
+eleven-point deviation from even is solid, hard's seven is about two standard
+errors, and medium's is nothing at all. Hard also agrees in direction with two
+earlier 200-game runs at the old bands, 40/60 and 41/60.
 
-But **it does not survive the ladder**: medium comes out 53/47 and easy 46/54,
-both straddling even, and easy's two seats score 173 apiece. So this is not a
-property of the board, which is what the previous version of this paragraph
-claimed. The best available reading is that the second seat's edge is something
-a player has to be strong enough to collect — seat 1 exploits what seat 0's
-opening leaves, and a medium or easy bot does not reliably take it. That is a
-hypothesis fitted to three rows, not a measurement; what is established is the
-narrower claim that the effect is difficulty-dependent, which is enough to
-retire "it is the board's advantage".
+**The explanation this section used to give is now refuted.** It read the edge
+as something a player had to be strong enough to collect: seat 1 exploits what
+seat 0's opening leaves, and a weak bot fails to take it. The old rows fitted
+that — 60/40 at hard, 53/47 and 46/54 below it. The new rows invert it. `easy`
+shows the *largest* seat-1 edge of the three, which no version of "too weak to
+collect it" survives, and the outlier is now `medium`, sitting exactly on even
+between two levels that do not.
+
+So what stands is only this: seat 1 leads at two of three difficulties by about
+ten points of mean score, and the size of that lead is not monotone in strength.
+Three rows cannot carry a story about why, and the previous story was built by
+fitting exactly three rows — which is the mistake worth not repeating here. The
+run that would say something is the cross-difficulty one (`hard,easy`), where
+the two seats differ in strength rather than only in order, and it still has not
+been made.
 
 The direction was itself a reversal: this table once ran 62/38 the other way,
 and that reversal is not the block-search change — a run at the old defaults
@@ -574,7 +589,7 @@ standing letters, at the simulator's default of two. The two that opened and
 have since closed are the block shortlist, `maxBlocks: 40` and `maxK: 3`, which
 the live bot passed and the simulator did not until those became the `shared/`
 defaults. That is the change this table was re-measured for. The simulator's
-3.62 and the sweep's 3.50 sit close together, and it is tempting to read one as
+3.60 and the sweep's 3.50 sit close together, and it is tempting to read one as
 confirming the other — but they are not the same configuration, as the next
 three paragraphs say, and two of the differences push in opposite directions:
 the simulator has three blanks where the sweep had one (worth about a square a
@@ -610,7 +625,7 @@ understates the deployed bot.
 The live bot **chains two plays from four candidates a step**, against the
 simulator's six. This has now been measured directly at 200 games a side, on
 identical bags, rather than inferred from a twenty-eight-game sweep: breadth 4
-gives 3.56 3×3s a game (SE 0.07) against breadth 6's 3.62 (SE 0.07) — 0.06
+gives 3.44 3×3s a game (SE 0.08) against breadth 6's 3.60 (SE 0.07) — 0.16
 apart, against a threshold of 0.2. **Live is nominally weaker, measurably
 level** — the same conclusion the sweep reached, now on
 enough games to mean it. The cheaper setting stays for want of any reason to
@@ -619,8 +634,11 @@ default that nothing yet argues for.
 
 **Chain depth at breadth 4 does not pay, and that is a narrower result than it
 sounds.** 200 games at depth 3, breadth 4 gives 3.70 (SE 0.08), against depth 2
-breadth 4's 3.56 and depth 2 breadth 6's 3.62. The spread across all three
-shapes is 0.14, below the 0.2 threshold; mean scores run 192 / 194 / 195. Turns
+breadth 4's 3.56 and depth 2 breadth 6's 3.62 — all three at the *old*
+difficulty bands, which is why they do not match the two figures in the
+paragraph above; the comparison between them is sound because they share a
+band, and only depth 3 has not been re-measured since. The spread across all
+three shapes is 0.14, below the 0.2 threshold; mean scores run 192 / 194 / 195. Turns
 per game moves 25 to 23, which is mechanically what a deeper chain should do —
 more components a turn is more tiles laid a turn — so the knob works and its
 effect on the scoreline is too small to see at this width.
@@ -645,11 +663,46 @@ therefore pays only for its new ones — the depth-3-only turns counted above la
 five to seven tiles each. An earlier version of this paragraph explained the
 result by rack exhaustion, which was wrong.
 
+**That selection effect was attacked directly, and the fix turned out to buy
+nothing at the shipped width.** If the problem is that branches are ordered by
+their own score, the repair is to order them by what they leave for the next
+link instead. The `enablement` option in `shared/sim/chain.ts` does that,
+scoring candidates on `exposure` — the opponent-facing penalty from
+`shared/sim/judgement.ts`, reused with its sign flipped, since a block left one
+tile short is a gift to whoever moves next and part-way through a chained turn
+that is the same player. It is off by default and takes a weight saying what a
+point of exposure is worth against a point of score.
+
+At breadth 4 it works: 3.44 squares a game without it against 3.65 with, over a
+weight sweep of w ∈ {−3, 1, 2, 3, 5, 10} that runs monotonically in the right
+direction and puts its own falsification control (w = −3, ordering *away* from
+enablement) at 3.40, below the baseline. **At breadth 6 it is worth nothing** —
+3.60 without it, 3.60 at w = 5, 3.69 at w = 3, all inside one standard error.
+So enablement is a substitute for breadth rather than an addition to it: it
+recovers what a too-narrow branch discarded, and at the shipped breadth there is
+nothing left to recover. It is not enabled anywhere, and the figures in this
+table are all measured without it.
+
+Two things are worth carrying forward from that. The +0.21 that made it look
+promising was measured at breadth 4, **a breadth the bot does not use** — the
+whole line of work cost nine 200-game arms because the A/B was run against the
+wrong baseline, and the check that settles it is always to re-run at the shipped
+configuration. And one live question does survive: breadth 4 with enablement and
+breadth 6 without score the same, and branching four wide instead of six ought
+to be materially cheaper. That is a claim about cost, which no simulator wall
+clock here can measure — see the paragraph below — so it needs
+`scripts/bench-bot.sh` and the 1,600ms pause budget to settle, and until then it
+is a question rather than a result.
+
 One thing the probe did establish flatly: **simulator wall clock cannot measure
 search cost here at all.** Breadth 4 took *longer* than breadth 6 (448s against
 397s) because the weaker search leaves a sparser board, and a sparser board is
 more expensive to search — the same feedback that makes easy the slowest
-difficulty in the table above. Any statement about what a person waits for has
+difficulty in the table above. Re-measured at the new bands it did not even
+reproduce that: 582s against 598s, the two shapes now essentially level, while
+seven arms of *identical* cost drifted 582s to 723s over the same afternoon. So
+the number is dominated by the machine rather than by the search, which is a
+stronger version of the same conclusion. Any statement about what a person waits for has
 to come from `scripts/bench-bot.sh` against a live deployment, which measures
 per-turn thinking directly.
 
@@ -688,7 +741,7 @@ stronger than `hard` and is not a difficulty anybody can be dealt, so the table
 it produced described nobody. `playGame` now ranks and then draws through
 `chooseRanked`, seat by seat, the same two steps `convex/bots.ts` takes. What
 that cost is now measured rather than guessed at, and the answer is: **nothing
-detectable.** Perfect play scored 3.55 squares a game and `hard` scores 3.62,
+detectable.** Perfect play scored 3.55 squares a game and `hard` scores 3.60,
 which is inside the floor. The band was worth adopting for what it makes
 possible — the three-row table above — rather than for correcting a bias, and
 the honest reading is that at `hard` the top of the band and the top of the
