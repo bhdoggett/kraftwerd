@@ -2,7 +2,12 @@
 #
 # Drive bot games on the development deployment and print what a turn costs.
 #
-#   ./scripts/bench-bot.sh <tag> [games]
+#   ./scripts/bench-bot.sh <tag> [games] [difficulty]
+#
+# `difficulty` seats both machines at one level, default `hard`. Bench `easy`
+# too before trusting a pause budget: a weaker move leaves a sparser board and
+# a sparser board is more expensive to search, so easy is the level most likely
+# to run past THINKING_MS -- see design.md section 6.
 #
 # `tag` names the sweep row -- it is written to each game so the figures can be
 # read back afterwards. Change a knob in convex/bots.ts, push, run this, and
@@ -21,8 +26,9 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-TAG=${1:?usage: bench-bot.sh <tag> [games]}
+TAG=${1:?usage: bench-bot.sh <tag> [games] [difficulty]}
 GAMES=${2:-28}
+LEVEL=${3:-hard}
 CONVEX=./node_modules/.bin/convex
 LOG=$(mktemp -t kraftwerd-bench)
 
@@ -34,7 +40,7 @@ trap 'kill $STREAM 2>/dev/null || true' EXIT
 sleep 2
 
 MARK=$(python3 -c 'import time; print(time.time())')
-"$CONVEX" run --no-push bench:wholeGame "{\"games\": $GAMES, \"tag\": \"$TAG\"}" >/dev/null
+"$CONVEX" run --no-push bench:wholeGame "{\"games\": $GAMES, \"tag\": \"$TAG\", \"difficulty\": \"$LEVEL\"}" >/dev/null
 
 # Games finish when the log stops growing, which beats guessing at a duration:
 # a game is about 26 turns and every turn holds the 1.6s pause.
@@ -46,6 +52,6 @@ while [ $same -lt 3 ]; do
   prev=$n
 done
 
-echo "=== $TAG ($GAMES games) ==="
+echo "=== $TAG ($GAMES games, $LEVEL) ==="
 python3 scripts/bench-report.py "$LOG" "$MARK"
 "$CONVEX" run --no-push bench:squares "{\"tag\": \"$TAG\"}"

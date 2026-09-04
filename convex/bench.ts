@@ -56,8 +56,22 @@ async function seat(
  * A two-seat game tagged with `tag`, so a whole sweep row can be read back
  * afterwards. `bots` of 1 leaves a person at seat 1, which stops the game
  * after the opening move; 2 lets the machines play each other out.
+ *
+ * `level` seats both machines at the same difficulty. It is a parameter rather
+ * than a constant because cost is not flat across the ladder and the cheap
+ * assumption is the wrong way round: a weaker move leaves a sparser board, a
+ * sparser board offers more anchors, and the search gets *bigger* every turn
+ * thereafter. The simulator has easy running three times the wall clock of
+ * hard (design.md section 6), so `easy` is the difficulty most likely to run
+ * past THINKING_MS -- and it was the one difficulty this bench could not
+ * measure, because both seats were pinned to `hard`.
  */
-async function makeGame(ctx: MutationCtx, bots: number, tag: string) {
+async function makeGame(
+  ctx: MutationCtx,
+  bots: number,
+  tag: string,
+  level: "easy" | "medium" | "hard" = "hard",
+) {
   const stamp = `${Date.now()}-${Math.random()}`;
   const users = await Promise.all(
     [0, 1].map((i) =>
@@ -77,19 +91,19 @@ async function makeGame(ctx: MutationCtx, bots: number, tag: string) {
     tileCount: 0,
     createdBy: users[0],
   });
-  await seat(ctx, gameId, users[0], 0, "hard");
-  await seat(ctx, gameId, users[1], 1, bots === 2 ? "hard" : undefined);
+  await seat(ctx, gameId, users[0], 0, level);
+  await seat(ctx, gameId, users[1], 1, bots === 2 ? level : undefined);
   await ctx.db.patch("games", gameId, { status: "active" });
   return gameId;
 }
 
 /** One opening move per game -- the worst case on an empty board. */
 export const opening = internalMutation({
-  args: { games: v.number(), tag: v.string() },
+  args: { games: v.number(), tag: v.string(), difficulty: v.optional(v.union(v.literal("easy"), v.literal("medium"), v.literal("hard"))) },
   handler: async (ctx, args) => {
     requireDevTools(ctx);
     for (let i = 0; i < args.games; i++) {
-      const gameId = await makeGame(ctx, 1, args.tag);
+      const gameId = await makeGame(ctx, 1, args.tag, args.difficulty);
       await ctx.scheduler.runAfter(0, internal.bots.takeTurn, { gameId });
     }
     return null;
@@ -98,11 +112,11 @@ export const opening = internalMutation({
 
 /** Two machines playing each other out, for whole-game figures. */
 export const wholeGame = internalMutation({
-  args: { games: v.number(), tag: v.string() },
+  args: { games: v.number(), tag: v.string(), difficulty: v.optional(v.union(v.literal("easy"), v.literal("medium"), v.literal("hard"))) },
   handler: async (ctx, args) => {
     requireDevTools(ctx);
     for (let i = 0; i < args.games; i++) {
-      const gameId = await makeGame(ctx, 2, args.tag);
+      const gameId = await makeGame(ctx, 2, args.tag, args.difficulty);
       await ctx.scheduler.runAfter(0, internal.bots.takeTurn, { gameId });
     }
     return null;
