@@ -423,6 +423,17 @@ to 52% in one step, without ever rejecting a real word.
   last uncontested snipe.
 - Highest total score wins.
 
+> **STALE AS OF THE BAND WIDENING.** Every 200-game figure in this section was
+> measured at the previous difficulty bands — hard [0.85, 1.0], medium
+> [0.55, 0.85], easy [0.3, 0.55]. Those are now [0.66, 1.0] / [0.33, 0.66] /
+> [0.05, 0.33], widened because the ladder they produced was only 11% of score
+> end to end and 4% between hard and medium. Every row below therefore
+> describes a bot that no longer exists, and not by a constant offset:
+> `chooseRanked` draws from the same seeded rng as the bag, so a different band
+> means a different number of draws and a different bag sequence. The figures
+> are not seed-comparable with anything measured after the change. Re-measure
+> before quoting any of them.
+
 **These numbers were re-measured in September 2026**, three times. First after the bot
 learned to chain plays and build squares deliberately — everything measured
 before that was measured against a player that could only lay one word along one

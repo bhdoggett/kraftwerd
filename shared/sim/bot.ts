@@ -75,14 +75,29 @@ export type Difficulty = "easy" | "medium" | "hard";
  *
  * Banding by score rather than by rank position, because rank is a weak
  * proxy: in a list of four hundred moves the first and the fortieth may both
- * score 21, and a rank band would call them far apart. A fraction of the best
- * available means what it sounds like — a hard player leaves about a seventh
- * of the points on the table, an easy one over half.
+ * score 21, and a rank band would call them far apart.
+ *
+ * **The ceiling is the lever, not the floor.** `chooseRanked` weights by
+ * position within the band, so almost all of the probability sits on index 0 --
+ * which is the best move that still fits UNDER the band's top. So each level is
+ * anchored at its `hi`: hard at all of what is on offer, medium at two thirds
+ * of it, easy at a third. The `lo` mostly decides how many also-rans share what
+ * little probability is left.
+ *
+ * Widened from [0.85, 1.0] / [0.55, 0.85] / [0.3, 0.55], which measured 194 /
+ * 186 / 173 points a game -- an 11% spread end to end, and only 4% between hard
+ * and medium, which is not a ladder anybody could feel. Those ceilings were
+ * 100 / 85 / 55%; these are 100 / 66 / 33%.
+ *
+ * Easy floors at 0.05 rather than 0, deliberately. A move at zero *value* is
+ * one whose points are exactly cancelled by what it hands the opponent -- worth
+ * as much to them as to you -- and a bot that plays those reads as broken
+ * rather than as weak. Negative value is already excluded by the fraction test.
  */
-const BANDS: Record<Difficulty, [number, number]> = {
-  hard: [0.85, 1.0],
-  medium: [0.55, 0.85],
-  easy: [0.3, 0.55],
+export const BANDS: Record<Difficulty, [number, number]> = {
+  hard: [0.66, 1.0],
+  medium: [0.33, 0.66],
+  easy: [0.05, 0.33],
 };
 
 /**

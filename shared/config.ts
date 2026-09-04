@@ -85,8 +85,8 @@ export const STACK_CAP = 2;
  *
  * It sees every legal move at every level; the difficulty is how much of what
  * it sees it is willing to give up. Each level is a band of the best value on
- * offer — `hard` plays between 85% and 100% of it, `medium` between 55% and
- * 85%, `easy` between 30% and 55% — and inside its band every level leans on
+ * offer — `hard` plays between 66% and 100% of it, `medium` between 33% and
+ * 66%, `easy` between 5% and 33% — and inside its band every level leans on
  * the top of it equally hard. So a level is a standard of play rather than a
  * degree of carelessness, which is what makes it legible from a game: an
  * opponent that always finds the best word is not one anybody enjoys losing

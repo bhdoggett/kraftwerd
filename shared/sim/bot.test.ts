@@ -4,7 +4,7 @@ import { makeBoard } from "../engine/board";
 import { applyPlacements } from "../engine/legality";
 import { scoreTurn } from "../engine/score";
 import { makeDictionary } from "../engine/dictionary";
-import { bestMove, chooseRanked, indexWords, rank, type Move } from "./bot";
+import { BANDS, bestMove, chooseRanked, indexWords, rank, type Move } from "./bot";
 
 // TO is here so the 2x2 at (7,7) in the blank tests spells something both ways.
 const WORDS = ["AT", "AS", "ATE", "EAT", "TEA", "CAT", "CATS", "ACE", "TEN", "AN", "NET", "TO"];
@@ -211,15 +211,17 @@ describe("choosing by difficulty", () => {
   test("hard gives up little of what is on offer", () => {
     const { lowestFraction, meanFraction } = sample("hard");
 
-    expect(lowestFraction).toBeGreaterThanOrEqual(0.85);
-    expect(meanFraction).toBeGreaterThan(0.9);
+    // Read off BANDS rather than copied from it: retuning the ladder must not
+    // silently turn this into a test of last year's numbers.
+    expect(lowestFraction).toBeGreaterThanOrEqual(BANDS.hard[0]);
+    expect(meanFraction).toBeGreaterThan(BANDS.hard[0]);
   });
 
   test("easy plays well below the best available", () => {
     const { lowestFraction, highestFraction } = sample("easy");
 
-    expect(highestFraction).toBeLessThanOrEqual(0.55);
-    expect(lowestFraction).toBeGreaterThanOrEqual(0.3);
+    expect(highestFraction).toBeLessThanOrEqual(BANDS.easy[1]);
+    expect(lowestFraction).toBeGreaterThanOrEqual(BANDS.easy[0]);
   });
 
   test("medium sits between them", () => {
@@ -236,7 +238,7 @@ describe("choosing by difficulty", () => {
   });
 
   test("an empty band widens upward rather than failing to play", () => {
-    // Everything is close to the best, so easy's [0.30, 0.55] catches nothing.
+    // Everything is close to the best, so easy's band catches nothing at all.
     const tight: Move[] = Array.from({ length: 5 }, (_, i) => ({
       placements: [],
       score: 100 - i,
