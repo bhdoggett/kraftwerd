@@ -106,9 +106,13 @@ export default defineSchema({
     /** Denormalised: Convex has no count operator, and §6 reads this often. */
     tileCount: v.number(),
     /**
-     * Set the moment `tileCount` crosses `endThreshold`. The game finishes
-     * after this turn, so the round completes and every player has had an
-     * equal number of turns (design.md §6).
+     * The last turn of the game, set when a player goes out -- their turn plus
+     * one more for everyone else. The game finishes after it, so the round
+     * completes and every player has had an equal number of turns (§6).
+     *
+     * This described a `tileCount`/`endThreshold` trigger until 2026-09-05 and
+     * nothing ever wrote it, so the field was always undefined and the game
+     * really ended mid-round on whoever went out.
      */
     endsAfterTurn: v.optional(v.number()),
     /**

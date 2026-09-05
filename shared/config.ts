@@ -58,7 +58,7 @@ export const BLANKS_PER_GAME = 3;
  * 2: seventy-one tiles, a rack of seven. Version 1 was live and played on
  *    under the old bag, so those scores are not competing with these.
  */
-export const RULES_VERSION = 2;
+export const RULES_VERSION = 3;
 
 /**
  * How long an invite link works for. Long enough to sit in a message over a

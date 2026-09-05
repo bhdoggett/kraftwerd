@@ -417,11 +417,42 @@ to 52% in one step, without ever rejecting a real word.
 
 ## 6. Game end
 
-- Game ends when **total tiles on board ≥ 50**.
-- End triggers at the **end of the round**, not immediately, so every player
-  gets equal turns. Otherwise the player who crosses the threshold takes the
-  last uncontested snipe.
+- A player is **out** when the bag is empty and they have nothing left in hand.
+  Blanks count: a hand holding one is not empty.
+- Going out does **not** end the game where it happens. It fixes the last turn,
+  and **everyone still to move gets one more**, so a game always ends on a full
+  round with every player having had the same number of turns.
+- **Nothing is settled for tiles left in hand.** A score is what you scored.
 - Highest total score wins.
+
+Two of those are new as of 2026-09-05, and the first two bullets used to
+describe a game nobody played. The rule was written here as "end triggers at
+the end of the round", and `games.endsAfterTurn` existed to carry it, but
+**nothing ever assigned that field** — so it was permanently undefined, the
+branch reading it was unreachable, and the game really did end mid-round the
+instant somebody went out. Players seated after them lost their last turn. The
+threshold this section used to open with (fifty tiles) had already been
+replaced by bag exhaustion; `GAME.endThreshold` survives as the decay horizon
+for `blankPrice` and as the ending for the simulator's bagless variants, not as
+a way for a real game to finish.
+
+Blanks counting toward an empty hand is the other new rule, and it closes a
+hole rather than adding a restriction: `out` was computed from letters alone,
+so a player could end everyone's game while still holding all three blanks —
+the most valuable tiles on the table (§5).
+
+What went with them is the leftover swing. Going out used to take every other
+player's unplayed letters off their score and hand the total to the finisher,
+which was there to make emptying your hand worth racing for when going out
+ended the game on the spot. With a final round the race is gone: nobody is
+caught holding tiles they were never offered a chance to play, and charging
+them for the hand the bag happened to deal would be charging them for the
+draw. Going out is now a termination trigger rather than a prize — worth
+having when you are ahead and worth avoiding when you are behind.
+
+That last change also closes a live/simulator divergence nobody had catalogued:
+`shared/sim/game.ts` never modelled the swing, so every score in this section
+was already measured under the rule that now ships.
 
 **These numbers were re-measured in September 2026**, four times. First after the bot
 learned to chain plays and build squares deliberately — everything measured

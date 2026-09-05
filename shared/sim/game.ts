@@ -103,6 +103,12 @@ export function playGame(
   let passes = 0;
   let bestTurn = 0;
   let consecutivePasses = 0;
+  /*
+   * The last turn, once somebody has gone out: their turn plus one more for
+   * everyone else, exactly as `advanceTurn` sets it in convex/games.ts. Turn
+   * `turns - 1` is the one just played, since `turns` is incremented above.
+   */
+  let endsAfterTurn: number | null = null;
 
   /*
    * Reads `claimed` as it stands when a move is scored, not as it stood when
@@ -142,6 +148,8 @@ export function playGame(
       consecutivePasses++;
       // Everyone stuck in a row: the game is going nowhere, as in the app.
       if (consecutivePasses >= players * 2) break;
+      // A pass still spends a turn of the final round, as it does live.
+      if (endsAfterTurn !== null && turns - 1 >= endsAfterTurn) break;
       continue;
     }
     consecutivePasses = 0;
@@ -187,9 +195,18 @@ export function playGame(
      */
     if (bag === null) {
       if (board.size >= GAME.endThreshold) break;
-    } else if (tilesLeft(bag) === 0 && player.letters.length === 0) {
-      break;
+    } else if (
+      endsAfterTurn === null &&
+      tilesLeft(bag) === 0 &&
+      player.letters.length === 0 &&
+      player.blanks === 0
+    ) {
+      // Out: the last round starts, and everyone still to move gets a turn.
+      // Blanks count as tiles in hand -- see the note in convex/games.ts.
+      endsAfterTurn = turns - 1 + players - 1;
     }
+
+    if (endsAfterTurn !== null && turns - 1 >= endsAfterTurn) break;
   }
 
   let margin = size;

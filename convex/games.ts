@@ -726,10 +726,11 @@ async function playTurn(
     // Letters refill from the bag; blanks do not — they are a whole-game
     // allowance of their own (§5) and were never in it.
     const rack = await drawInto(ctx, args.gameId, remaining);
+    const blanksHeld = blanksLeft(player) - placements.filter((p) => p.isBlank).length;
     await ctx.db.patch("players", player._id, {
       score: player.score + score.total,
       letters: rack.letters,
-      blanks: blanksLeft(player) - placements.filter((p) => p.isBlank).length,
+      blanks: blanksHeld,
     });
 
     const played = await ctx.db.get("users", userId);
@@ -740,10 +741,17 @@ async function playTurn(
       }
     }
 
-    // Nothing left in the bag and nothing left in hand: the game ends here,
-    // and whoever got out takes what everyone else is still holding.
-    const out = rack.left === 0 && rack.letters.length === 0;
-    await advanceTurn(ctx, game, placements.length, out, userId);
+    /*
+     * Nothing left in the bag and nothing left to play with: the last round
+     * starts here.
+     *
+     * Blanks count. They used to be left out of this, so a player could go
+     * out -- and end everyone's game -- while still holding three of them,
+     * which are the most valuable tiles on the table (§5). A hand is empty
+     * when there is nothing in it, and a blank is something in it.
+     */
+    const out = rack.left === 0 && rack.letters.length === 0 && blanksHeld === 0;
+    await advanceTurn(ctx, game, placements.length, out);
     await wakeBot(ctx, args.gameId);
 
     return { score: score.total, squares: score.squares };
@@ -817,7 +825,6 @@ async function finishGame(
   ctx: MutationCtx,
   game: Doc<"games">,
   /** Who emptied their hand, when that is what ended the game. */
-  wentOut?: Id<"users">,
 ) {
   const players = await ctx.db
     .query("players")
@@ -825,31 +832,21 @@ async function finishGame(
     .take(GAME.maxPlayers);
 
   /*
-   * Tiles left in hand when the tiles run out.
+   * No settlement for tiles left in hand.
    *
-   * Every letter is worth a point played, so it costs a point unplayed —
-   * and the same points go to whoever got rid of theirs. That swing is what
-   * makes emptying your hand worth racing for, and what makes sitting on a Q
-   * at the end a decision rather than an accident.
+   * Going out used to take every other player's unplayed letters off their
+   * score and add the total to the finisher's. That swing existed to make
+   * emptying your hand worth racing for, back when going out ended the game
+   * on the spot and the race was the only thing the ending rewarded.
+   *
+   * The final round replaces it. Everyone still to move gets a turn, so
+   * nobody is caught holding tiles they were never given a chance to play,
+   * and a penalty for holding them would now be charging players for the
+   * hand the bag happened to leave them. A score is what you scored.
+   *
+   * `shared/sim/game.ts` never modelled the swing, so every figure in
+   * design.md §6 was already measured under this rule.
    */
-  if (wentOut !== undefined) {
-    let gathered = 0;
-
-    for (const player of players) {
-      const stuck = player.letters.length;
-      if (player.userId === wentOut || stuck === 0) continue;
-
-      gathered += stuck;
-      await ctx.db.patch("players", player._id, { score: player.score - stuck });
-      player.score -= stuck;
-    }
-
-    const finisher = players.find((p) => p.userId === wentOut);
-    if (finisher !== undefined && gathered > 0) {
-      await ctx.db.patch("players", finisher._id, { score: finisher.score + gathered });
-      finisher.score += gathered;
-    }
-  }
 
   const resigned = new Set(game.resignedBy ?? []);
   const eligible = players.filter((p) => !resigned.has(p.userId));
@@ -956,8 +953,6 @@ async function advanceTurn(
   played: number,
   /** Whether the bag is empty and the player who just moved has played out. */
   playedOut = false,
-  /** Who that was, so their leftover swing can be settled. */
-  wentOut?: Id<"users">,
 ) {
   const tileCount = game.tileCount + played;
   const turnNumber = game.turnNumber + 1;
@@ -970,17 +965,29 @@ async function advanceTurn(
   /*
    * The game runs until the tiles run out.
    *
-   * The bag empties, everyone plays out what is left in their hands, and it
-   * ends when somebody has nothing left to play. There used to be a count of
-   * fifty tiles instead, which was a stand-in for a supply back when the draw
-   * was endless and nothing could ever run out.
+   * The bag empties, everyone plays out what is left in their hands, and
+   * somebody gets rid of theirs first. There used to be a count of fifty
+   * tiles instead, which was a stand-in for a supply back when the draw was
+   * endless and nothing could ever run out.
+   *
+   * Going out does not end the game where it happens. It sets the last turn,
+   * and everyone still to move gets one -- so a game ends on a full round and
+   * every player has had the same number of turns. That is what §6 has always
+   * said and what `endsAfterTurn` was added for; nothing ever set it, so the
+   * game really ended mid-round on whoever went out, and the players seated
+   * after them simply lost their last turn. This is the line that was missing.
+   *
+   * `playerCount - 1` because the player who went out has just had theirs.
+   * Once set it is never moved: a second player going out during the final
+   * round does not restart it.
    */
-  const endsAfterTurn = game.endsAfterTurn;
+  const endsAfterTurn = game.endsAfterTurn ??
+    (playedOut ? game.turnNumber + game.playerCount - 1 : undefined);
 
   // Two full rounds where nobody places anything: the game is going nowhere.
   const stalled = consecutivePasses >= game.playerCount * 2;
   const finished =
-    playedOut || stalled || (endsAfterTurn !== undefined && game.turnNumber >= endsAfterTurn);
+    stalled || (endsAfterTurn !== undefined && game.turnNumber >= endsAfterTurn);
 
   await ctx.db.patch("games", game._id, {
     tileCount,
@@ -991,7 +998,7 @@ async function advanceTurn(
   });
 
   if (finished) {
-    await finishGame(ctx, { ...game, tileCount, endsAfterTurn }, playedOut ? wentOut : undefined);
+    await finishGame(ctx, { ...game, tileCount, endsAfterTurn });
   }
 }
 
