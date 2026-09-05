@@ -880,6 +880,23 @@ describe("the lobby's game lists", () => {
     expect(viewer?.stats?.gamesPlayed).toBe(1);
   });
 
+  test("a new game shows in the lobby however many games you have played", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|regular", name: "Regular" });
+    });
+    const asRegular = t.withIdentity({ subject: "auth|regular" });
+
+    // A player row per game, and more of them than listMyGames reads.
+    for (let i = 0; i < 55; i++) {
+      await asRegular.mutation(api.games.createGame, { playerCount: 1 });
+    }
+    const { gameId } = await asRegular.mutation(api.games.createGame, { playerCount: 2 });
+
+    const lobby = await asRegular.query(api.games.listMyGames);
+    expect(lobby.games.map((g) => g.gameId)).toContain(gameId);
+  });
+
   test("a solo game quit before the first turn leaves no record", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {

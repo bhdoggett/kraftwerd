@@ -1188,15 +1188,34 @@ export const getGame = query({
   },
 });
 
+/** How many of a player's rows the lobby reads, newest first. */
+const LOBBY_ROWS = 200;
+
 export const listMyGames = query({
   args: {},
   handler: async (ctx) => {
     const userId = await requireUser(ctx);
 
+    /*
+     * Newest first. An index is ordered by its fields and then by creation
+     * time ascending, so this read used to `.take(50)` off the *front* -- the
+     * fifty oldest games this player ever sat in. Past fifty, a game they had
+     * just made was never in the window, and the lobby simply did not have it:
+     * reachable by its link, invisible everywhere else. It is the same failure
+     * `bench.squares` had, and for the same reason.
+     *
+     * The cap stays, because a query has to be bounded, and it is read here
+     * rather than left as a bare number. What it cannot promise is an
+     * unfinished game older than the cap -- for that the row would have to
+     * carry whether its game had ended, which nothing writes today. Games in
+     * play are few and recent; games finished are history, and history wants
+     * the recent end anyway.
+     */
     const mine = await ctx.db
       .query("players")
       .withIndex("by_user", (q) => q.eq("userId", userId))
-      .take(50);
+      .order("desc")
+      .take(LOBBY_ROWS);
 
     const rows = await Promise.all(
       mine.map(async (p) => {
