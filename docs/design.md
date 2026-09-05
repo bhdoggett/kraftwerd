@@ -493,6 +493,36 @@ thereafter. It is worth knowing in production, where the pause budget is
 therefore tightest at the difficulty one would least expect, and it is why no
 cost conclusion below is drawn from a simulator wall clock.
 
+**Live cost has now been measured at a difficulty other than `hard`, and it is
+not what the simulator implies.** Twenty-eight games a level on the dev
+deployment, both seats at the same difficulty:
+
+| | mean think | p50 | p95 | worst | past the pause |
+| --- | --- | --- | --- | --- | --- |
+| hard | 553ms | 542 | 1105 | 2150 | 2 / 758 — 0.3% |
+| easy | 640ms | 614 | 1248 | 2572 | 17 / 817 — 2.1% |
+
+**Easy is 1.16× hard live, against three times in the simulator.** The sparsity
+feedback is real in both — easy *is* the more expensive level, and its tail is
+eight times fatter — but the simulator wildly overstates the size of it, which
+is one more reason nothing in this section reads cost off a simulator run. Both
+levels sit under the 1,600ms pause at the mean and at p95, so the widened bands
+cost the person waiting almost nothing: about one visible wait every second game
+at easy, and one every fourteen at hard.
+
+Hard's 553ms here also confirms the 512ms in `bots.ts` rather than the figure
+that used to sit in the paragraph above it.
+
+**The easy row does not reconcile on squares, and that is open.** Live easy
+completes 0.54 3×3s a game against the simulator's 1.13 — about four standard
+errors apart on fifteen squares over twenty-eight games — while *scores* match
+closely at both levels (live 390 and 302 against 386 and 315 predicted) and hard
+matches on squares too, 3.5 against 3.60. So the gap is specific to easy's
+squares, and the one-blank-versus-three story told below does not account for a
+discrepancy that leaves hard alone. The live easy bot is weaker than this
+table's easy row, which is tolerable in the level it affects and is still
+something nobody has explained.
+
 **These games do not end the way the shipped game ends.** Every variant here has
 a bag, and with a bag `shared/sim/game.ts:145-152` ignores `endThreshold`
 entirely and plays until the bag is empty and somebody's hand is out. Live ends
@@ -575,10 +605,13 @@ measured again rather than simply lifted.
 
 **One of the three closed, two new ones opened, and both of the new ones have
 now closed as well.** Over twenty-eight whole games an allowance the live bot
-went from 1.39 3×3s a game to 3.50 and from 340 points to 392, for 191ms of
+went from 1.39 3×3s a game to 3.50 and from 340 points to 392, for 512ms of
 mean thinking and
 five turns in 772 — 0.6% — that ran past the pause and were therefore waited on
-at all. That aggregate is several times its own noise floor and can be read
+at all. (This line read 191ms until it was checked against the sweep table in
+`convex/bots.ts`, which records 512ms for the very row quoted here — same 5/772,
+same 3.50, same 392. The sweep table is where the measurement lives; 191ms was
+never any row of it.) That aggregate is several times its own noise floor and can be read
 flatly. What that sweep said about individual knobs cannot: a per-game square
 count at twenty-eight games is noisy enough that the same configuration measured
 1.89 once and 2.71 another time, so every single-knob attribution it made was
