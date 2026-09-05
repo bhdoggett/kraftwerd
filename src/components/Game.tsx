@@ -512,6 +512,18 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const myTurn =
     me !== undefined && game.status === "active" && me.seat === game.currentSeat;
 
+  /*
+   * The last round, once somebody has gone out (§6).
+   *
+   * `endsAfterTurn` is the number of the final turn, so counting the one on
+   * the move makes the remaining count inclusive: on the turn that ends the
+   * game this is 1, not 0. Nothing else in the UI marks this round, and
+   * without it a player spends their last turn believing another is coming.
+   */
+  const finalTurn = game.endsAfterTurn;
+  const finalRound = game.status === "active" && finalTurn !== undefined;
+  const turnsLeft = finalTurn === undefined ? 0 : finalTurn - game.turnNumber + 1;
+
   /** Whoever the game is waiting on, so a press on Play can name them. */
   const playerOnTurn =
     game.status === "active"
@@ -803,9 +815,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * Scores as they stood at this point in the review, so they count up with
    * the board instead of sitting at the final total from the first frame.
    *
-   * The last frame keeps the real scores: the game's end hands whoever went
-   * out what everyone else was still holding, and that swing is not a turn,
-   * so counting turns alone would stop a few points short of how it ended.
+   * The last frame keeps the real scores rather than computed ones. It used
+   * to have to: the ending handed whoever went out what everyone else was
+   * still holding, and that swing was not a turn, so counting turns alone
+   * stopped a few points short. Going out settles nothing now (§6), so the
+   * two agree -- this reads the stored scores because they are the authority,
+   * not because the sum would come up short.
    */
   const reviewScores =
     ready && step < turns.length ? scoresAfter(turns, step) : null;
@@ -813,6 +828,24 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   return (
     <div className={styles.layout}>
       <div className={styles.main}>
+        {/* Above the board rather than floating over it: this one stands for
+            the whole round, so it must not cover a square somebody is aiming
+            at, and it must not disappear the way the refusal does. */}
+        {finalRound && !reviewing && (
+          <div className={styles.finalRound} role="status" aria-live="polite">
+            <strong className={styles.finalRoundTitle}>
+              {myTurn ? "Your last turn" : "Final round"}
+            </strong>
+            <span>
+              {myTurn
+                ? "The bag is empty and someone has gone out. Play what you can — nothing is deducted for tiles left in hand."
+                : `The bag is empty and someone has gone out. ${
+                    turnsLeft === 1 ? "One turn left" : `${turnsLeft} turns left`
+                  } in the game.`}
+            </span>
+          </div>
+        )}
+
         {/* The refusal floats over the board, so the board is what it is
             measured against. */}
         <div className={styles.boardArea}>

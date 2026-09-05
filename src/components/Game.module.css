@@ -93,6 +93,31 @@
   min-width: 0;
 }
 
+/*
+ * The last round, once somebody has gone out.
+ *
+ * A block in the flow rather than a float over the board: it is true for the
+ * whole round instead of for a moment, so it must not cover a square and must
+ * not fade. It sits above the board so it is read before a play is planned,
+ * not after one is refused.
+ */
+.finalRound {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  font-size: 0.85rem;
+}
+
+.finalRoundTitle {
+  font-weight: 700;
+  letter-spacing: var(--tracking);
+}
+
 .refusal {
   position: absolute;
   left: 50%;
