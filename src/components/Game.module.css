@@ -20,7 +20,13 @@
   width: min(280px, 32vw);
 }
 
-/* Stacked: the play panel follows the rack, where a thumb already is. */
+/*
+ * Stacked: the play panel follows the rack, where a thumb already is, and it
+ * goes above the scores. What you just placed is what you are reading while
+ * you place it; the standings can wait until you have scrolled past. Ordered
+ * rather than moved in the markup so the reading order stays scores-then-play
+ * on a wide screen, where both are on the page at once.
+ */
 @media (max-width: 860px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
@@ -28,6 +34,10 @@
 
   .side {
     width: auto;
+  }
+
+  .play {
+    order: -1;
   }
 }
 
