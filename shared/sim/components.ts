@@ -206,7 +206,11 @@ export function components(
   shape: BoardShape,
   size: number,
   scoreOf: ValueFn,
-  options: { maxLength?: number; before?: Board; blanks?: boolean },
+  options: {
+    maxLength?: number;
+    before?: Board;
+    blanks?: boolean;
+  },
 ): Move[] {
   const rack: Hand =
     options.blanks === true ? hand : { letters: hand.letters, blanks: 0 };
@@ -241,6 +245,16 @@ export function components(
     for (const span of spans(size, length)) {
       // Read the span once: which squares are taken, and does it touch play.
       const fixed: [number, string][] = [];
+      /*
+       * The positions in `fixed` a tile may actually be laid on.
+       *
+       * A square already at STACK_CAP is full, and `fit` refuses it -- so a
+       * word that disagrees with the board there is looked up and walked only
+       * to be thrown away. The set is read once here, off the same `sitting`
+       * the scan already fetched, and hands `withOneCovered` the positions
+       * worth asking about.
+       */
+      const coverable = new Set<number>();
       let touchesLive = false;
       let blockedSquare = false;
       let free = 0;
@@ -259,6 +273,9 @@ export function components(
         if (sitting === undefined) free++;
         else {
           fixed.push([i, sitting.letter]);
+          // `?? 1` mirrors `fit` exactly: a tile with no count is one deep.
+          // Deriving it differently here would hide legal covers.
+          if ((sitting.stacked ?? 1) < STACK_CAP) coverable.add(i);
           spanMask |= 1 << (sitting.letter.charCodeAt(0) - 65);
         }
         if (live.has(key)) touchesLive = true;
@@ -285,7 +302,7 @@ export function components(
        * span. The cap is what keeps this affordable.
        */
       const pool =
-        fixed.length > 0 ? withOneCovered(index, fixed, rackPool) : rackPool;
+        fixed.length > 0 ? withOneCovered(index, fixed, rackPool, coverable) : rackPool;
 
       for (const i of pool) {
         // Every letter the word needs must be in the rack, unless a blank can

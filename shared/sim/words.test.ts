@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { candidates, indexWords, rackWords } from "./words";
+import { candidates, indexWords, rackWords, withOneCovered } from "./words";
 
 describe("the word index", () => {
   const index = indexWords(["CAT", "COT", "CATS", "AT", "TO"], 7);
@@ -51,5 +51,24 @@ describe("the word index", () => {
         expect({ length, key, ascending }).toEqual({ length, key, ascending: true });
       }
     }
+  });
+});
+
+/*
+ * Covering is offered per position, and not every position can take a tile:
+ * a square already at STACK_CAP is full, and a square an earlier link of the
+ * same turn laid on is spoken for. `fit` and `validateTurn` refuse both, so
+ * every word retrieved for them is looked up and walked only to be thrown
+ * away. Asking for them at all is the waste this pins.
+ */
+describe("covering a standing letter", () => {
+  const index = indexWords(["CAT", "COT", "BAT", "CAB"], 7);
+  const three = index.byLength.get(3)!;
+  // The board says CAT; BAT covers position 0, COT position 1, CAB position 2.
+  const fixed: [number, string][] = [[0, "C"], [1, "A"], [2, "T"]];
+  const named = (pool: number[]) => pool.map((i) => three.words[i]!).sort();
+
+  test("leaves out words that would cover a square nothing may be laid on", () => {
+    expect(named(withOneCovered(three, fixed, [], new Set([1, 2])))).toEqual(["CAB", "CAT", "COT"]);
   });
 });

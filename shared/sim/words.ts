@@ -112,10 +112,22 @@ export function withOneCovered(
   index: LengthIndex,
   fixed: [number, string][],
   rackPool: readonly number[],
+  coverable: ReadonlySet<number>,
 ): number[] {
   const pool = new Set<number>(candidates(index, fixed) ?? []);
 
   for (let skip = 0; skip < fixed.length; skip++) {
+    /*
+     * Only squares a tile may actually land on are worth dropping.
+     *
+     * The words this branch adds are exactly the ones that DISAGREE with the
+     * board at `skip` -- the ones that agree are in the exact-match pool
+     * already -- so when nothing may be laid there, every word it retrieves is
+     * one `fit` or `validateTurn` will refuse. Skipping the branch removes the
+     * lookup and the walk, and removes no move: see the callers in
+     * components.ts for what makes a square uncoverable.
+     */
+    if (!coverable.has(fixed[skip]![0]!)) continue;
     const rest = fixed.filter((_, i) => i !== skip);
     // Nothing left to match on: the rack decides, exactly as for a span with
     // no letters in it at all.
