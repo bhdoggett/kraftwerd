@@ -1,12 +1,12 @@
 import { ConvexError, v } from "convex/values";
 import {
   BLANKS_PER_GAME,
-  BOT_NAMES,
   GAME,
   RACK,
   RULES_VERSION,
   type Difficulty,
 } from "../shared/config.js";
+import { drawNames, NAMES, robotName } from "../shared/names.js";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
 import { gameName } from "../shared/gameNames.js";
 import { cellKey, makeBoard, type TileSpec } from "../shared/engine/board.js";
@@ -34,12 +34,8 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import {
-  currentUser,
-  displayName,
-  refuseGuest,
-  requireUser,
-} from "./auth_helpers";
+import { currentUser, refuseGuest, requireUser } from "./auth_helpers";
+import { friendIdsOf, namesFor } from "./seats";
 import { placement } from "./schema";
 
 /**
@@ -166,6 +162,11 @@ export const createGame = mutation({
     playerCount: v.number(),
     /** A computer player per entry, seated next to you in the order given. */
     bots: v.optional(v.array(botSeat)),
+    /**
+     * Listed for strangers to find. Only meaningful on a game with a seat no
+     * name is against yet -- a full table has nothing to offer anybody.
+     */
+    isPublic: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const me = await currentUser(ctx);
@@ -191,10 +192,32 @@ export const createGame = mutation({
     // rather than trusted: a machine that could be called anything could be
     // called what one of the people at the table is called.
     for (const bot of bots) {
-      if (!(BOT_NAMES as readonly string[]).includes(bot.name)) {
+      if (!(NAMES as readonly string[]).includes(bot.name)) {
         throw new ConvexError("That is not a name a computer player can have");
       }
     }
+
+    // A game is only worth listing if somebody could take a seat at it.
+    const isPublic =
+      args.isPublic === true && args.playerCount - 1 - bots.length > 0;
+
+    /*
+     * The maker's own disguise. One name, not a table's worth: seats filled
+     * later draw their own in `joinGame` or `inviteToGame`, against the
+     * aliases already dealt.
+     *
+     * The machines' names are passed in by hand here, and only here, because
+     * the machines are not seated until below: every later draw finds them in
+     * the `alias` of a row that already exists. Either way they are excluded,
+     * so a table never reads as a Gawain sitting beside a Robo-Gawain.
+     */
+    const alias = isPublic
+      ? drawNames(
+          1,
+          Math.random,
+          bots.map((b) => b.name),
+        )[0]
+      : undefined;
 
     const name = gameName(Math.random);
     const gameId = await ctx.db.insert("games", {
@@ -208,10 +231,11 @@ export const createGame = mutation({
       turnNumber: 0,
       tileCount: 0,
       createdBy: userId,
+      isPublic,
       rulesVersion: RULES_VERSION,
     });
 
-    await joinSeat(ctx, gameId, userId, 0);
+    await joinSeat(ctx, gameId, userId, 0, "joined", alias);
 
     for (const [i, bot] of bots.entries()) {
       await seatBot(ctx, gameId, i + 1, bot.level, bot.name);
@@ -234,6 +258,12 @@ export const createGame = mutation({
  * It gets a users row of its own so everything that references a player by id
  * — tiles, scores, winners — works without knowing the difference. The row is
  * per game and per seat, so two bots at one table stay distinct.
+ *
+ * Its bare pool name goes in `alias` even though a machine has nothing to
+ * hide. That is the one place every draw already looks to see what is spoken
+ * for at this table, so writing it there is what stops a joiner being dealt
+ * `Gawain` next to a seated `Robo-Gawain (easy)`. It is never rendered:
+ * `namesFor` checks `bot` before it consults `alias`.
  */
 async function seatBot(
   ctx: MutationCtx,
@@ -244,10 +274,10 @@ async function seatBot(
 ) {
   const userId = await ctx.db.insert("users", {
     authId: `bot|${gameId}|${seat}`,
-    name: `${name} (${level})`,
+    name: robotName(name, level),
   });
 
-  await joinSeat(ctx, gameId, userId, seat);
+  await joinSeat(ctx, gameId, userId, seat, "joined", name);
   const player = await ctx.db
     .query("players")
     .withIndex("by_game_and_seat", (q) =>
@@ -264,6 +294,7 @@ async function joinSeat(
   userId: Id<"users">,
   seat: number,
   status: "invited" | "joined" = "joined",
+  alias?: string,
 ) {
   // A fresh rack, drawn server-side out of the game's own bag.
   const rack = await drawInto(ctx, gameId, []);
@@ -272,6 +303,7 @@ async function joinSeat(
     gameId,
     userId,
     seat,
+    alias,
     score: 0,
     letters: rack.letters,
     blanks: BLANKS_PER_GAME,
@@ -356,13 +388,40 @@ export const joinGame = mutation({
     if (players.length >= game.playerCount)
       throw new ConvexError("Game is full");
 
-    await joinSeat(ctx, args.gameId, userId, players.length, "joined");
+    /*
+     * A seat at a public game comes with a name to wear, drawn against the
+     * ones already dealt at this table so no two people share a disguise.
+     *
+     * The machines are in that reckoning: `seatBot` writes each one's bare
+     * pool name into its `alias`, so this draw excludes them without knowing
+     * they exist. The prefix tells the two kinds apart, but it does not make
+     * `Gawain` beside `Robo-Gawain (easy)` a table anybody wants to read.
+     */
+    const alias =
+      game.isPublic === true
+        ? drawNames(
+            1,
+            Math.random,
+            players
+              .map((p) => p.alias)
+              .filter((a): a is string => a !== undefined),
+          )[0]
+        : undefined;
 
-    // Sitting down together is itself the introduction, so no request is
-    // needed: everyone already at the table becomes a friend, which is what
-    // makes a second game possible without passing another link around.
-    for (const other of players) {
-      await befriend(ctx, userId, other.userId);
+    await joinSeat(ctx, args.gameId, userId, players.length, "joined", alias);
+
+    /*
+     * Sitting down together is itself the introduction, so no request is
+     * needed: everyone already at the table becomes a friend, which is what
+     * makes a second game possible without passing another link around.
+     *
+     * Not at a public game. There the link was a list anyone can read, and
+     * the whole point of the aliases is that these people have not met.
+     */
+    if (game.isPublic !== true) {
+      for (const other of players) {
+        await befriend(ctx, userId, other.userId);
+      }
     }
 
     // Last seat taken: the game starts.
@@ -451,13 +510,40 @@ export const inviteToGame = mutation({
       throw new ConvexError("You are not in this game");
     }
 
+    /*
+     * What is already spoken for at this table: the aliases dealt to the
+     * people, and the machines' bare pool names, which `seatBot` writes into
+     * the same field so that one set covers both.
+     *
+     * It grows as seats are dealt below. Drawing every invitation against this
+     * one snapshot would let a single call hand the same name to two seats,
+     * which is the mistake the taken set exists to prevent.
+     */
+    const taken = new Set(
+      players.map((p) => p.alias).filter((a): a is string => a !== undefined),
+    );
+
     let seat = players.length;
     for (const friendId of args.friendIds) {
       if (seat >= game.playerCount) throw new ConvexError("No seats left");
       if (players.some((p) => p.userId === friendId)) continue;
       await requireFriendship(ctx, userId, friendId);
 
-      await joinSeat(ctx, args.gameId, friendId, seat, "invited");
+      /*
+       * An invited seat at a public game needs a disguise like any other.
+       * This is the third path that creates one -- `createGame` and `joinGame`
+       * both dealt a name and this one did not, so a stranger who joined a
+       * game with two invited friends saw two seats both called "Player":
+       * indistinguishable on the scoreboard, and "Player played FOO for 12"
+       * in the history could have been either of them.
+       */
+      const alias =
+        game.isPublic === true
+          ? drawNames(1, Math.random, taken)[0]
+          : undefined;
+      if (alias !== undefined) taken.add(alias);
+
+      await joinSeat(ctx, args.gameId, friendId, seat, "invited", alias);
       seat++;
     }
     return null;
@@ -1147,22 +1233,33 @@ export const listTurns = query({
       .withIndex("by_game_and_turn", (q) => q.eq("gameId", args.gameId))
       .take(MAX_TILES);
 
-    return await Promise.all(
-      rows
-        .sort((a, b) => a.turnNumber - b.turnNumber)
-        .map(async (turn) => ({
-          turnNumber: turn.turnNumber,
-          userId: turn.userId,
-          name: displayName(await ctx.db.get("users", turn.userId)),
-          seat: seated.find((p) => p.userId === turn.userId)?.seat ?? 0,
-          // Rows written before anything but plays was recorded.
-          kind: turn.kind ?? ("play" as const),
-          placements: turn.placements,
-          words: turn.words,
-          squares: turn.squares,
-          score: turn.score,
-        })),
-    );
+    /*
+     * The history names people too -- "Alice played FOO for 12" -- so it goes
+     * through the same builder as the board and the lobby. It read the users
+     * table directly until it was noticed that anyone seated at a public game
+     * could open the history panel and read every stranger's real name, which
+     * is the leak the aliases exist to stop. Four callers, one rule.
+     */
+    const friends =
+      game.isPublic === true
+        ? await friendIdsOf(ctx, userId)
+        : new Set<Id<"users">>();
+    const names = await namesFor(ctx, userId, game, seated, friends);
+
+    return rows
+      .sort((a, b) => a.turnNumber - b.turnNumber)
+      .map((turn) => ({
+        turnNumber: turn.turnNumber,
+        userId: turn.userId,
+        name: names.get(turn.userId) ?? "Player",
+        seat: seated.find((p) => p.userId === turn.userId)?.seat ?? 0,
+        // Rows written before anything but plays was recorded.
+        kind: turn.kind ?? ("play" as const),
+        placements: turn.placements,
+        words: turn.words,
+        squares: turn.squares,
+        score: turn.score,
+      }));
   },
 });
 
@@ -1212,6 +1309,28 @@ export const getGame = query({
     const you = players.find((p) => p.userId === userId);
     const seated = players.filter((p) => p.status !== "invited");
 
+    /*
+     * The friend set is read once for the whole table, not once per seat, and
+     * on a private game not at all.
+     *
+     * This is the hottest query in the app -- every player, every turn, live --
+     * and on a private game nothing is masked, so the friendships are two
+     * index scans whose answer cannot change a single name. The subscription
+     * cost is the worse half: reading the friendship index puts it in this
+     * query's read set, so accepting a friend request would re-run and re-push
+     * every open board in the app.
+     *
+     * `listMyGames` reads it unconditionally on purpose, and that is not an
+     * oversight: it spans many games of mixed visibility and hoists one set
+     * across all of them, so skipping it would need every game to be private
+     * and buys nothing when one is not.
+     */
+    const friends =
+      game.isPublic === true
+        ? await friendIdsOf(ctx, userId)
+        : new Set<Id<"users">>();
+    const names = await namesFor(ctx, userId, game, players, friends);
+
     return {
       layout: OPEN_BOARD,
       /** A free seat, in a game filled by link rather than by invitation. */
@@ -1241,22 +1360,17 @@ export const getGame = query({
       })),
       // Racks are private: every player sees their own letters and only the
       // count of everyone else's.
-      players: await Promise.all(
-        players.map(async (p) => {
-          const user = await ctx.db.get("users", p.userId);
-          return {
-            userId: p.userId,
-            seat: p.seat,
-            score: p.score,
-            name: displayName(user),
-            letters: p.userId === userId ? p.letters : null,
-            letterCount: p.letters.length,
-            blanks: blanksLeft(p),
-            /** Asked, but not yet sitting down. */
-            invited: p.status === "invited",
-          };
-        }),
-      ),
+      players: players.map((p) => ({
+        userId: p.userId,
+        seat: p.seat,
+        score: p.score,
+        name: names.get(p.userId) ?? "Player",
+        letters: p.userId === userId ? p.letters : null,
+        letterCount: p.letters.length,
+        blanks: blanksLeft(p),
+        /** Asked, but not yet sitting down. */
+        invited: p.status === "invited",
+      })),
     };
   },
 });
@@ -1290,12 +1404,22 @@ export const listMyGames = query({
       .order("desc")
       .take(LOBBY_ROWS);
 
+    /*
+     * Read once for the whole lobby rather than once per game: who this player
+     * is friends with is the same answer for every row.
+     *
+     * Unconditional, unlike `getGame`, which skips it on a private game. The
+     * lobby spans games of mixed visibility, so the only way to skip it here
+     * is for every game in the list to be private -- and the moment one is
+     * public the read is needed anyway. One read across every row is cheap;
+     * the branch would mostly not fire.
+     */
+    const friends = await friendIdsOf(ctx, userId);
+
     const rows = await Promise.all(
       mine.map(async (p) => {
         const game = await ctx.db.get("games", p.gameId);
         if (game === null) return null;
-
-        const creator = await ctx.db.get("users", game.createdBy);
 
         // Who else is at the table, so the lobby says who a game is against
         // rather than just naming it.
@@ -1303,14 +1427,14 @@ export const listMyGames = query({
           .query("players")
           .withIndex("by_game", (q) => q.eq("gameId", game._id))
           .take(GAME.maxPlayers);
-        const others = await Promise.all(
-          seated
-            .filter((other) => other.userId !== p.userId)
-            .map(async (other) => ({
-              name: displayName(await ctx.db.get("users", other.userId)),
-              pending: other.status === "invited",
-            })),
-        );
+        const names = await namesFor(ctx, userId, game, seated, friends);
+
+        const others = seated
+          .filter((other) => other.userId !== p.userId)
+          .map((other) => ({
+            name: names.get(other.userId) ?? "Player",
+            pending: other.status === "invited",
+          }));
 
         // Who the game is waiting on, by name: "your turn" answers the
         // question only when the answer is you.
@@ -1318,7 +1442,7 @@ export const listMyGames = query({
         const waitingFor =
           game.status !== "active" || inSeat === undefined
             ? null
-            : displayName(await ctx.db.get("users", inSeat.userId));
+            : (names.get(inSeat.userId) ?? "Player");
 
         return {
           opponents: others,
@@ -1333,7 +1457,14 @@ export const listMyGames = query({
           /** Whose turn it is, named. Null unless the game is under way. */
           waitingFor,
           invited: p.status === "invited",
-          invitedBy: displayName(creator),
+          /**
+           * The creator is a player at their own game, so the masked map
+           * covers them and the fallback is unreachable. It used to read the
+           * creator's users row to fall back to a real name -- the one place
+           * in the lobby that reached past the mask, for a case that cannot
+           * happen, at the cost of a user read on every row.
+           */
+          invitedBy: names.get(game.createdBy) ?? "Player",
           youWon: (game.winnerIds ?? []).includes(p.userId),
           /** True when the game ended because someone quit. */
           abandoned: (game.resignedBy ?? []).length > 0,
@@ -1361,5 +1492,68 @@ export const listMyGames = query({
         .filter((r) => r.status === "finished")
         .sort((a, b) => b.endedAt - a.endedAt),
     };
+  },
+});
+
+/** How many public games the open list reads, newest first. */
+const OPEN_ROWS = 100;
+
+/** A game nobody joined stops being an invitation after this long. */
+const OPEN_FOR_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Games with a seat spare that anybody may take.
+ *
+ * The one way into a game without knowing somebody first. Only games that
+ * asked to be listed appear: a link sent to one person must not become a door
+ * anyone can walk through.
+ *
+ * Names come from the same builder as everywhere else, so a stranger reads
+ * aliases and a friend reads a friend -- who you are allowed to see is a fact
+ * about the pair of you, not about which screen you are on.
+ */
+export const listOpenGames = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUser(ctx);
+    const friends = await friendIdsOf(ctx, userId);
+    const fresh = Date.now() - OPEN_FOR_MS;
+
+    const games = await ctx.db
+      .query("games")
+      .withIndex("by_public_and_status", (q) =>
+        q.eq("isPublic", true).eq("status", "lobby"),
+      )
+      .order("desc")
+      .take(OPEN_ROWS);
+
+    const rows = await Promise.all(
+      games.map(async (game) => {
+        // A game nobody ever joined would otherwise sit in the list for good.
+        if (game._creationTime < fresh) return null;
+
+        const seated = await ctx.db
+          .query("players")
+          .withIndex("by_game", (q) => q.eq("gameId", game._id))
+          .take(GAME.maxPlayers);
+
+        if (seated.length >= game.playerCount) return null;
+        // Your own games are in your lobby already.
+        if (seated.some((p) => p.userId === userId)) return null;
+
+        const names = await namesFor(ctx, userId, game, seated, friends);
+
+        return {
+          gameId: game._id,
+          name: game.name ?? "Game",
+          playerCount: game.playerCount,
+          seatsFilled: seated.length,
+          /** Who is waiting, as this viewer may see them. */
+          players: seated.map((p) => names.get(p.userId) ?? "Player"),
+        };
+      }),
+    );
+
+    return { games: rows.filter((r) => r !== null) };
   },
 });

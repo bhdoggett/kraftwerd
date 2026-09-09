@@ -157,8 +157,8 @@ export const NAMES = [
   "Rostam", "Zal", "Tahmineh", "Sohrab", "Siyavash",
   "Rudabeh", "Manijeh", "Bijan", "Kaveh", "Gordafarid",
   // West and Central African epic
-  "Sundiata", "Sogolon", "Fakoli", "Mwindo",
-  "Silamaka", "Kambili", "Lianja", "Balla",
+  "Sundiata", "Sogolon", "Fakoli", "Kolonkan",
+  "Silamaka", "Poullori", "Nare", "Balla",
   // East Asian folklore
   "Mulan", "Momotaro", "Kintaro", "Urashima", "Gildong",
   "Chunhyang", "Ondal", "Benkei", "Tomoe", "Issun",
@@ -519,11 +519,12 @@ The privacy model is this one function. After this task no query returns a raw `
 
 **Files:**
 - Create: `convex/seats.ts`
-- Modify: `convex/games.ts` — `getGame` (the `players:` block) and `listMyGames` (the `others`, `waitingFor` and `invitedBy` names)
+- Modify: `convex/games.ts` — `getGame` (the `players:` block), `listTurns` (the `name` on each turn) and `listMyGames` (the `others`, `waitingFor` and `invitedBy` names)
 - Modify: `convex/games.test.ts` — new `describe` block
 
 **Interfaces:**
 - Consumes: `players.alias`, `games.isPublic` (Task 2).
+- Callers of the builder: `getGame`, `listTurns`, `listMyGames`, and `listOpenGames` in Task 5. **Four, not three.** This plan and the design both said three and left `listTurns` out; it names people too ("Alice played FOO for 12") and any player seated at a game may call it, so at a public game it handed every stranger's real name to anyone who opened the history panel. Corrected during Task 4 review. Anything added later that returns a player's name is a fifth caller and goes through `namesFor` as well.
 - Produces:
   - `friendIdsOf(ctx: QueryCtx, userId: Id<"users"> | null): Promise<Set<Id<"users">>>`
   - `namesFor(ctx: QueryCtx, viewerId: Id<"users"> | null, game: Doc<"games">, players: Doc<"players">[], friends: Set<Id<"users">>): Promise<Map<Id<"users">, string>>`

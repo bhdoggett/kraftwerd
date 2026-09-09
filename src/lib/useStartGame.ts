@@ -36,6 +36,7 @@ export function useStartGame() {
     playerCount: number,
     friendIds: readonly Id<"users">[],
     bots: readonly BotSeat[] = [],
+    isPublic = false,
   ): Promise<StartedGame | null> {
     setError(null);
     setStarting(true);
@@ -44,7 +45,7 @@ export function useStartGame() {
       // out: they take the seats next to yours, and the people asked take
       // what is left. The order is what makes the name shown while setting
       // the game up the name that ends up playing.
-      const game = await createGame({ playerCount, bots: [...bots] });
+      const game = await createGame({ playerCount, bots: [...bots], isPublic });
       if (friendIds.length > 0) {
         await inviteToGame({ gameId: game.gameId, friendIds: [...friendIds] });
       }

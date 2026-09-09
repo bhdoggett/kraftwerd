@@ -133,12 +133,23 @@ export default defineSchema({
     resignedBy: v.optional(v.array(v.id("users"))),
     createdBy: v.id("users"),
     /**
+     * Listed for anyone with an account to find and join.
+     *
+     * Optional because every game made before open games predates it, and an
+     * absent flag reads as private -- which is what those games are.
+     */
+    isPublic: v.optional(v.boolean()),
+    /**
      * The rules in force when this game was created. Absent on games from
      * before it was recorded, which are older than the current rules by
      * definition and so count for nothing.
      */
     rulesVersion: v.optional(v.number()),
-  }).index("by_status", ["status"]),
+  })
+    .index("by_status", ["status"])
+    // Public games still in their lobby, without reading every game ever
+    // played to find them.
+    .index("by_public_and_status", ["isPublic", "status"]),
 
   /** One row per player per game: seat, score, and their private rack. */
   players: defineTable({
@@ -165,6 +176,16 @@ export default defineSchema({
     bot: v.optional(
       v.union(v.literal("easy"), v.literal("medium"), v.literal("hard")),
     ),
+    /**
+     * The name this seat plays under in a public game, where the people at
+     * the table did not choose each other.
+     *
+     * Written for every human seat including the one that made the game, so
+     * that no seat is the one without a disguise. Absent on a private game,
+     * where nobody needs one, and absent on a machine's seat, which has no
+     * identity to protect: a machine is its Robo- name to everybody.
+     */
+    alias: v.optional(v.string()),
     /**
      * "invited" until the player accepts. Optional because rows created before
      * invitations existed are all seated players; absent reads as "joined".

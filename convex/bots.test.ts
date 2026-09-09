@@ -25,7 +25,7 @@ async function table(words: string[]) {
   const asAlice = t.withIdentity({ subject: "auth|alice" });
   const { gameId } = await asAlice.mutation(api.games.createGame, {
     playerCount: 2,
-    bots: [{ level: "hard", name: "Sam" }],
+    bots: [{ level: "hard", name: "Gawain" }],
   });
   return { t, asAlice, gameId };
 }

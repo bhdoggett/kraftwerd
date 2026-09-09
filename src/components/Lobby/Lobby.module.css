@@ -24,6 +24,28 @@
   color: var(--text-muted);
 }
 
+/*
+ * The Open games heading is a real button now, since collapsed-by-default
+ * means the heading is the only place the count -- and the feature -- gets
+ * seen. Composes .heading rather than restyling from scratch, so this still
+ * reads as a section title and not as a form control.
+ */
+.openGamesToggle {
+  composes: heading;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.openGamesToggle:hover {
+  color: var(--text);
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -155,4 +177,32 @@
   color: var(--text-muted);
   font-size: 0.8rem;
   line-height: 1.5;
+}
+
+/* Who is already sitting there, under the game's name. */
+.openWith {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.join {
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.join:hover {
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.error {
+  margin: var(--space-2) 0 0;
+  color: var(--danger);
+  font-size: 0.85rem;
 }

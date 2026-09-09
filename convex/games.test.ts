@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
 import { BLANKS_PER_GAME, RACK, RULES_VERSION } from "../shared/config";
+import { NAMES } from "../shared/names";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
@@ -857,7 +858,7 @@ describe("the lobby's game lists", () => {
 
       const game = await asGuest.mutation(api.games.createGame, {
         playerCount: 2,
-        bots: [{ level: "medium", name: "Sam" }],
+        bots: [{ level: "medium", name: "Gawain" }],
       });
 
       expect(game.playerCount).toBe(2);
@@ -1266,8 +1267,8 @@ describe("computer players", () => {
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 3,
       bots: [
-        { level: "easy", name: "Sam" },
-        { level: "hard", name: "Ash" },
+        { level: "easy", name: "Gawain" },
+        { level: "hard", name: "Sigurd" },
       ],
     });
 
@@ -1297,7 +1298,7 @@ describe("computer players", () => {
 
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 3,
-      bots: [{ level: "medium", name: "Sam" }],
+      bots: [{ level: "medium", name: "Gawain" }],
     });
     await asAlice.mutation(api.games.inviteToGame, {
       gameId,
@@ -1326,7 +1327,7 @@ describe("computer players", () => {
       const { t, asAlice } = await table();
       const { gameId } = await asAlice.mutation(api.games.createGame, {
         playerCount: 2,
-        bots: [{ level: "hard", name: "Sam" }],
+        bots: [{ level: "hard", name: "Gawain" }],
       });
 
       // Drain the nudge createGame left behind, so what wakes the machine
@@ -1352,7 +1353,7 @@ describe("computer players", () => {
     const { t, asAlice } = await table();
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 2,
-      bots: [{ level: "easy", name: "Sam" }],
+      bots: [{ level: "easy", name: "Gawain" }],
     });
     await asAlice.mutation(api.games.resignGame, { gameId });
 
@@ -1403,7 +1404,7 @@ describe("computer players", () => {
 
         const { gameId } = await asAlice.mutation(api.games.createGame, {
           playerCount: 2,
-          bots: [{ level: "hard", name: "Sam" }],
+          bots: [{ level: "hard", name: "Gawain" }],
         });
 
         const stock = async (seat: number, letters: string[]) =>
@@ -1463,7 +1464,7 @@ describe("computer players", () => {
 
         const { gameId } = await asAlice.mutation(api.games.createGame, {
           playerCount: 2,
-          bots: [{ level: "medium", name: "Sam" }],
+          bots: [{ level: "medium", name: "Gawain" }],
         });
 
         const stock = async (seat: number) =>
@@ -1528,14 +1529,14 @@ describe("computer players", () => {
     const { t, asAlice } = await table();
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 2,
-      bots: [{ level: "hard", name: "Wren" }],
+      bots: [{ level: "hard", name: "Hervor" }],
     });
 
     const players = await seatsOf(t, gameId);
     const bot = await t.run(async (ctx) =>
       ctx.db.get("users", players[1].userId),
     );
-    expect(bot?.name).toBe("Wren (hard)");
+    expect(bot?.name).toBe("Robo-Hervor (hard)");
   });
 
   // The name arrives from the client, so a machine could otherwise be given
@@ -1556,11 +1557,104 @@ describe("computer players", () => {
       asAlice.mutation(api.games.createGame, {
         playerCount: 2,
         bots: [
-          { level: "easy", name: "Sam" },
-          { level: "easy", name: "Ash" },
+          { level: "easy", name: "Gawain" },
+          { level: "easy", name: "Sigurd" },
         ],
       }),
     ).rejects.toThrow(/seats/i);
+  });
+
+  test("a public game gives every human seat a name to hide behind", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+
+    const players = await seatsOf(t, gameId);
+    expect(players).toHaveLength(1);
+    expect(players[0].alias).toEqual(expect.any(String));
+  });
+
+  test("a private game hands out no aliases at all", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+    });
+
+    const players = await seatsOf(t, gameId);
+    expect(players[0].alias).toBeUndefined();
+  });
+
+  // One draw serves the whole table, so the machine's name is not free for a
+  // person to hide behind.
+  test("an alias never collides with a machine at the same table", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+      bots: [{ level: "easy", name: "Gawain" }],
+    });
+
+    const players = await seatsOf(t, gameId);
+    const mine = players.find((p) => p.bot === undefined);
+    expect(mine?.alias).not.toBe("Gawain");
+  });
+
+  /*
+   * `playerCount: 3`, not 2. With two seats and one machine there is no seat
+   * left for a person, so `createGame` refuses to list the game and the whole
+   * test ran against a private one -- where no seat gets an alias and the
+   * assertion held for the wrong reason. The isPublic check below is there so
+   * that mistake cannot come back quietly.
+   */
+  test("a machine's seat carries its bare pool name, not a disguise", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+      bots: [{ level: "easy", name: "Gawain" }],
+    });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.isPublic).toBe(true);
+
+    // Bookkeeping, not a disguise: it is what later draws look at to see the
+    // name is spoken for. Nobody is ever shown it -- this seat renders as
+    // "Robo-Gawain (easy)" to every viewer, which `namesFor` decides.
+    const players = await seatsOf(t, gameId);
+    expect(players.find((p) => p.bot !== undefined)?.alias).toBe("Gawain");
+  });
+
+  /*
+   * Rigged rather than left to a one-in-fifty chance of catching the bug.
+   *
+   * `Math.random` pinned to 0 makes `drawNames` take whatever is first in the
+   * pool it has left, and the machine here is seated under the pool's first
+   * name -- so the joiner lands on exactly that name unless the machine's name
+   * was excluded from the draw. It used not to be: `joinGame` collected the
+   * aliases of the people at the table, and machines had none.
+   */
+  test("a joiner cannot draw the name of a machine already seated", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 4,
+      isPublic: true,
+      bots: [{ level: "easy", name: NAMES[0] }],
+    });
+
+    const asBob = t.withIdentity({ subject: "auth|bob" });
+    const rigged = vi.spyOn(Math, "random").mockReturnValue(0);
+    try {
+      await asBob.mutation(api.games.joinGame, { gameId });
+    } finally {
+      rigged.mockRestore();
+    }
+
+    const [alice, , bob] = await seatsOf(t, gameId);
+    expect(bob.alias).not.toBe(NAMES[0]);
+    // Nor the name of the person already sitting there.
+    expect(bob.alias).not.toBe(alice.alias);
   });
 });
 
@@ -1827,5 +1921,349 @@ describe("records and the rules they were set under", () => {
 
     const me = await asAlice.query(api.users.viewer);
     expect(me?.stats.gamesPlayed).toBe(0);
+  });
+});
+
+describe("who you are allowed to see", () => {
+  /** Alice and Bob are friends. Carol is a stranger to both. */
+  async function strangers() {
+    const t = convexTest(schema, modules);
+    const [alice, bob, carol] = await t.run(async (ctx) => {
+      const a = await ctx.db.insert("users", {
+        authId: "auth|alice",
+        name: "Alice",
+      });
+      const b = await ctx.db.insert("users", {
+        authId: "auth|bob",
+        name: "Bob",
+      });
+      const c = await ctx.db.insert("users", {
+        authId: "auth|carol",
+        name: "Carol",
+      });
+      await ctx.db.insert("friendships", {
+        requesterId: a,
+        addresseeId: b,
+        status: "accepted",
+      });
+      return [a, b, c];
+    });
+    return {
+      t,
+      alice,
+      bob,
+      carol,
+      asAlice: t.withIdentity({ subject: "auth|alice" }),
+      asBob: t.withIdentity({ subject: "auth|bob" }),
+      asCarol: t.withIdentity({ subject: "auth|carol" }),
+    };
+  }
+
+  /** A public three-hander made by Alice, with Bob and Carol sat down. */
+  async function publicTable() {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+    await seats.asBob.mutation(api.games.joinGame, { gameId });
+    await seats.asCarol.mutation(api.games.joinGame, { gameId });
+    return { ...seats, gameId };
+  }
+
+  const friendshipsOf = (t: Awaited<ReturnType<typeof strangers>>["t"]) =>
+    t.run(async (ctx) => ctx.db.query("friendships").take(50));
+
+  test("sitting down with strangers does not make them friends", async () => {
+    const { t, gameId } = await publicTable();
+
+    // Only the Alice/Bob friendship the fixture starts with.
+    expect(await friendshipsOf(t)).toHaveLength(1);
+    expect(gameId).toBeDefined();
+  });
+
+  test("but joining by link still does", async () => {
+    const { t, asAlice, asCarol } = await strangers();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+    });
+    await asCarol.mutation(api.games.joinGame, { gameId });
+
+    expect(await friendshipsOf(t)).toHaveLength(2);
+  });
+
+  test("a stranger who joins gets a disguise of their own", async () => {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+    await seats.asCarol.mutation(api.games.joinGame, { gameId });
+
+    const players = await seats.t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .take(10),
+    );
+    const carol = players.find((p) => p.userId === seats.carol);
+    const alice = players.find((p) => p.userId === seats.alice);
+
+    expect(carol?.alias).toEqual(expect.any(String));
+    expect(carol?.alias).not.toBe(alice?.alias);
+  });
+
+  /*
+   * The third path that creates a seat, and the one that used to deal no name
+   * at all: two invited friends both came out as "Player" to a stranger, on
+   * the scoreboard and in the history. Two are invited in one call because
+   * that is where the second failure lived -- drawing both against the same
+   * snapshot of what was taken would hand out one name twice.
+   */
+  test("seats invited into a public game are dealt aliases too", async () => {
+    const seats = await strangers();
+    // Carol is Alice's friend as well, so both can be invited at once.
+    await seats.t.run(async (ctx) => {
+      await ctx.db.insert("friendships", {
+        requesterId: seats.alice,
+        addresseeId: seats.carol,
+        status: "accepted",
+      });
+    });
+
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 4,
+      isPublic: true,
+    });
+    await seats.asAlice.mutation(api.games.inviteToGame, {
+      gameId,
+      friendIds: [seats.bob, seats.carol],
+    });
+
+    const players = await seats.t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .take(10),
+    );
+    const aliases = players.map((p) => p.alias);
+
+    expect(aliases).toHaveLength(3);
+    for (const alias of aliases) expect(alias).toEqual(expect.any(String));
+    expect(new Set(aliases).size).toBe(3);
+  });
+
+  const nameOf = (
+    view: { players: { userId: Id<"users">; name: string }[] } | null,
+    userId: Id<"users">,
+  ) => view?.players.find((p) => p.userId === userId)?.name;
+
+  test("a stranger sees an alias, never a name", async () => {
+    const { asCarol, gameId, alice, bob } = await publicTable();
+    const view = await asCarol.query(api.games.getGame, { gameId });
+
+    expect(nameOf(view, alice)).not.toBe("Alice");
+    expect(nameOf(view, bob)).not.toBe("Bob");
+  });
+
+  test("a friend at the same table is still a friend", async () => {
+    const { asAlice, gameId, bob, carol } = await publicTable();
+    const view = await asAlice.query(api.games.getGame, { gameId });
+
+    // Bob is Alice's friend, so no disguise between them.
+    expect(nameOf(view, bob)).toBe("Bob");
+    // Carol walked in off the list.
+    expect(nameOf(view, carol)).not.toBe("Carol");
+  });
+
+  test("you are always yourself", async () => {
+    const { asCarol, gameId, carol } = await publicTable();
+    const view = await asCarol.query(api.games.getGame, { gameId });
+
+    expect(nameOf(view, carol)).toBe("Carol");
+  });
+
+  test("two people at one table never share a disguise", async () => {
+    const { asCarol, gameId, alice, bob } = await publicTable();
+    const view = await asCarol.query(api.games.getGame, { gameId });
+
+    // Both seats were dealt an alias, so neither has collapsed to the
+    // no-alias fallback. That fallback is pinned by the test below, which
+    // takes an alias away: here every alias is populated, so asserting
+    // against "Player" would be asserting against a string that cannot
+    // occur, and would hold however wrong the fallback was.
+    expect(nameOf(view, alice)).not.toBe(nameOf(view, bob));
+  });
+
+  test("a seat whose alias went missing is nobody, not its owner", async () => {
+    const { t, asCarol, gameId, alice } = await publicTable();
+
+    /*
+     * The one case the fixture cannot produce on its own: `joinGame` deals an
+     * alias to every seat at a public game, so the `alias ?? "Player"` branch
+     * is unreachable until a row is missing one. Clearing it by hand is how a
+     * game dealt before aliases existed would look, or a row written wrong.
+     *
+     * What must not happen is the obvious-looking fallback to the real name.
+     * That would turn a data problem into the leak this whole task exists to
+     * prevent, and it would leak silently -- nothing would look broken.
+     */
+    await t.run(async (ctx) => {
+      const seat = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", alice),
+        )
+        .unique();
+      await ctx.db.patch("players", seat!._id, { alias: undefined });
+    });
+
+    const view = await asCarol.query(api.games.getGame, { gameId });
+
+    expect(nameOf(view, alice)).not.toBe("Alice");
+    expect(nameOf(view, alice)).toBe("Player");
+  });
+
+  test("a friend request nobody has accepted unmasks nobody", async () => {
+    const { t, asCarol, gameId, bob, carol } = await publicTable();
+
+    // Asked, not answered. Carol knowing Bob's name is what accepting the
+    // request would grant, so the pending row must grant nothing.
+    await t.run(async (ctx) => {
+      await ctx.db.insert("friendships", {
+        requesterId: carol,
+        addresseeId: bob,
+        status: "pending",
+      });
+    });
+
+    const view = await asCarol.query(api.games.getGame, { gameId });
+    expect(nameOf(view, bob)).not.toBe("Bob");
+  });
+
+  test("a private game is unchanged: everybody by name", async () => {
+    const { asAlice, asBob, alice } = await strangers();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+    });
+    await asBob.mutation(api.games.joinGame, { gameId });
+
+    const view = await asBob.query(api.games.getGame, { gameId });
+    expect(nameOf(view, alice)).toBe("Alice");
+  });
+
+  test("a machine keeps its Robo- name for everyone", async () => {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+      bots: [{ level: "easy", name: "Gawain" }],
+    });
+    await seats.asCarol.mutation(api.games.joinGame, { gameId });
+
+    const view = await seats.asCarol.query(api.games.getGame, { gameId });
+    expect(view?.players.map((p) => p.name)).toContain("Robo-Gawain (easy)");
+  });
+
+  test("the lobby disguises opponents too, not just the board", async () => {
+    const { asCarol, gameId } = await publicTable();
+    const lobby = await asCarol.query(api.games.listMyGames, {});
+
+    const row = lobby.games.find((g) => g.gameId === gameId);
+    expect(row?.opponents.map((o) => o.name)).not.toContain("Alice");
+    expect(row?.opponents.map((o) => o.name)).not.toContain("Bob");
+  });
+
+  test("the lobby disguises whose turn it is, and who made the game", async () => {
+    const { asCarol, gameId } = await publicTable();
+    const lobby = await asCarol.query(api.games.listMyGames, {});
+
+    // Alice made the game and holds the first seat, so she is both of these.
+    // They are named separately from `opponents` because they are read from
+    // the map separately, and either could be reverted on its own.
+    const row = lobby.games.find((g) => g.gameId === gameId);
+    expect(row?.waitingFor).not.toBeNull();
+    expect(row?.waitingFor).not.toBe("Alice");
+    expect(row?.invitedBy).not.toBe("Alice");
+  });
+
+  test("the history does not name strangers either", async () => {
+    const { t, asAlice, asCarol, gameId } = await publicTable();
+
+    // Passing is the cheapest way to put a turn on the record: it wants no
+    // dictionary and no particular rack, only a bag with nothing left in it.
+    await t.run(async (ctx) => {
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      await ctx.db.patch("bags", bag!._id, { letters: {} });
+    });
+    await asAlice.mutation(api.games.passTurn, { gameId });
+
+    const turns = await asCarol.query(api.games.listTurns, { gameId });
+    expect(turns).toHaveLength(1);
+    expect(turns.map((turn) => turn.name)).not.toContain("Alice");
+  });
+
+  test("an open game is findable by a stranger", async () => {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+
+    const open = await seats.asCarol.query(api.games.listOpenGames, {});
+    expect(open.games.map((g) => g.gameId)).toContain(gameId);
+  });
+
+  test("a private game with a spare seat is not", async () => {
+    const seats = await strangers();
+    await seats.asAlice.mutation(api.games.createGame, { playerCount: 3 });
+
+    const open = await seats.asCarol.query(api.games.listOpenGames, {});
+    expect(open.games).toHaveLength(0);
+  });
+
+  test("the list never says a stranger's real name", async () => {
+    const seats = await strangers();
+    await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+
+    const open = await seats.asCarol.query(api.games.listOpenGames, {});
+    expect(open.games[0].players).not.toContain("Alice");
+  });
+
+  // Naming is a property of the pair, not of the screen: Bob knows Alice
+  // whether he meets her at the board or in a list.
+  test("but it does say a friend's", async () => {
+    const seats = await strangers();
+    await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+
+    const open = await seats.asBob.query(api.games.listOpenGames, {});
+    expect(open.games[0].players).toContain("Alice");
+  });
+
+  test("a game with every seat taken drops off the list", async () => {
+    const { asCarol, gameId } = await publicTable();
+
+    const open = await asCarol.query(api.games.listOpenGames, {});
+    expect(open.games.map((g) => g.gameId)).not.toContain(gameId);
+  });
+
+  test("a game you are already at is not offered to you again", async () => {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+
+    const open = await seats.asAlice.query(api.games.listOpenGames, {});
+    expect(open.games.map((g) => g.gameId)).not.toContain(gameId);
   });
 });

@@ -73,7 +73,7 @@ gods.
 Sources are public domain and heroic rather than devotional: Arthurian
 (Gawain, Bedivere, Igraine, Percival), Norse sagas (Sigurd, Brynhild, Egil,
 Gudrun), the Shahnameh (Rostam, Zal, Tahmineh, Siyavash), West and Central
-African epic (Sundiata, Sogolon, Fakoli, Mwindo), East Asian folklore (Mulan,
+African epic (Sundiata, Sogolon, Fakoli, Kolonkan), East Asian folklore (Mulan,
 Momotaro, Kintaro, Gildong), Beowulf (Wiglaf, Hrothgar, Unferth).
 
 Two exclusions, both deliberate:
@@ -112,9 +112,18 @@ a machine, and both are worth knowing mid-game.
 - `alias: v.optional(v.string())` — the name this seat plays under. Written
   when the seat is created in a public game, for **every** human seat
   including the creator's, so that no seat is the one without a disguise.
-  Absent on private games, where nobody needs one, and absent on a machine's
-  seat, which has no identity to protect: a machine is its `Robo-` name to
-  everybody, in every game.
+  Absent on private games, where nobody needs one.
+
+  A machine's seat carries one too — its bare pool name, `Gawain` rather than
+  `Robo-Gawain (easy)` — even though a machine has no identity to protect. It
+  is bookkeeping, not a disguise: this field is the one place every draw looks
+  to see what is already spoken for at a table, so putting the machines'
+  names in it is what keeps a person from being dealt `Gawain` beside a
+  seated `Robo-Gawain (easy)`, which the name pool promises never happens.
+  The alternative was for each of the three seat-creating paths to remember
+  the machines separately, and one of them already did not. It is never
+  rendered: `namesFor` tests `bot` before it consults `alias`, so a machine is
+  its `Robo-` name to everybody, in every game.
 
 ## Server
 
@@ -135,13 +144,19 @@ now.
 The viewer's friend ids are loaded **once** per call, not once per player:
 `getGame` is the hottest query in the app — every player, every turn, live.
 
-Callers: `getGame`, `listMyGames` and `listOpenGames` — which is all of them.
-`displayName` appears nowhere else outside `friends.ts`, and the end-of-game
-recap is rendered client-side from what `getGame` already returned.
+Callers: `getGame`, `listTurns`, `listMyGames` and `listOpenGames` — which is
+all of them. This paragraph originally counted three and said `displayName`
+appeared nowhere else outside `friends.ts`. It missed `listTurns`, which names
+people too ("Alice played FOO for 12") and is readable by anyone seated at the
+game — so at a public game any stranger could have opened the history panel
+and read every real name. Corrected here rather than quietly, because a wrong
+count is precisely the mistake that ships a leak. The end-of-game recap is
+fine: it is rendered client-side from what `getGame` already returned.
 
 Approach considered and rejected: masking inside each query. Four places to
 get right today, every future name-returning query to remember, and a miss is
-a real name sent to a stranger with nothing failing loudly.
+a real name sent to a stranger with nothing failing loudly — not hypothetical,
+since miscounting those four places is how `listTurns` came to be left out.
 
 Also rejected: seating public players under throwaway `users` rows the way
 bots are. Every existing query would work untouched, but scores, wins and "my

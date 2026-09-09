@@ -181,6 +181,32 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Listing the game, under the seats it would list. A row rather than a line
+ * of text, because it is a question with an answer rather than an action --
+ * and the consequence is spelled out under it, since "anyone" is the part
+ * somebody might not have thought about.
+ */
+.listRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) 0 0;
+  cursor: pointer;
+}
+
+.listText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+
+.listHint {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
 .hint {
   margin: var(--space-2) 0 0;
   color: var(--text-muted);

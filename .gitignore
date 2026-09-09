@@ -45,3 +45,7 @@ shared/data/words.jsonl
 !.claude/skills/contributing/
 .cursor/
 .fallow/
+
+# Scratch belonging to an agent working through a plan: ledgers, task briefs,
+# review packages. Regenerated from the plan, and worthless once it is done.
+.superpowers/

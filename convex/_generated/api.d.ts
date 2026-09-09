@@ -16,6 +16,7 @@ import type * as dev from "../dev.js";
 import type * as friends from "../friends.js";
 import type * as games from "../games.js";
 import type * as http from "../http.js";
+import type * as seats from "../seats.js";
 import type * as users from "../users.js";
 
 import type {
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   friends: typeof friends;
   games: typeof games;
   http: typeof http;
+  seats: typeof seats;
   users: typeof users;
 }>;
 
