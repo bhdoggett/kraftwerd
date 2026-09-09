@@ -26,6 +26,16 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const invitations = mine?.invitations ?? [];
   const past = mine?.past ?? [];
   const [showPast, setShowPast] = useState(false);
+  /**
+   * Collapsed on every visit, and shown even when there is nothing in it.
+   *
+   * A section that only appeared once a seat happened to be open used to
+   * mean most visitors never saw it and never learned strangers' games were
+   * something you could browse at all. Always there, closed by default, so
+   * the heading itself is what teaches the feature -- opening it is opt-in,
+   * but knowing it exists is not.
+   */
+  const [openGamesExpanded, setOpenGamesExpanded] = useState(false);
   /** The game just created, still choosing who fills its seats. */
   const [setup, setSetup] = useState<{
     gameId: Id<"games">;
@@ -187,35 +197,6 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         </section>
       )}
 
-      {(openGames?.games.length ?? 0) > 0 && (
-        <section className={styles.section}>
-          <h2 className={styles.heading}>Open games</h2>
-          {/*
-            Games nobody you know made. The people at them are named as this
-            viewer may see them -- an alias for a stranger, a name for a
-            friend -- which is decided on the server, not here.
-          */}
-          {openGames?.games.map((g) => (
-            <div key={g.gameId} className={styles.row}>
-              <span className={styles.grow}>
-                {g.name}
-                <span className={styles.openWith}>
-                  {g.players.join(", ")} · {g.seatsFilled} of {g.playerCount}
-                </span>
-              </span>
-              <button
-                type="button"
-                className={styles.join}
-                onClick={() => void joinOpen(g.gameId)}
-              >
-                Join
-              </button>
-            </div>
-          ))}
-          {joinError !== null && <p className={styles.error}>{joinError}</p>}
-        </section>
-      )}
-
       <section className={styles.section}>
         <h2 className={styles.heading}>Your games</h2>
         {mine === undefined && <p className={styles.empty}>Loading…</p>}
@@ -257,6 +238,67 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
             </button>
           </div>
         ))}
+      </section>
+
+      {/*
+        Below Your games, not above: an invitation is somebody waiting on an
+        answer from you, and your own games are what brought you to the
+        lobby in the first place. Browsing a stranger's open seat is the
+        least urgent thing on this page, so it sits under both.
+      */}
+      <section className={styles.section}>
+        <button
+          type="button"
+          className={styles.openGamesToggle}
+          aria-expanded={openGamesExpanded}
+          onClick={() => setOpenGamesExpanded((open) => !open)}
+        >
+          Open games
+          {openGames !== undefined && openGames.games.length > 0
+            ? ` · ${openGames.games.length}`
+            : ""}
+        </button>
+
+        {openGamesExpanded && (
+          <>
+            {/*
+              Games nobody you know made. The people at them are named as
+              this viewer may see them -- an alias for a stranger, a name
+              for a friend -- which is decided on the server, not here.
+            */}
+            {openGames === undefined && (
+              <p className={styles.empty}>Loading…</p>
+            )}
+            {openGames && openGames.games.length === 0 && (
+              <p className={styles.empty}>
+                Nobody’s left a seat open right now. Start a game, leave a
+                seat empty, and tick “Anyone can find and join these seats” —
+                it’ll show up here for somebody else to take.
+              </p>
+            )}
+            {openGames?.games.map((g) => (
+              <div key={g.gameId} className={styles.row}>
+                <span className={styles.grow}>
+                  {g.name}
+                  <span className={styles.openWith}>
+                    {g.players.join(", ")} · {g.seatsFilled} of{" "}
+                    {g.playerCount}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className={styles.join}
+                  onClick={() => void joinOpen(g.gameId)}
+                >
+                  Join
+                </button>
+              </div>
+            ))}
+            {joinError !== null && (
+              <p className={styles.error}>{joinError}</p>
+            )}
+          </>
+        )}
       </section>
 
       {viewer?.stats && (
