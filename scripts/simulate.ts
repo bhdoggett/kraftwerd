@@ -20,12 +20,26 @@
  * many separate plays a turn may be built from, how many candidates each step
  * branches on, and optionally how much a point of what a link LEAVES is worth
  * against a point of what it scores when choosing which to build on. Omitted,
- * branching is by score alone. Omitted entirely, the
- * search picks its own default, which is what every figure in design.md §6
- * was measured at; pass one and the run is no longer comparable with that
- * table except against another run at the same shape. Cost is roughly
- * geometric in breadth, so depth 3 is not a small ask: see the note above the
- * knobs in convex/bots.ts.
+ * branching is by score alone.
+ *
+ * One shape per seat, "/" between them, read the way the difficulty argument
+ * is: `4,6/2,6` puts a four-deep search in seat 0 against two-deep ones in the
+ * rest. That is what a depth question has to be asked with -- deepen every
+ * seat at once and the run compares two tables rather than two players, which
+ * is how sixteen-game sweeps at depth 2, 3 and 4 came back showing squares
+ * *falling* with depth. Seated instead, over 200 games a side and mirrored:
+ * depth 3 beats depth 2 79.5% of the time (+27 points a game), depth 4 beats
+ * depth 3 58% (+7.5), and depth 4 beats depth 2 84.5% (+35, which is the
+ * other two composed).
+ *
+ * Omitted entirely, this script plays DEPTH 4 at breadth 6 -- the strongest
+ * shape measured, and the point of a simulator is the best player it can
+ * afford. That is this script's default and not the search's: `rank` still
+ * defaults to depth 2 breadth 6 for every other caller, and live play sets
+ * its own shape in convex/bots.ts. Every figure in design.md §6 was measured
+ * at depth 2, so reproducing that table now means passing `2,6` rather than
+ * passing nothing. Cost is roughly geometric in breadth; depth 4 runs a
+ * 200-game two-player sweep in about twelve minutes against eight at depth 2.
  */
 import { cpus } from "node:os";
 import { Worker } from "node:worker_threads";
@@ -224,7 +238,13 @@ const LEVELS = DIFFICULTIES_ARG as Difficulty[];
  * run. Depth 1 is legal and means the single-span search, i.e. no chaining.
  */
 const CHAIN_ARG = process.argv[6];
-let CHAINS: { depth: number; breadth: number; enablement?: number }[] | undefined;
+/*
+ * Depth 4, breadth 6 unless told otherwise -- see the note at the top of the
+ * file. Written here rather than in `rank` so that nothing but this script
+ * changes: the live bot and every other caller keep the search's own default.
+ */
+let CHAINS: { depth: number; breadth: number; enablement?: number }[] | undefined =
+  [{ depth: 4, breadth: 6 }];
 if (CHAIN_ARG !== undefined) {
   /*
    * One shape per seat, "/" between them, read seat by seat exactly as the

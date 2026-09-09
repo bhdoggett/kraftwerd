@@ -707,6 +707,41 @@ per game moves 25 to 23, which is mechanically what a deeper chain should do —
 more components a turn is more tiles laid a turn — so the knob works and its
 effect on the scoreline is too small to see at this width.
 
+**Depth pays enormously, and every measurement above was blind to it, because
+they all changed both seats at once.** A run where every player deepens
+compares two tables and not two players, and the two readings of a quieter
+table are opposite: worse players finding less, or better players leaving each
+other fewer gifts. Sixteen-game sweeps at depth 2, 3 and 4 gave squares of
+4.06, 3.88 and 3.44 — falling with depth — which reads as the first and is in
+fact the second. `playGame` now seats the chain shape the way it seats
+difficulty, so the shapes can be played against each other and the question
+becomes a scoreline rather than an inference. Two hundred games a side, each
+matchup mirrored so a seat cannot be mistaken for a search:
+
+| matchup | win rate | points a game |
+| --- | --- | --- |
+| depth 3 vs depth 2 | 79.5% (80 / 79 mirrored) | 192 vs 164, **+27** |
+| depth 4 vs depth 3 | 58% (52 / 64 mirrored) | 183.5 vs 176, **+7.5** |
+| depth 4 vs depth 2 | 84.5% (83 / 86 mirrored) | 196 vs 161, **+35** |
+
+The knee is at depth 3, which takes +27 of the +35. Depth 4 adds a real but
+small +7.5 — about 3 SE, so not noise, and the two arms of it disagree more
+than the others (52 against 64), which is the margin at which the seat starts
+to matter relative to the effect. The three matchups compose: +27 and +7.5
+against +35 measured separately, which is the strongest evidence that any of
+them is sound.
+
+Two things follow. `scripts/simulate.ts` now defaults to depth 4 breadth 6 —
+the simulator should play the best bot it can afford, and a 200-game
+two-player sweep costs about twelve minutes against eight at depth 2. That is
+the script's default and not the search's: `rank` still defaults to depth 2
+breadth 6, live play sets its own shape, and **every figure in the tables above
+was measured at depth 2, so reproducing them now means passing `2,6` rather
+than passing nothing.** And the seat-fairness figures in this section describe
+depth-2 bots playing a game that depth-4 bots play differently — shorter, with
+bigger turns — so they are worth re-reading at the new default before anything
+is concluded about turn order.
+
 **At this width** is the whole caveat, because **depth and breadth are not
 independent knobs, and depth 3 was measured at the one breadth that starves
 it.** Counted directly on a single position (board `CAT`, rack `ATCBHIO`, the
