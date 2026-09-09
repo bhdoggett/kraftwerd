@@ -377,13 +377,39 @@ export const joinGame = mutation({
     if (players.length >= game.playerCount)
       throw new ConvexError("Game is full");
 
-    await joinSeat(ctx, args.gameId, userId, players.length, "joined");
+    /*
+     * A seat at a public game comes with a name to wear, drawn against the
+     * ones already dealt at this table so no two people share a disguise.
+     *
+     * Machines are not in that reckoning. A machine wears the prefix, so a
+     * person drawn as Gawain sitting beside Robo-Gawain is still told apart
+     * at a glance -- which is the whole reason for the prefix.
+     */
+    const alias =
+      game.isPublic === true
+        ? drawNames(
+            1,
+            Math.random,
+            players
+              .map((p) => p.alias)
+              .filter((a): a is string => a !== undefined),
+          )[0]
+        : undefined;
 
-    // Sitting down together is itself the introduction, so no request is
-    // needed: everyone already at the table becomes a friend, which is what
-    // makes a second game possible without passing another link around.
-    for (const other of players) {
-      await befriend(ctx, userId, other.userId);
+    await joinSeat(ctx, args.gameId, userId, players.length, "joined", alias);
+
+    /*
+     * Sitting down together is itself the introduction, so no request is
+     * needed: everyone already at the table becomes a friend, which is what
+     * makes a second game possible without passing another link around.
+     *
+     * Not at a public game. There the link was a list anyone can read, and
+     * the whole point of the aliases is that these people have not met.
+     */
+    if (game.isPublic !== true) {
+      for (const other of players) {
+        await befriend(ctx, userId, other.userId);
+      }
     }
 
     // Last seat taken: the game starts.

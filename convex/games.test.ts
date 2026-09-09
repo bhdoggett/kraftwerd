@@ -1878,3 +1878,84 @@ describe("records and the rules they were set under", () => {
     expect(me?.stats.gamesPlayed).toBe(0);
   });
 });
+
+describe("who you are allowed to see", () => {
+  /** Alice and Bob are friends. Carol is a stranger to both. */
+  async function strangers() {
+    const t = convexTest(schema, modules);
+    const [alice, bob, carol] = await t.run(async (ctx) => {
+      const a = await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+      const b = await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
+      const c = await ctx.db.insert("users", { authId: "auth|carol", name: "Carol" });
+      await ctx.db.insert("friendships", {
+        requesterId: a,
+        addresseeId: b,
+        status: "accepted",
+      });
+      return [a, b, c];
+    });
+    return {
+      t,
+      alice,
+      bob,
+      carol,
+      asAlice: t.withIdentity({ subject: "auth|alice" }),
+      asBob: t.withIdentity({ subject: "auth|bob" }),
+      asCarol: t.withIdentity({ subject: "auth|carol" }),
+    };
+  }
+
+  /** A public three-hander made by Alice, with Bob and Carol sat down. */
+  async function publicTable() {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+    await seats.asBob.mutation(api.games.joinGame, { gameId });
+    await seats.asCarol.mutation(api.games.joinGame, { gameId });
+    return { ...seats, gameId };
+  }
+
+  const friendshipsOf = (t: Awaited<ReturnType<typeof strangers>>["t"]) =>
+    t.run(async (ctx) => ctx.db.query("friendships").take(50));
+
+  test("sitting down with strangers does not make them friends", async () => {
+    const { t, gameId } = await publicTable();
+
+    // Only the Alice/Bob friendship the fixture starts with.
+    expect(await friendshipsOf(t)).toHaveLength(1);
+    expect(gameId).toBeDefined();
+  });
+
+  test("but joining by link still does", async () => {
+    const { t, asAlice, asCarol } = await strangers();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+    });
+    await asCarol.mutation(api.games.joinGame, { gameId });
+
+    expect(await friendshipsOf(t)).toHaveLength(2);
+  });
+
+  test("a stranger who joins gets a disguise of their own", async () => {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+    await seats.asCarol.mutation(api.games.joinGame, { gameId });
+
+    const players = await seats.t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .take(10),
+    );
+    const carol = players.find((p) => p.userId === seats.carol);
+    const alice = players.find((p) => p.userId === seats.alice);
+
+    expect(carol?.alias).toEqual(expect.any(String));
+    expect(carol?.alias).not.toBe(alice?.alias);
+  });
+});
