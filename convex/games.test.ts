@@ -1993,13 +1993,41 @@ describe("who you are allowed to see", () => {
     const { asCarol, gameId, alice, bob } = await publicTable();
     const view = await asCarol.query(api.games.getGame, { gameId });
 
-    // Not "Player": a seat whose alias went missing collapses to that string
-    // rather than to a real name, and two seats that both collapsed would be
-    // indistinguishable. Naming it here pins the fallback, which comparing
-    // two arbitrary strings does not -- "Alice" !== "Bob" on its own.
-    expect(nameOf(view, alice)).not.toBe("Player");
-    expect(nameOf(view, bob)).not.toBe("Player");
+    // Both seats were dealt an alias, so neither has collapsed to the
+    // no-alias fallback. That fallback is pinned by the test below, which
+    // takes an alias away: here every alias is populated, so asserting
+    // against "Player" would be asserting against a string that cannot
+    // occur, and would hold however wrong the fallback was.
     expect(nameOf(view, alice)).not.toBe(nameOf(view, bob));
+  });
+
+  test("a seat whose alias went missing is nobody, not its owner", async () => {
+    const { t, asCarol, gameId, alice } = await publicTable();
+
+    /*
+     * The one case the fixture cannot produce on its own: `joinGame` deals an
+     * alias to every seat at a public game, so the `alias ?? "Player"` branch
+     * is unreachable until a row is missing one. Clearing it by hand is how a
+     * game dealt before aliases existed would look, or a row written wrong.
+     *
+     * What must not happen is the obvious-looking fallback to the real name.
+     * That would turn a data problem into the leak this whole task exists to
+     * prevent, and it would leak silently -- nothing would look broken.
+     */
+    await t.run(async (ctx) => {
+      const seat = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", alice),
+        )
+        .unique();
+      await ctx.db.patch("players", seat!._id, { alias: undefined });
+    });
+
+    const view = await asCarol.query(api.games.getGame, { gameId });
+
+    expect(nameOf(view, alice)).not.toBe("Alice");
+    expect(nameOf(view, alice)).toBe("Player");
   });
 
   test("a friend request nobody has accepted unmasks nobody", async () => {
