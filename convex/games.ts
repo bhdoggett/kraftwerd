@@ -34,12 +34,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import {
-  currentUser,
-  displayName,
-  refuseGuest,
-  requireUser,
-} from "./auth_helpers";
+import { currentUser, refuseGuest, requireUser } from "./auth_helpers";
 import { friendIdsOf, namesFor } from "./seats";
 import { placement } from "./schema";
 
@@ -203,16 +198,25 @@ export const createGame = mutation({
     }
 
     // A game is only worth listing if somebody could take a seat at it.
-    const isPublic = args.isPublic === true && args.playerCount - 1 - bots.length > 0;
+    const isPublic =
+      args.isPublic === true && args.playerCount - 1 - bots.length > 0;
 
     /*
      * The maker's own disguise. One name, not a table's worth: seats filled
-     * later draw their own in `joinGame`, against the aliases already dealt.
-     * Drawn around the machines' names so a table reads as several different
-     * players rather than a Gawain beside a Robo-Gawain.
+     * later draw their own in `joinGame` or `inviteToGame`, against the
+     * aliases already dealt.
+     *
+     * The machines' names are passed in by hand here, and only here, because
+     * the machines are not seated until below: every later draw finds them in
+     * the `alias` of a row that already exists. Either way they are excluded,
+     * so a table never reads as a Gawain sitting beside a Robo-Gawain.
      */
     const alias = isPublic
-      ? drawNames(1, Math.random, bots.map((b) => b.name))[0]
+      ? drawNames(
+          1,
+          Math.random,
+          bots.map((b) => b.name),
+        )[0]
       : undefined;
 
     const name = gameName(Math.random);
@@ -254,6 +258,12 @@ export const createGame = mutation({
  * It gets a users row of its own so everything that references a player by id
  * — tiles, scores, winners — works without knowing the difference. The row is
  * per game and per seat, so two bots at one table stay distinct.
+ *
+ * Its bare pool name goes in `alias` even though a machine has nothing to
+ * hide. That is the one place every draw already looks to see what is spoken
+ * for at this table, so writing it there is what stops a joiner being dealt
+ * `Gawain` next to a seated `Robo-Gawain (easy)`. It is never rendered:
+ * `namesFor` checks `bot` before it consults `alias`.
  */
 async function seatBot(
   ctx: MutationCtx,
@@ -267,7 +277,7 @@ async function seatBot(
     name: robotName(name, level),
   });
 
-  await joinSeat(ctx, gameId, userId, seat);
+  await joinSeat(ctx, gameId, userId, seat, "joined", name);
   const player = await ctx.db
     .query("players")
     .withIndex("by_game_and_seat", (q) =>
@@ -382,9 +392,10 @@ export const joinGame = mutation({
      * A seat at a public game comes with a name to wear, drawn against the
      * ones already dealt at this table so no two people share a disguise.
      *
-     * Machines are not in that reckoning. A machine wears the prefix, so a
-     * person drawn as Gawain sitting beside Robo-Gawain is still told apart
-     * at a glance -- which is the whole reason for the prefix.
+     * The machines are in that reckoning: `seatBot` writes each one's bare
+     * pool name into its `alias`, so this draw excludes them without knowing
+     * they exist. The prefix tells the two kinds apart, but it does not make
+     * `Gawain` beside `Robo-Gawain (easy)` a table anybody wants to read.
      */
     const alias =
       game.isPublic === true
@@ -499,13 +510,40 @@ export const inviteToGame = mutation({
       throw new ConvexError("You are not in this game");
     }
 
+    /*
+     * What is already spoken for at this table: the aliases dealt to the
+     * people, and the machines' bare pool names, which `seatBot` writes into
+     * the same field so that one set covers both.
+     *
+     * It grows as seats are dealt below. Drawing every invitation against this
+     * one snapshot would let a single call hand the same name to two seats,
+     * which is the mistake the taken set exists to prevent.
+     */
+    const taken = new Set(
+      players.map((p) => p.alias).filter((a): a is string => a !== undefined),
+    );
+
     let seat = players.length;
     for (const friendId of args.friendIds) {
       if (seat >= game.playerCount) throw new ConvexError("No seats left");
       if (players.some((p) => p.userId === friendId)) continue;
       await requireFriendship(ctx, userId, friendId);
 
-      await joinSeat(ctx, args.gameId, friendId, seat, "invited");
+      /*
+       * An invited seat at a public game needs a disguise like any other.
+       * This is the third path that creates one -- `createGame` and `joinGame`
+       * both dealt a name and this one did not, so a stranger who joined a
+       * game with two invited friends saw two seats both called "Player":
+       * indistinguishable on the scoreboard, and "Player played FOO for 12"
+       * in the history could have been either of them.
+       */
+      const alias =
+        game.isPublic === true
+          ? drawNames(1, Math.random, taken)[0]
+          : undefined;
+      if (alias !== undefined) taken.add(alias);
+
+      await joinSeat(ctx, args.gameId, friendId, seat, "invited", alias);
       seat++;
     }
     return null;
@@ -1383,8 +1421,6 @@ export const listMyGames = query({
         const game = await ctx.db.get("games", p.gameId);
         if (game === null) return null;
 
-        const creator = await ctx.db.get("users", game.createdBy);
-
         // Who else is at the table, so the lobby says who a game is against
         // rather than just naming it.
         const seated = await ctx.db
@@ -1423,10 +1459,12 @@ export const listMyGames = query({
           invited: p.status === "invited",
           /**
            * The creator is a player at their own game, so the masked map
-           * covers them; `displayName` is only the fallback for a game whose
-           * creator has somehow left no seat behind.
+           * covers them and the fallback is unreachable. It used to read the
+           * creator's users row to fall back to a real name -- the one place
+           * in the lobby that reached past the mask, for a case that cannot
+           * happen, at the cost of a user read on every row.
            */
-          invitedBy: names.get(game.createdBy) ?? displayName(creator),
+          invitedBy: names.get(game.createdBy) ?? "Player",
           youWon: (game.winnerIds ?? []).includes(p.userId),
           /** True when the game ended because someone quit. */
           abandoned: (game.resignedBy ?? []).length > 0,

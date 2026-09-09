@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
 import { BLANKS_PER_GAME, RACK, RULES_VERSION } from "../shared/config";
+import { NAMES } from "../shared/names";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
@@ -1600,16 +1601,60 @@ describe("computer players", () => {
     expect(mine?.alias).not.toBe("Gawain");
   });
 
-  test("a machine gets no alias -- it has nothing to hide", async () => {
+  /*
+   * `playerCount: 3`, not 2. With two seats and one machine there is no seat
+   * left for a person, so `createGame` refuses to list the game and the whole
+   * test ran against a private one -- where no seat gets an alias and the
+   * assertion held for the wrong reason. The isPublic check below is there so
+   * that mistake cannot come back quietly.
+   */
+  test("a machine's seat carries its bare pool name, not a disguise", async () => {
     const { t, asAlice } = await table();
     const { gameId } = await asAlice.mutation(api.games.createGame, {
-      playerCount: 2,
+      playerCount: 3,
       isPublic: true,
       bots: [{ level: "easy", name: "Gawain" }],
     });
 
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.isPublic).toBe(true);
+
+    // Bookkeeping, not a disguise: it is what later draws look at to see the
+    // name is spoken for. Nobody is ever shown it -- this seat renders as
+    // "Robo-Gawain (easy)" to every viewer, which `namesFor` decides.
     const players = await seatsOf(t, gameId);
-    expect(players.find((p) => p.bot !== undefined)?.alias).toBeUndefined();
+    expect(players.find((p) => p.bot !== undefined)?.alias).toBe("Gawain");
+  });
+
+  /*
+   * Rigged rather than left to a one-in-fifty chance of catching the bug.
+   *
+   * `Math.random` pinned to 0 makes `drawNames` take whatever is first in the
+   * pool it has left, and the machine here is seated under the pool's first
+   * name -- so the joiner lands on exactly that name unless the machine's name
+   * was excluded from the draw. It used not to be: `joinGame` collected the
+   * aliases of the people at the table, and machines had none.
+   */
+  test("a joiner cannot draw the name of a machine already seated", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 4,
+      isPublic: true,
+      bots: [{ level: "easy", name: NAMES[0] }],
+    });
+
+    const asBob = t.withIdentity({ subject: "auth|bob" });
+    const rigged = vi.spyOn(Math, "random").mockReturnValue(0);
+    try {
+      await asBob.mutation(api.games.joinGame, { gameId });
+    } finally {
+      rigged.mockRestore();
+    }
+
+    const [alice, , bob] = await seatsOf(t, gameId);
+    expect(bob.alias).not.toBe(NAMES[0]);
+    // Nor the name of the person already sitting there.
+    expect(bob.alias).not.toBe(alice.alias);
   });
 });
 
@@ -1884,9 +1929,18 @@ describe("who you are allowed to see", () => {
   async function strangers() {
     const t = convexTest(schema, modules);
     const [alice, bob, carol] = await t.run(async (ctx) => {
-      const a = await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
-      const b = await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
-      const c = await ctx.db.insert("users", { authId: "auth|carol", name: "Carol" });
+      const a = await ctx.db.insert("users", {
+        authId: "auth|alice",
+        name: "Alice",
+      });
+      const b = await ctx.db.insert("users", {
+        authId: "auth|bob",
+        name: "Bob",
+      });
+      const c = await ctx.db.insert("users", {
+        authId: "auth|carol",
+        name: "Carol",
+      });
       await ctx.db.insert("friendships", {
         requesterId: a,
         addresseeId: b,
@@ -1957,6 +2011,46 @@ describe("who you are allowed to see", () => {
 
     expect(carol?.alias).toEqual(expect.any(String));
     expect(carol?.alias).not.toBe(alice?.alias);
+  });
+
+  /*
+   * The third path that creates a seat, and the one that used to deal no name
+   * at all: two invited friends both came out as "Player" to a stranger, on
+   * the scoreboard and in the history. Two are invited in one call because
+   * that is where the second failure lived -- drawing both against the same
+   * snapshot of what was taken would hand out one name twice.
+   */
+  test("seats invited into a public game are dealt aliases too", async () => {
+    const seats = await strangers();
+    // Carol is Alice's friend as well, so both can be invited at once.
+    await seats.t.run(async (ctx) => {
+      await ctx.db.insert("friendships", {
+        requesterId: seats.alice,
+        addresseeId: seats.carol,
+        status: "accepted",
+      });
+    });
+
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 4,
+      isPublic: true,
+    });
+    await seats.asAlice.mutation(api.games.inviteToGame, {
+      gameId,
+      friendIds: [seats.bob, seats.carol],
+    });
+
+    const players = await seats.t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .take(10),
+    );
+    const aliases = players.map((p) => p.alias);
+
+    expect(aliases).toHaveLength(3);
+    for (const alias of aliases) expect(alias).toEqual(expect.any(String));
+    expect(new Set(aliases).size).toBe(3);
   });
 
   const nameOf = (

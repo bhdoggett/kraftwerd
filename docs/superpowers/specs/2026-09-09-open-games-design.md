@@ -112,9 +112,18 @@ a machine, and both are worth knowing mid-game.
 - `alias: v.optional(v.string())` — the name this seat plays under. Written
   when the seat is created in a public game, for **every** human seat
   including the creator's, so that no seat is the one without a disguise.
-  Absent on private games, where nobody needs one, and absent on a machine's
-  seat, which has no identity to protect: a machine is its `Robo-` name to
-  everybody, in every game.
+  Absent on private games, where nobody needs one.
+
+  A machine's seat carries one too — its bare pool name, `Gawain` rather than
+  `Robo-Gawain (easy)` — even though a machine has no identity to protect. It
+  is bookkeeping, not a disguise: this field is the one place every draw looks
+  to see what is already spoken for at a table, so putting the machines'
+  names in it is what keeps a person from being dealt `Gawain` beside a
+  seated `Robo-Gawain (easy)`, which the name pool promises never happens.
+  The alternative was for each of the three seat-creating paths to remember
+  the machines separately, and one of them already did not. It is never
+  rendered: `namesFor` tests `bot` before it consults `alias`, so a machine is
+  its `Robo-` name to everybody, in every game.
 
 ## Server
 
