@@ -118,7 +118,7 @@ export function CreateGame({
   return (
     <Modal onDismiss={starting ? undefined : onCancel}>
       <div className={styles.body}>
-        <h2 className={styles.title}>New game</h2>
+        <h2 className={styles.title}>New game with…</h2>
 
         {path === null && (
           <div className={styles.choices}>
