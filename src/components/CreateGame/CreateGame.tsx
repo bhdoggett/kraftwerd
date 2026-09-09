@@ -24,13 +24,15 @@ interface CreateGameProps {
   withFriend?: Id<"users">;
 }
 
-const COUNTS = Array.from({ length: GAME.maxPlayers }, (_, i) => i + 1);
+/* From two: a game of one is its own choice on the first screen, not the
+   smallest table of robots. */
+const COUNTS = Array.from({ length: GAME.maxPlayers - 1 }, (_, i) => i + 2);
 
 /** What a machine plays at until told otherwise. */
 const DEFAULT_LEVEL: Difficulty = "medium";
 
-/** Which game is being set up: people, machines, or not yet said. */
-type Path = "people" | "machines" | null;
+/** Which game is being set up: alone, people, machines, or not yet said. */
+type Path = "alone" | "people" | "machines" | null;
 
 /**
  * Everything about starting a game, in one place.
@@ -113,7 +115,7 @@ export function CreateGame({
     );
 
   /* A game of people needs somebody in it, even if only a seat held open. */
-  const ready = path === "machines" || picked.length + open > 0;
+  const ready = path !== "people" || picked.length + open > 0;
 
   return (
     <Modal onDismiss={starting ? undefined : onCancel}>
@@ -125,9 +127,20 @@ export function CreateGame({
             <button
               type="button"
               className={styles.choice}
+              onClick={() => setPath("alone")}
+            >
+              <strong>Myself</strong>
+              <span className={styles.choiceHint}>
+                Just you, against the board. Starts straight away.
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={styles.choice}
               onClick={() => setPath("people")}
             >
-              <strong>Humans</strong>
+              <strong>Other humans</strong>
               <span className={styles.choiceHint}>
                 Ask a friend, or leave a seat open and send the link.
               </span>
@@ -152,8 +165,14 @@ export function CreateGame({
             className={styles.back}
             onClick={() => setPath(null)}
           >
-            ← Humans or robots
+            ← Change who you’re playing
           </button>
+        )}
+
+        {path === "alone" && (
+          <p className={styles.hint}>
+            Nobody else at the table, nobody to wait for. Press Start.
+          </p>
         )}
 
         {path === "machines" && (
@@ -176,7 +195,7 @@ export function CreateGame({
                       n === count ? styles.countOn : "",
                     ].join(" ")}
                     aria-pressed={n === count}
-                    aria-label={n === 1 ? "Solo game" : `${n} players`}
+                    aria-label={`${n} players`}
                     onClick={() => resize(n)}
                   >
                     {n}
@@ -185,11 +204,7 @@ export function CreateGame({
               </div>
             </div>
 
-            {count === 1 ? (
-              <p className={styles.hint}>
-                Just you, against the board. Starts straight away.
-              </p>
-            ) : (
+            {
               /*
                 Each machine picks its own level. One hard opponent alongside
                 an easy one is a normal thing to want at a family table, and
@@ -226,7 +241,7 @@ export function CreateGame({
                   </div>
                 </div>
               ))
-            )}
+            }
           </div>
         )}
 
@@ -324,7 +339,9 @@ export function CreateGame({
             onClick={() =>
               path === "machines"
                 ? onStart(count, [], bots)
-                : onStart(people, picked, [])
+                : path === "alone"
+                  ? onStart(1, [], [])
+                  : onStart(people, picked, [])
             }
             disabled={starting || path === null || !ready}
           >
