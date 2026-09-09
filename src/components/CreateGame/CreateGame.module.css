@@ -153,18 +153,32 @@
 }
 
 /*
- * Adding a machine is a smaller act than starting the game, so it is written
- * rather than boxed -- a line of text you can press, under the list it adds to.
+ * Back to the first question. Written rather than boxed, and above the screen
+ * it leaves rather than beside the buttons that finish it: going back is not
+ * a third thing to weigh against Cancel and Start.
  */
-.addBot {
-  margin-top: var(--space-2);
-  padding: var(--space-2) 0;
+.back {
+  align-self: flex-start;
+  padding: 0;
   border: none;
   background: transparent;
-  color: var(--accent);
+  color: var(--text-muted);
   font-size: 0.85rem;
-  font-weight: 600;
   text-align: left;
+}
+
+.back:hover {
+  color: var(--accent);
+}
+
+/* The number of held seats, between the two buttons that change it. */
+.openCount {
+  min-width: 30px;
+  padding: 4px var(--space-2);
+  border-block: 1px solid var(--border-strong);
+  text-align: center;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .hint {

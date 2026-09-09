@@ -25,7 +25,7 @@ async function table(words: string[]) {
   const asAlice = t.withIdentity({ subject: "auth|alice" });
   const { gameId } = await asAlice.mutation(api.games.createGame, {
     playerCount: 2,
-    bots: ["hard"],
+    bots: [{ level: "hard", name: "Sam" }],
   });
   return { t, asAlice, gameId };
 }
@@ -47,7 +47,8 @@ describe("the words table check", () => {
   test("it reports the words the table does not have, in one call", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      for (const word of ["AD", "DO", "AT"]) await ctx.db.insert("words", { word });
+      for (const word of ["AD", "DO", "AT"])
+        await ctx.db.insert("words", { word });
     });
 
     expect(
@@ -56,13 +57,17 @@ describe("the words table check", () => {
     expect(
       await t.query(internal.bots.wordsMissing, { words: ["AD", "ZZZ", "QQ"] }),
     ).toEqual(expect.arrayContaining(["ZZZ", "QQ"]));
-    expect(await t.query(internal.bots.wordsMissing, { words: [] })).toEqual([]);
+    expect(await t.query(internal.bots.wordsMissing, { words: [] })).toEqual(
+      [],
+    );
   });
 
   test("a word repeated across a move is only looked up once", async () => {
     const t = convexTest(schema, modules);
     expect(
-      await t.query(internal.bots.wordsMissing, { words: ["ZZZ", "ZZZ", "ZZZ"] }),
+      await t.query(internal.bots.wordsMissing, {
+        words: ["ZZZ", "ZZZ", "ZZZ"],
+      }),
     ).toEqual(["ZZZ"]);
   });
 });
@@ -76,7 +81,9 @@ describe("what a turn reads", () => {
 
   test("a bot's seat comes back with the board, the rack and the level", async () => {
     const { t, gameId } = await table(["AD"]);
-    await t.run(async (ctx) => ctx.db.patch("games", gameId, { currentSeat: 1 }));
+    await t.run(async (ctx) =>
+      ctx.db.patch("games", gameId, { currentSeat: 1 }),
+    );
 
     const state = await t.query(internal.bots.turnState, { gameId });
     expect(state).not.toBeNull();
@@ -117,7 +124,9 @@ describe("a move that arrives too late", () => {
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game!.currentSeat).toBe(0);
     expect(game!.turnNumber).toBe(0);
-    expect(await t.run(async (ctx) => ctx.db.query("tiles").take(10))).toEqual([]);
+    expect(await t.run(async (ctx) => ctx.db.query("tiles").take(10))).toEqual(
+      [],
+    );
   });
 
   test("a pass for a seat that has moved on writes nothing", async () => {
@@ -148,7 +157,9 @@ describe("a turn taken outside a transaction", () => {
     // to end in something -- a pass, not a seat that never moves again.
     const { t, gameId } = await table(["ZZZZZZZ"]);
     const [, bot] = await seatsOf(t, gameId);
-    await t.run(async (ctx) => ctx.db.patch("games", gameId, { currentSeat: 1 }));
+    await t.run(async (ctx) =>
+      ctx.db.patch("games", gameId, { currentSeat: 1 }),
+    );
 
     await t.action(internal.bots.takeTurn, { gameId });
 
@@ -175,7 +186,9 @@ describe("a turn taken outside a transaction", () => {
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game!.currentSeat).toBe(0);
     expect(game!.turnNumber).toBe(0);
-    expect(await t.run(async (ctx) => ctx.db.query("turns").take(10))).toEqual([]);
+    expect(await t.run(async (ctx) => ctx.db.query("turns").take(10))).toEqual(
+      [],
+    );
   });
 
   test("a finished game wakes nothing", async () => {
@@ -185,6 +198,8 @@ describe("a turn taken outside a transaction", () => {
     );
 
     await t.action(internal.bots.takeTurn, { gameId });
-    expect(await t.run(async (ctx) => ctx.db.query("turns").take(10))).toEqual([]);
+    expect(await t.run(async (ctx) => ctx.db.query("turns").take(10))).toEqual(
+      [],
+    );
   });
 });

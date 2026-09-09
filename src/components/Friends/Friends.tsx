@@ -2,9 +2,9 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { FRIEND_LINK_DAYS, type Difficulty } from "../../../shared/config";
+import { FRIEND_LINK_DAYS } from "../../../shared/config";
 import { userMessage } from "../../lib/errors";
-import { useStartGame } from "../../lib/useStartGame";
+import { useStartGame, type BotSeat } from "../../lib/useStartGame";
 import styles from "./Friends.module.css";
 import { CreateGame } from "../CreateGame/CreateGame";
 
@@ -13,7 +13,8 @@ import { CreateGame } from "../CreateGame/CreateGame";
  * platforms, so the copy button is not a fallback anyone should have to hunt
  * for — it stays on show either way.
  */
-const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+const canShare =
+  typeof navigator !== "undefined" && typeof navigator.share === "function";
 
 export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const data = useQuery(api.friends.listFriends);
@@ -34,7 +35,7 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   async function startWith(
     playerCount: number,
     friendIds: Id<"users">[],
-    bots: Difficulty[],
+    bots: BotSeat[],
   ) {
     const game = await start(playerCount, friendIds, bots);
     if (game === null) return;
@@ -89,7 +90,6 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     }
   }
 
-
   return (
     <div className={styles.panel}>
       {opponent && (
@@ -122,7 +122,11 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         </p>
         <div className={styles.add}>
           {canShare && (
-            <button type="button" className={styles.button} onClick={() => void shareLink()}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => void shareLink()}
+            >
               Share
             </button>
           )}
@@ -144,7 +148,11 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           placeholder="Add by email"
           onChange={(e) => setEmail(e.target.value)}
         />
-        <button type="submit" className={styles.secondary} disabled={email.trim() === ""}>
+        <button
+          type="submit"
+          className={styles.secondary}
+          disabled={email.trim() === ""}
+        >
           Add
         </button>
       </form>
@@ -213,13 +221,14 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               <button
                 type="button"
                 className={styles.danger}
-                onClick={() => void removeFriend({ friendshipId: f.friendshipId })}
+                onClick={() =>
+                  void removeFriend({ friendshipId: f.friendshipId })
+                }
               >
                 Remove
               </button>
             </div>
           ))}
-
         </div>
       )}
 
@@ -260,7 +269,9 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               <button
                 type="button"
                 className={styles.secondary}
-                onClick={() => void removeFriend({ friendshipId: f.friendshipId })}
+                onClick={() =>
+                  void removeFriend({ friendshipId: f.friendshipId })
+                }
               >
                 Cancel
               </button>

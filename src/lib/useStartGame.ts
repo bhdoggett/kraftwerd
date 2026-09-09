@@ -5,6 +5,12 @@ import type { Id } from "../../convex/_generated/dataModel";
 import type { Difficulty } from "../../shared/config";
 import { userMessage } from "./errors";
 
+/** A computer player as the setup screen has it: how well it plays, and who it is. */
+export interface BotSeat {
+  readonly level: Difficulty;
+  readonly name: string;
+}
+
 export interface StartedGame {
   gameId: Id<"games">;
   name: string;
@@ -29,7 +35,7 @@ export function useStartGame() {
   async function start(
     playerCount: number,
     friendIds: readonly Id<"users">[],
-    bots: readonly Difficulty[] = [],
+    bots: readonly BotSeat[] = [],
   ): Promise<StartedGame | null> {
     setError(null);
     setStarting(true);

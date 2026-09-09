@@ -17,7 +17,13 @@ import {
   wordsFormed,
   type Fault,
 } from "../shared/engine/legality.js";
-import { draw, newBag, returnTiles, tilesLeft, type Bag } from "../shared/engine/bag.js";
+import {
+  draw,
+  newBag,
+  returnTiles,
+  tilesLeft,
+  type Bag,
+} from "../shared/engine/bag.js";
 import { scoreTurn, type Placement } from "../shared/engine/score.js";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
@@ -28,7 +34,12 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { currentUser, displayName, refuseGuest, requireUser } from "./auth_helpers";
+import {
+  currentUser,
+  displayName,
+  refuseGuest,
+  requireUser,
+} from "./auth_helpers";
 import { placement } from "./schema";
 
 /**
@@ -120,7 +131,10 @@ const toSpec = (t: Doc<"tiles">): TileSpec => ({
  * table rather than the function bundle, so validation fetches the handful of
  * words at stake instead of all 59k.
  */
-async function lookUp(ctx: QueryCtx | MutationCtx, candidates: readonly string[]) {
+async function lookUp(
+  ctx: QueryCtx | MutationCtx,
+  candidates: readonly string[],
+) {
   const found = await Promise.all(
     [...new Set(candidates)].map(async (word) => {
       const row = await ctx.db
@@ -139,11 +153,19 @@ export const difficulty = v.union(
   v.literal("hard"),
 );
 
+/**
+ * A computer player: how well it plays, and what it is called.
+ *
+ * The name is chosen where the game is set up, so that the opponent named on
+ * the setup screen is the one that ends up at the table.
+ */
+export const botSeat = v.object({ level: difficulty, name: v.string() });
+
 export const createGame = mutation({
   args: {
     playerCount: v.number(),
-    /** A computer player per entry, at the difficulty given. */
-    bots: v.optional(v.array(difficulty)),
+    /** A computer player per entry, seated next to you in the order given. */
+    bots: v.optional(v.array(botSeat)),
   },
   handler: async (ctx, args) => {
     const me = await currentUser(ctx);
@@ -154,11 +176,24 @@ export const createGame = mutation({
     // seat itself, with machines, and no more than that.
     if (args.playerCount - 1 - bots.length > 0) refuseGuest(me);
 
-    if (args.playerCount < GAME.minPlayers || args.playerCount > GAME.maxPlayers) {
-      throw new ConvexError(`Games take ${GAME.minPlayers}-${GAME.maxPlayers} players`);
+    if (
+      args.playerCount < GAME.minPlayers ||
+      args.playerCount > GAME.maxPlayers
+    ) {
+      throw new ConvexError(
+        `Games take ${GAME.minPlayers}-${GAME.maxPlayers} players`,
+      );
     }
     if (bots.length > args.playerCount - 1) {
       throw new ConvexError("There are not that many seats to fill");
+    }
+    // The name arrives from the client, so it is checked against the pool
+    // rather than trusted: a machine that could be called anything could be
+    // called what one of the people at the table is called.
+    for (const bot of bots) {
+      if (!(BOT_NAMES as readonly string[]).includes(bot.name)) {
+        throw new ConvexError("That is not a name a computer player can have");
+      }
     }
 
     const name = gameName(Math.random);
@@ -178,8 +213,8 @@ export const createGame = mutation({
 
     await joinSeat(ctx, gameId, userId, 0);
 
-    for (const [i, level] of bots.entries()) {
-      await seatBot(ctx, gameId, i + 1, level);
+    for (const [i, bot] of bots.entries()) {
+      await seatBot(ctx, gameId, i + 1, bot.level, bot.name);
     }
 
     // Nobody left to wait for: a solo game, or one whose other seats are all
@@ -205,8 +240,8 @@ async function seatBot(
   gameId: Id<"games">,
   seat: number,
   level: Difficulty,
+  name: string,
 ) {
-  const name = BOT_NAMES[seat % BOT_NAMES.length];
   const userId = await ctx.db.insert("users", {
     authId: `bot|${gameId}|${seat}`,
     name: `${name} (${level})`,
@@ -215,9 +250,12 @@ async function seatBot(
   await joinSeat(ctx, gameId, userId, seat);
   const player = await ctx.db
     .query("players")
-    .withIndex("by_game_and_seat", (q) => q.eq("gameId", gameId).eq("seat", seat))
+    .withIndex("by_game_and_seat", (q) =>
+      q.eq("gameId", gameId).eq("seat", seat),
+    )
     .unique();
-  if (player !== null) await ctx.db.patch("players", player._id, { bot: level });
+  if (player !== null)
+    await ctx.db.patch("players", player._id, { bot: level });
 }
 
 async function joinSeat(
@@ -259,7 +297,8 @@ export const createGameWithFriends = mutation({
     if (new Set(args.friendIds).size !== args.friendIds.length) {
       throw new ConvexError("Duplicate player");
     }
-    if (args.friendIds.includes(userId)) throw new ConvexError("You are already seated");
+    if (args.friendIds.includes(userId))
+      throw new ConvexError("You are already seated");
 
     for (const friendId of args.friendIds) {
       await requireFriendship(ctx, userId, friendId);
@@ -288,7 +327,6 @@ export const createGameWithFriends = mutation({
   },
 });
 
-
 /**
  * Take a free seat in a game you have the link to.
  *
@@ -305,15 +343,18 @@ export const joinGame = mutation({
 
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) throw new ConvexError("No such game");
-    if (game.status !== "lobby") throw new ConvexError("That game has already started");
+    if (game.status !== "lobby")
+      throw new ConvexError("That game has already started");
 
     const players = await ctx.db
       .query("players")
       .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
       .take(GAME.maxPlayers);
 
-    if (players.some((p) => p.userId === userId)) throw new ConvexError("Already joined");
-    if (players.length >= game.playerCount) throw new ConvexError("Game is full");
+    if (players.some((p) => p.userId === userId))
+      throw new ConvexError("Already joined");
+    if (players.length >= game.playerCount)
+      throw new ConvexError("Game is full");
 
     await joinSeat(ctx, args.gameId, userId, players.length, "joined");
 
@@ -333,7 +374,11 @@ export const joinGame = mutation({
 });
 
 /** The friendship row linking two people, whichever way round it was made. */
-async function friendshipBetween(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
+async function friendshipBetween(
+  ctx: MutationCtx,
+  a: Id<"users">,
+  b: Id<"users">,
+) {
   const [forward, back] = await Promise.all([
     ctx.db
       .query("friendships")
@@ -348,7 +393,11 @@ async function friendshipBetween(ctx: MutationCtx, a: Id<"users">, b: Id<"users"
 }
 
 /** Throw unless these two have an accepted friendship. */
-async function requireFriendship(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
+async function requireFriendship(
+  ctx: MutationCtx,
+  a: Id<"users">,
+  b: Id<"users">,
+) {
   const edge = await friendshipBetween(ctx, a, b);
   if (edge?.status !== "accepted") {
     throw new ConvexError("You are not friends with that player");
@@ -390,7 +439,8 @@ export const inviteToGame = mutation({
 
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) throw new ConvexError("No such game");
-    if (game.status !== "lobby") throw new ConvexError("That game has already started");
+    if (game.status !== "lobby")
+      throw new ConvexError("That game has already started");
 
     const players = await ctx.db
       .query("players")
@@ -437,7 +487,8 @@ export const tradeTiles = mutation({
       )
       .unique();
     if (player === null) throw new ConvexError("You are not in this game");
-    if (player.seat !== game.currentSeat) throw new ConvexError("Not your turn");
+    if (player.seat !== game.currentSeat)
+      throw new ConvexError("Not your turn");
 
     const chosen = [...new Set(args.indices)];
     if (chosen.length === 0) throw new ConvexError("Choose at least one tile");
@@ -515,7 +566,8 @@ export const passTurn = mutation({
       )
       .unique();
     if (player === null) throw new ConvexError("You are not in this game");
-    if (player.seat !== game.currentSeat) throw new ConvexError("Not your turn");
+    if (player.seat !== game.currentSeat)
+      throw new ConvexError("Not your turn");
 
     const bag = await bagFor(ctx, args.gameId);
     if (tilesLeft(bag.letters as Bag) > 0) {
@@ -550,7 +602,8 @@ export const respondToInvite = mutation({
       )
       .unique();
     if (me === null) throw new ConvexError("You were not invited to this game");
-    if (me.status !== "invited") throw new ConvexError("You have already answered");
+    if (me.status !== "invited")
+      throw new ConvexError("You have already answered");
 
     if (!args.accept) {
       // The game can never fill now, so it ends rather than lingering as a
@@ -659,7 +712,8 @@ async function playTurn(
       )
       .unique();
     if (player === null) throw new ConvexError("You are not in this game");
-    if (player.seat !== game.currentSeat) throw new ConvexError("Not your turn");
+    if (player.seat !== game.currentSeat)
+      throw new ConvexError("Not your turn");
 
     const placements: Placement[] = args.placements.map((p) => ({
       ...p,
@@ -673,7 +727,12 @@ async function playTurn(
     const after = applyPlacements(before, placements);
     const dictionary = await lookUp(ctx, wordsFormed(after, placements));
 
-    const legality = validateTurn(before, placements, dictionary, boardShape(game));
+    const legality = validateTurn(
+      before,
+      placements,
+      dictionary,
+      boardShape(game),
+    );
     if (!legality.ok) throw new ConvexError(describe(legality.faults));
 
     const score = scoreTurn(after, placements, { before });
@@ -726,7 +785,8 @@ async function playTurn(
     // Letters refill from the bag; blanks do not — they are a whole-game
     // allowance of their own (§5) and were never in it.
     const rack = await drawInto(ctx, args.gameId, remaining);
-    const blanksHeld = blanksLeft(player) - placements.filter((p) => p.isBlank).length;
+    const blanksHeld =
+      blanksLeft(player) - placements.filter((p) => p.isBlank).length;
     await ctx.db.patch("players", player._id, {
       score: player.score + score.total,
       letters: rack.letters,
@@ -750,7 +810,8 @@ async function playTurn(
      * which are the most valuable tiles on the table (§5). A hand is empty
      * when there is nothing in it, and a blank is something in it.
      */
-    const out = rack.left === 0 && rack.letters.length === 0 && blanksHeld === 0;
+    const out =
+      rack.left === 0 && rack.letters.length === 0 && blanksHeld === 0;
     await advanceTurn(ctx, game, placements.length, out);
     await wakeBot(ctx, args.gameId);
 
@@ -772,12 +833,17 @@ export function blanksLeft(player: Doc<"players">): number {
  * Remove the played letters from the rack, or throw if the player does not
  * hold them. Blanks are spent from a whole-game allowance (§5).
  */
-function spendRack(player: Doc<"players">, placements: readonly Placement[]): string[] {
+function spendRack(
+  player: Doc<"players">,
+  placements: readonly Placement[],
+): string[] {
   const used = placements.filter((p) => p.isBlank).length;
   const held = blanksLeft(player);
   if (used > held) {
     throw new ConvexError(
-      held === 0 ? "You have no blanks left" : `You have only ${held} blanks left`,
+      held === 0
+        ? "You have no blanks left"
+        : `You have only ${held} blanks left`,
     );
   }
 
@@ -893,7 +959,8 @@ export const resignGame = mutation({
 
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) throw new ConvexError("No such game");
-    if (game.status === "finished") throw new ConvexError("Game is already over");
+    if (game.status === "finished")
+      throw new ConvexError("Game is already over");
 
     const player = await ctx.db
       .query("players")
@@ -960,7 +1027,8 @@ async function advanceTurn(
   // A turn that only replaced letters grew the board by nothing, but it was
   // not a pass — the board changed, and so did the words on it. Counting it
   // as one ended a solo game the moment two such turns ran together.
-  const consecutivePasses = played === 0 ? (game.consecutivePasses ?? 0) + 1 : 0;
+  const consecutivePasses =
+    played === 0 ? (game.consecutivePasses ?? 0) + 1 : 0;
 
   /*
    * The game runs until the tiles run out.
@@ -981,13 +1049,15 @@ async function advanceTurn(
    * Once set it is never moved: a second player going out during the final
    * round does not restart it.
    */
-  const endsAfterTurn = game.endsAfterTurn ??
+  const endsAfterTurn =
+    game.endsAfterTurn ??
     (playedOut ? game.turnNumber + game.playerCount - 1 : undefined);
 
   // Two full rounds where nobody places anything: the game is going nowhere.
   const stalled = consecutivePasses >= game.playerCount * 2;
   const finished =
-    stalled || (endsAfterTurn !== undefined && game.turnNumber >= endsAfterTurn);
+    stalled ||
+    (endsAfterTurn !== undefined && game.turnNumber >= endsAfterTurn);
 
   await ctx.db.patch("games", game._id, {
     tileCount,
@@ -1027,7 +1097,7 @@ function describeFault(legality: Fault): string {
     case "missing-centre":
       return "The first word has to cover the centre square";
     case "disconnected":
-      return "Every tile must connect to the tiles already on the board";;
+      return "Every tile must connect to the tiles already on the board";
     case "blank-on-stack":
       return `A blank cannot be the tile that closes a square (${legality.at.x}, ${legality.at.y})`;
     case "unchanged":
@@ -1101,7 +1171,10 @@ export const checkWords = query({
   handler: async (ctx, args) => {
     await requireUser(ctx);
 
-    const unique = [...new Set(args.words.map((w) => w.toUpperCase()))].slice(0, 32);
+    const unique = [...new Set(args.words.map((w) => w.toUpperCase()))].slice(
+      0,
+      32,
+    );
 
     return await Promise.all(
       unique.map(async (word) => {
@@ -1290,4 +1363,3 @@ export const listMyGames = query({
     };
   },
 });
-

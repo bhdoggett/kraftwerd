@@ -2,12 +2,16 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import type { Difficulty } from "../../../shared/config";
 import { CreateGame } from "../CreateGame/CreateGame";
 import { GuestGame } from "../GuestGame/GuestGame";
 import { DevTools } from "../DevTools/DevTools";
 import { NewGame } from "../NewGame/NewGame";
-import { claimPromisedGame, useStartGame } from "../../lib/useStartGame";
+import { drawBotNames } from "../../lib/roster";
+import {
+  claimPromisedGame,
+  useStartGame,
+  type BotSeat,
+} from "../../lib/useStartGame";
 import styles from "./Lobby.module.css";
 
 export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
@@ -40,7 +44,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   async function startGame(
     playerCount: number,
     friendIds: Id<"users">[],
-    bots: Difficulty[],
+    bots: BotSeat[],
   ) {
     const game = await start(playerCount, friendIds, bots);
     if (game === null) return;
@@ -68,7 +72,11 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     queueMicrotask(() =>
       kind === "solo"
         ? void startGame(1, [], [])
-        : void startGame(2, [], ["medium"]),
+        : void startGame(
+            2,
+            [],
+            [{ level: "medium", name: drawBotNames(1, Math.random)[0] }],
+          ),
     );
     // Once, on arrival: startGame changes on every render, and this is not a
     // thing to redo when it does.
@@ -93,14 +101,20 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
       <DevTools />
 
-      <button type="button" className={styles.newGame} onClick={() => setCreating(true)}>
+      <button
+        type="button"
+        className={styles.newGame}
+        onClick={() => setCreating(true)}
+      >
         New game
       </button>
 
       {creating &&
         (viewer?.isGuest === true ? (
           <GuestGame
-            onStart={(playerCount, bots) => void startGame(playerCount, [], bots)}
+            onStart={(playerCount, bots) =>
+              void startGame(playerCount, [], bots)
+            }
             onCancel={() => {
               setCreating(false);
               clearError();
@@ -158,7 +172,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
       <section className={styles.section}>
         <h2 className={styles.heading}>Your games</h2>
         {mine === undefined && <p className={styles.empty}>Loading…</p>}
-        {mine && myGames.length === 0 && <p className={styles.empty}>No games yet.</p>}
+        {mine && myGames.length === 0 && (
+          <p className={styles.empty}>No games yet.</p>
+        )}
         {myGames.map((g) => (
           <div key={g.gameId} className={styles.row}>
             <span className={styles.grow}>
@@ -177,12 +193,19 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
                 {/* Whose move it is, by name — the row said so only when the
                     answer was you, which is the case you least need told. */}
                 {g.waitingFor !== null && !g.yourTurn && (
-                  <> {" · "} waiting for {g.waitingFor}</>
+                  <>
+                    {" "}
+                    {" · "} waiting for {g.waitingFor}
+                  </>
                 )}
               </span>
             </span>
             {g.yourTurn && <span className={styles.badge}>Your turn</span>}
-            <button type="button" className={styles.button} onClick={() => onOpen(g.gameId)}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => onOpen(g.gameId)}
+            >
               Open
             </button>
           </div>
@@ -212,9 +235,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           </div>
           <p className={styles.betaNote}>
             Counts games played under the rules as they stand. The rules are
-            still moving — bag, rack, scoring — and when they change these
-            start again, since a score set with a different bag never competed
-            with a newer one. The games themselves are kept either way.
+            still moving — bag, rack, scoring — and when they change these start
+            again, since a score set with a different bag never competed with a
+            newer one. The games themselves are kept either way.
           </p>
         </section>
       )}

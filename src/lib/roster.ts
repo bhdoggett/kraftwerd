@@ -1,42 +1,51 @@
-import { BOT_NAMES, type Difficulty } from "../../shared/config";
+import { BOT_NAMES, GAME } from "../../shared/config";
 
 /**
- * Who is at the table besides you, while the game is still being set up.
+ * Filling the seats at a table that is still being set up.
  *
- * Friends and bots share one pool of seats, so neither can be reasoned about
- * on its own: ticking a friend has to take a seat away from the machines and
- * the other way round. Generic in the friend's id so this stays testable
- * without a database.
+ * A game is either people or machines, never both, so there is no shared pool
+ * of seats to reason about: a table of machines is as many as you asked for,
+ * and a table of people is you plus whoever you picked plus the seats you are
+ * holding open for a link. What is left here is the arithmetic of the second
+ * and the naming of the first.
  */
-export interface Roster<Friend = string> {
-  readonly friends: readonly Friend[];
-  readonly bots: readonly Difficulty[];
-}
 
-/** Seats nobody holds yet. Seat 0 is yours and never counts. */
-export function seatsFree<F>(roster: Roster<F>, playerCount: number): number {
-  return Math.max(0, playerCount - 1 - roster.friends.length - roster.bots.length);
+/**
+ * Names for `count` machines, drawn at random and never repeating.
+ *
+ * The draw happens where the game is set up rather than where it is seated,
+ * because the setup screen shows the names: a server that drew its own would
+ * name the opponent you agreed to something else. `taken` is for growing a
+ * table — the machines already on screen keep the names they were given, and
+ * this only picks the new ones.
+ *
+ * The rng is passed in the way `gameName` takes one, so a test can pin a draw.
+ */
+export function drawBotNames(
+  count: number,
+  rng: () => number,
+  taken: Iterable<string> = [],
+): string[] {
+  const spoken = new Set(taken);
+  const pool = BOT_NAMES.filter((name) => !spoken.has(name));
+
+  // Partial Fisher-Yates: swap a random survivor into each position in turn,
+  // which draws without replacement however many are asked for.
+  const drawn: string[] = [];
+  for (let i = 0; i < pool.length && drawn.length < count; i++) {
+    const pick = i + Math.floor(rng() * (pool.length - i));
+    [pool[i], pool[pick]] = [pool[pick], pool[i]];
+    drawn.push(pool[i]);
+  }
+  return drawn;
 }
 
 /**
- * Cut the roster down to a smaller game.
+ * Seats a table of people has spare.
  *
- * Bots go first: a friend is someone you picked out by name, a bot is a seat
- * filler, so when the table shrinks the filler is what should give way.
+ * `picked` are the friends ticked, `open` the seats deliberately left for an
+ * invite link. Your own seat is never spare.
  */
-export function trimRoster<F>(roster: Roster<F>, playerCount: number): Roster<F> {
-  const seats = Math.max(0, playerCount - 1);
-  const friends = roster.friends.slice(0, seats);
-  return { friends, bots: roster.bots.slice(0, seats - friends.length) };
-}
-
-/**
- * The name the bot at this position will play under.
- *
- * The server seats bots from seat 1 upwards and names them by seat, so the
- * same arithmetic here keeps the setup screen honest — the "Sam" you added is
- * the "Sam" you end up playing.
- */
-export function botLabel(index: number): string {
-  return BOT_NAMES[(index + 1) % BOT_NAMES.length];
+export function seatsSpare(picked: number, open: number): number {
+  return Math.max(0, GAME.maxPlayers - 1 - picked - open);
 }

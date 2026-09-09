@@ -34,7 +34,10 @@ async function twoPlayerGame(letters: string[]) {
   // create the mirrored row directly so the game logic can be exercised
   // without standing up the auth component.
   const [alice, bob] = await t.run(async (ctx) => {
-    const a = await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+    const a = await ctx.db.insert("users", {
+      authId: "auth|alice",
+      name: "Alice",
+    });
     const b = await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
     for (const word of WORDS) await ctx.db.insert("words", { word });
     return [a, b];
@@ -43,7 +46,9 @@ async function twoPlayerGame(letters: string[]) {
   const asAlice = t.withIdentity({ subject: "auth|alice" });
   const asBob = t.withIdentity({ subject: "auth|bob" });
 
-  const { gameId } = await asAlice.mutation(api.games.createGame, { playerCount: 2 });
+  const { gameId } = await asAlice.mutation(api.games.createGame, {
+    playerCount: 2,
+  });
 
   // Seat Bob directly and start the game. These tests are about placement
   // rules; the invitation flow that normally seats a second player has its
@@ -79,7 +84,12 @@ async function twoPlayerGame(letters: string[]) {
 
 describe("placeTiles", () => {
   test("scores a legal opening 2x2 and banks it to the player", async () => {
-    const { gameId, asAlice, alice, t } = await twoPlayerGame(["A", "D", "D", "O"]);
+    const { gameId, asAlice, alice, t } = await twoPlayerGame([
+      "A",
+      "D",
+      "D",
+      "O",
+    ]);
 
     const result = await asAlice.mutation(api.games.placeTiles, {
       gameId,
@@ -92,14 +102,21 @@ describe("placeTiles", () => {
     const player = await t.run(async (ctx) =>
       ctx.db
         .query("players")
-        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", alice),
+        )
         .unique(),
     );
     expect(player?.score).toBe(12);
   });
 
   test("refills the rack back to full after a play", async () => {
-    const { gameId, asAlice, alice, t } = await twoPlayerGame(["A", "D", "D", "O"]);
+    const { gameId, asAlice, alice, t } = await twoPlayerGame([
+      "A",
+      "D",
+      "D",
+      "O",
+    ]);
 
     await asAlice.mutation(api.games.placeTiles, {
       gameId,
@@ -109,7 +126,9 @@ describe("placeTiles", () => {
     const player = await t.run(async (ctx) =>
       ctx.db
         .query("players")
-        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", alice),
+        )
         .unique(),
     );
     expect(player?.letters).toHaveLength(RACK.size);
@@ -175,7 +194,12 @@ describe("placeTiles", () => {
   });
 
   test("rejects a second play that does not touch the mass", async () => {
-    const { gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "T", "O"]);
+    const { gameId, asAlice, asBob } = await twoPlayerGame([
+      "A",
+      "D",
+      "T",
+      "O",
+    ]);
 
     await asAlice.mutation(api.games.placeTiles, {
       gameId,
@@ -192,7 +216,12 @@ describe("placeTiles", () => {
   });
 
   test("lets the opponent complete a square and take the whole thing", async () => {
-    const { gameId, asAlice, asBob, bob, t } = await twoPlayerGame(["A", "D", "D", "O"]);
+    const { gameId, asAlice, asBob, bob, t } = await twoPlayerGame([
+      "A",
+      "D",
+      "D",
+      "O",
+    ]);
 
     // Alice builds three corners of the 2x2.
     await asAlice.mutation(api.games.placeTiles, {
@@ -211,7 +240,9 @@ describe("placeTiles", () => {
     const player = await t.run(async (ctx) =>
       ctx.db
         .query("players")
-        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", bob))
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", bob),
+        )
         .unique(),
     );
     expect(player?.score).toBe(8);
@@ -243,7 +274,9 @@ describe("placeTiles", () => {
     const player = await t.run(async (ctx) =>
       ctx.db
         .query("players")
-        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", alice),
+        )
         .unique(),
     );
     // Spent, and not handed back next turn.
@@ -255,7 +288,9 @@ describe("placeTiles", () => {
     await t.run(async (ctx) => {
       const player = await ctx.db
         .query("players")
-        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", alice),
+        )
         .unique();
       await ctx.db.patch("players", player!._id, { blanks: 1 });
     });
@@ -273,7 +308,12 @@ describe("placeTiles", () => {
 
     const result = await asAlice.mutation(api.games.placeTiles, {
       gameId,
-      placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O", true)],
+      placements: [
+        at(0, 0, "A"),
+        at(1, 0, "D"),
+        at(0, 1, "D"),
+        at(1, 1, "O", true),
+      ],
     });
 
     // Four 2-letter words and 4 for the square: the blank pays its way.
@@ -288,8 +328,12 @@ describe("getGame", () => {
     const view = await asAlice.query(api.games.getGame, { gameId });
 
     const players = view!.players;
-    const mine = players.find((p: { userId: Id<"users"> }) => p.userId === alice);
-    const theirs = players.find((p: { userId: Id<"users"> }) => p.userId === bob);
+    const mine = players.find(
+      (p: { userId: Id<"users"> }) => p.userId === alice,
+    );
+    const theirs = players.find(
+      (p: { userId: Id<"users"> }) => p.userId === bob,
+    );
 
     expect(mine?.letters).toEqual(["A", "D"]);
     expect(theirs?.letters).toBeNull();
@@ -299,7 +343,10 @@ describe("getGame", () => {
 
 describe("end of game", () => {
   /** An empty bag and no blanks: playing your letters out is going out. */
-  async function readyToGoOut(t: Awaited<ReturnType<typeof twoPlayerGame>>["t"], gameId: Id<"games">) {
+  async function readyToGoOut(
+    t: Awaited<ReturnType<typeof twoPlayerGame>>["t"],
+    gameId: Id<"games">,
+  ) {
     await t.run(async (ctx) => {
       const bag = await ctx.db
         .query("bags")
@@ -415,12 +462,17 @@ describe("solo games", () => {
     const t = convexTest(schema, modules);
     const alice = await t.run(async (ctx) => {
       for (const word of WORDS) await ctx.db.insert("words", { word });
-      return await ctx.db.insert("users", { authId: "auth|solo", name: "Solo" });
+      return await ctx.db.insert("users", {
+        authId: "auth|solo",
+        name: "Solo",
+      });
     });
     void alice;
 
     const asAlice = t.withIdentity({ subject: "auth|solo" });
-    const { gameId } = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 1,
+    });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("active");
@@ -428,7 +480,9 @@ describe("solo games", () => {
 
   test("a two-player game still waits in the lobby", async () => {
     const t = convexTest(schema, modules);
-    await t.run(async (ctx) => ctx.db.insert("users", { authId: "auth|a", name: "A" }));
+    await t.run(async (ctx) =>
+      ctx.db.insert("users", { authId: "auth|a", name: "A" }),
+    );
 
     const { gameId } = await t
       .withIdentity({ subject: "auth|a" })
@@ -456,7 +510,12 @@ describe("resigning and stats", () => {
   });
 
   test("a resigner cannot win even while ahead", async () => {
-    const { t, gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D", "D", "O"]);
+    const { t, gameId, asAlice, alice, bob } = await twoPlayerGame([
+      "A",
+      "D",
+      "D",
+      "O",
+    ]);
 
     // Alice scores 8, then quits anyway.
     await asAlice.mutation(api.games.placeTiles, {
@@ -479,7 +538,12 @@ describe("resigning and stats", () => {
   });
 
   test("records the best single turn as it happens", async () => {
-    const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "D", "D", "O"]);
+    const { t, gameId, asAlice, alice } = await twoPlayerGame([
+      "A",
+      "D",
+      "D",
+      "O",
+    ]);
 
     await asAlice.mutation(api.games.placeTiles, {
       gameId,
@@ -521,7 +585,10 @@ describe("resigning and stats", () => {
   });
 
   test("running the tiles out records a winner", async () => {
-    const { t, gameId, asAlice, asBob, alice } = await twoPlayerGame(["A", "D"]);
+    const { t, gameId, asAlice, asBob, alice } = await twoPlayerGame([
+      "A",
+      "D",
+    ]);
     // An empty bag and no blanks, so playing out a hand is what ends this game.
     await t.run(async (ctx) => {
       const bag = await ctx.db
@@ -652,9 +719,16 @@ describe("joining by link", () => {
       await ctx.db.insert("users", { authId: "auth|third", name: "Third" });
     });
     const asHost = t.withIdentity({ subject: "auth|host" });
-    const { gameId } = await asHost.mutation(api.games.createGame, { playerCount });
-    return { t, gameId, asHost, asGuest: t.withIdentity({ subject: "auth|guest" }),
-      asThird: t.withIdentity({ subject: "auth|third" }) };
+    const { gameId } = await asHost.mutation(api.games.createGame, {
+      playerCount,
+    });
+    return {
+      t,
+      gameId,
+      asHost,
+      asGuest: t.withIdentity({ subject: "auth|guest" }),
+      asThird: t.withIdentity({ subject: "auth|third" }),
+    };
   }
 
   test("the game starts only once every seat is taken", async () => {
@@ -754,7 +828,11 @@ describe("the lobby's game lists", () => {
     async function table() {
       const t = convexTest(schema, modules);
       await t.run(async (ctx) => {
-        await ctx.db.insert("users", { authId: "auth|guest", name: "Guest", isGuest: true });
+        await ctx.db.insert("users", {
+          authId: "auth|guest",
+          name: "Guest",
+          isGuest: true,
+        });
         await ctx.db.insert("users", { authId: "auth|real", name: "Real" });
       });
       return {
@@ -767,7 +845,9 @@ describe("the lobby's game lists", () => {
     test("may play alone", async () => {
       const { asGuest } = await table();
 
-      const game = await asGuest.mutation(api.games.createGame, { playerCount: 1 });
+      const game = await asGuest.mutation(api.games.createGame, {
+        playerCount: 1,
+      });
 
       expect(game.playerCount).toBe(1);
     });
@@ -777,7 +857,7 @@ describe("the lobby's game lists", () => {
 
       const game = await asGuest.mutation(api.games.createGame, {
         playerCount: 2,
-        bots: ["medium"],
+        bots: [{ level: "medium", name: "Sam" }],
       });
 
       expect(game.playerCount).toBe(2);
@@ -795,7 +875,9 @@ describe("the lobby's game lists", () => {
 
     test("may not take a seat at somebody else's table", async () => {
       const { asGuest, asReal } = await table();
-      const { gameId } = await asReal.mutation(api.games.createGame, { playerCount: 2 });
+      const { gameId } = await asReal.mutation(api.games.createGame, {
+        playerCount: 2,
+      });
 
       await expect(
         asGuest.mutation(api.games.joinGame, { gameId }),
@@ -805,9 +887,9 @@ describe("the lobby's game lists", () => {
     test("may not make friends, which is the other way to a table", async () => {
       const { asGuest } = await table();
 
-      await expect(asGuest.mutation(api.friends.createFriendLink, {})).rejects.toThrow(
-        "Make an account",
-      );
+      await expect(
+        asGuest.mutation(api.friends.createFriendLink, {}),
+      ).rejects.toThrow("Make an account");
     });
   });
 
@@ -816,7 +898,11 @@ describe("the lobby's game lists", () => {
     // account, where anyone else is offered the way out of theirs.
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|guest", name: "Guest", isGuest: true });
+      await ctx.db.insert("users", {
+        authId: "auth|guest",
+        name: "Guest",
+        isGuest: true,
+      });
       await ctx.db.insert("users", { authId: "auth|real", name: "Real" });
     });
 
@@ -833,7 +919,9 @@ describe("the lobby's game lists", () => {
       await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
     });
     const asHost = t.withIdentity({ subject: "auth|host" });
-    const { gameId } = await asHost.mutation(api.games.createGame, { playerCount: 2 });
+    const { gameId } = await asHost.mutation(api.games.createGame, {
+      playerCount: 2,
+    });
 
     await asHost.mutation(api.games.resignGame, { gameId });
 
@@ -855,7 +943,9 @@ describe("the lobby's game lists", () => {
     });
     const asHost = t.withIdentity({ subject: "auth|host" });
     const asGuest = t.withIdentity({ subject: "auth|guest" });
-    const { gameId } = await asHost.mutation(api.games.createGame, { playerCount: 3 });
+    const { gameId } = await asHost.mutation(api.games.createGame, {
+      playerCount: 3,
+    });
     await asGuest.mutation(api.games.joinGame, { gameId });
 
     await asGuest.mutation(api.games.resignGame, { gameId });
@@ -891,7 +981,9 @@ describe("the lobby's game lists", () => {
     for (let i = 0; i < 55; i++) {
       await asRegular.mutation(api.games.createGame, { playerCount: 1 });
     }
-    const { gameId } = await asRegular.mutation(api.games.createGame, { playerCount: 2 });
+    const { gameId } = await asRegular.mutation(api.games.createGame, {
+      playerCount: 2,
+    });
 
     const lobby = await asRegular.query(api.games.listMyGames);
     expect(lobby.games.map((g) => g.gameId)).toContain(gameId);
@@ -903,7 +995,9 @@ describe("the lobby's game lists", () => {
       await ctx.db.insert("users", { authId: "auth|solo", name: "Solo" });
     });
     const asSolo = t.withIdentity({ subject: "auth|solo" });
-    const { gameId } = await asSolo.mutation(api.games.createGame, { playerCount: 1 });
+    const { gameId } = await asSolo.mutation(api.games.createGame, {
+      playerCount: 1,
+    });
 
     await asSolo.mutation(api.games.resignGame, { gameId });
 
@@ -926,14 +1020,21 @@ describe("the lobby's game lists", () => {
 
 describe("trading tiles", () => {
   test("swaps the chosen letters and passes the turn", async () => {
-    const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "B", "C", "D"]);
+    const { t, gameId, asAlice, alice } = await twoPlayerGame([
+      "A",
+      "B",
+      "C",
+      "D",
+    ]);
 
     await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0, 1] });
 
     const [player, game] = await t.run(async (ctx) => [
       await ctx.db
         .query("players")
-        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", alice),
+        )
         .unique(),
       await ctx.db.get("games", gameId),
     ]);
@@ -948,10 +1049,20 @@ describe("trading tiles", () => {
   });
 
   test("trading everything is allowed", async () => {
-    const { gameId, asAlice } = await twoPlayerGame(["A", "B", "C", "D", "E", "F"]);
+    const { gameId, asAlice } = await twoPlayerGame([
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+    ]);
 
     await expect(
-      asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0, 1, 2, 3, 4, 5] }),
+      asAlice.mutation(api.games.tradeTiles, {
+        gameId,
+        indices: [0, 1, 2, 3, 4, 5],
+      }),
     ).resolves.toBeNull();
   });
 
@@ -984,7 +1095,12 @@ describe("trading tiles", () => {
   });
 
   test("placing resets the stalled count", async () => {
-    const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "D", "O"]);
+    const { t, gameId, asAlice, asBob } = await twoPlayerGame([
+      "A",
+      "D",
+      "D",
+      "O",
+    ]);
 
     await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0] });
     await asBob.mutation(api.games.placeTiles, {
@@ -1036,7 +1152,12 @@ describe("the board", () => {
 
 describe("the tile count", () => {
   test("counts every tile played, replacements included", async () => {
-    const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "T", "O"]);
+    const { t, gameId, asAlice, asBob } = await twoPlayerGame([
+      "A",
+      "D",
+      "T",
+      "O",
+    ]);
 
     await asAlice.mutation(api.games.placeTiles, {
       gameId,
@@ -1047,7 +1168,10 @@ describe("the tile count", () => {
 
     // A tile laid on one already there covers no new square, but it is still
     // a tile played, and the game is that much closer to its end.
-    await asBob.mutation(api.games.placeTiles, { gameId, placements: [at(1, 0, "T")] });
+    await asBob.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(1, 0, "T")],
+    });
 
     const after = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(after?.tileCount).toBe(3);
@@ -1058,20 +1182,30 @@ describe("stacking is playing, not passing", () => {
   test("a solo game does not end because two turns only replaced letters", async () => {
     const t = convexTest(schema, modules);
     const solo = await t.run(async (ctx) => {
-      const id = await ctx.db.insert("users", { authId: "auth|solo", name: "Solo" });
-      for (const word of [...WORDS, "AM", "AH", "IT"]) await ctx.db.insert("words", { word });
+      const id = await ctx.db.insert("users", {
+        authId: "auth|solo",
+        name: "Solo",
+      });
+      for (const word of [...WORDS, "AM", "AH", "IT"])
+        await ctx.db.insert("words", { word });
       return id;
     });
     const asSolo = t.withIdentity({ subject: "auth|solo" });
-    const { gameId } = await asSolo.mutation(api.games.createGame, { playerCount: 1 });
+    const { gameId } = await asSolo.mutation(api.games.createGame, {
+      playerCount: 1,
+    });
 
     const stock = async () => {
       await t.run(async (ctx) => {
         const player = await ctx.db
           .query("players")
-          .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", solo))
+          .withIndex("by_game_and_user", (q) =>
+            q.eq("gameId", gameId).eq("userId", solo),
+          )
           .unique();
-        await ctx.db.patch("players", player!._id, { letters: ["A", "D", "T", "I", "H", "O", "E"] });
+        await ctx.db.patch("players", player!._id, {
+          letters: ["A", "D", "T", "I", "H", "O", "E"],
+        });
       });
     };
 
@@ -1085,9 +1219,15 @@ describe("stacking is playing, not passing", () => {
     // Two different squares: one tile may land on each, and the cap stops a
     // second landing on the same one.
     await stock();
-    await asSolo.mutation(api.games.placeTiles, { gameId, placements: [at(1, 0, "T")] });
+    await asSolo.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(1, 0, "T")],
+    });
     await stock();
-    await asSolo.mutation(api.games.placeTiles, { gameId, placements: [at(0, 0, "I")] });
+    await asSolo.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "I")],
+    });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("active");
@@ -1108,7 +1248,10 @@ describe("computer players", () => {
 
   // Typed from `table` rather than from convexTest itself, so the schema —
   // and with it the index names — survives.
-  const seatsOf = (t: Awaited<ReturnType<typeof table>>["t"], gameId: Id<"games">) =>
+  const seatsOf = (
+    t: Awaited<ReturnType<typeof table>>["t"],
+    gameId: Id<"games">,
+  ) =>
     t.run(async (ctx) =>
       (
         await ctx.db
@@ -1122,7 +1265,10 @@ describe("computer players", () => {
     const { t, asAlice } = await table();
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 3,
-      bots: ["easy", "hard"],
+      bots: [
+        { level: "easy", name: "Sam" },
+        { level: "hard", name: "Ash" },
+      ],
     });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
@@ -1135,8 +1281,11 @@ describe("computer players", () => {
 
   test("a bot waits with everyone else for the person who was invited", async () => {
     const { t, asAlice } = await table();
-    const bob = await t.run(async (ctx) =>
-      (await ctx.db.query("users").take(10)).find((u) => u.authId === "auth|bob")!._id,
+    const bob = await t.run(
+      async (ctx) =>
+        (await ctx.db.query("users").take(10)).find(
+          (u) => u.authId === "auth|bob",
+        )!._id,
     );
     await t.run(async (ctx) => {
       await ctx.db.insert("friendships", {
@@ -1148,9 +1297,12 @@ describe("computer players", () => {
 
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 3,
-      bots: ["medium"],
+      bots: [{ level: "medium", name: "Sam" }],
     });
-    await asAlice.mutation(api.games.inviteToGame, { gameId, friendIds: [bob] });
+    await asAlice.mutation(api.games.inviteToGame, {
+      gameId,
+      friendIds: [bob],
+    });
 
     const lobby = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(lobby?.status).toBe("lobby");
@@ -1174,7 +1326,7 @@ describe("computer players", () => {
       const { t, asAlice } = await table();
       const { gameId } = await asAlice.mutation(api.games.createGame, {
         playerCount: 2,
-        bots: ["hard"],
+        bots: [{ level: "hard", name: "Sam" }],
       });
 
       // Drain the nudge createGame left behind, so what wakes the machine
@@ -1200,7 +1352,7 @@ describe("computer players", () => {
     const { t, asAlice } = await table();
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 2,
-      bots: ["easy"],
+      bots: [{ level: "easy", name: "Sam" }],
     });
     await asAlice.mutation(api.games.resignGame, { gameId });
 
@@ -1225,143 +1377,189 @@ describe("computer players", () => {
    * and 4016ms. The cap is generous on purpose: what it is protecting against
    * is a search that never returns, not one that is merely slow.
    */
-  test("the machine plays a real word off what is already there", { timeout: 30_000 }, async () => {
-    vi.useFakeTimers();
-    try {
-      const { t, asAlice } = await table();
+  test(
+    "the machine plays a real word off what is already there",
+    { timeout: 30_000 },
+    async () => {
+      vi.useFakeTimers();
+      try {
+        const { t, asAlice } = await table();
 
-      /*
-       * The words table gets every word in the bot's own list that these
-       * racks could spell. Elsewhere these tests run on a handful of words,
-       * which would have the bot pass every turn -- it considers the bundled
-       * list and is then held to the table, and with a table that small the
-       * two never meet.
-       */
-      const letters = new Set("TOADEMUC");
-      await t.run(async (ctx) => {
-        for (const word of ALL_WORDS) {
-          if ([...word].every((c) => letters.has(c))) {
-            if (!WORDS.includes(word)) await ctx.db.insert("words", { word });
+        /*
+         * The words table gets every word in the bot's own list that these
+         * racks could spell. Elsewhere these tests run on a handful of words,
+         * which would have the bot pass every turn -- it considers the bundled
+         * list and is then held to the table, and with a table that small the
+         * two never meet.
+         */
+        const letters = new Set("TOADEMUC");
+        await t.run(async (ctx) => {
+          for (const word of ALL_WORDS) {
+            if ([...word].every((c) => letters.has(c))) {
+              if (!WORDS.includes(word)) await ctx.db.insert("words", { word });
+            }
           }
-        }
-      });
-
-      const { gameId } = await asAlice.mutation(api.games.createGame, {
-        playerCount: 2,
-        bots: ["hard"],
-      });
-
-      const stock = async (seat: number, letters: string[]) =>
-        t.run(async (ctx) => {
-          const player = await ctx.db
-            .query("players")
-            .withIndex("by_game_and_seat", (q) =>
-              q.eq("gameId", gameId).eq("seat", seat),
-            )
-            .unique();
-          await ctx.db.patch("players", player!._id, { letters });
         });
 
-      await stock(0, ["A", "D", "E", "M", "U", "C", "T", "O"]);
-      await stock(1, ["T", "O", "A", "D", "E", "M", "U", "C"]);
-      await asAlice.mutation(api.games.placeTiles, {
-        gameId,
-        placements: [at(0, 0, "A"), at(1, 0, "D")],
-      });
+        const { gameId } = await asAlice.mutation(api.games.createGame, {
+          playerCount: 2,
+          bots: [{ level: "hard", name: "Sam" }],
+        });
 
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
+        const stock = async (seat: number, letters: string[]) =>
+          t.run(async (ctx) => {
+            const player = await ctx.db
+              .query("players")
+              .withIndex("by_game_and_seat", (q) =>
+                q.eq("gameId", gameId).eq("seat", seat),
+              )
+              .unique();
+            await ctx.db.patch("players", player!._id, { letters });
+          });
 
-      // Not just "the turn came back" -- a machine that passes would do that
-      // too. It found a word, and the word was checked against the same
-      // dictionary a person's would be.
-      const bot = await t.run(async (ctx) =>
-        ctx.db
-          .query("players")
-          .withIndex("by_game_and_seat", (q) => q.eq("gameId", gameId).eq("seat", 1))
-          .unique(),
-      );
-      expect(bot!.score).toBeGreaterThan(0);
-    } finally {
-      vi.useRealTimers();
-    }
+        await stock(0, ["A", "D", "E", "M", "U", "C", "T", "O"]);
+        await stock(1, ["T", "O", "A", "D", "E", "M", "U", "C"]);
+        await asAlice.mutation(api.games.placeTiles, {
+          gameId,
+          placements: [at(0, 0, "A"), at(1, 0, "D")],
+        });
+
+        await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+        // Not just "the turn came back" -- a machine that passes would do that
+        // too. It found a word, and the word was checked against the same
+        // dictionary a person's would be.
+        const bot = await t.run(async (ctx) =>
+          ctx.db
+            .query("players")
+            .withIndex("by_game_and_seat", (q) =>
+              q.eq("gameId", gameId).eq("seat", 1),
+            )
+            .unique(),
+        );
+        expect(bot!.score).toBeGreaterThan(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  test(
+    "it keeps playing once the board has words to cross",
+    { timeout: 30_000 },
+    async () => {
+      vi.useFakeTimers();
+      try {
+        const { t, asAlice } = await table();
+
+        const pool = new Set("TOADEMUCS");
+        await t.run(async (ctx) => {
+          for (const word of ALL_WORDS) {
+            if ([...word].every((c) => pool.has(c)) && !WORDS.includes(word)) {
+              await ctx.db.insert("words", { word });
+            }
+          }
+        });
+
+        const { gameId } = await asAlice.mutation(api.games.createGame, {
+          playerCount: 2,
+          bots: [{ level: "medium", name: "Sam" }],
+        });
+
+        const stock = async (seat: number) =>
+          t.run(async (ctx) => {
+            const player = await ctx.db
+              .query("players")
+              .withIndex("by_game_and_seat", (q) =>
+                q.eq("gameId", gameId).eq("seat", seat),
+              )
+              .unique();
+            await ctx.db.patch("players", player!._id, {
+              letters: ["T", "O", "A", "D", "E", "M", "U", "C"],
+            });
+          });
+
+        await stock(0);
+        await stock(1);
+        await asAlice.mutation(api.games.placeTiles, {
+          gameId,
+          placements: [at(0, 0, "A"), at(1, 0, "D")],
+        });
+        await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+        // Second turn: the board now has letters to build across, and every
+        // candidate makes crossing words as well as its own. A machine that
+        // only checks the word it meant to play finds all its best moves
+        // refused and passes -- for the rest of the game, since the board only
+        // ever gets busier.
+        const scoreAfterFirst = await t.run(async (ctx) => {
+          const bot = await ctx.db
+            .query("players")
+            .withIndex("by_game_and_seat", (q) =>
+              q.eq("gameId", gameId).eq("seat", 1),
+            )
+            .unique();
+          return bot!.score;
+        });
+
+        // Alice trades rather than plays, so this test does not depend on
+        // where the machine put its first word — only on the board having
+        // something to cross, which it now does.
+        await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+        await stock(1);
+        await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+        const bot = await t.run(async (ctx) =>
+          ctx.db
+            .query("players")
+            .withIndex("by_game_and_seat", (q) =>
+              q.eq("gameId", gameId).eq("seat", 1),
+            )
+            .unique(),
+        );
+        expect(bot!.score).toBeGreaterThan(scoreAfterFirst);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  test("a machine plays under the name it was set up with", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+      bots: [{ level: "hard", name: "Wren" }],
+    });
+
+    const players = await seatsOf(t, gameId);
+    const bot = await t.run(async (ctx) =>
+      ctx.db.get("users", players[1].userId),
+    );
+    expect(bot?.name).toBe("Wren (hard)");
   });
 
-  test("it keeps playing once the board has words to cross", { timeout: 30_000 }, async () => {
-    vi.useFakeTimers();
-    try {
-      const { t, asAlice } = await table();
-
-      const pool = new Set("TOADEMUCS");
-      await t.run(async (ctx) => {
-        for (const word of ALL_WORDS) {
-          if ([...word].every((c) => pool.has(c)) && !WORDS.includes(word)) {
-            await ctx.db.insert("words", { word });
-          }
-        }
-      });
-
-      const { gameId } = await asAlice.mutation(api.games.createGame, {
+  // The name arrives from the client, so a machine could otherwise be given
+  // the name of somebody real and sat down at the table beside them.
+  test("a machine cannot be called something outside the pool", async () => {
+    const { asAlice } = await table();
+    await expect(
+      asAlice.mutation(api.games.createGame, {
         playerCount: 2,
-        bots: ["medium"],
-      });
-
-      const stock = async (seat: number) =>
-        t.run(async (ctx) => {
-          const player = await ctx.db
-            .query("players")
-            .withIndex("by_game_and_seat", (q) =>
-              q.eq("gameId", gameId).eq("seat", seat),
-            )
-            .unique();
-          await ctx.db.patch("players", player!._id, {
-            letters: ["T", "O", "A", "D", "E", "M", "U", "C"],
-          });
-        });
-
-      await stock(0);
-      await stock(1);
-      await asAlice.mutation(api.games.placeTiles, {
-        gameId,
-        placements: [at(0, 0, "A"), at(1, 0, "D")],
-      });
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-
-      // Second turn: the board now has letters to build across, and every
-      // candidate makes crossing words as well as its own. A machine that
-      // only checks the word it meant to play finds all its best moves
-      // refused and passes -- for the rest of the game, since the board only
-      // ever gets busier.
-      const scoreAfterFirst = await t.run(async (ctx) => {
-        const bot = await ctx.db
-          .query("players")
-          .withIndex("by_game_and_seat", (q) => q.eq("gameId", gameId).eq("seat", 1))
-          .unique();
-        return bot!.score;
-      });
-
-      // Alice trades rather than plays, so this test does not depend on
-      // where the machine put its first word — only on the board having
-      // something to cross, which it now does.
-      await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0] });
-      await stock(1);
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-
-      const bot = await t.run(async (ctx) =>
-        ctx.db
-          .query("players")
-          .withIndex("by_game_and_seat", (q) => q.eq("gameId", gameId).eq("seat", 1))
-          .unique(),
-      );
-      expect(bot!.score).toBeGreaterThan(scoreAfterFirst);
-    } finally {
-      vi.useRealTimers();
-    }
+        bots: [{ level: "easy", name: "Alice" }],
+      }),
+    ).rejects.toThrow(/name/i);
   });
 
   test("more machines than seats is refused", async () => {
     const { asAlice } = await table();
     await expect(
-      asAlice.mutation(api.games.createGame, { playerCount: 2, bots: ["easy", "easy"] }),
+      asAlice.mutation(api.games.createGame, {
+        playerCount: 2,
+        bots: [
+          { level: "easy", name: "Sam" },
+          { level: "easy", name: "Ash" },
+        ],
+      }),
     ).rejects.toThrow(/seats/i);
   });
 });
@@ -1385,9 +1583,9 @@ describe("passing a turn", () => {
 
     // Trading is the way to skip a turn while the bag has anything in it:
     // giving up a turn should cost you the tiles you could not use.
-    await expect(asAlice.mutation(api.games.passTurn, { gameId })).rejects.toThrow(
-      /trade/i,
-    );
+    await expect(
+      asAlice.mutation(api.games.passTurn, { gameId }),
+    ).rejects.toThrow(/trade/i);
   });
 
   test("hands the turn on once the bag is empty", async () => {
@@ -1405,9 +1603,9 @@ describe("passing a turn", () => {
     const { t, gameId, asBob } = await twoPlayerGame(["A", "D"]);
     await emptyBag(t, gameId);
 
-    await expect(asBob.mutation(api.games.passTurn, { gameId })).rejects.toThrow(
-      /not your turn/i,
-    );
+    await expect(
+      asBob.mutation(api.games.passTurn, { gameId }),
+    ).rejects.toThrow(/not your turn/i);
   });
 
   test("two rounds of it end a game that is going nowhere", async () => {
@@ -1436,8 +1634,12 @@ describe("the order past games come back in", () => {
     });
     const asAlice = t.withIdentity({ subject: "auth|alice" });
 
-    const first = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
-    const second = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
+    const first = await asAlice.mutation(api.games.createGame, {
+      playerCount: 1,
+    });
+    const second = await asAlice.mutation(api.games.createGame, {
+      playerCount: 1,
+    });
 
     return { t, asAlice, first, second };
   }
@@ -1480,7 +1682,12 @@ describe("the order past games come back in", () => {
 
 describe("turn history", () => {
   test("records a trade and a pass, not just plays", async () => {
-    const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D", "T", "O"]);
+    const { t, gameId, asAlice, asBob } = await twoPlayerGame([
+      "A",
+      "D",
+      "T",
+      "O",
+    ]);
 
     await asAlice.mutation(api.games.placeTiles, {
       gameId,
@@ -1522,19 +1729,29 @@ describe("records and the rules they were set under", () => {
   async function playedUnder(rulesVersion: number | undefined) {
     const t = convexTest(schema, modules);
     const alice = await t.run(async (ctx) => {
-      const id = await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+      const id = await ctx.db.insert("users", {
+        authId: "auth|alice",
+        name: "Alice",
+      });
       for (const word of WORDS) await ctx.db.insert("words", { word });
       return id;
     });
     const asAlice = t.withIdentity({ subject: "auth|alice" });
-    const { gameId } = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 1,
+    });
 
     await t.run(async (ctx) => {
       const player = await ctx.db
         .query("players")
-        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", alice),
+        )
         .unique();
-      await ctx.db.patch("players", player!._id, { letters: ["A", "D"], score: 40 });
+      await ctx.db.patch("players", player!._id, {
+        letters: ["A", "D"],
+        score: 40,
+      });
       await ctx.db.patch("games", gameId, { rulesVersion });
     });
 
@@ -1576,11 +1793,15 @@ describe("records and the rules they were set under", () => {
       });
     });
 
-    const { gameId } = await asAlice.mutation(api.games.createGame, { playerCount: 1 });
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 1,
+    });
     await t.run(async (ctx) => {
       const player = await ctx.db
         .query("players")
-        .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", alice))
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", alice),
+        )
         .unique();
       await ctx.db.patch("players", player!._id, { letters: ["A", "D"] });
     });

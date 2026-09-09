@@ -1,9 +1,11 @@
 import type { Difficulty } from "../../../shared/config";
+import { drawBotNames } from "../../lib/roster";
 import { Modal } from "../Modal/Modal";
+import type { BotSeat } from "../../lib/useStartGame";
 import styles from "../CreateGame/CreateGame.module.css";
 
 interface GuestGameProps {
-  onStart: (playerCount: number, bots: Difficulty[]) => void;
+  onStart: (playerCount: number, bots: BotSeat[]) => void;
   onCancel: () => void;
   starting: boolean;
   error: string | null;
@@ -21,7 +23,12 @@ const GUEST_LEVEL: Difficulty = "medium";
  * medium is the one they want -- so this asks the only question that is
  * really theirs to answer, and gets out of the way.
  */
-export function GuestGame({ onStart, onCancel, starting, error }: GuestGameProps) {
+export function GuestGame({
+  onStart,
+  onCancel,
+  starting,
+  error,
+}: GuestGameProps) {
   return (
     <Modal onDismiss={starting ? undefined : onCancel}>
       <div className={styles.body}>
@@ -44,7 +51,11 @@ export function GuestGame({ onStart, onCancel, starting, error }: GuestGameProps
             type="button"
             className={styles.choice}
             disabled={starting}
-            onClick={() => onStart(2, [GUEST_LEVEL])}
+            onClick={() =>
+              onStart(2, [
+                { level: GUEST_LEVEL, name: drawBotNames(1, Math.random)[0] },
+              ])
+            }
           >
             <strong>Against the computer</strong>
             <span className={styles.choiceHint}>
@@ -53,7 +64,7 @@ export function GuestGame({ onStart, onCancel, starting, error }: GuestGameProps
           </button>
         </div>
 
-      {/*
+        {/*
         The way to a game with people in it, said where somebody is choosing
         one -- rather than left to be discovered by pressing something that
         turns out not to be there.

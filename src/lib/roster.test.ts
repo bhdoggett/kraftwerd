@@ -1,51 +1,63 @@
 import { describe, expect, test } from "vitest";
-import { botLabel, seatsFree, trimRoster } from "./roster";
+import { BOT_NAMES, GAME } from "../../shared/config";
+import { drawBotNames, seatsSpare } from "./roster";
 
-const roster = (friends: string[], bots: ("easy" | "medium" | "hard")[]) => ({
-  friends,
-  bots,
+/** A rigged rng: hands back the numbers given, then zeroes forever. */
+const rigged = (...values: number[]) => {
+  let i = 0;
+  return () => (i < values.length ? values[i++] : 0);
+};
+
+describe("naming the machines", () => {
+  test("draws the number asked for", () => {
+    expect(drawBotNames(3, Math.random)).toHaveLength(3);
+  });
+
+  test("draws names from the pool and nothing else", () => {
+    for (const name of drawBotNames(3, Math.random)) {
+      expect(BOT_NAMES).toContain(name);
+    }
+  });
+
+  test("never seats two machines under one name", () => {
+    // Every table, at every size, a hundred times over: a rigged draw would
+    // have to be very unlucky to repeat, so this leans on the real rng.
+    for (let i = 0; i < 100; i++) {
+      const drawn = drawBotNames(GAME.maxPlayers - 1, Math.random);
+      expect(new Set(drawn).size).toBe(drawn.length);
+    }
+  });
+
+  test("avoids the names already at the table", () => {
+    const taken = BOT_NAMES.slice(0, BOT_NAMES.length - 1);
+    // Only one name left unspoken for, so the draw has no choice but to find
+    // it -- which is the case that catches an exclusion that does not work.
+    expect(drawBotNames(1, Math.random, taken)).toEqual([
+      BOT_NAMES[BOT_NAMES.length - 1],
+    ]);
+  });
+
+  test("the same rng draws the same names, so a test can pin them", () => {
+    const draw = () => drawBotNames(2, rigged(0, 0));
+    expect(draw()).toEqual(draw());
+  });
+
+  test("asking for more names than exist gives back every one, once", () => {
+    const drawn = drawBotNames(BOT_NAMES.length + 5, Math.random);
+    expect(new Set(drawn).size).toBe(BOT_NAMES.length);
+  });
 });
 
-describe("seats left to fill", () => {
-  test("counts the seats nobody holds yet", () => {
-    // Four players: you, one friend, one bot -- one seat spare.
-    expect(seatsFree(roster(["ann"], ["easy"]), 4)).toBe(1);
+describe("seats a table of people still has spare", () => {
+  test("counts what is left after you, the chosen, and the seats held open", () => {
+    expect(seatsSpare(1, 1)).toBe(GAME.maxPlayers - 3);
   });
 
-  test("a table with everyone chosen has none", () => {
-    expect(seatsFree(roster(["ann", "bo"], []), 3)).toBe(0);
+  test("a full table has none", () => {
+    expect(seatsSpare(GAME.maxPlayers - 1, 0)).toBe(0);
   });
 
-  test("your own seat is never free", () => {
-    expect(seatsFree(roster([], []), 1)).toBe(0);
-  });
-});
-
-describe("shrinking the game", () => {
-  test("drops the machines before the people", () => {
-    const after = trimRoster(roster(["ann"], ["easy", "hard"]), 2);
-    expect(after).toEqual(roster(["ann"], []));
-  });
-
-  test("drops people only once no bots are left", () => {
-    const after = trimRoster(roster(["ann", "bo"], ["easy"]), 2);
-    expect(after).toEqual(roster(["ann"], []));
-  });
-
-  test("a roster that already fits is left alone", () => {
-    const before = roster(["ann"], ["hard"]);
-    expect(trimRoster(before, 3)).toEqual(before);
-  });
-
-  test("going solo empties the table", () => {
-    expect(trimRoster(roster(["ann"], ["easy"]), 1)).toEqual(roster([], []));
-  });
-});
-
-describe("what a bot is called", () => {
-  test("matches the seat it will take, so the lobby agrees with the game", () => {
-    // Bots fill seats 1 upwards; seat 0 is yours.
-    expect(botLabel(0)).toBe("Sam");
-    expect(botLabel(1)).toBe("Ash");
+  test("never goes below nothing", () => {
+    expect(seatsSpare(GAME.maxPlayers, GAME.maxPlayers)).toBe(0);
   });
 });
