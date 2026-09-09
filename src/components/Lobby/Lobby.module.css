@@ -39,6 +39,13 @@
   border: none;
   padding: 0;
   font-family: inherit;
+  /*
+   * Stated, because composing .heading does not carry it: the h2s that use
+   * .heading are bold from the browser's own stylesheet and a button is not,
+   * so this read a weight lighter than the two headings either side of it.
+   * 600 is what .disclosure sets for Past games.
+   */
+  font-weight: 600;
   cursor: pointer;
 }
 

@@ -309,36 +309,6 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         </section>
       )}
 
-      {viewer?.stats && (
-        <section className={styles.section}>
-          <h2 className={styles.heading}>Your record</h2>
-          <div className={styles.stats}>
-            <span className={styles.stat}>
-              <strong>{viewer.stats.wins}</strong>
-              wins
-            </span>
-            <span className={styles.stat}>
-              <strong>{viewer.stats.gamesPlayed}</strong>
-              games
-            </span>
-            <span className={styles.stat}>
-              <strong>{viewer.stats.bestGameScore}</strong>
-              best game
-            </span>
-            <span className={styles.stat}>
-              <strong>{viewer.stats.bestTurnScore}</strong>
-              best play
-            </span>
-          </div>
-          <p className={styles.betaNote}>
-            Counts games played under the rules as they stand. The rules are
-            still moving — bag, rack, scoring — and when they change these start
-            again, since a score set with a different bag never competed with a
-            newer one. The games themselves are kept either way.
-          </p>
-        </section>
-      )}
-
       {past.length > 0 && (
         <section className={styles.section}>
           <button
@@ -371,6 +341,36 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
                 </button>
               </div>
             ))}
+        </section>
+      )}
+
+      {viewer?.stats && (
+        <section className={styles.section}>
+          <h2 className={styles.heading}>Your record</h2>
+          <div className={styles.stats}>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.wins}</strong>
+              wins
+            </span>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.gamesPlayed}</strong>
+              games
+            </span>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.bestGameScore}</strong>
+              best game
+            </span>
+            <span className={styles.stat}>
+              <strong>{viewer.stats.bestTurnScore}</strong>
+              best play
+            </span>
+          </div>
+          <p className={styles.betaNote}>
+            Counts games played under the rules as they stand. The rules are
+            still moving — bag, rack, scoring — and when they change these start
+            again, since a score set with a different bag never competed with a
+            newer one. The games themselves are kept either way.
+          </p>
         </section>
       )}
     </div>
