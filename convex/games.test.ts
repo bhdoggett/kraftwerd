@@ -857,7 +857,7 @@ describe("the lobby's game lists", () => {
 
       const game = await asGuest.mutation(api.games.createGame, {
         playerCount: 2,
-        bots: [{ level: "medium", name: "Sam" }],
+        bots: [{ level: "medium", name: "Gawain" }],
       });
 
       expect(game.playerCount).toBe(2);
@@ -1266,8 +1266,8 @@ describe("computer players", () => {
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 3,
       bots: [
-        { level: "easy", name: "Sam" },
-        { level: "hard", name: "Ash" },
+        { level: "easy", name: "Gawain" },
+        { level: "hard", name: "Sigurd" },
       ],
     });
 
@@ -1297,7 +1297,7 @@ describe("computer players", () => {
 
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 3,
-      bots: [{ level: "medium", name: "Sam" }],
+      bots: [{ level: "medium", name: "Gawain" }],
     });
     await asAlice.mutation(api.games.inviteToGame, {
       gameId,
@@ -1326,7 +1326,7 @@ describe("computer players", () => {
       const { t, asAlice } = await table();
       const { gameId } = await asAlice.mutation(api.games.createGame, {
         playerCount: 2,
-        bots: [{ level: "hard", name: "Sam" }],
+        bots: [{ level: "hard", name: "Gawain" }],
       });
 
       // Drain the nudge createGame left behind, so what wakes the machine
@@ -1352,7 +1352,7 @@ describe("computer players", () => {
     const { t, asAlice } = await table();
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 2,
-      bots: [{ level: "easy", name: "Sam" }],
+      bots: [{ level: "easy", name: "Gawain" }],
     });
     await asAlice.mutation(api.games.resignGame, { gameId });
 
@@ -1403,7 +1403,7 @@ describe("computer players", () => {
 
         const { gameId } = await asAlice.mutation(api.games.createGame, {
           playerCount: 2,
-          bots: [{ level: "hard", name: "Sam" }],
+          bots: [{ level: "hard", name: "Gawain" }],
         });
 
         const stock = async (seat: number, letters: string[]) =>
@@ -1463,7 +1463,7 @@ describe("computer players", () => {
 
         const { gameId } = await asAlice.mutation(api.games.createGame, {
           playerCount: 2,
-          bots: [{ level: "medium", name: "Sam" }],
+          bots: [{ level: "medium", name: "Gawain" }],
         });
 
         const stock = async (seat: number) =>
@@ -1528,14 +1528,14 @@ describe("computer players", () => {
     const { t, asAlice } = await table();
     const { gameId } = await asAlice.mutation(api.games.createGame, {
       playerCount: 2,
-      bots: [{ level: "hard", name: "Wren" }],
+      bots: [{ level: "hard", name: "Hervor" }],
     });
 
     const players = await seatsOf(t, gameId);
     const bot = await t.run(async (ctx) =>
       ctx.db.get("users", players[1].userId),
     );
-    expect(bot?.name).toBe("Wren (hard)");
+    expect(bot?.name).toBe("Robo-Hervor (hard)");
   });
 
   // The name arrives from the client, so a machine could otherwise be given
@@ -1556,8 +1556,8 @@ describe("computer players", () => {
       asAlice.mutation(api.games.createGame, {
         playerCount: 2,
         bots: [
-          { level: "easy", name: "Sam" },
-          { level: "easy", name: "Ash" },
+          { level: "easy", name: "Gawain" },
+          { level: "easy", name: "Sigurd" },
         ],
       }),
     ).rejects.toThrow(/seats/i);

@@ -1,5 +1,5 @@
 import type { Difficulty } from "../../../shared/config";
-import { drawBotNames } from "../../lib/roster";
+import { drawNames } from "../../../shared/names";
 import { Modal } from "../Modal/Modal";
 import type { BotSeat } from "../../lib/useStartGame";
 import styles from "../CreateGame/CreateGame.module.css";
@@ -53,7 +53,7 @@ export function GuestGame({
             disabled={starting}
             onClick={() =>
               onStart(2, [
-                { level: GUEST_LEVEL, name: drawBotNames(1, Math.random)[0] },
+                { level: GUEST_LEVEL, name: drawNames(1, Math.random)[0] },
               ])
             }
           >

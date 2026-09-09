@@ -1,12 +1,12 @@
 import { ConvexError, v } from "convex/values";
 import {
   BLANKS_PER_GAME,
-  BOT_NAMES,
   GAME,
   RACK,
   RULES_VERSION,
   type Difficulty,
 } from "../shared/config.js";
+import { NAMES, robotName } from "../shared/names.js";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
 import { gameName } from "../shared/gameNames.js";
 import { cellKey, makeBoard, type TileSpec } from "../shared/engine/board.js";
@@ -191,7 +191,7 @@ export const createGame = mutation({
     // rather than trusted: a machine that could be called anything could be
     // called what one of the people at the table is called.
     for (const bot of bots) {
-      if (!(BOT_NAMES as readonly string[]).includes(bot.name)) {
+      if (!(NAMES as readonly string[]).includes(bot.name)) {
         throw new ConvexError("That is not a name a computer player can have");
       }
     }
@@ -244,7 +244,7 @@ async function seatBot(
 ) {
   const userId = await ctx.db.insert("users", {
     authId: `bot|${gameId}|${seat}`,
-    name: `${name} (${level})`,
+    name: robotName(name, level),
   });
 
   await joinSeat(ctx, gameId, userId, seat);

@@ -6,7 +6,7 @@ import { CreateGame } from "../CreateGame/CreateGame";
 import { GuestGame } from "../GuestGame/GuestGame";
 import { DevTools } from "../DevTools/DevTools";
 import { NewGame } from "../NewGame/NewGame";
-import { drawBotNames } from "../../lib/roster";
+import { drawNames } from "../../../shared/names";
 import {
   claimPromisedGame,
   useStartGame,
@@ -75,7 +75,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         : void startGame(
             2,
             [],
-            [{ level: "medium", name: drawBotNames(1, Math.random)[0] }],
+            [{ level: "medium", name: drawNames(1, Math.random)[0] }],
           ),
     );
     // Once, on arrival: startGame changes on every render, and this is not a

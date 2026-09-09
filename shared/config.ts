@@ -98,57 +98,6 @@ export const STACK_CAP = 2;
 export const DIFFICULTIES = ["easy", "medium", "hard"] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
 
-/**
- * Names for computer players, so a table of them is tellable apart.
- *
- * A pool rather than a list of four, because the names are drawn at random
- * per game: with four, every game you ever played was against Sam and Ash,
- * and a machine you meet under a new name is easier to think of as a new
- * opponent. Short, so a name fits a scoreboard row beside a score.
- */
-export const BOT_NAMES = [
-  "Robin",
-  "Sam",
-  "Ash",
-  "Nico",
-  "Frankie",
-  "Alex",
-  "Charlie",
-  "Jamie",
-  "Jules",
-  "Kit",
-  "Lou",
-  "Max",
-  "Noa",
-  "Quinn",
-  "Reese",
-  "Rory",
-  "Sage",
-  "Shea",
-  "Toni",
-  "Val",
-  "Wren",
-  "Bo",
-  "Cass",
-  "Dez",
-  "Eli",
-  "Fin",
-  "Gray",
-  "Harper",
-  "Indy",
-  "Jesse",
-  "Kai",
-  "Lane",
-  "Mica",
-  "Nell",
-  "Ollie",
-  "Pax",
-  "Remy",
-  "Sky",
-  "Tam",
-  "Vic",
-] as const;
-
 export const GAME = {
   /**
    * Odd-sided, so there is a true centre for the opening word to cover.

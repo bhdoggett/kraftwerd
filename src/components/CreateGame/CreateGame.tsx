@@ -3,7 +3,8 @@ import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { DIFFICULTIES, GAME, type Difficulty } from "../../../shared/config";
-import { drawBotNames, seatsSpare } from "../../lib/roster";
+import { seatsSpare } from "../../lib/roster";
+import { drawNames } from "../../../shared/names";
 import type { BotSeat } from "../../lib/useStartGame";
 import { Modal } from "../Modal/Modal";
 import styles from "./CreateGame.module.css";
@@ -65,7 +66,7 @@ export function CreateGame({
 
   const [count, setCount] = useState(2);
   const [bots, setBots] = useState<BotSeat[]>(() =>
-    drawBotNames(1, Math.random).map((name) => ({
+    drawNames(1, Math.random).map((name) => ({
       name,
       level: DEFAULT_LEVEL,
     })),
@@ -97,7 +98,7 @@ export function CreateGame({
     setBots((current) => {
       const wanted = next - 1;
       if (wanted <= current.length) return current.slice(0, wanted);
-      const fresh = drawBotNames(
+      const fresh = drawNames(
         wanted - current.length,
         Math.random,
         current.map((b) => b.name),
