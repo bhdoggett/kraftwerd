@@ -135,13 +135,19 @@ now.
 The viewer's friend ids are loaded **once** per call, not once per player:
 `getGame` is the hottest query in the app — every player, every turn, live.
 
-Callers: `getGame`, `listMyGames` and `listOpenGames` — which is all of them.
-`displayName` appears nowhere else outside `friends.ts`, and the end-of-game
-recap is rendered client-side from what `getGame` already returned.
+Callers: `getGame`, `listTurns`, `listMyGames` and `listOpenGames` — which is
+all of them. This paragraph originally counted three and said `displayName`
+appeared nowhere else outside `friends.ts`. It missed `listTurns`, which names
+people too ("Alice played FOO for 12") and is readable by anyone seated at the
+game — so at a public game any stranger could have opened the history panel
+and read every real name. Corrected here rather than quietly, because a wrong
+count is precisely the mistake that ships a leak. The end-of-game recap is
+fine: it is rendered client-side from what `getGame` already returned.
 
 Approach considered and rejected: masking inside each query. Four places to
 get right today, every future name-returning query to remember, and a miss is
-a real name sent to a stranger with nothing failing loudly.
+a real name sent to a stranger with nothing failing loudly — not hypothetical,
+since miscounting those four places is how `listTurns` came to be left out.
 
 Also rejected: seating public players under throwaway `users` rows the way
 bots are. Every existing query would work untouched, but scores, wins and "my

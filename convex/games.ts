@@ -1195,22 +1195,33 @@ export const listTurns = query({
       .withIndex("by_game_and_turn", (q) => q.eq("gameId", args.gameId))
       .take(MAX_TILES);
 
-    return await Promise.all(
-      rows
-        .sort((a, b) => a.turnNumber - b.turnNumber)
-        .map(async (turn) => ({
-          turnNumber: turn.turnNumber,
-          userId: turn.userId,
-          name: displayName(await ctx.db.get("users", turn.userId)),
-          seat: seated.find((p) => p.userId === turn.userId)?.seat ?? 0,
-          // Rows written before anything but plays was recorded.
-          kind: turn.kind ?? ("play" as const),
-          placements: turn.placements,
-          words: turn.words,
-          squares: turn.squares,
-          score: turn.score,
-        })),
-    );
+    /*
+     * The history names people too -- "Alice played FOO for 12" -- so it goes
+     * through the same builder as the board and the lobby. It read the users
+     * table directly until it was noticed that anyone seated at a public game
+     * could open the history panel and read every stranger's real name, which
+     * is the leak the aliases exist to stop. Four callers, one rule.
+     */
+    const friends =
+      game.isPublic === true
+        ? await friendIdsOf(ctx, userId)
+        : new Set<Id<"users">>();
+    const names = await namesFor(ctx, userId, game, seated, friends);
+
+    return rows
+      .sort((a, b) => a.turnNumber - b.turnNumber)
+      .map((turn) => ({
+        turnNumber: turn.turnNumber,
+        userId: turn.userId,
+        name: names.get(turn.userId) ?? "Player",
+        seat: seated.find((p) => p.userId === turn.userId)?.seat ?? 0,
+        // Rows written before anything but plays was recorded.
+        kind: turn.kind ?? ("play" as const),
+        placements: turn.placements,
+        words: turn.words,
+        squares: turn.squares,
+        score: turn.score,
+      }));
   },
 });
 
@@ -1260,10 +1271,26 @@ export const getGame = query({
     const you = players.find((p) => p.userId === userId);
     const seated = players.filter((p) => p.status !== "invited");
 
-    // The friend set is read once for the whole table, not once per seat:
-    // this query runs for every player on every turn, and a friendship
-    // lookup per seat would multiply that by the size of the game.
-    const friends = await friendIdsOf(ctx, userId);
+    /*
+     * The friend set is read once for the whole table, not once per seat, and
+     * on a private game not at all.
+     *
+     * This is the hottest query in the app -- every player, every turn, live --
+     * and on a private game nothing is masked, so the friendships are two
+     * index scans whose answer cannot change a single name. The subscription
+     * cost is the worse half: reading the friendship index puts it in this
+     * query's read set, so accepting a friend request would re-run and re-push
+     * every open board in the app.
+     *
+     * `listMyGames` reads it unconditionally on purpose, and that is not an
+     * oversight: it spans many games of mixed visibility and hoists one set
+     * across all of them, so skipping it would need every game to be private
+     * and buys nothing when one is not.
+     */
+    const friends =
+      game.isPublic === true
+        ? await friendIdsOf(ctx, userId)
+        : new Set<Id<"users">>();
     const names = await namesFor(ctx, userId, game, players, friends);
 
     return {
@@ -1339,8 +1366,16 @@ export const listMyGames = query({
       .order("desc")
       .take(LOBBY_ROWS);
 
-    // Read once for the whole lobby rather than once per game: who this
-    // player is friends with is the same answer for every row.
+    /*
+     * Read once for the whole lobby rather than once per game: who this player
+     * is friends with is the same answer for every row.
+     *
+     * Unconditional, unlike `getGame`, which skips it on a private game. The
+     * lobby spans games of mixed visibility, so the only way to skip it here
+     * is for every game in the list to be private -- and the moment one is
+     * public the read is needed anyway. One read across every row is cheap;
+     * the branch would mostly not fire.
+     */
     const friends = await friendIdsOf(ctx, userId);
 
     const rows = await Promise.all(

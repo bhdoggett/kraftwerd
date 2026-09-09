@@ -1993,7 +1993,30 @@ describe("who you are allowed to see", () => {
     const { asCarol, gameId, alice, bob } = await publicTable();
     const view = await asCarol.query(api.games.getGame, { gameId });
 
+    // Not "Player": a seat whose alias went missing collapses to that string
+    // rather than to a real name, and two seats that both collapsed would be
+    // indistinguishable. Naming it here pins the fallback, which comparing
+    // two arbitrary strings does not -- "Alice" !== "Bob" on its own.
+    expect(nameOf(view, alice)).not.toBe("Player");
+    expect(nameOf(view, bob)).not.toBe("Player");
     expect(nameOf(view, alice)).not.toBe(nameOf(view, bob));
+  });
+
+  test("a friend request nobody has accepted unmasks nobody", async () => {
+    const { t, asCarol, gameId, bob, carol } = await publicTable();
+
+    // Asked, not answered. Carol knowing Bob's name is what accepting the
+    // request would grant, so the pending row must grant nothing.
+    await t.run(async (ctx) => {
+      await ctx.db.insert("friendships", {
+        requesterId: carol,
+        addresseeId: bob,
+        status: "pending",
+      });
+    });
+
+    const view = await asCarol.query(api.games.getGame, { gameId });
+    expect(nameOf(view, bob)).not.toBe("Bob");
   });
 
   test("a private game is unchanged: everybody by name", async () => {
@@ -2027,5 +2050,37 @@ describe("who you are allowed to see", () => {
     const row = lobby.games.find((g) => g.gameId === gameId);
     expect(row?.opponents.map((o) => o.name)).not.toContain("Alice");
     expect(row?.opponents.map((o) => o.name)).not.toContain("Bob");
+  });
+
+  test("the lobby disguises whose turn it is, and who made the game", async () => {
+    const { asCarol, gameId } = await publicTable();
+    const lobby = await asCarol.query(api.games.listMyGames, {});
+
+    // Alice made the game and holds the first seat, so she is both of these.
+    // They are named separately from `opponents` because they are read from
+    // the map separately, and either could be reverted on its own.
+    const row = lobby.games.find((g) => g.gameId === gameId);
+    expect(row?.waitingFor).not.toBeNull();
+    expect(row?.waitingFor).not.toBe("Alice");
+    expect(row?.invitedBy).not.toBe("Alice");
+  });
+
+  test("the history does not name strangers either", async () => {
+    const { t, asAlice, asCarol, gameId } = await publicTable();
+
+    // Passing is the cheapest way to put a turn on the record: it wants no
+    // dictionary and no particular rack, only a bag with nothing left in it.
+    await t.run(async (ctx) => {
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      await ctx.db.patch("bags", bag!._id, { letters: {} });
+    });
+    await asAlice.mutation(api.games.passTurn, { gameId });
+
+    const turns = await asCarol.query(api.games.listTurns, { gameId });
+    expect(turns).toHaveLength(1);
+    expect(turns.map((turn) => turn.name)).not.toContain("Alice");
   });
 });
