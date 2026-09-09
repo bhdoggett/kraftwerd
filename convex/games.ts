@@ -6,7 +6,7 @@ import {
   RULES_VERSION,
   type Difficulty,
 } from "../shared/config.js";
-import { NAMES, robotName } from "../shared/names.js";
+import { drawNames, NAMES, robotName } from "../shared/names.js";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
 import { gameName } from "../shared/gameNames.js";
 import { cellKey, makeBoard, type TileSpec } from "../shared/engine/board.js";
@@ -166,6 +166,11 @@ export const createGame = mutation({
     playerCount: v.number(),
     /** A computer player per entry, seated next to you in the order given. */
     bots: v.optional(v.array(botSeat)),
+    /**
+     * Listed for strangers to find. Only meaningful on a game with a seat no
+     * name is against yet -- a full table has nothing to offer anybody.
+     */
+    isPublic: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const me = await currentUser(ctx);
@@ -196,6 +201,19 @@ export const createGame = mutation({
       }
     }
 
+    // A game is only worth listing if somebody could take a seat at it.
+    const isPublic = args.isPublic === true && args.playerCount - 1 - bots.length > 0;
+
+    /*
+     * The maker's own disguise. One name, not a table's worth: seats filled
+     * later draw their own in `joinGame`, against the aliases already dealt.
+     * Drawn around the machines' names so a table reads as several different
+     * players rather than a Gawain beside a Robo-Gawain.
+     */
+    const alias = isPublic
+      ? drawNames(1, Math.random, bots.map((b) => b.name))[0]
+      : undefined;
+
     const name = gameName(Math.random);
     const gameId = await ctx.db.insert("games", {
       name,
@@ -208,10 +226,11 @@ export const createGame = mutation({
       turnNumber: 0,
       tileCount: 0,
       createdBy: userId,
+      isPublic,
       rulesVersion: RULES_VERSION,
     });
 
-    await joinSeat(ctx, gameId, userId, 0);
+    await joinSeat(ctx, gameId, userId, 0, "joined", alias);
 
     for (const [i, bot] of bots.entries()) {
       await seatBot(ctx, gameId, i + 1, bot.level, bot.name);
@@ -264,6 +283,7 @@ async function joinSeat(
   userId: Id<"users">,
   seat: number,
   status: "invited" | "joined" = "joined",
+  alias?: string,
 ) {
   // A fresh rack, drawn server-side out of the game's own bag.
   const rack = await drawInto(ctx, gameId, []);
@@ -272,6 +292,7 @@ async function joinSeat(
     gameId,
     userId,
     seat,
+    alias,
     score: 0,
     letters: rack.letters,
     blanks: BLANKS_PER_GAME,

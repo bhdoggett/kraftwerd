@@ -1562,6 +1562,55 @@ describe("computer players", () => {
       }),
     ).rejects.toThrow(/seats/i);
   });
+
+  test("a public game gives every human seat a name to hide behind", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+
+    const players = await seatsOf(t, gameId);
+    expect(players).toHaveLength(1);
+    expect(players[0].alias).toEqual(expect.any(String));
+  });
+
+  test("a private game hands out no aliases at all", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+    });
+
+    const players = await seatsOf(t, gameId);
+    expect(players[0].alias).toBeUndefined();
+  });
+
+  // One draw serves the whole table, so the machine's name is not free for a
+  // person to hide behind.
+  test("an alias never collides with a machine at the same table", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+      bots: [{ level: "easy", name: "Gawain" }],
+    });
+
+    const players = await seatsOf(t, gameId);
+    const mine = players.find((p) => p.bot === undefined);
+    expect(mine?.alias).not.toBe("Gawain");
+  });
+
+  test("a machine gets no alias -- it has nothing to hide", async () => {
+    const { t, asAlice } = await table();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+      isPublic: true,
+      bots: [{ level: "easy", name: "Gawain" }],
+    });
+
+    const players = await seatsOf(t, gameId);
+    expect(players.find((p) => p.bot !== undefined)?.alias).toBeUndefined();
+  });
 });
 
 describe("passing a turn", () => {
