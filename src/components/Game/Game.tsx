@@ -258,13 +258,17 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * Which squares belong to a word that checks out, and which to one that does
    * not. Whole runs are marked, existing tiles included, because the word is
    * what is valid or not -- not the tiles you happened to add to it.
+   *
+   * Both boards go in, because one of the answers depends on what was there
+   * before: a tile that paves over a word entirely is wrong however good the
+   * word it spells.
    */
   const wordCells = useMemo(() => {
     if (!boards || placements.length === 0 || checked === undefined) {
       return { good: new Set<string>(), bad: new Set<string>() };
     }
     return markCells(
-      boards.after,
+      boards,
       placements,
       new Map(checked.map((entry) => [entry.word, entry.valid])),
     );

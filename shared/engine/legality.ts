@@ -127,10 +127,7 @@ function isOneMass(board: Board, from?: string): boolean {
  * long word could simply be paved over and replayed for full value, and the
  * board would lose its history a word at a time.
  */
-function wordsBuriedWhole(
-  before: Board,
-  placements: readonly Placement[],
-): string[] {
+export function runsBuriedWhole(before: Board, placements: readonly Placement[]) {
   const covered = placements
     .map((p) => ({ x: p.x, y: p.y }))
     .filter((p) => before.has(cellKey(p.x, p.y)));
@@ -138,9 +135,19 @@ function wordsBuriedWhole(
 
   const coveredKeys = new Set(covered.map((c) => cellKey(c.x, c.y)));
 
-  return runsThrough(before, covered)
-    .filter((run) => run.cells.every((c) => coveredKeys.has(cellKey(c.x, c.y))))
-    .map((run) => run.word);
+  return runsThrough(before, covered).filter((run) =>
+    run.cells.every((c) => coveredKeys.has(cellKey(c.x, c.y))),
+  );
+}
+
+/**
+ * The runs above, named. Exported as runs as well because the board colours
+ * the tiles doing the burying, and it must colour them by the same rule that
+ * refuses the play -- a second notion of "buried" would drift, and the board
+ * would go green under a message saying the play is illegal.
+ */
+function wordsBuriedWhole(before: Board, placements: readonly Placement[]): string[] {
+  return runsBuriedWhole(before, placements).map((run) => run.word);
 }
 
 /** The board as it stands after `placements` are applied to `before`. */

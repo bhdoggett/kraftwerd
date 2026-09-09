@@ -1,4 +1,5 @@
-import type { Board } from "../../shared/engine/board";
+import { cellKey, type Board } from "../../shared/engine/board";
+import { runsBuriedWhole } from "../../shared/engine/legality";
 import { runsThrough } from "../../shared/engine/runs";
 import type { Placement } from "../../shared/engine/score";
 
@@ -53,10 +54,11 @@ function disconnectedCells(
  * this turn had put them there.
  */
 export function markCells(
-  after: Board,
+  boards: { before: Board; after: Board },
   placements: readonly Placement[],
   validity: ReadonlyMap<string, boolean>,
 ): { good: Set<string>; bad: Set<string> } {
+  const { before, after } = boards;
   const good = new Set<string>();
   const bad = new Set<string>();
   const staged = new Set(placements.map((p) => `${p.x},${p.y}`));
@@ -84,6 +86,18 @@ export function markCells(
   // the rest of the board is still an illegal play, and the board should say
   // so rather than leaving it to the message underneath.
   for (const key of disconnectedCells(after, placements)) bad.add(key);
+
+  // A word paved over completely is erased from the board's history, which the
+  // rules refuse (legality's "erased" fault). The tiles doing the burying are
+  // marked, not the whole play: the rest of it may be perfectly good, and it is
+  // the covering that has to be taken back. Judged by the engine's own rule, so
+  // the colour cannot disagree with the refusal underneath.
+  for (const run of runsBuriedWhole(before, placements)) {
+    for (const cell of run.cells) {
+      const key = cellKey(cell.x, cell.y);
+      if (staged.has(key)) bad.add(key);
+    }
+  }
 
   for (const key of bad) good.delete(key);
   return { good, bad };
