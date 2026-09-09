@@ -1958,4 +1958,74 @@ describe("who you are allowed to see", () => {
     expect(carol?.alias).toEqual(expect.any(String));
     expect(carol?.alias).not.toBe(alice?.alias);
   });
+
+  const nameOf = (
+    view: { players: { userId: Id<"users">; name: string }[] } | null,
+    userId: Id<"users">,
+  ) => view?.players.find((p) => p.userId === userId)?.name;
+
+  test("a stranger sees an alias, never a name", async () => {
+    const { asCarol, gameId, alice, bob } = await publicTable();
+    const view = await asCarol.query(api.games.getGame, { gameId });
+
+    expect(nameOf(view, alice)).not.toBe("Alice");
+    expect(nameOf(view, bob)).not.toBe("Bob");
+  });
+
+  test("a friend at the same table is still a friend", async () => {
+    const { asAlice, gameId, bob, carol } = await publicTable();
+    const view = await asAlice.query(api.games.getGame, { gameId });
+
+    // Bob is Alice's friend, so no disguise between them.
+    expect(nameOf(view, bob)).toBe("Bob");
+    // Carol walked in off the list.
+    expect(nameOf(view, carol)).not.toBe("Carol");
+  });
+
+  test("you are always yourself", async () => {
+    const { asCarol, gameId, carol } = await publicTable();
+    const view = await asCarol.query(api.games.getGame, { gameId });
+
+    expect(nameOf(view, carol)).toBe("Carol");
+  });
+
+  test("two people at one table never share a disguise", async () => {
+    const { asCarol, gameId, alice, bob } = await publicTable();
+    const view = await asCarol.query(api.games.getGame, { gameId });
+
+    expect(nameOf(view, alice)).not.toBe(nameOf(view, bob));
+  });
+
+  test("a private game is unchanged: everybody by name", async () => {
+    const { asAlice, asBob, alice } = await strangers();
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+    });
+    await asBob.mutation(api.games.joinGame, { gameId });
+
+    const view = await asBob.query(api.games.getGame, { gameId });
+    expect(nameOf(view, alice)).toBe("Alice");
+  });
+
+  test("a machine keeps its Robo- name for everyone", async () => {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+      bots: [{ level: "easy", name: "Gawain" }],
+    });
+    await seats.asCarol.mutation(api.games.joinGame, { gameId });
+
+    const view = await seats.asCarol.query(api.games.getGame, { gameId });
+    expect(view?.players.map((p) => p.name)).toContain("Robo-Gawain (easy)");
+  });
+
+  test("the lobby disguises opponents too, not just the board", async () => {
+    const { asCarol, gameId } = await publicTable();
+    const lobby = await asCarol.query(api.games.listMyGames, {});
+
+    const row = lobby.games.find((g) => g.gameId === gameId);
+    expect(row?.opponents.map((o) => o.name)).not.toContain("Alice");
+    expect(row?.opponents.map((o) => o.name)).not.toContain("Bob");
+  });
 });

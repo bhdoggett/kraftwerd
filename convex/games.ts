@@ -40,6 +40,7 @@ import {
   refuseGuest,
   requireUser,
 } from "./auth_helpers";
+import { friendIdsOf, namesFor } from "./seats";
 import { placement } from "./schema";
 
 /**
@@ -1259,6 +1260,12 @@ export const getGame = query({
     const you = players.find((p) => p.userId === userId);
     const seated = players.filter((p) => p.status !== "invited");
 
+    // The friend set is read once for the whole table, not once per seat:
+    // this query runs for every player on every turn, and a friendship
+    // lookup per seat would multiply that by the size of the game.
+    const friends = await friendIdsOf(ctx, userId);
+    const names = await namesFor(ctx, userId, game, players, friends);
+
     return {
       layout: OPEN_BOARD,
       /** A free seat, in a game filled by link rather than by invitation. */
@@ -1288,22 +1295,17 @@ export const getGame = query({
       })),
       // Racks are private: every player sees their own letters and only the
       // count of everyone else's.
-      players: await Promise.all(
-        players.map(async (p) => {
-          const user = await ctx.db.get("users", p.userId);
-          return {
-            userId: p.userId,
-            seat: p.seat,
-            score: p.score,
-            name: displayName(user),
-            letters: p.userId === userId ? p.letters : null,
-            letterCount: p.letters.length,
-            blanks: blanksLeft(p),
-            /** Asked, but not yet sitting down. */
-            invited: p.status === "invited",
-          };
-        }),
-      ),
+      players: players.map((p) => ({
+        userId: p.userId,
+        seat: p.seat,
+        score: p.score,
+        name: names.get(p.userId) ?? "Player",
+        letters: p.userId === userId ? p.letters : null,
+        letterCount: p.letters.length,
+        blanks: blanksLeft(p),
+        /** Asked, but not yet sitting down. */
+        invited: p.status === "invited",
+      })),
     };
   },
 });
@@ -1337,6 +1339,10 @@ export const listMyGames = query({
       .order("desc")
       .take(LOBBY_ROWS);
 
+    // Read once for the whole lobby rather than once per game: who this
+    // player is friends with is the same answer for every row.
+    const friends = await friendIdsOf(ctx, userId);
+
     const rows = await Promise.all(
       mine.map(async (p) => {
         const game = await ctx.db.get("games", p.gameId);
@@ -1350,14 +1356,14 @@ export const listMyGames = query({
           .query("players")
           .withIndex("by_game", (q) => q.eq("gameId", game._id))
           .take(GAME.maxPlayers);
-        const others = await Promise.all(
-          seated
-            .filter((other) => other.userId !== p.userId)
-            .map(async (other) => ({
-              name: displayName(await ctx.db.get("users", other.userId)),
-              pending: other.status === "invited",
-            })),
-        );
+        const names = await namesFor(ctx, userId, game, seated, friends);
+
+        const others = seated
+          .filter((other) => other.userId !== p.userId)
+          .map((other) => ({
+            name: names.get(other.userId) ?? "Player",
+            pending: other.status === "invited",
+          }));
 
         // Who the game is waiting on, by name: "your turn" answers the
         // question only when the answer is you.
@@ -1365,7 +1371,7 @@ export const listMyGames = query({
         const waitingFor =
           game.status !== "active" || inSeat === undefined
             ? null
-            : displayName(await ctx.db.get("users", inSeat.userId));
+            : (names.get(inSeat.userId) ?? "Player");
 
         return {
           opponents: others,
@@ -1380,7 +1386,12 @@ export const listMyGames = query({
           /** Whose turn it is, named. Null unless the game is under way. */
           waitingFor,
           invited: p.status === "invited",
-          invitedBy: displayName(creator),
+          /**
+           * The creator is a player at their own game, so the masked map
+           * covers them; `displayName` is only the fallback for a game whose
+           * creator has somehow left no seat behind.
+           */
+          invitedBy: names.get(game.createdBy) ?? displayName(creator),
           youWon: (game.winnerIds ?? []).includes(p.userId),
           /** True when the game ended because someone quit. */
           abandoned: (game.resignedBy ?? []).length > 0,
