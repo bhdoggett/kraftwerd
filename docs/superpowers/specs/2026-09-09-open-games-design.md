@@ -135,7 +135,9 @@ now.
 The viewer's friend ids are loaded **once** per call, not once per player:
 `getGame` is the hottest query in the app — every player, every turn, live.
 
-Callers: `getGame`, `listMyGames`, `listOpenGames`, and the end-of-game recap.
+Callers: `getGame`, `listMyGames` and `listOpenGames` — which is all of them.
+`displayName` appears nowhere else outside `friends.ts`, and the end-of-game
+recap is rendered client-side from what `getGame` already returned.
 
 Approach considered and rejected: masking inside each query. Four places to
 get right today, every future name-returning query to remember, and a miss is
@@ -157,9 +159,10 @@ name is against. It draws an alias for each seat it creates.
 
 `listOpenGames` — public games still in their lobby with at least one seat
 free, newest first, capped. Returns the game's name, seats filled of total,
-and aliases only, machines excepted: the viewer is by definition not at that
-table, so no human name there is ever theirs or a friend's, and a machine's
-name is not a disguise in the first place.
+and the names this viewer may see, from the same builder as everywhere else.
+Usually that means aliases, since the viewer is not at that table -- but a
+friend who made a public game is still shown by name, because who you may see
+is a fact about the pair of you and not about which screen you are on.
 
 Only games created recently are listed, so one that nobody ever joins falls
 out of the list rather than sitting in it forever.
