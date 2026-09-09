@@ -62,6 +62,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
   /** Take a seat at a game somebody left open. */
   async function joinOpen(gameId: Id<"games">) {
+    // A failed attempt's message belongs to that attempt, not the session --
+    // clear it before trying again so a retry never sits under stale text.
+    setJoinError(null);
     try {
       await joinGame({ gameId });
       onOpen(gameId);
