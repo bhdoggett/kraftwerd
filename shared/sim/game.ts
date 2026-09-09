@@ -23,6 +23,14 @@ export interface GameResult {
   rarePlayed: string[];
   /** Score of the single best turn anyone took. */
   bestTurn: number;
+  /*
+   * What every turn scored, in the order they were taken -- turn i belongs to
+   * seat `i % players`, and a pass is a zero. Kept per turn rather than summed
+   * per seat because a seat's average cannot say whether its deficit is the
+   * opening turn into an empty board or a shortfall that runs all game, and
+   * those want different fixes.
+   */
+  turnScores: number[];
   /** Ended because the bag ran dry rather than on the tile threshold. */
   ranDry: boolean;
   /** Squares completed, by size. */
@@ -109,6 +117,7 @@ export function playGame(
   let turns = 0;
   let passes = 0;
   let bestTurn = 0;
+  const turnScores: number[] = [];
   let consecutivePasses = 0;
   /*
    * The last turn, once somebody has gone out: their turn plus one more for
@@ -153,6 +162,9 @@ export function playGame(
     turns++;
 
     if (move === null) {
+      // Pushed before any of the breaks below, so there is one entry a turn
+      // however the game ends.
+      turnScores.push(0);
       passes++;
       consecutivePasses++;
       // Everyone stuck in a row: the game is going nowhere, as in the app.
@@ -182,6 +194,7 @@ export function playGame(
     for (const k of newSquares(boardBefore, board, move.placements)) squares[k] = (squares[k] ?? 0) + 1;
 
     player.score += score;
+    turnScores.push(score);
     bestTurn = Math.max(bestTurn, score);
 
     // Spend the tiles the move used, then draw back up.
@@ -232,6 +245,7 @@ export function playGame(
     passes,
     rarePlayed,
     bestTurn,
+    turnScores,
     ranDry: bag !== null && tilesLeft(bag) === 0,
     squares,
   };

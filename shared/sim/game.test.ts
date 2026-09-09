@@ -84,6 +84,23 @@ describe("the simulator seats a chain shape per player", () => {
   }, 60_000);
 });
 
+/*
+ * Per-turn scores, so a seat's turns can be read one at a time rather than as
+ * a game-long average. The question they exist for: seat 0 earns less per turn
+ * than every other seat, and whether that is the opening turn into an empty
+ * board or a deficit that runs all game cannot be told apart from a mean.
+ */
+describe("the simulator reports what each turn scored", () => {
+  test("one entry a turn, adding up to what the players scored", () => {
+    const game = playGame(VARIANT, 2, dictionary, words, seeded(7), ["hard"]);
+
+    expect(game.turnScores.length).toBe(game.turns);
+    expect(game.turnScores.reduce((a, b) => a + b, 0)).toBe(
+      game.scores.reduce((a, b) => a + b, 0),
+    );
+  }, 60_000);
+});
+
 describe("the simulator plays at a difficulty", () => {
   /*
    * The knob is wired, proved by mutation rather than asserted.
