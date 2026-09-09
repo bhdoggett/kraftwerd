@@ -73,7 +73,7 @@ gods.
 Sources are public domain and heroic rather than devotional: Arthurian
 (Gawain, Bedivere, Igraine, Percival), Norse sagas (Sigurd, Brynhild, Egil,
 Gudrun), the Shahnameh (Rostam, Zal, Tahmineh, Siyavash), West and Central
-African epic (Sundiata, Sogolon, Fakoli, Mwindo), East Asian folklore (Mulan,
+African epic (Sundiata, Sogolon, Fakoli, Kolonkan), East Asian folklore (Mulan,
 Momotaro, Kintaro, Gildong), Beowulf (Wiglaf, Hrothgar, Unferth).
 
 Two exclusions, both deliberate:

@@ -23,8 +23,8 @@ export const NAMES = [
   "Rostam", "Zal", "Tahmineh", "Sohrab", "Siyavash",
   "Rudabeh", "Manijeh", "Bijan", "Kaveh", "Gordafarid",
   // West and Central African epic
-  "Sundiata", "Sogolon", "Fakoli", "Mwindo",
-  "Silamaka", "Kambili", "Lianja", "Balla",
+  "Sundiata", "Sogolon", "Fakoli", "Kolonkan",
+  "Silamaka", "Poullori", "Nare", "Balla",
   // East Asian folklore
   "Mulan", "Momotaro", "Kintaro", "Urashima", "Gildong",
   "Chunhyang", "Ondal", "Benkei", "Tomoe", "Issun",
