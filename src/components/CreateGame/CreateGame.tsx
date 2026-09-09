@@ -1,10 +1,10 @@
 import { useQuery } from "convex/react";
 import { useState } from "react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
-import { DIFFICULTIES, GAME, type Difficulty } from "../../shared/config";
-import { botLabel, seatsFree, trimRoster } from "../lib/roster";
-import { Modal } from "./Modal";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { DIFFICULTIES, GAME, type Difficulty } from "../../../shared/config";
+import { botLabel, seatsFree, trimRoster } from "../../lib/roster";
+import { Modal } from "../Modal/Modal";
 import styles from "./CreateGame.module.css";
 
 interface CreateGameProps {

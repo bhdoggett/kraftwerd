@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { RACK } from "../../shared/config";
-import { newBag } from "../../shared/engine/bag";
+import { RACK } from "../../../shared/config";
+import { newBag } from "../../../shared/engine/bag";
 import styles from "./BagContents.module.css";
 
 /**

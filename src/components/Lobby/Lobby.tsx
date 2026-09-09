@@ -1,13 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
-import type { Difficulty } from "../../shared/config";
-import { CreateGame } from "./CreateGame";
-import { GuestGame } from "./GuestGame";
-import { DevTools } from "./DevTools";
-import { NewGame } from "./NewGame";
-import { claimPromisedGame, useStartGame } from "../lib/useStartGame";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import type { Difficulty } from "../../../shared/config";
+import { CreateGame } from "../CreateGame/CreateGame";
+import { GuestGame } from "../GuestGame/GuestGame";
+import { DevTools } from "../DevTools/DevTools";
+import { NewGame } from "../NewGame/NewGame";
+import { claimPromisedGame, useStartGame } from "../../lib/useStartGame";
 import styles from "./Lobby.module.css";
 
 export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {

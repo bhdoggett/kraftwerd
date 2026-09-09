@@ -1,4 +1,4 @@
-import styles from "./Board.module.css";
+import styles from "../Board/Board.module.css";
 import own from "./Swatches.module.css";
 
 /**

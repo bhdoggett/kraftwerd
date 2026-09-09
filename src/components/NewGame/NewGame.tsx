@@ -1,9 +1,9 @@
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
-import { userMessage } from "../lib/errors";
-import { Modal } from "./Modal";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { userMessage } from "../../lib/errors";
+import { Modal } from "../Modal/Modal";
 import styles from "./NewGame.module.css";
 
 interface NewGameProps {

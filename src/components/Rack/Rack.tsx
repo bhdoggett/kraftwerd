@@ -1,5 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { PassIcon, RecallIcon, ShuffleIcon, TradeIcon } from "./Icons";
+import { PassIcon, RecallIcon, ShuffleIcon, TradeIcon } from "../Icons/Icons";
 import styles from "./Rack.module.css";
 
 export type Selection = { kind: "letter"; index: number } | { kind: "blank" };

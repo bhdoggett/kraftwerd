@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { boardShapeNamed } from "../../shared/boards";
-import type { Placement } from "../../shared/engine/score";
+import { boardShapeNamed } from "../../../shared/boards";
+import type { Placement } from "../../../shared/engine/score";
 import styles from "./Board.module.css";
 
 interface BoardTile {

@@ -1,12 +1,12 @@
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
-import { FRIEND_LINK_DAYS, type Difficulty } from "../../shared/config";
-import { userMessage } from "../lib/errors";
-import { useStartGame } from "../lib/useStartGame";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { FRIEND_LINK_DAYS, type Difficulty } from "../../../shared/config";
+import { userMessage } from "../../lib/errors";
+import { useStartGame } from "../../lib/useStartGame";
 import styles from "./Friends.module.css";
-import { CreateGame } from "./CreateGame";
+import { CreateGame } from "../CreateGame/CreateGame";
 
 /**
  * Desktop Firefox has no share sheet, and Chrome only offers one on some

@@ -1,4 +1,4 @@
-import board from "./Board.module.css";
+import board from "../Board/Board.module.css";
 import styles from "./MiniBoard.module.css";
 
 interface MiniBoardProps {

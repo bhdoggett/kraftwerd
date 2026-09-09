@@ -1,6 +1,6 @@
-import type { Difficulty } from "../../shared/config";
-import { Modal } from "./Modal";
-import styles from "./CreateGame.module.css";
+import type { Difficulty } from "../../../shared/config";
+import { Modal } from "../Modal/Modal";
+import styles from "../CreateGame/CreateGame.module.css";
 
 interface GuestGameProps {
   onStart: (playerCount: number, bots: Difficulty[]) => void;

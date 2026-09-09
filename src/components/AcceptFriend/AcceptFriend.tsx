@@ -1,7 +1,7 @@
 import { useMutation } from "convex/react";
 import { useEffect, useRef, useState } from "react";
-import { api } from "../../convex/_generated/api";
-import { userMessage } from "../lib/errors";
+import { api } from "../../../convex/_generated/api";
+import { userMessage } from "../../lib/errors";
 import styles from "./AcceptFriend.module.css";
 
 type Result =

@@ -1,4 +1,4 @@
-import { BagContents } from "./BagContents";
+import { BagContents } from "../BagContents/BagContents";
 import styles from "./Scoreboard.module.css";
 
 interface Standing {

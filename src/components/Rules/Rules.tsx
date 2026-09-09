@@ -1,6 +1,6 @@
-import { BLANKS_PER_GAME, RACK, STACK_CAP } from "../../shared/config";
-import { MiniBoard } from "./MiniBoard";
-import { Modal } from "./Modal";
+import { BLANKS_PER_GAME, RACK, STACK_CAP } from "../../../shared/config";
+import { MiniBoard } from "../MiniBoard/MiniBoard";
+import { Modal } from "../Modal/Modal";
 import styles from "./Rules.module.css";
 
 interface RulesDialogProps {

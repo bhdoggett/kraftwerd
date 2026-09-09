@@ -1,35 +1,35 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
-import { cellKey, makeBoard } from "../../shared/engine/board";
-import { makeDictionary } from "../../shared/engine/dictionary";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { cellKey, makeBoard } from "../../../shared/engine/board";
+import { makeDictionary } from "../../../shared/engine/dictionary";
 import {
   applyPlacements,
   validateTurn,
   wordsFormed,
   type Fault,
-} from "../../shared/engine/legality";
-import { boardShapeNamed } from "../../shared/boards";
-import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
-import { STACK_CAP, RACK } from "../../shared/config";
-import { newBag, tilesLeft as countTiles } from "../../shared/engine/bag";
+} from "../../../shared/engine/legality";
+import { boardShapeNamed } from "../../../shared/boards";
+import { scoreTurn, type Placement, type TurnScore } from "../../../shared/engine/score";
+import { STACK_CAP, RACK } from "../../../shared/config";
+import { newBag, tilesLeft as countTiles } from "../../../shared/engine/bag";
 
 /** How many tiles a game starts with, for the progress bar's sake. */
 const BAG_SIZE = countTiles(newBag(RACK));
-import { Board } from "./Board";
-import { DevTools } from "./DevTools";
+import { Board } from "../Board/Board";
+import { DevTools } from "../DevTools/DevTools";
 import styles from "./Game.module.css";
-import { Rack, type Selection } from "./Rack";
-import { userMessage } from "../lib/errors";
-import { markCells } from "../lib/boardFeedback";
-import { boardAfter, scoresAfter } from "../lib/replay";
-import { moveToPosition, rackSlotUnder, shuffled } from "../lib/rackGeometry";
-import { moveStagedTo, stageAt } from "../lib/staging";
-import { useWakeLock } from "../lib/useWakeLock";
-import { Scoreboard } from "./Scoreboard";
-import { playedSinceYourTurn } from "../lib/recap";
+import { Rack, type Selection } from "../Rack/Rack";
+import { userMessage } from "../../lib/errors";
+import { markCells } from "../../lib/boardFeedback";
+import { boardAfter, scoresAfter } from "../../lib/replay";
+import { moveToPosition, rackSlotUnder, shuffled } from "../../lib/rackGeometry";
+import { moveStagedTo, stageAt } from "../../lib/staging";
+import { useWakeLock } from "../../lib/useWakeLock";
+import { Scoreboard } from "../Scoreboard/Scoreboard";
+import { playedSinceYourTurn } from "../../lib/recap";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 

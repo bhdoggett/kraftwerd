@@ -1,14 +1,14 @@
 import { useConvexAuth, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 import { useEffect, useRef, useState } from "react";
-import { authClient } from "../lib/auth-client";
-import { navigate } from "../router";
-import { Friends } from "./Friends";
-import { MoonIcon, MoreIcon, SunIcon, SystemIcon } from "./Icons";
+import { authClient } from "../../lib/auth-client";
+import { navigate } from "../../router";
+import { Friends } from "../Friends/Friends";
+import { MoonIcon, MoreIcon, SunIcon, SystemIcon } from "../Icons/Icons";
 import styles from "./Menu.module.css";
-import { Modal } from "./Modal";
-import { RulesDialog } from "./Rules";
-import { THEME_CHOICES, useTheme } from "./Theme";
+import { Modal } from "../Modal/Modal";
+import { RulesDialog } from "../Rules/Rules";
+import { THEME_CHOICES, useTheme } from "../Theme/Theme";
 
 const THEME_ICON = { light: SunIcon, dark: MoonIcon, system: SystemIcon };
 const THEME_LABEL = { light: "Light", dark: "Dark", system: "Follow the system" };
