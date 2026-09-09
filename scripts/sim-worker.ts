@@ -46,7 +46,7 @@ parentPort!.on(
     players: number;
     index: number;
     difficulties: readonly Difficulty[];
-    chain?: { depth: number; breadth: number; enablement?: number };
+    chains?: readonly { depth: number; breadth: number; enablement?: number }[];
   }) => {
     const result = playGame(
       task.variant,
@@ -55,7 +55,7 @@ parentPort!.on(
       index,
       seeded(task.index + 1),
       task.difficulties,
-      task.chain,
+      task.chains,
     );
     parentPort!.postMessage({ index: task.index, result });
   },

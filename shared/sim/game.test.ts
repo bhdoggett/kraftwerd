@@ -50,6 +50,40 @@ const VARIANT = {
 const play = (seed: number, difficulties?: readonly Difficulty[]) =>
   playGame(VARIANT, 2, dictionary, words, seeded(seed), difficulties);
 
+type Chain = { depth: number; breadth: number; enablement?: number };
+
+const playChained = (seed: number, chains: readonly Chain[]) =>
+  playGame(VARIANT, 2, dictionary, words, seeded(seed), ["hard"], chains);
+
+/*
+ * The chain shape is seated the way the difficulty is, so a deep search can be
+ * played against a shallow one in the same game. Comparing two whole runs
+ * cannot say whether a deeper search is stronger -- every seat changes at
+ * once, so a quieter board is as good an explanation as a better player. Only
+ * seating them together answers it.
+ */
+describe("the simulator seats a chain shape per player", () => {
+  test("a second shape changes the seat it is given to", () => {
+    const shallow = playChained(3, [{ depth: 1, breadth: 6 }]);
+    const deep = playChained(3, [{ depth: 1, breadth: 6 }, { depth: 3, breadth: 6 }]);
+
+    expect(deep.scores[1]).not.toEqual(shallow.scores[1]);
+  }, 60_000);
+
+  /*
+   * Guard, not a driver: it passes on the implementation above and exists to
+   * pin the wrap-around. `chains[seat]` without the modulo would leave seat 1
+   * with undefined and hand it `rank`'s own default instead of the shape it
+   * was given, which the test above cannot see.
+   */
+  test("one shape seats every player", () => {
+    const one = playChained(5, [{ depth: 1, breadth: 6 }]);
+    const both = playChained(5, [{ depth: 1, breadth: 6 }, { depth: 1, breadth: 6 }]);
+
+    expect(both.scores).toEqual(one.scores);
+  }, 60_000);
+});
+
 describe("the simulator plays at a difficulty", () => {
   /*
    * The knob is wired, proved by mutation rather than asserted.

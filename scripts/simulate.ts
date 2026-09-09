@@ -86,7 +86,7 @@ function makePool(size: number) {
     players: number,
     count: number,
     difficulties: readonly Difficulty[],
-    chain?: { depth: number; breadth: number; enablement?: number },
+    chains?: readonly { depth: number; breadth: number; enablement?: number }[],
   ) =>
     new Promise<GameResult[]>((resolve, reject) => {
       const results: GameResult[] = new Array(count);
@@ -95,7 +95,7 @@ function makePool(size: number) {
 
       const give = (worker: Worker) => {
         if (next >= count) return;
-        worker.postMessage({ variant, players, index: next++, difficulties, chain });
+        worker.postMessage({ variant, players, index: next++, difficulties, chains });
       };
 
       for (const worker of workers) {
@@ -224,25 +224,41 @@ const LEVELS = DIFFICULTIES_ARG as Difficulty[];
  * run. Depth 1 is legal and means the single-span search, i.e. no chaining.
  */
 const CHAIN_ARG = process.argv[6];
-let CHAIN: { depth: number; breadth: number; enablement?: number } | undefined;
+let CHAINS: { depth: number; breadth: number; enablement?: number }[] | undefined;
 if (CHAIN_ARG !== undefined) {
-  const parts = CHAIN_ARG.split(",").map((s) => Number(s.trim()));
-  const [d, b, e] = parts;
-  const bad =
-    (parts.length !== 2 && parts.length !== 3) ||
-    d === undefined || b === undefined ||
-    !Number.isInteger(d) || !Number.isInteger(b) || d < 1 || b < 1 ||
-    // The third is a weight, not a count: any finite number, sign included.
-    (parts.length === 3 && (e === undefined || !Number.isFinite(e)));
-  if (bad) {
-    console.error(
-      `chain must be "depth,breadth" or "depth,breadth,enablement" — depth and ` +
-        `breadth integers >= 1, enablement any finite number — got ` +
-        JSON.stringify(CHAIN_ARG),
-    );
-    process.exit(1);
-  }
-  CHAIN = parts.length === 3 ? { depth: d!, breadth: b!, enablement: e } : { depth: d!, breadth: b! };
+  /*
+   * One shape per seat, "/" between them, read seat by seat exactly as the
+   * difficulty argument is: `3,6` searches every seat three deep, and
+   * `4,6/2,6` puts a four-deep bot in seat 0 against two-deep ones in every
+   * other seat.
+   *
+   * Seating them is what makes depth answerable at all. Deepening every seat
+   * at once compares two tables rather than two players, and a table that
+   * completes fewer squares is as easily better players leaving each other
+   * fewer gifts as it is worse ones -- which is exactly the ambiguity the
+   * 16-game sweeps at depth 2, 3 and 4 ran into.
+   */
+  CHAINS = CHAIN_ARG.split("/").map((seat, at) => {
+    const parts = seat.split(",").map((s) => Number(s.trim()));
+    const [d, b, e] = parts;
+    const bad =
+      (parts.length !== 2 && parts.length !== 3) ||
+      d === undefined || b === undefined ||
+      !Number.isInteger(d) || !Number.isInteger(b) || d < 1 || b < 1 ||
+      // The third is a weight, not a count: any finite number, sign included.
+      (parts.length === 3 && (e === undefined || !Number.isFinite(e)));
+    if (bad) {
+      console.error(
+        `chain ${at} must be "depth,breadth" or "depth,breadth,enablement" \u2014 depth ` +
+          `and breadth integers >= 1, enablement any finite number \u2014 got ` +
+          `${JSON.stringify(seat)} (seats are separated by "/")`,
+      );
+      process.exit(1);
+    }
+    return parts.length === 3
+      ? { depth: d!, breadth: b!, enablement: e }
+      : { depth: d!, breadth: b! };
+  });
 }
 
 const filter = process.argv[4];
@@ -310,7 +326,7 @@ const pool = makePool(Math.min(cpus().length, games));
 // The parallelism lives inside pool.play, across games within one variant.
 for (const variant of CHOSEN) {
   const started = Date.now();
-  const results = await pool.play(variant, players, games, LEVELS, CHAIN);
+  const results = await pool.play(variant, players, games, LEVELS, CHAINS);
 
   const winning = results.map((r) => Math.max(...r.scores));
   const margins = results.map((r) => {
@@ -363,17 +379,22 @@ await pool.close();
 // guarantee about nothing.
 // Seat by seat rather than as the argument was typed: one entry seats every
 // player, so echoing "easy" back would not say how many easy bots played.
+// The shape is named per seat as well, because seating two of them is the
+// whole point of the argument: one line reading "chain depth 4" would be a
+// claim about a table that never played.
+const shapeOf = (i: number) => {
+  if (CHAINS === undefined) return "";
+  const c = CHAINS[i % CHAINS.length]!;
+  return ` depth ${c.depth} breadth ${c.breadth}` +
+    (c.enablement === undefined ? "" : ` enablement ${c.enablement}`);
+};
 const seating = Array.from(
   { length: players },
-  (_, i) => `seat ${i} ${LEVELS[i % LEVELS.length]!}`,
+  (_, i) => `seat ${i} ${LEVELS[i % LEVELS.length]!}${shapeOf(i)}`,
 ).join(", ");
 
 console.log(
   `\n${games} games, ${players} players, ${seating}` +
-    (CHAIN === undefined
-      ? ""
-      : `, chain depth ${CHAIN.depth} breadth ${CHAIN.breadth}` +
-        (CHAIN.enablement === undefined ? "" : ` enablement ${CHAIN.enablement}`)) +
     (CHOSEN.length > 1 ? ", identical draws across variants" : "") +
     "\n",
 );

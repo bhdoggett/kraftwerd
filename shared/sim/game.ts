@@ -70,10 +70,17 @@ function topUp(player: Player, bag: Bag | null, rng: () => number) {
  * among, so figures from before difficulty existed are not seed-comparable
  * with figures from after it; see docs/design.md §6.
  *
- * `chain` is the shape of the multi-play search: how many components a turn
+ * `chains` is the shape of the multi-play search: how many components a turn
  * may be built from, and how many candidates each step branches on. Left out,
  * `rank` picks its own default -- which is what every figure in design.md §6
  * was measured at, so passing nothing keeps a run comparable with that table.
+ *
+ * It seats the players exactly as `difficulties` does -- seat i searches at
+ * `chains[i % chains.length]` -- so one entry sets the whole table and two put
+ * a deep search against a shallow one. Seating them is the only way to ask
+ * whether depth is worth anything: change every seat at once and a run that
+ * completes fewer squares is as easily a table of better players leaving each
+ * other fewer gifts as it is a table of worse ones.
  */
 export function playGame(
   variant: Variant,
@@ -82,7 +89,7 @@ export function playGame(
   words: WordIndex,
   rng: () => number,
   difficulties: readonly Difficulty[] = ["hard"],
-  chain?: { depth: number; breadth: number; enablement?: number },
+  chains?: readonly { depth: number; breadth: number; enablement?: number }[],
 ): GameResult {
   const size = variant.size ?? GAME.boardSize;
   const shape = boardShapeNamed(OPEN_BOARD, size);
@@ -137,7 +144,9 @@ export function playGame(
       shape,
       size,
       scoreOf,
-      { chain },
+      // Empty is not "every seat at index zero": it is nothing to seat, and
+      // `rank` reads undefined as "pick your own default".
+      { chain: chains !== undefined && chains.length > 0 ? chains[seat % chains.length] : undefined },
     );
     const move = chooseRanked(moves, difficulties[seat % difficulties.length], rng);
 
