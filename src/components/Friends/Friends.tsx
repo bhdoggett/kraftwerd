@@ -36,8 +36,9 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     playerCount: number,
     friendIds: Id<"users">[],
     bots: BotSeat[],
+    isPublic = false,
   ) {
-    const game = await start(playerCount, friendIds, bots);
+    const game = await start(playerCount, friendIds, bots, isPublic);
     if (game === null) return;
     setOpponent(null);
     onOpen(game.gameId);
@@ -95,8 +96,8 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
       {opponent && (
         <CreateGame
           withFriend={opponent}
-          onStart={(playerCount, friendIds, bots) =>
-            void startWith(playerCount, friendIds, bots)
+          onStart={(playerCount, friendIds, bots, isPublic) =>
+            void startWith(playerCount, friendIds, bots, isPublic)
           }
           onCancel={() => {
             setOpponent(null);

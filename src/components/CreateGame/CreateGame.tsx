@@ -14,6 +14,7 @@ interface CreateGameProps {
     playerCount: number,
     friendIds: Id<"users">[],
     bots: BotSeat[],
+    isPublic: boolean,
   ) => void;
   onCancel: () => void;
   starting: boolean;
@@ -63,6 +64,8 @@ export function CreateGame({
   );
   /** Seats deliberately left empty, for whoever the invite link reaches. */
   const [open, setOpen] = useState(0);
+  /** Listed for strangers to find, rather than filled by a link you send. */
+  const [listed, setListed] = useState(false);
 
   const [count, setCount] = useState(2);
   const [bots, setBots] = useState<BotSeat[]>(() =>
@@ -314,6 +317,27 @@ export function CreateGame({
               </div>
             </div>
 
+            {/*
+              Only offered once a seat is actually open: a full table has
+              nothing to list, and a checkbox that does nothing is a question
+              you have to work out the answer to for no reason.
+            */}
+            {open > 0 && (
+              <label className={styles.listRow}>
+                <input
+                  type="checkbox"
+                  checked={listed}
+                  onChange={() => setListed((on) => !on)}
+                />
+                <span className={styles.listText}>
+                  Anyone can find and join these seats
+                  <span className={styles.listHint}>
+                    Everybody plays under a made-up name, yours included.
+                  </span>
+                </span>
+              </label>
+            )}
+
             {!ready && (
               <p className={styles.hint}>
                 Pick a friend, or hold a seat open — a game on your own is a
@@ -339,10 +363,10 @@ export function CreateGame({
             className={styles.button}
             onClick={() =>
               path === "machines"
-                ? onStart(count, [], bots)
+                ? onStart(count, [], bots, false)
                 : path === "alone"
-                  ? onStart(1, [], [])
-                  : onStart(people, picked, [])
+                  ? onStart(1, [], [], false)
+                  : onStart(people, picked, [], listed && open > 0)
             }
             disabled={starting || path === null || !ready}
           >

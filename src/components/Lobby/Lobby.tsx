@@ -45,8 +45,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     playerCount: number,
     friendIds: Id<"users">[],
     bots: BotSeat[],
+    isPublic = false,
   ) {
-    const game = await start(playerCount, friendIds, bots);
+    const game = await start(playerCount, friendIds, bots, isPublic);
     if (game === null) return;
 
     setCreating(false);
@@ -124,8 +125,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           />
         ) : (
           <CreateGame
-            onStart={(playerCount, friendIds, bots) =>
-              void startGame(playerCount, friendIds, bots)
+            onStart={(playerCount, friendIds, bots, isPublic) =>
+              void startGame(playerCount, friendIds, bots, isPublic)
             }
             onCancel={() => {
               setCreating(false);
