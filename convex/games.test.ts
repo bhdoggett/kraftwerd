@@ -2111,4 +2111,65 @@ describe("who you are allowed to see", () => {
     expect(turns).toHaveLength(1);
     expect(turns.map((turn) => turn.name)).not.toContain("Alice");
   });
+
+  test("an open game is findable by a stranger", async () => {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+
+    const open = await seats.asCarol.query(api.games.listOpenGames, {});
+    expect(open.games.map((g) => g.gameId)).toContain(gameId);
+  });
+
+  test("a private game with a spare seat is not", async () => {
+    const seats = await strangers();
+    await seats.asAlice.mutation(api.games.createGame, { playerCount: 3 });
+
+    const open = await seats.asCarol.query(api.games.listOpenGames, {});
+    expect(open.games).toHaveLength(0);
+  });
+
+  test("the list never says a stranger's real name", async () => {
+    const seats = await strangers();
+    await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+
+    const open = await seats.asCarol.query(api.games.listOpenGames, {});
+    expect(open.games[0].players).not.toContain("Alice");
+  });
+
+  // Naming is a property of the pair, not of the screen: Bob knows Alice
+  // whether he meets her at the board or in a list.
+  test("but it does say a friend's", async () => {
+    const seats = await strangers();
+    await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+
+    const open = await seats.asBob.query(api.games.listOpenGames, {});
+    expect(open.games[0].players).toContain("Alice");
+  });
+
+  test("a game with every seat taken drops off the list", async () => {
+    const { asCarol, gameId } = await publicTable();
+
+    const open = await asCarol.query(api.games.listOpenGames, {});
+    expect(open.games.map((g) => g.gameId)).not.toContain(gameId);
+  });
+
+  test("a game you are already at is not offered to you again", async () => {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+
+    const open = await seats.asAlice.query(api.games.listOpenGames, {});
+    expect(open.games.map((g) => g.gameId)).not.toContain(gameId);
+  });
 });

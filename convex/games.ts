@@ -1456,3 +1456,66 @@ export const listMyGames = query({
     };
   },
 });
+
+/** How many public games the open list reads, newest first. */
+const OPEN_ROWS = 100;
+
+/** A game nobody joined stops being an invitation after this long. */
+const OPEN_FOR_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Games with a seat spare that anybody may take.
+ *
+ * The one way into a game without knowing somebody first. Only games that
+ * asked to be listed appear: a link sent to one person must not become a door
+ * anyone can walk through.
+ *
+ * Names come from the same builder as everywhere else, so a stranger reads
+ * aliases and a friend reads a friend -- who you are allowed to see is a fact
+ * about the pair of you, not about which screen you are on.
+ */
+export const listOpenGames = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUser(ctx);
+    const friends = await friendIdsOf(ctx, userId);
+    const fresh = Date.now() - OPEN_FOR_MS;
+
+    const games = await ctx.db
+      .query("games")
+      .withIndex("by_public_and_status", (q) =>
+        q.eq("isPublic", true).eq("status", "lobby"),
+      )
+      .order("desc")
+      .take(OPEN_ROWS);
+
+    const rows = await Promise.all(
+      games.map(async (game) => {
+        // A game nobody ever joined would otherwise sit in the list for good.
+        if (game._creationTime < fresh) return null;
+
+        const seated = await ctx.db
+          .query("players")
+          .withIndex("by_game", (q) => q.eq("gameId", game._id))
+          .take(GAME.maxPlayers);
+
+        if (seated.length >= game.playerCount) return null;
+        // Your own games are in your lobby already.
+        if (seated.some((p) => p.userId === userId)) return null;
+
+        const names = await namesFor(ctx, userId, game, seated, friends);
+
+        return {
+          gameId: game._id,
+          name: game.name ?? "Game",
+          playerCount: game.playerCount,
+          seatsFilled: seated.length,
+          /** Who is waiting, as this viewer may see them. */
+          players: seated.map((p) => names.get(p.userId) ?? "Player"),
+        };
+      }),
+    );
+
+    return { games: rows.filter((r) => r !== null) };
+  },
+});
