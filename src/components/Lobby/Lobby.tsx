@@ -12,11 +12,15 @@ import {
   useStartGame,
   type BotSeat,
 } from "../../lib/useStartGame";
+import { userMessage } from "../../lib/errors";
 import styles from "./Lobby.module.css";
 
 export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const mine = useQuery(api.games.listMyGames);
   const respondToInvite = useMutation(api.games.respondToInvite);
+  const openGames = useQuery(api.games.listOpenGames);
+  const joinGame = useMutation(api.games.joinGame);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   const myGames = mine?.games ?? [];
   const invitations = mine?.invitations ?? [];
@@ -54,6 +58,16 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     const taken = 1 + friendIds.length + bots.length;
     if (taken === playerCount) onOpen(game.gameId);
     else setSetup({ ...game, invited: friendIds.length + bots.length });
+  }
+
+  /** Take a seat at a game somebody left open. */
+  async function joinOpen(gameId: Id<"games">) {
+    try {
+      await joinGame({ gameId });
+      onOpen(gameId);
+    } catch (err) {
+      setJoinError(userMessage(err));
+    }
   }
 
   /*
@@ -167,6 +181,35 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               </button>
             </div>
           ))}
+        </section>
+      )}
+
+      {(openGames?.games.length ?? 0) > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.heading}>Open games</h2>
+          {/*
+            Games nobody you know made. The people at them are named as this
+            viewer may see them -- an alias for a stranger, a name for a
+            friend -- which is decided on the server, not here.
+          */}
+          {openGames?.games.map((g) => (
+            <div key={g.gameId} className={styles.row}>
+              <span className={styles.grow}>
+                {g.name}
+                <span className={styles.openWith}>
+                  {g.players.join(", ")} · {g.seatsFilled} of {g.playerCount}
+                </span>
+              </span>
+              <button
+                type="button"
+                className={styles.join}
+                onClick={() => void joinOpen(g.gameId)}
+              >
+                Join
+              </button>
+            </div>
+          ))}
+          {joinError !== null && <p className={styles.error}>{joinError}</p>}
         </section>
       )}
 

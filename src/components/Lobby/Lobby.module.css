@@ -156,3 +156,31 @@
   font-size: 0.8rem;
   line-height: 1.5;
 }
+
+/* Who is already sitting there, under the game's name. */
+.openWith {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.join {
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.join:hover {
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.error {
+  margin: var(--space-2) 0 0;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
