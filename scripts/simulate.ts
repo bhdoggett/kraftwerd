@@ -354,7 +354,21 @@ const stderr = (xs: number[]) => {
 };
 
 const rows: Record<string, string>[] = [];
-const pool = makePool(Math.min(cpus().length, games));
+/*
+ * One worker a core, unless SIM_WORKERS says otherwise.
+ *
+ * Each worker builds its own dictionary and index over seventy-seven thousand
+ * words, so the pool's memory is a per-worker cost and a full-width sweep can
+ * push a machine that is doing anything else into swapping -- a 200-game
+ * four-player run took 30,524 seconds that way against the usual 900. Lower
+ * it when the machine is shared.
+ */
+const WORKERS = Number(process.env.SIM_WORKERS ?? cpus().length);
+if (!Number.isInteger(WORKERS) || WORKERS < 1) {
+  console.error(`SIM_WORKERS must be a whole number of at least 1 — got ${JSON.stringify(process.env.SIM_WORKERS)}`);
+  process.exit(1);
+}
+const pool = makePool(Math.min(WORKERS, games));
 
 // Kept serial: this loop is where the "secs" column comes from, and running
 // two variants' games concurrently would blur that number across variants.
