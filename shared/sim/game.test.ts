@@ -5,7 +5,8 @@ import { describe, expect, test } from "vitest";
 import { RACK } from "../config";
 import { makeDictionary } from "../engine/dictionary";
 import { indexWords } from "./words";
-import { playGame } from "./game";
+import { playGame, seedTiles } from "./game";
+import { boardShapeNamed, OPEN_BOARD } from "../boards";
 import type { Difficulty } from "./bot";
 
 /*
@@ -90,6 +91,41 @@ describe("the simulator seats a chain shape per player", () => {
  * than every other seat, and whether that is the opening turn into an empty
  * board or a deficit that runs all game cannot be told apart from a mean.
  */
+/*
+ * A board that does not start empty.
+ *
+ * The opening turn is worth 7.4 against 38 for the same move one turn later,
+ * measured over 200 games at depth 4 -- the first player collects a bare word
+ * score because there is nothing to cross, no square to close and nothing to
+ * cover. Seeding a word is the fix under test; these pin that it reaches the
+ * board and that the opener stops being a bare word.
+ */
+describe("a seeded board", () => {
+  test("lays the word across the centre, at the stack cap when stacked", () => {
+    const tiles = seedTiles({ word: "FUZZ", stacked: true }, 9, boardShapeNamed(OPEN_BOARD, 9));
+
+    expect(tiles.map((t) => `${t.x},${t.y}:${t.letter}:${t.stacked}`)).toEqual([
+      "2,4:F:2", "3,4:U:2", "4,4:Z:2", "5,4:Z:2",
+    ]);
+  });
+
+  test("leaves the word coverable when it is not stacked", () => {
+    const tiles = seedTiles({ word: "FUZZ" }, 9, boardShapeNamed(OPEN_BOARD, 9));
+
+    expect(tiles.every((t) => t.stacked === 1)).toBe(true);
+  });
+
+  test("an opening turn on a seeded board is worth several times a bare one", () => {
+    const bare = playGame(VARIANT, 2, dictionary, words, seeded(9), ["hard"]);
+    const seededBoard = playGame(
+      { ...VARIANT, seed: { word: "FUZZ", stacked: true } },
+      2, dictionary, words, seeded(9), ["hard"],
+    );
+
+    expect(seededBoard.turnScores[0]!).toBeGreaterThan(bare.turnScores[0]! * 2);
+  }, 60_000);
+});
+
 describe("the simulator reports what each turn scored", () => {
   test("one entry a turn, adding up to what the players scored", () => {
     const game = playGame(VARIANT, 2, dictionary, words, seeded(7), ["hard"]);

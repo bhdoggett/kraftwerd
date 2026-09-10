@@ -201,6 +201,21 @@ const VARIANTS: Variant[] = [
    * printed above the table has the real composition, computed.
    */
   { name: "now: the shipped bag", bag: CURRENT_TILES, multiplier: "none", weights: CURRENT },
+  /*
+   * The shipped bag, with a word already on the board.
+   *
+   * FUZZ and BRR are the two ends of what a seed can be worth: over 200
+   * opening turns apiece, FUZZ leaves the opener at 28.3 and BRR at 36.0,
+   * against 7.4 on an empty board and 38.4 for the second player's opener
+   * today. Twenty seeds spanning letter rarity, extendability and stacking
+   * all landed between 28 and 40, so these two bracket the range rather than
+   * sampling the middle of it. Both are stacked: uncoverable is worth about
+   * eight points of opener, the largest lever measured.
+   */
+  { name: "seed FUZZ", bag: CURRENT_TILES, multiplier: "none", weights: CURRENT,
+    seed: { word: "FUZZ", stacked: true } },
+  { name: "seed BRR", bag: CURRENT_TILES, multiplier: "none", weights: CURRENT,
+    seed: { word: "BRR", stacked: true } },
   { name: "50 / 33%", bag: 50, multiplier: "none", weights: makeBag(50, 0.33) },
   { name: "50 / 42%", bag: 50, multiplier: "none", weights: makeBag(50, 0.42) },
   { name: "62 / 26%", bag: 62, multiplier: "none", weights: makeBag(62, 0.26) },
