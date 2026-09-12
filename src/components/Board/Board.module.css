@@ -223,9 +223,9 @@
 /*
  * Where the first word has to start: the one lit square on an empty board.
  * `--centre-fill`/`--centre-ring` read as a green wash-plus-ring on paper
- * ("this word checks out", the same green used for word-validity feedback
- * elsewhere) and as an unfilled ring in the seat-1 colour on the blueprint
- * board, which doesn't tint any of its squares -- see index.css.
+ * (its own green, kept apart from `--play`'s word-validity feedback) and as
+ * an unfilled ring in the seat-1 colour on the blueprint board, which
+ * doesn't tint any of its squares -- see index.css.
  */
 .centre {
   background: var(--centre-fill);
@@ -253,7 +253,7 @@
  * tile's own edge is untouched and words that cross do not fight each other.
  */
 .inWord {
-  outline: 2px solid var(--valid);
+  outline: 2px solid var(--play);
   outline-offset: -2px;
 }
 

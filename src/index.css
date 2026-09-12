@@ -76,8 +76,10 @@
   --cell-blocked: #0b0b0d;
   /* No ring needed: a blocked square is already unmistakable against white. */
   --blocked-ring: none;
-  /* The centre marker, ink on paper: a wash plus a ring, both the "this word
-     checks out" green — see .centre in Board.module.css. */
+  /* The centre marker, ink on paper: a wash plus a ring, in its own green --
+     see .centre in Board.module.css. Deliberately not --play: that's the
+     Play button and word-validity feedback's colour now, and the two are
+     free to move independently. */
   --centre-fill: color-mix(in srgb, var(--valid) 55%, var(--cell-empty));
   --centre-ring: var(--valid);
 
@@ -121,6 +123,13 @@
   --valid-soft: #d7f6e3;
   --invalid: #e5002e;
   --invalid-soft: #ffdde4;
+
+  /* Play button and word-validity feedback (the chip, its outline on the
+     board, the points badges) -- an avocado green, kept apart from --valid
+     above so the board's centre marker can keep its own green undisturbed. */
+  --play: #429e00;
+  --play-hover: #378300;
+  --play-soft: #e3f6d5;
 
   /*
    * Player colours. A tile says whose it is by what it is lit in.
@@ -267,6 +276,10 @@
     --invalid: #ff2b55;
     --invalid-soft: #330711;
 
+    --play: #b5d98c;
+    --play-hover: #d4e9bc;
+    --play-soft: #1b250f;
+
     --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
     --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);
   }
@@ -327,6 +340,12 @@
   --valid-soft: #04301b;
   --invalid: #ff2b55;
   --invalid-soft: #330711;
+
+  /* See the media-query block above: same avocado green either way a dark
+     theme gets chosen. */
+  --play: #b5d98c;
+  --play-hover: #d4e9bc;
+  --play-soft: #1b250f;
 
   --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
   --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);

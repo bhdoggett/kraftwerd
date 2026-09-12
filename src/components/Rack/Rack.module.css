@@ -201,16 +201,16 @@
      few pixels taller, which showed as a step in the row. */
   height: 34px;
   padding: 0 var(--space-4);
-  border: 1px solid var(--valid);
+  border: 1px solid var(--play);
   border-radius: var(--radius);
-  background: var(--valid);
+  background: var(--play);
   color: var(--text-inverse);
   font-weight: 700;
 }
 
 .play:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--valid-hover);
-  border-color: var(--valid-hover);
+  background: var(--play-hover);
+  border-color: var(--play-hover);
 }
 
 /*
