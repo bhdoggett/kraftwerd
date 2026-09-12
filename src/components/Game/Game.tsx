@@ -31,6 +31,7 @@ import { useWakeLock } from "../../lib/useWakeLock";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
 import { playedSinceYourTurn } from "../../lib/recap";
 import { TwoLetterWordsDialog } from "../TwoLetterWords/TwoLetterWords";
+import { SeatPicker } from "../SeatPicker/SeatPicker";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -208,6 +209,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const [reviewing, setReviewing] = useState(false);
   const [stepAt, setStepAt] = useState<number | null>(null);
   const [showTwoLetterWords, setShowTwoLetterWords] = useState(false);
+  /** Colour picked while taking an open seat at a game reached by link. */
+  const [joinSeatChoice, setJoinSeatChoice] = useState<number | null>(null);
   // Not fetched until asked for: most visits never open the history.
   const history = useQuery(api.games.listTurns, reviewing ? { gameId } : "skip");
 
@@ -1054,13 +1057,22 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             ) : view.canJoin ? (
               <>
                 {" "}
-                <button
-                  type="button"
-                  className={styles.inline}
-                  onClick={() => void joinGame({ gameId })}
-                >
-                  Take a seat
-                </button>
+                Pick your colour:{" "}
+                <SeatPicker
+                  totalSeats={game.playerCount}
+                  takenSeats={view.players.map((p) => p.seat)}
+                  value={joinSeatChoice}
+                  onChange={(seat) => {
+                    setJoinSeatChoice(seat);
+                    setError(null);
+                    joinGame({ gameId, seat }).catch((e: unknown) => {
+                      // Somebody may have just taken it -- back to picking
+                      // rather than showing a seat that didn't take.
+                      setJoinSeatChoice(null);
+                      setError(userMessage(e));
+                    });
+                  }}
+                />
               </>
             ) : (
               <>

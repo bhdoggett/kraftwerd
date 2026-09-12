@@ -2272,7 +2272,7 @@ describe("who you are allowed to see", () => {
     });
 
     const open = await seats.asCarol.query(api.games.listOpenGames, {});
-    expect(open.games[0].players).not.toContain("Alice");
+    expect(open.games[0].players.map((p) => p.name)).not.toContain("Alice");
   });
 
   // Naming is a property of the pair, not of the screen: Bob knows Alice
@@ -2285,7 +2285,7 @@ describe("who you are allowed to see", () => {
     });
 
     const open = await seats.asBob.query(api.games.listOpenGames, {});
-    expect(open.games[0].players).toContain("Alice");
+    expect(open.games[0].players.map((p) => p.name)).toContain("Alice");
   });
 
   test("a game with every seat taken drops off the list", async () => {

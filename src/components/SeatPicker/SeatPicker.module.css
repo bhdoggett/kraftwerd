@@ -1,0 +1,32 @@
+.row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.swatch {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: var(--tile-stroke) solid var(--tile-edge);
+  border-radius: var(--radius);
+  background: var(--tile-face);
+  filter: var(--tile-lit);
+  transition:
+    transform 90ms ease,
+    box-shadow 90ms ease;
+}
+
+.swatch:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.swatch:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+
+.selected {
+  box-shadow:
+    0 0 0 2px var(--surface-raised),
+    0 0 0 4px var(--tile-face);
+}
