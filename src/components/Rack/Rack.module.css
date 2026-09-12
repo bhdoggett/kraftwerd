@@ -65,9 +65,13 @@
   /* Tied to the tile, so a smaller rack keeps its proportions. */
   font-family: var(--font-tile);
   font-size: calc(var(--rack-tile-width) * 0.55);
-  font-weight: 700;
-  /* See Board.module.css .glyph: no faked bold, or W sits off centre. */
+  font-weight: 800;
+  line-height: 1;
+  /* See Board.module.css .glyph: no faked bold, and the same cap-height trim
+     so the letter centres on its own ink rather than the font's line box. */
   font-synthesis-weight: none;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
   display: grid;
   place-items: center;
   box-shadow: var(--shadow);

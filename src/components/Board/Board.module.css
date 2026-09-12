@@ -93,7 +93,7 @@
   display: grid;
   place-items: center;
   font-family: var(--font-tile);
-  font-weight: 700;
+  font-weight: 800;
   /* Tied to the cell, so letters grow and shrink with the board when zoomed. */
   font-size: calc(var(--cell-size) * 0.6);
   line-height: 1;
@@ -150,11 +150,20 @@
   place-self: center;
   line-height: 1;
   /*
-   * No faked bold. Futura has no true bold on most Macs, so asking for 700
-   * makes the browser smear the glyph to the right — which eats the gap on
-   * that side and leaves wide letters like W looking shoved off centre.
+   * No faked bold: if a requested weight isn't actually loaded, ask the
+   * browser to fall back to one that is rather than smear the glyph to
+   * synthesize it, which shoves wide letters like W off centre.
    */
   font-synthesis-weight: none;
+  /*
+   * place-self centres the *line box*, not the ink — a capital letter sits
+   * in room a font also reserves for descenders and diacritics it never
+   * uses here, so line-box centring reads visibly high and left. Trimming
+   * the box to the font's own cap-height and baseline (every letter here is
+   * uppercase) makes "centred" mean the glyph rather than the box around it.
+   */
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
 }
 
 
