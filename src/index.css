@@ -152,15 +152,18 @@
   --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.14), 0 6px 16px rgb(0 0 0 / 0.1);
 
   /*
-   * Geometric, after the lettering the band used. Futura and Avenir ship on
-   * Apple platforms only, so elsewhere this lands on Century Gothic or plain
-   * Helvetica — same skeleton, less character, still legible.
+   * Geometric, after the lettering the band used. League Spartan (loaded in
+   * index.html, SIL Open Font License — free, no pageview tiers) leads: a
+   * free typeface built in the same circular-geometric lineage as Futura and
+   * Century Gothic, which stay right behind it as the fallback this always
+   * was, for the moment before the webfont loads or the rare host that can't
+   * reach it.
    */
-  --font: Futura, "Avenir Next", "Century Gothic", "Helvetica Neue", Helvetica,
-    system-ui, sans-serif;
+  --font: "League Spartan", Futura, "Avenir Next", "Century Gothic",
+    "Helvetica Neue", Helvetica, system-ui, sans-serif;
   /* Tile letters, where a single glyph has to carry: heavier, tighter. */
-  --font-tile: Futura, "Avenir Next", "Century Gothic", "Helvetica Neue", Helvetica,
-    system-ui, sans-serif;
+  --font-tile: "League Spartan", Futura, "Avenir Next", "Century Gothic",
+    "Helvetica Neue", Helvetica, system-ui, sans-serif;
   /* Headings are set like a record sleeve: caps, wide, tight to the grid. */
   --tracking: 0.14em;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
