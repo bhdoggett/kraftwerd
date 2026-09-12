@@ -30,6 +30,7 @@ import { moveStagedTo, stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
 import { playedSinceYourTurn } from "../../lib/recap";
+import { TwoLetterWordsDialog } from "../TwoLetterWords/TwoLetterWords";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -206,6 +207,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    */
   const [reviewing, setReviewing] = useState(false);
   const [stepAt, setStepAt] = useState<number | null>(null);
+  const [showTwoLetterWords, setShowTwoLetterWords] = useState(false);
   // Not fetched until asked for: most visits never open the history.
   const history = useQuery(api.games.listTurns, reviewing ? { gameId } : "skip");
 
@@ -1181,6 +1183,18 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           >
             Review turns
           </button>
+        )}
+
+        <button
+          type="button"
+          className={styles.reviewOpen}
+          onClick={() => setShowTwoLetterWords(true)}
+        >
+          Two-letter words
+        </button>
+
+        {showTwoLetterWords && (
+          <TwoLetterWordsDialog onClose={() => setShowTwoLetterWords(false)} />
         )}
 
 
