@@ -125,14 +125,15 @@
   --tile-shadow-hover:
     inset 0 1px 0 rgb(255 255 255 / 0.4), 0 4px 6px rgb(0 0 0 / 0.18);
 
-  /* Accents. Cobalt, not magenta: the old pink predated the Trio 3 palette
-     and the same "doesn't belong to this colour family" problem dark
-     theme's violet had -- red/coral, yellow/gold and cyan/pacific are all
-     seats, green is Play's, so blue was the one hue left. Matched to the
-     old pink's own button contrast (5.0:1) rather than picked by eye. */
-  --accent: #176ae6;
-  --accent-hover: #145ac3;
-  --accent-soft: #e2edfd;
+  /* Accent is Play's own green now, not a colour of its own: blue (tried
+     as Cobalt) and violet before it both had the same "technically fine,
+     doesn't actually feel right" problem, and a whole extra hue just for
+     "primary action" turned out not to be necessary -- Play's green
+     already carries that weight everywhere else. Referenced rather than
+     duplicated, so the two can never drift apart by accident. */
+  --accent: var(--play);
+  --accent-hover: var(--play-hover);
+  --accent-soft: var(--play-soft);
   --pending: #b45c00;
   --pending-soft: #ffeccc;
   --danger: #c40036;
@@ -296,19 +297,15 @@
       0 2px 4px rgb(0 0 0 / 0.4);
 
     /*
-     * Cobalt, not violet: violet fixed the "still pink from the old
-     * palette" problem but turned out to be its own kind of unrelated --
-     * the rest of the palette reads as a primary-colour family (red,
-     * yellow, cyan, now green) and purple was never part of that story.
-     * Blue was the one hue left uncommitted. Checked against Coral Red,
-     * Pacific Blue and Royal Gold the same way a seat colour would be
-     * (11+ ΔE under simulated colourblindness even against Pacific, the
-     * nearest hue), and matched to violet's own button contrast, 6.2:1,
-     * rather than picked by eye.
+     * Accent is Play's own green, not a colour of its own -- blue (Cobalt)
+     * and violet before it were both technically fine and still didn't
+     * feel right. Play's green already carries "primary action" weight
+     * everywhere else; referenced rather than duplicated here so the two
+     * can't drift apart by accident.
      */
-    --accent: #5590e7;
-    --accent-hover: #78a7ec;
-    --accent-soft: #03193a;
+    --accent: var(--play);
+    --accent-hover: var(--play-hover);
+    --accent-soft: var(--play-soft);
     --pending: var(--neon-orange);
     --pending-soft: #2b1405;
     --danger: #ff4d6d;
@@ -378,11 +375,11 @@
     inset 0 1px 0 rgb(255 255 255 / 0.18), 0 16px 26px -8px rgb(0 0 0 / 0.65),
     0 2px 4px rgb(0 0 0 / 0.4);
 
-  /* See the media-query block above: same cobalt either way a dark theme
-     gets chosen. */
-  --accent: #5590e7;
-  --accent-hover: #78a7ec;
-  --accent-soft: #03193a;
+  /* See the media-query block above: accent is Play's own green either
+     way a dark theme gets chosen. */
+  --accent: var(--play);
+  --accent-hover: var(--play-hover);
+  --accent-soft: var(--play-soft);
   --pending: var(--neon-orange);
   --pending-soft: #2b1405;
   --danger: #ff4d6d;
