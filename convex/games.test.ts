@@ -459,7 +459,26 @@ describe("end of game", () => {
 });
 
 describe("solo games", () => {
-  test("a one-player game is active immediately, with nobody to wait for", async () => {
+  /*
+   * Solo is gone: there are machines to play now, and a game of one was a
+   * different game rather than an easy one. Refused at the mutation and not
+   * only in the modal, so the rule holds for anything that can call it.
+   * Games already in the database are untouched -- `minPlayers` is read when
+   * a game is made and never again.
+   */
+  test("a one-player game is refused", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) =>
+      ctx.db.insert("users", { authId: "auth|solo", name: "Solo" }),
+    );
+
+    await expect(
+      t.withIdentity({ subject: "auth|solo" })
+        .mutation(api.games.createGame, { playerCount: 1 }),
+    ).rejects.toThrow(/2-4 players/);
+  });
+
+  test("a table filled by machines is active immediately, with nobody to wait for", async () => {
     const t = convexTest(schema, modules);
     const alice = await t.run(async (ctx) => {
       for (const word of WORDS) await ctx.db.insert("words", { word });
@@ -472,7 +491,8 @@ describe("solo games", () => {
 
     const asAlice = t.withIdentity({ subject: "auth|solo" });
     const { gameId } = await asAlice.mutation(api.games.createGame, {
-      playerCount: 1,
+      playerCount: 2,
+      bots: [{ level: "medium", name: "Gawain" }],
     });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
@@ -843,16 +863,6 @@ describe("the lobby's game lists", () => {
       };
     }
 
-    test("may play alone", async () => {
-      const { asGuest } = await table();
-
-      const game = await asGuest.mutation(api.games.createGame, {
-        playerCount: 1,
-      });
-
-      expect(game.playerCount).toBe(1);
-    });
-
     test("may play the computer", async () => {
       const { asGuest } = await table();
 
@@ -980,7 +990,7 @@ describe("the lobby's game lists", () => {
 
     // A player row per game, and more of them than listMyGames reads.
     for (let i = 0; i < 55; i++) {
-      await asRegular.mutation(api.games.createGame, { playerCount: 1 });
+      await asRegular.mutation(api.games.createGame, { playerCount: 2, bots: [{ level: "medium", name: "Gawain" }], });
     }
     const { gameId } = await asRegular.mutation(api.games.createGame, {
       playerCount: 2,
@@ -997,7 +1007,8 @@ describe("the lobby's game lists", () => {
     });
     const asSolo = t.withIdentity({ subject: "auth|solo" });
     const { gameId } = await asSolo.mutation(api.games.createGame, {
-      playerCount: 1,
+      playerCount: 2,
+      bots: [{ level: "medium", name: "Gawain" }],
     });
 
     await asSolo.mutation(api.games.resignGame, { gameId });
@@ -1142,7 +1153,7 @@ describe("the board", () => {
     });
     const { gameId } = await t
       .withIdentity({ subject: "auth|open" })
-      .mutation(api.games.createGame, { playerCount: 1 });
+      .mutation(api.games.createGame, { playerCount: 2, bots: [{ level: "medium", name: "Gawain" }], });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.layout).toBe("Open");
@@ -1180,28 +1191,52 @@ describe("the tile count", () => {
 });
 
 describe("stacking is playing, not passing", () => {
-  test("a solo game does not end because two turns only replaced letters", async () => {
+  /*
+   * Two turns running that only re-letter squares must not end the game --
+   * a tile laid on a tile is a play, not a pass, and the pass counter is
+   * game-wide rather than per player. Two humans rather than one: the rule
+   * counts consecutive turns however the seats are shared out, and solo
+   * games can no longer be made.
+   */
+  test("a game does not end because two turns running only replaced letters", async () => {
     const t = convexTest(schema, modules);
-    const solo = await t.run(async (ctx) => {
-      const id = await ctx.db.insert("users", {
-        authId: "auth|solo",
-        name: "Solo",
-      });
+    const [alice, bob] = await t.run(async (ctx) => {
+      const a = await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+      const b = await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
       for (const word of [...WORDS, "AM", "AH", "IT"])
         await ctx.db.insert("words", { word });
-      return id;
+      return [a, b];
     });
-    const asSolo = t.withIdentity({ subject: "auth|solo" });
-    const { gameId } = await asSolo.mutation(api.games.createGame, {
-      playerCount: 1,
+    const asAlice = t.withIdentity({ subject: "auth|alice" });
+    const asBob = t.withIdentity({ subject: "auth|bob" });
+
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
     });
 
-    const stock = async () => {
+    // Seated directly and started, as the other placement tests do: this one
+    // is about the pass counter, not about the invitation flow.
+    await t.run(async (ctx) => {
+      await ctx.db.insert("players", {
+        gameId,
+        userId: bob,
+        seat: 1,
+        score: 0,
+        letters: [],
+        blanks: BLANKS_PER_GAME,
+        blank: true,
+        status: "joined",
+      });
+      await ctx.db.patch("games", gameId, { status: "active" });
+    });
+
+    /** Hand a seat the letters this test needs, whatever it drew. */
+    const stock = async (userId: typeof alice) => {
       await t.run(async (ctx) => {
         const player = await ctx.db
           .query("players")
           .withIndex("by_game_and_user", (q) =>
-            q.eq("gameId", gameId).eq("userId", solo),
+            q.eq("gameId", gameId).eq("userId", userId),
           )
           .unique();
         await ctx.db.patch("players", player!._id, {
@@ -1210,8 +1245,8 @@ describe("stacking is playing, not passing", () => {
       });
     };
 
-    await stock();
-    await asSolo.mutation(api.games.placeTiles, {
+    await stock(alice);
+    await asAlice.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(0, 0, "A"), at(1, 0, "D")],
     });
@@ -1219,13 +1254,13 @@ describe("stacking is playing, not passing", () => {
     // Two turns in a row that only change letters already on the board.
     // Two different squares: one tile may land on each, and the cap stops a
     // second landing on the same one.
-    await stock();
-    await asSolo.mutation(api.games.placeTiles, {
+    await stock(bob);
+    await asBob.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(1, 0, "T")],
     });
-    await stock();
-    await asSolo.mutation(api.games.placeTiles, {
+    await stock(alice);
+    await asAlice.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(0, 0, "I")],
     });
@@ -1729,10 +1764,12 @@ describe("the order past games come back in", () => {
     const asAlice = t.withIdentity({ subject: "auth|alice" });
 
     const first = await asAlice.mutation(api.games.createGame, {
-      playerCount: 1,
+      playerCount: 2,
+      bots: [{ level: "medium", name: "Gawain" }],
     });
     const second = await asAlice.mutation(api.games.createGame, {
-      playerCount: 1,
+      playerCount: 2,
+      bots: [{ level: "medium", name: "Gawain" }],
     });
 
     return { t, asAlice, first, second };
@@ -1832,7 +1869,8 @@ describe("records and the rules they were set under", () => {
     });
     const asAlice = t.withIdentity({ subject: "auth|alice" });
     const { gameId } = await asAlice.mutation(api.games.createGame, {
-      playerCount: 1,
+      playerCount: 2,
+      bots: [{ level: "medium", name: "Gawain" }],
     });
 
     await t.run(async (ctx) => {
@@ -1888,7 +1926,8 @@ describe("records and the rules they were set under", () => {
     });
 
     const { gameId } = await asAlice.mutation(api.games.createGame, {
-      playerCount: 1,
+      playerCount: 2,
+      bots: [{ level: "medium", name: "Gawain" }],
     });
     await t.run(async (ctx) => {
       const player = await ctx.db

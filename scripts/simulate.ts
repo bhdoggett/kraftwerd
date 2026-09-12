@@ -201,6 +201,34 @@ const VARIANTS: Variant[] = [
    * printed above the table has the real composition, computed.
    */
   { name: "now: the shipped bag", bag: CURRENT_TILES, multiplier: "none", weights: CURRENT },
+  /*
+   * The shipped bag, with a word already on the board.
+   *
+   * FUZZ and BRR are the two ends of what a seed can be worth: over 200
+   * opening turns apiece, FUZZ leaves the opener at 28.3 and BRR at 36.0,
+   * against 7.4 on an empty board and 38.4 for the second player's opener
+   * today. Twenty seeds spanning letter rarity, extendability and stacking
+   * all landed between 28 and 40, so these two bracket the range rather than
+   * sampling the middle of it. Both are stacked: uncoverable is worth about
+   * eight points of opener, the largest lever measured.
+   */
+  { name: "seed FUZZ", bag: CURRENT_TILES, multiplier: "none", weights: CURRENT,
+    seed: { word: "FUZZ", stacked: true } },
+  { name: "seed BRR", bag: CURRENT_TILES, multiplier: "none", weights: CURRENT,
+    seed: { word: "BRR", stacked: true } },
+  /*
+   * A hundred tiles at the shipped vowel share, so size is the only thing
+   * that moves against the row above.
+   *
+   * Worth asking because the bag sets how long a game runs, and the
+   * first-player penalty is one bad turn averaged over however many turns a
+   * seat gets: at depth 2 a two-player game ran 25 turns and seat 0 held 50.5%
+   * of the wins, at depth 4 it ran 19.9 and seat 0 fell to 41%. Nothing about
+   * the opening changed between those -- only how much game there was to
+   * recover it in. A hundred is also what Upwords ships (on a 10x10 board) and
+   * what Scrabble ships (on this one).
+   */
+  { name: "100 / 38%", bag: 100, multiplier: "none", weights: makeBag(100, 0.38) },
   { name: "50 / 33%", bag: 50, multiplier: "none", weights: makeBag(50, 0.33) },
   { name: "50 / 42%", bag: 50, multiplier: "none", weights: makeBag(50, 0.42) },
   { name: "62 / 26%", bag: 62, multiplier: "none", weights: makeBag(62, 0.26) },
@@ -339,7 +367,21 @@ const stderr = (xs: number[]) => {
 };
 
 const rows: Record<string, string>[] = [];
-const pool = makePool(Math.min(cpus().length, games));
+/*
+ * One worker a core, unless SIM_WORKERS says otherwise.
+ *
+ * Each worker builds its own dictionary and index over seventy-seven thousand
+ * words, so the pool's memory is a per-worker cost and a full-width sweep can
+ * push a machine that is doing anything else into swapping -- a 200-game
+ * four-player run took 30,524 seconds that way against the usual 900. Lower
+ * it when the machine is shared.
+ */
+const WORKERS = Number(process.env.SIM_WORKERS ?? cpus().length);
+if (!Number.isInteger(WORKERS) || WORKERS < 1) {
+  console.error(`SIM_WORKERS must be a whole number of at least 1 — got ${JSON.stringify(process.env.SIM_WORKERS)}`);
+  process.exit(1);
+}
+const pool = makePool(Math.min(WORKERS, games));
 
 // Kept serial: this loop is where the "secs" column comes from, and running
 // two variants' games concurrently would blur that number across variants.

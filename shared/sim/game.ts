@@ -1,9 +1,9 @@
 import { boardShapeNamed, OPEN_BOARD } from "../boards.js";
-import { GAME, RACK } from "../config.js";
+import { GAME, RACK, STACK_CAP } from "../config.js";
 import { applyPlacements } from "../engine/legality.js";
 import type { Dictionary } from "../engine/legality.js";
 import { makeBoard } from "../engine/board.js";
-import type { Board } from "../engine/board.js";
+import type { Board, TileSpec } from "../engine/board.js";
 import { refill } from "../engine/rack.js";
 import { newSquares } from "../engine/squares.js";
 import { chooseRanked, rank, type Difficulty, type WordIndex } from "./bot.js";
@@ -64,6 +64,36 @@ function topUp(player: Player, bag: Bag | null, rng: () => number) {
 }
 
 /**
+ * The tiles a seeded variant starts from.
+ *
+ * Laid across the centre row, centred on it, so the first player meets it the
+ * way the second player meets the first player's word today. Pure and
+ * exported so the placement can be checked without playing a game.
+ *
+ * `stacked` means STACK_CAP -- the seed may be crossed and built alongside,
+ * but never covered, which also shuts off the re-lettering route into squares
+ * that blocks.ts uses.
+ */
+export function seedTiles(
+  seed: { word: string; stacked?: boolean } | undefined,
+  size: number,
+  shape: { centre?: { x: number; y: number } },
+): TileSpec[] {
+  if (seed === undefined || seed.word === "") return [];
+
+  const centre = shape.centre ?? { x: (size - 1) / 2, y: (size - 1) / 2 };
+  const from = Math.floor(centre.x - seed.word.length / 2);
+
+  return [...seed.word].map((letter, i) => ({
+    x: from + i,
+    y: centre.y,
+    letter,
+    isBlank: false,
+    stacked: seed.stacked === true ? STACK_CAP : 1,
+  }));
+}
+
+/**
  * Play one game out, bot against bot.
  *
  * `difficulties` seats the players: seat i plays at `difficulties[i %
@@ -103,7 +133,7 @@ export function playGame(
   const shape = boardShapeNamed(OPEN_BOARD, size);
   const bag = makeBag(variant);
 
-  let board: Board = makeBoard([]);
+  let board: Board = makeBoard(seedTiles(variant.seed, size, shape));
 
   const hands: Player[] = Array.from({ length: players }, () => {
     const player: Player = { letters: [], blanks: 3, score: 0 };
@@ -241,7 +271,9 @@ export function playGame(
     edgeMargin: margin,
     scores: hands.map((h) => h.score),
     turns,
-    tilesPlaced: board.size,
+    // The seed is not a tile anybody placed, so it is taken back off: a
+    // seeded row and an unseeded one have to mean the same thing here.
+    tilesPlaced: board.size - (variant.seed?.word.length ?? 0),
     passes,
     rarePlayed,
     bestTurn,

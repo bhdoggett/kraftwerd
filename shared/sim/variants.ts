@@ -22,6 +22,21 @@ export interface Variant {
   multiplier: Multiplier;
   /** Board size, to see whether play is running out of room. */
   size?: number;
+  /**
+   * A word already on the board when the game starts.
+   *
+   * The opening turn is worth 7.4 against 38 for the same move one turn later
+   * -- the first player collects a bare word score, with nothing to cross, no
+   * square to close and no tile to cover. A seed is what removes that, and it
+   * lives on the variant so a seeded row and an unseeded one meet identical
+   * draws.
+   *
+   * `stacked` puts it at STACK_CAP, where nothing may be laid on top: it can
+   * be crossed and built beside, but not covered or re-lettered into a square.
+   * Worth about eight points of opener on its own, the largest single lever
+   * measured.
+   */
+  seed?: { word: string; stacked?: boolean };
 }
 
 export interface TurnValue {
