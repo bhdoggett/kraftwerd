@@ -64,7 +64,7 @@
   color: var(--tile-text);
   /* Tied to the tile, so a smaller rack keeps its proportions. */
   font-family: var(--font-tile);
-  font-size: calc(var(--rack-tile-width) * 0.68);
+  font-size: calc(var(--rack-tile-width) * 0.75);
   font-weight: 800;
   line-height: 1;
   /* See Board.module.css .glyph: no faked bold, and the same cap-height trim

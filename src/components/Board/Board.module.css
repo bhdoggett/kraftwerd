@@ -95,7 +95,7 @@
   font-family: var(--font-tile);
   font-weight: 800;
   /* Tied to the cell, so letters grow and shrink with the board when zoomed. */
-  font-size: calc(var(--cell-size) * 0.75);
+  font-size: calc(var(--cell-size) * 0.82);
   line-height: 1;
   color: var(--tile-text);
   box-shadow: var(--cell-inset);
