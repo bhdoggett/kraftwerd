@@ -70,18 +70,31 @@
   --text-muted: #61616b;
   --text-inverse: #ffffff;
 
-  /* Board */
-  --cell-empty: #ffffff;
-  --cell-line: #7c7c86;
-  --cell-blocked: #0b0b0d;
-  /* No ring needed: a blocked square is already unmistakable against white. */
-  --blocked-ring: none;
-  /* The centre marker, ink on paper: a wash plus a ring, in its own green --
-     see .centre in Board.module.css. Deliberately not --play: that's the
-     Play button and word-validity feedback's colour now, and the two are
-     free to move independently. */
-  --centre-fill: color-mix(in srgb, var(--valid) 55%, var(--cell-empty));
-  --centre-ring: var(--valid);
+  /* Board: "Ledger" -- pale ruled paper, like graph or engineering paper.
+     Light theme's own identity rather than an import of dark theme's
+     Blueprint: technical in the same spirit, native to ink on paper. */
+  --cell-empty: #eef4f7;
+  --cell-line: #c3d2da;
+  --board-frame: #8fa4b1;
+  /* A cancelled square, not an erased one: a hatch instead of a solid fill,
+     so a blocked cell reads as marked-through rather than a different
+     material. */
+  --cell-blocked: repeating-linear-gradient(
+      45deg,
+      #7d93a0 0 2px,
+      transparent 2px 7px
+    ),
+    var(--cell-empty);
+  /* The hatch alone was too close in value to an empty square at a glance --
+     the ring is what makes "blocked" readable before the pattern is. */
+  --blocked-ring: inset 0 0 0 1px #7d93a0;
+  /* The centre marker is a drawn crosshair now, not a wash -- see
+     .centre::after in Board.module.css. No fill or ring of its own, so it
+     reads as a mark on the paper rather than a different square. */
+  --centre-fill: var(--cell-empty);
+  --centre-ring: transparent;
+  --centre-mark-content: "+";
+  --centre-mark-color: #56707f;
 
   /*
    * Tiles are lit signs: a saturated face with the letter cut out of it in
@@ -231,6 +244,9 @@
        so the centre marker says its piece in line rather than in fill. */
     --centre-fill: var(--cell-empty);
     --centre-ring: var(--neon-pacific);
+    /* No crosshair here -- the ring above already marks the centre. */
+    --centre-mark-content: none;
+    --board-frame: var(--border-strong);
 
     /* The faces do not change: that is the point of choosing them this way. */
     --tile-edge: #000000;
@@ -276,9 +292,9 @@
     --invalid: #ff2b55;
     --invalid-soft: #330711;
 
-    --play: #b5d98c;
-    --play-hover: #d4e9bc;
-    --play-soft: #1b250f;
+    --play: #a0da4e;
+    --play-hover: #bde583;
+    --play-soft: #1c280c;
 
     --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
     --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);
@@ -306,6 +322,8 @@
   --blocked-ring: inset 0 0 0 1px #2a2a35;
   --centre-fill: var(--cell-empty);
   --centre-ring: var(--neon-pacific);
+  --centre-mark-content: none;
+  --board-frame: var(--border-strong);
 
   /* The faces do not change: that is the point of choosing them this way. */
   --tile-edge: #000000;
@@ -343,9 +361,9 @@
 
   /* See the media-query block above: same avocado green either way a dark
      theme gets chosen. */
-  --play: #b5d98c;
-  --play-hover: #d4e9bc;
-  --play-soft: #1b250f;
+  --play: #a0da4e;
+  --play-hover: #bde583;
+  --play-soft: #1c280c;
 
   --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
   --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);

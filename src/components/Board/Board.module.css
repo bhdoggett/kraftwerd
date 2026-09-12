@@ -76,7 +76,7 @@
   gap: 1px;
   padding: 1px;
   background: var(--cell-line);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--board-frame);
   width: max-content;
 }
 
@@ -222,16 +222,28 @@
 
 /*
  * Where the first word has to start: the one lit square on an empty board.
- * `--centre-fill`/`--centre-ring` read as a green wash-plus-ring on paper
- * (its own green, kept apart from `--play`'s word-validity feedback) and as
- * an unfilled ring in the seat-1 colour on the blueprint board, which
- * doesn't tint any of its squares -- see index.css.
+ * On the Ledger board (light theme) `--centre-fill`/`--centre-ring` are
+ * both switched off and a drawn crosshair marks the square instead, below.
+ * On the blueprint board (dark theme) it's still an unfilled ring in the
+ * seat-1 colour, since that board doesn't tint any of its squares -- see
+ * index.css.
  */
 .centre {
   background: var(--centre-fill);
   box-shadow:
     inset 0 0 0 2px var(--centre-ring),
     var(--cell-inset);
+}
+
+/* The Ledger crosshair. `content: none` on the blueprint board suppresses
+   this box entirely, so the two marks never fight. */
+.centre::after {
+  content: var(--centre-mark-content, none);
+  font-family: var(--font-tile);
+  font-weight: 800;
+  font-size: calc(var(--cell-size) * 0.5);
+  line-height: 1;
+  color: var(--centre-mark-color, transparent);
 }
 
 
