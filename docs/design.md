@@ -349,6 +349,41 @@ rolling until a rack met them; a bag cannot, so neither binds any more, and the
 vowel share is set in the bag itself instead. They are documented here because
 they are still in the config, not because they still do anything.
 
+**Grown again, to ninety-nine tiles — `RULES_VERSION` 5.** Not a rescale of
+the seventy-one-tile bag: real games here end when the bag runs dry, not when
+the board fills, so the tile count is the game-length dial, and a deliberately
+longer game was the point of the change, not a side effect of it.
+
+The letter mix was not scaled proportionally either. The adaptability
+measurement above was re-run in full against the shipped dictionary rather
+than re-derived by hand, confirming the same ranks it originally found, and
+the same four letters still show the largest gap between how common they are
+and how useful they are: P, M, B and D each move up by 2 (double the original
+one-tile nudge, matched to the pool roughly doubling). Funding that entirely
+out of the vowels, as the original nudge did with E and A, would have dropped
+vowel share to about 32% — noticeably thinner than the 38% the seventy-one
+bag has been played at. Instead the correction is funded from T, N, F and Y,
+the only other letters whose adaptability rank sits meaningfully below their
+frequency rank (unlike S, R and L, which score just as well on adaptability
+but were left alone here for the same reason they were left alone the first
+time: already common, so boosting them further buys little). H moves down by
+only 1, not 2 — its own gap is a third the size of the vowels', so trimming
+it by the same amount as them was never the data's suggestion, only a
+shortcut an earlier draft of this change took before being corrected. Vowel
+share lands at 38.4%, effectively unchanged from today's bag.
+
+```
+E 10   A 8    I 7    O 7    U 6
+N 4    R 6    T 3    D 6
+L 4    M 6    S 4
+B 5    C 3    G 3    H 2    P 5    Y 2
+F 1    J 1    K 1    Q 1    V 1    W 1    X 1    Z 1
+```
+
+Every letter still draws — nothing suppressed to zero — and T, N, F and Y are
+each at or within one tile of where the seventy-one-tile bag already had
+them; what moves is their *share* of a bigger pool, not their raw count.
+
 ### 5.2 Dictionary
 
 **Source: SCOWL tier 60**, via the `wordlist-english` npm package, built by
