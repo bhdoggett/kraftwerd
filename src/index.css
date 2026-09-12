@@ -28,12 +28,12 @@
   --neon-orange: #ff7a29;
   /*
    * Not seats any more -- cyan and amber retired outright, nothing left
-   * using them -- but magenta and lime are still the app's own accent and
-   * the menu mark below, unrelated to who is playing which colour, so they
-   * stay exactly as they were rather than being reworked along with the
-   * seats.
+   * using them. Magenta went the same way once the app's own accent moved
+   * to violet (see --accent below) -- it was the one seat-colour leftover
+   * still in use after the trio landed, unrelated to who is playing which
+   * colour. Lime is the other leftover still standing, for the menu mark
+   * below; not touched here.
    */
-  --neon-magenta: #ff2bd1;
   --neon-lime: #b8ff2b;
 
   /*
@@ -70,16 +70,34 @@
   --text-muted: #61616b;
   --text-inverse: #ffffff;
 
-  /* Board */
-  --cell-empty: #ffffff;
-  --cell-line: #7c7c86;
-  --cell-blocked: #0b0b0d;
-  /* No ring needed: a blocked square is already unmistakable against white. */
-  --blocked-ring: none;
-  /* The centre marker, ink on paper: a wash plus a ring, both the "this word
-     checks out" green — see .centre in Board.module.css. */
-  --centre-fill: color-mix(in srgb, var(--valid) 55%, var(--cell-empty));
-  --centre-ring: var(--valid);
+  /* Board: "Ledger" -- pale ruled paper, like graph or engineering paper.
+     Light theme's own identity rather than an import of dark theme's
+     Blueprint: technical in the same spirit, native to ink on paper. */
+  --cell-empty: #eef4f7;
+  /* First pass at this line (#c3d2da) sat at 1.4:1 against --cell-empty --
+     invisible as a ruled line, just soft antialiased noise. Ruled paper
+     still needs a rule you can actually see; this clears 3:1. */
+  --cell-line: #6090a9;
+  --board-frame: #476f85;
+  /* A cancelled square, not an erased one: a hatch instead of a solid fill,
+     so a blocked cell reads as marked-through rather than a different
+     material. */
+  --cell-blocked: repeating-linear-gradient(
+      45deg,
+      #6090a9 0 2px,
+      transparent 2px 7px
+    ),
+    var(--cell-empty);
+  /* The hatch alone was too close in value to an empty square at a glance --
+     the ring is what makes "blocked" readable before the pattern is. */
+  --blocked-ring: inset 0 0 0 1px #6090a9;
+  /* The centre marker is a drawn crosshair now, not a wash -- see
+     .centre::after in Board.module.css. No fill or ring of its own, so it
+     reads as a mark on the paper rather than a different square. */
+  --centre-fill: var(--cell-empty);
+  --centre-ring: transparent;
+  --centre-mark-content: "+";
+  --centre-mark-color: #56707f;
 
   /*
    * Tiles are lit signs: a saturated face with the letter cut out of it in
@@ -93,13 +111,29 @@
   --tile-blank-edge: #0b0b0d;
   /* A tube glows against black and does nothing against paper. */
   --tile-lit: none;
-  /* Every square is sunk into the board, tiles included. */
-  --cell-inset: inset 0 2px 5px rgb(0 0 0 / 0.3);
+  /* Ledger is flat ruled paper, not sunken material -- a shadow on every
+     one of 225 cells barely showed against the old stark white, but reads
+     as a haze over the paler paper. The ruled lines carry the definition
+     now. */
+  --cell-inset: none;
+  /* Matte Pro's tile shadow was sized for a tile catching light above a
+     stark white or near-black board -- the same 18px blur over Ledger's
+     paper reads as a soft glow rather than a crisp edge. Tighter and
+     lighter here; dark theme keeps the original below. */
+  --tile-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.4), 0 2px 3px rgb(0 0 0 / 0.15);
+  --tile-shadow-hover:
+    inset 0 1px 0 rgb(255 255 255 / 0.4), 0 4px 6px rgb(0 0 0 / 0.18);
 
-  /* Accents */
-  --accent: #d1009b;
-  --accent-hover: #ab007e;
-  --accent-soft: #ffe0f6;
+  /* Accent is Play's own green now, not a colour of its own: blue (tried
+     as Cobalt) and violet before it both had the same "technically fine,
+     doesn't actually feel right" problem, and a whole extra hue just for
+     "primary action" turned out not to be necessary -- Play's green
+     already carries that weight everywhere else. Referenced rather than
+     duplicated, so the two can never drift apart by accident. */
+  --accent: var(--play);
+  --accent-hover: var(--play-hover);
+  --accent-soft: var(--play-soft);
   --pending: #b45c00;
   --pending-soft: #ffeccc;
   --danger: #c40036;
@@ -121,6 +155,13 @@
   --valid-soft: #d7f6e3;
   --invalid: #e5002e;
   --invalid-soft: #ffdde4;
+
+  /* Play button and word-validity feedback (the chip, its outline on the
+     board, the points badges) -- an avocado green, kept apart from --valid
+     above so the board's centre marker can keep its own green undisturbed. */
+  --play: #429e00;
+  --play-hover: #378300;
+  --play-soft: #e3f6d5;
 
   /*
    * Player colours. A tile says whose it is by what it is lit in.
@@ -222,6 +263,9 @@
        so the centre marker says its piece in line rather than in fill. */
     --centre-fill: var(--cell-empty);
     --centre-ring: var(--neon-pacific);
+    /* No crosshair here -- the ring above already marks the centre. */
+    --centre-mark-content: none;
+    --board-frame: var(--border-strong);
 
     /* The faces do not change: that is the point of choosing them this way. */
     --tile-edge: #000000;
@@ -243,10 +287,25 @@
     --ink-pacific: var(--neon-pacific);
     --ink-gold: var(--neon-gold);
     --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
+    /* Matte Pro, unchanged: a tile catching light above a near-black board
+       still wants the deeper shadow. */
+    --tile-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18), 0 10px 18px -6px rgb(0 0 0 / 0.6),
+      0 1px 3px rgb(0 0 0 / 0.4);
+    --tile-shadow-hover:
+      inset 0 1px 0 rgb(255 255 255 / 0.18), 0 16px 26px -8px rgb(0 0 0 / 0.65),
+      0 2px 4px rgb(0 0 0 / 0.4);
 
-    --accent: var(--neon-magenta);
-    --accent-hover: #ff5cdc;
-    --accent-soft: #2e0726;
+    /*
+     * Accent is Play's own green, not a colour of its own -- blue (Cobalt)
+     * and violet before it were both technically fine and still didn't
+     * feel right. Play's green already carries "primary action" weight
+     * everywhere else; referenced rather than duplicated here so the two
+     * can't drift apart by accident.
+     */
+    --accent: var(--play);
+    --accent-hover: var(--play-hover);
+    --accent-soft: var(--play-soft);
     --pending: var(--neon-orange);
     --pending-soft: #2b1405;
     --danger: #ff4d6d;
@@ -258,6 +317,10 @@
     --valid-soft: #04301b;
     --invalid: #ff2b55;
     --invalid-soft: #330711;
+
+    --play: #a0da4e;
+    --play-hover: #bde583;
+    --play-soft: #1c280c;
 
     --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
     --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);
@@ -285,6 +348,8 @@
   --blocked-ring: inset 0 0 0 1px #2a2a35;
   --centre-fill: var(--cell-empty);
   --centre-ring: var(--neon-pacific);
+  --centre-mark-content: none;
+  --board-frame: var(--border-strong);
 
   /* The faces do not change: that is the point of choosing them this way. */
   --tile-edge: #000000;
@@ -302,10 +367,19 @@
   --ink-pacific: var(--neon-pacific);
   --ink-gold: var(--neon-gold);
   --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
+  /* See the media-query block above: Matte Pro's deeper shadow, unchanged. */
+  --tile-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18), 0 10px 18px -6px rgb(0 0 0 / 0.6),
+    0 1px 3px rgb(0 0 0 / 0.4);
+  --tile-shadow-hover:
+    inset 0 1px 0 rgb(255 255 255 / 0.18), 0 16px 26px -8px rgb(0 0 0 / 0.65),
+    0 2px 4px rgb(0 0 0 / 0.4);
 
-  --accent: var(--neon-magenta);
-  --accent-hover: #ff5cdc;
-  --accent-soft: #2e0726;
+  /* See the media-query block above: accent is Play's own green either
+     way a dark theme gets chosen. */
+  --accent: var(--play);
+  --accent-hover: var(--play-hover);
+  --accent-soft: var(--play-soft);
   --pending: var(--neon-orange);
   --pending-soft: #2b1405;
   --danger: #ff4d6d;
@@ -317,6 +391,12 @@
   --valid-soft: #04301b;
   --invalid: #ff2b55;
   --invalid-soft: #330711;
+
+  /* See the media-query block above: same avocado green either way a dark
+     theme gets chosen. */
+  --play: #a0da4e;
+  --play-hover: #bde583;
+  --play-soft: #1c280c;
 
   --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
   --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);
