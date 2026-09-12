@@ -216,6 +216,19 @@ const VARIANTS: Variant[] = [
     seed: { word: "FUZZ", stacked: true } },
   { name: "seed BRR", bag: CURRENT_TILES, multiplier: "none", weights: CURRENT,
     seed: { word: "BRR", stacked: true } },
+  /*
+   * A hundred tiles at the shipped vowel share, so size is the only thing
+   * that moves against the row above.
+   *
+   * Worth asking because the bag sets how long a game runs, and the
+   * first-player penalty is one bad turn averaged over however many turns a
+   * seat gets: at depth 2 a two-player game ran 25 turns and seat 0 held 50.5%
+   * of the wins, at depth 4 it ran 19.9 and seat 0 fell to 41%. Nothing about
+   * the opening changed between those -- only how much game there was to
+   * recover it in. A hundred is also what Upwords ships (on a 10x10 board) and
+   * what Scrabble ships (on this one).
+   */
+  { name: "100 / 38%", bag: 100, multiplier: "none", weights: makeBag(100, 0.38) },
   { name: "50 / 33%", bag: 50, multiplier: "none", weights: makeBag(50, 0.33) },
   { name: "50 / 42%", bag: 50, multiplier: "none", weights: makeBag(50, 0.42) },
   { name: "62 / 26%", bag: 62, multiplier: "none", weights: makeBag(62, 0.26) },
