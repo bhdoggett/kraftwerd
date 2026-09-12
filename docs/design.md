@@ -227,6 +227,31 @@ fresh square      : 0
 Both live in `shared/config.ts` (`STACK_CAP`) and `shared/engine/score.ts`
 (`scoreTurn`'s `stackBonus`).
 
+### 4.7 Rack clear bonus
+
+**Word points do not reward length.** §4.1 pays 1 point a letter, flat, so a
+lone 7-letter word nets 7 — 1.0 a tile — against a 2x2's 2.0 and a 3x3's 3.8
+(§4.2). Squares were worth chasing; a long single word, on its own, was not.
+
+**Playing every letter in your rack in one turn now pays `RACK_CLEAR_BONUS`
+extra — 15.** A plain 7-letter word (no crosses, no squares) becomes
+7 + 15 = 22, 3.1 a tile: better than a 2x2, still short of a 3x3, which is a
+deliberate ordering — a 3x3 is six simultaneously-valid words (§3) and stays
+the harder, better-paying build. A word that also crosses existing tiles or
+completes a square on the way pays that on top, same as any other turn.
+
+**Flat, not scaled to rack size**, matching `stackBonus`: both are a fixed
+reward for a specific event rather than a formula layered onto word points.
+Computed by the caller, not the engine — `scoreTurn` never sees a rack, only
+a board and placements, so `convex/games.ts` passes `rackCleared` in once it
+knows whether the play emptied the hand it came from. A rack that started
+the turn short of `RACK.size` (the bag running low near the end of a game)
+cannot earn it, the same way Scrabble's bingo requires a full rack.
+
+Lives in `shared/config.ts` (`RACK_CLEAR_BONUS`) and
+`shared/engine/score.ts` (`scoreTurn`'s `rackBonus`). `RULES_VERSION` bumped
+to 4 for it — see that constant's own comment.
+
 ## 5. Rack and letter generation
 
 - Rack is **7 letters**, refilled after every play.
