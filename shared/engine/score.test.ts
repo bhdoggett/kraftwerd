@@ -148,6 +148,31 @@ describe("laying a tile on top of another", () => {
   });
 });
 
+describe("rack bonus", () => {
+  test("clearing the whole rack pays 15 on top (design.md §4.7)", () => {
+    const tiles: TileSpec[] = [
+      { x: 0, y: 0, letter: "C" },
+      { x: 1, y: 0, letter: "A" },
+      { x: 2, y: 0, letter: "T" },
+    ];
+
+    const s = scoreTurn(makeBoard(tiles), place(tiles), { rackCleared: true });
+    expect(s.rackBonus).toBe(15);
+    expect(s.total).toBe(3 + 15);
+  });
+
+  test("not clearing the rack pays no bonus", () => {
+    const tiles: TileSpec[] = [
+      { x: 0, y: 0, letter: "C" },
+      { x: 1, y: 0, letter: "A" },
+      { x: 2, y: 0, letter: "T" },
+    ];
+
+    expect(scoreTurn(makeBoard(tiles), place(tiles)).rackBonus).toBe(0);
+    expect(scoreTurn(makeBoard(tiles), place(tiles), { rackCleared: false }).rackBonus).toBe(0);
+  });
+});
+
 describe("stack bonus", () => {
   const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
 

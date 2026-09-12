@@ -232,12 +232,18 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     return { before, after: applyPlacements(before, placements) };
   }, [view, placements]);
 
+  // Mirrors the server's rackCleared check in convex/games.ts: a full rack,
+  // every slot of it staged.
+  const rackCleared =
+    me?.letters?.length === RACK.size &&
+    pending.filter((p) => p.from.kind === "letter").length === RACK.size;
+
   const preview = useMemo(
     () =>
       boards && placements.length > 0
-        ? scoreTurn(boards.after, placements, { before: boards.before })
+        ? scoreTurn(boards.after, placements, { before: boards.before, rackCleared })
         : null,
-    [boards, placements],
+    [boards, placements, rackCleared],
   );
 
   // The words this play would put on the board. Computed locally by the same
@@ -1290,6 +1296,13 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
               <p className={styles.scoreLine}>
                 Landing on a stacked square:{" "}
                 <span className={styles.previewScore}>+{preview.stackBonus}</span>
+              </p>
+            )}
+
+            {preview && preview.rackBonus > 0 && (
+              <p className={styles.scoreLine}>
+                Clearing your whole rack:{" "}
+                <span className={styles.previewScore}>+{preview.rackBonus}</span>
               </p>
             )}
 

@@ -57,8 +57,11 @@ export const BLANKS_PER_GAME = 3;
  * 1: fifty tiles, a rack of eight.
  * 2: seventy-one tiles, a rack of seven. Version 1 was live and played on
  *    under the old bag, so those scores are not competing with these.
+ * 4: added RACK_CLEAR_BONUS (design.md §4.7) — playing every letter in your
+ *    rack in one turn now pays extra, so scores under 3 do not compete with
+ *    these.
  */
-export const RULES_VERSION = 3;
+export const RULES_VERSION = 4;
 
 /**
  * How long an invite link works for. Long enough to sit in a message over a
@@ -79,6 +82,21 @@ export const FRIEND_LINK_DAYS = 7;
  * bonus follows it. See scoreTurn in shared/engine/score.ts.
  */
 export const STACK_CAP = 2;
+
+/**
+ * Bonus for playing every letter in your rack in a single turn (design.md
+ * §4.7). Word points alone are flat, 1 per letter, so a lone long word pays
+ * far less per tile than a compact square does — a 7-letter word nets 1.0
+ * point a tile against a 3x3's 3.8. This adds a flat reward for the big,
+ * single-turn play, the way `stackBonus` flatly rewards landing on a stack,
+ * without reshaping the per-letter formula everything else is built on.
+ *
+ * Set so a full rack played as one plain 7-letter word (7 word points, no
+ * squares) lands between a 2x2's rate and a 3x3's: 7 + 15 = 22, 3.1 a tile.
+ * A word that also crosses existing tiles or completes a square pays more
+ * on top, same as any other turn.
+ */
+export const RACK_CLEAR_BONUS = 15;
 
 /**
  * How well a computer player plays.
