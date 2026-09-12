@@ -13,7 +13,7 @@ import {
 } from "../../../shared/engine/legality";
 import { boardShapeNamed } from "../../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../../shared/engine/score";
-import { STACK_CAP, RACK } from "../../../shared/config";
+import { STACK_CAP, RACK, GAME } from "../../../shared/config";
 import { newBag, tilesLeft as countTiles } from "../../../shared/engine/bag";
 
 /** How many tiles a game starts with, for the progress bar's sake. */
@@ -1059,7 +1059,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                 {" "}
                 Pick your colour:{" "}
                 <SeatPicker
-                  totalSeats={game.playerCount}
+                  totalSeats={GAME.maxPlayers}
                   takenSeats={view.players.map((p) => p.seat)}
                   value={joinSeatChoice}
                   onChange={(seat) => {

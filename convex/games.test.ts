@@ -263,6 +263,65 @@ describe("placeTiles", () => {
     expect(game?.tileCount).toBe(2);
   });
 
+  /**
+   * Colours are picked freely now, not handed out in join order -- a
+   * two-player game's seats can be {0, 2} as easily as {0, 1}. Turn order
+   * has to find the next *occupied* seat, not add one and wrap at the
+   * headcount: `(currentSeat + 1) % playerCount` would advance play to seat
+   * 1, where nobody sits, and the game would hang with no one able to move.
+   */
+  test("advances turns correctly when seats are not contiguous", async () => {
+    const t = convexTest(schema, modules);
+    const [alice, bob] = await t.run(async (ctx) => {
+      const a = await ctx.db.insert("users", {
+        authId: "auth|alice",
+        name: "Alice",
+      });
+      const b = await ctx.db.insert("users", {
+        authId: "auth|bob",
+        name: "Bob",
+      });
+      return [a, b];
+    });
+    void alice;
+
+    const asAlice = t.withIdentity({ subject: "auth|alice" });
+    const asBob = t.withIdentity({ subject: "auth|bob" });
+
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+      seat: 0,
+    });
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("players", {
+        gameId,
+        userId: bob,
+        seat: 2,
+        score: 0,
+        letters: [],
+        blanks: BLANKS_PER_GAME,
+        blank: true,
+        status: "joined",
+      });
+      await ctx.db.patch("games", gameId, { status: "active" });
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      if (bag !== null) await ctx.db.patch("bags", bag._id, { letters: {} });
+      else await ctx.db.insert("bags", { gameId, letters: {} });
+    });
+
+    await asAlice.mutation(api.games.passTurn, { gameId });
+    const midway = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(midway?.currentSeat).toBe(2);
+
+    await asBob.mutation(api.games.passTurn, { gameId });
+    const after = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(after?.currentSeat).toBe(0);
+  });
+
   test("blanks are an allowance for the game, not one per turn", async () => {
     const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "D"]);
 
@@ -459,23 +518,22 @@ describe("end of game", () => {
 });
 
 describe("solo games", () => {
-  /*
-   * Solo is gone: there are machines to play now, and a game of one was a
-   * different game rather than an easy one. Refused at the mutation and not
-   * only in the modal, so the rule holds for anything that can call it.
-   * Games already in the database are untouched -- `minPlayers` is read when
-   * a game is made and never again.
+  /**
+   * A game of one is its own choice, not refused in favour of machines: it
+   * starts active at once, with nobody else to wait for.
    */
-  test("a one-player game is refused", async () => {
+  test("a one-player game may be played alone", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) =>
       ctx.db.insert("users", { authId: "auth|solo", name: "Solo" }),
     );
 
-    await expect(
-      t.withIdentity({ subject: "auth|solo" })
-        .mutation(api.games.createGame, { playerCount: 1 }),
-    ).rejects.toThrow(/2-4 players/);
+    const { gameId } = await t
+      .withIdentity({ subject: "auth|solo" })
+      .mutation(api.games.createGame, { playerCount: 1 });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("active");
   });
 
   test("a table filled by machines is active immediately, with nobody to wait for", async () => {
@@ -1673,7 +1731,7 @@ describe("computer players", () => {
   test("a joiner cannot draw the name of a machine already seated", async () => {
     const { t, asAlice } = await table();
     const { gameId } = await asAlice.mutation(api.games.createGame, {
-      playerCount: 4,
+      playerCount: 3,
       isPublic: true,
       bots: [{ level: "easy", name: NAMES[0] }],
     });
@@ -2071,7 +2129,7 @@ describe("who you are allowed to see", () => {
     });
 
     const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
-      playerCount: 4,
+      playerCount: 3,
       isPublic: true,
     });
     await seats.asAlice.mutation(api.games.inviteToGame, {

@@ -36,7 +36,7 @@ const COUNTS = Array.from({ length: GAME.maxPlayers - 1 }, (_, i) => i + 2);
 const DEFAULT_LEVEL: Difficulty = "medium";
 
 /** Which game is being set up: people, machines, or not yet said. */
-type Path = "people" | "machines" | null;
+type Path = "alone" | "people" | "machines" | null;
 
 /**
  * Everything about starting a game, in one place.
@@ -77,17 +77,16 @@ export function CreateGame({
     })),
   );
 
-  /** Your own colour. Nobody else at this table has claimed one yet. */
-  const [seatChoice, setSeatChoice] = useState(0);
+  /**
+   * Your own colour. All of GAME.maxPlayers are always on offer, whatever
+   * the table actually seats -- a two-player game is not limited to the
+   * first two.
+   */
+  const [seat, setSeat] = useState(0);
 
   const available = friends?.friends ?? [];
   const spare = seatsSpare(picked.length, open);
   const people = 1 + picked.length + open;
-  const tableSize = path === "machines" ? count : people;
-  // The table can shrink after a colour was picked (fewer machines, a
-  // friend unticked) — fall back to seat 0 rather than send a seat this
-  // table no longer has.
-  const seat = seatChoice < tableSize ? seatChoice : 0;
 
   const toggle = (userId: Id<"users">) =>
     setPicked((current) =>
@@ -141,9 +140,20 @@ export function CreateGame({
             <button
               type="button"
               className={styles.choice}
+              onClick={() => setPath("alone")}
+            >
+              <strong>Myself</strong>
+              <span className={styles.choiceHint}>
+                Just you, against the board. Starts straight away.
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={styles.choice}
               onClick={() => setPath("people")}
             >
-              <strong>Humans</strong>
+              <strong>Other humans</strong>
               <span className={styles.choiceHint}>
                 Ask a friend, or leave a seat open and send the link.
               </span>
@@ -176,12 +186,18 @@ export function CreateGame({
           <div className={styles.field}>
             <span className={styles.label}>Your colour</span>
             <SeatPicker
-              totalSeats={tableSize}
+              totalSeats={GAME.maxPlayers}
               takenSeats={[]}
               value={seat}
-              onChange={setSeatChoice}
+              onChange={setSeat}
             />
           </div>
+        )}
+
+        {path === "alone" && (
+          <p className={styles.hint}>
+            Nobody else at the table, nobody to wait for. Press Start.
+          </p>
         )}
 
         {path === "machines" && (
@@ -369,7 +385,9 @@ export function CreateGame({
             onClick={() =>
               path === "machines"
                 ? onStart(count, [], bots, false, seat)
-                : onStart(people, picked, [], listed && open > 0, seat)
+                : path === "alone"
+                  ? onStart(1, [], [], false, seat)
+                  : onStart(people, picked, [], listed && open > 0, seat)
             }
             disabled={starting || path === null || !ready}
           >

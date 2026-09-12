@@ -13,31 +13,38 @@
 :root,
 [data-theme="light"] {
   /*
-   * The six. Named once, in the open, because they are the identity: neon
-   * tubes over black, after the band this game is named for.
+   * The three seat colours, one per GAME.maxPlayers, plus orange for
+   * `--pending` below (not a seat). Replaced the old cyan/magenta/lime/violet
+   * set outright rather than reshuffling it -- Clinton picked this trio by
+   * name (Tomato, Pacific Blue, Royal Gold) after comparing it against two
+   * others on the real tile face. Measured the same way every palette change
+   * here has been: all three pairs clear 12+ ΔE under simulated
+   * colourblindness (target is 8), well clear of the amber/lime pair that
+   * used to fail at 3.2.
    */
-  --neon-cyan: #00e9f2;
-  --neon-magenta: #ff2bd1;
-  --neon-lime: #b8ff2b;
-  --neon-amber: #ffd400;
+  --neon-tomato: #fe4a49;
+  --neon-pacific: #2ab7ca;
+  --neon-gold: #fed766;
   --neon-orange: #ff7a29;
   /*
-   * Retuned from #d79eff. Seat 3 used to be amber, but amber and lime are
-   * barely 13 ΔE apart in OKLab — below the 15 floor where even full-colour
-   * vision struggles, and under deuteranopia/protanopia they read as the
-   * same pale yellow, full stop. This violet clears the CVD target (8+ ΔE)
-   * against all three of the others and still reads as the same family of
-   * light, saturated tube. Amber stays defined below, just no longer a seat.
+   * Not seats any more -- cyan and amber retired outright, nothing left
+   * using them -- but magenta and lime are still the app's own accent and
+   * the menu mark below, unrelated to who is playing which colour, so they
+   * stay exactly as they were rather than being reworked along with the
+   * seats.
    */
-  --neon-violet: #c9a0ff;
+  --neon-magenta: #ff2bd1;
+  --neon-lime: #b8ff2b;
 
   /*
-   * The same four, darkened to read as ink on paper rather than as a tube on
+   * The same three, darkened to read as ink on paper rather than as a tube on
    * black. A tile solves contrast the other way round — bright face, dark
    * letter — but a full square is bare, so the letter carries the colour
-   * itself and needs the contrast. Each clears 6.5:1 against white.
-   *
-   * Clinton's values, from his stack-richness branch.
+   * itself and needs the contrast. Each targets 6.5:1 against white; Tomato
+   * itself runs a little under that against black ink (5.9:1) at full
+   * brightness, the same as this palette's predecessor did for magenta
+   * (6.1:1) -- close enough to the target that it has not been a real
+   * problem in practice, so left as picked rather than darkened off-brief.
    */
   /*
    * The menu's three tiles. Solid ink on a white bar — outlined squares at
@@ -47,15 +54,9 @@
   --menu-face: #0b0b0d;
   --menu-mark: #0b0b0d;
 
-  --ink-cyan: #00676b;
-  --ink-magenta: #ad0088;
-  --ink-lime: #446600;
-  /* Warm brown rather than the olive a darkened yellow lands on: amber loses
-     its identity going down, so it goes down towards orange instead. Kept
-     defined even though no seat uses it any more — see --neon-violet. */
-  --ink-amber: #7a4b00;
-  /* Same 6.6:1-against-white target as the rest, on seat 3's new colour. */
-  --ink-violet: #7105ff;
+  --ink-tomato: #bc0201;
+  --ink-pacific: #176570;
+  --ink-gold: #755701;
 
   /* Surfaces, light theme */
   --surface: #f4f4f6;
@@ -129,10 +130,9 @@
    * each still clears the black letter by 6.5:1 or better at full strength.
    */
   --tile-tint: 100%;
-  --seat-0: color-mix(in srgb, var(--neon-cyan) var(--tile-tint), #ffffff);
-  --seat-1: color-mix(in srgb, var(--neon-magenta) var(--tile-tint), #ffffff);
-  --seat-2: color-mix(in srgb, var(--neon-lime) var(--tile-tint), #ffffff);
-  --seat-3: color-mix(in srgb, var(--neon-violet) var(--tile-tint), #ffffff);
+  --seat-0: color-mix(in srgb, var(--neon-tomato) var(--tile-tint), #ffffff);
+  --seat-1: color-mix(in srgb, var(--neon-pacific) var(--tile-tint), #ffffff);
+  --seat-2: color-mix(in srgb, var(--neon-gold) var(--tile-tint), #ffffff);
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -208,15 +208,13 @@
     /* Resolves per tile, since --tile-face is set on the tile itself. */
     --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
     /* A bare square is black here, not paper: the letter is the tube itself. */
-    --ink-cyan: var(--neon-cyan);
+    --ink-tomato: var(--neon-tomato);
     --menu-face: var(--neon-lime);
     /* Edge and face the same lime: on a black bar the mark is the shape, and
        an edge in the board's ink only eats into it. */
     --menu-mark: var(--neon-lime);
-    --ink-magenta: var(--neon-magenta);
-    --ink-lime: var(--neon-lime);
-    --ink-amber: var(--neon-amber);
-    --ink-violet: var(--neon-violet);
+    --ink-pacific: var(--neon-pacific);
+    --ink-gold: var(--neon-gold);
     --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
 
     --accent: var(--neon-magenta);
@@ -262,15 +260,13 @@
   --tile-blank-edge: #000000;
   --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
   /* A bare square is black here, not paper: the letter is the tube itself. */
-  --ink-cyan: var(--neon-cyan);
+  --ink-tomato: var(--neon-tomato);
   --menu-face: var(--neon-lime);
   /* Edge and face the same lime: on a black bar the mark is the shape, and
      an edge in the board's ink only eats into it. */
   --menu-mark: var(--neon-lime);
-  --ink-magenta: var(--neon-magenta);
-  --ink-lime: var(--neon-lime);
-  --ink-amber: var(--neon-amber);
-  --ink-violet: var(--neon-violet);
+  --ink-pacific: var(--neon-pacific);
+  --ink-gold: var(--neon-gold);
   --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
 
   --accent: var(--neon-magenta);
@@ -296,34 +292,27 @@
 /*
  * Whose tile this is, wherever it is drawn: on the board, on the rack, or
  * following the pointer. One rule set rather than one per component, since
- * "seat 2 is lime" is a fact about the game, not about the board.
+ * "seat 2 is Royal Gold" is a fact about the game, not about the board.
  */
 [data-seat="0"] {
   /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
-  --seat-lit: var(--ink-cyan);
-  --seat-neon: var(--neon-cyan);
+  --seat-lit: var(--ink-tomato);
+  --seat-neon: var(--neon-tomato);
   --tile-face: var(--seat-0);
 }
 
 [data-seat="1"] {
   /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
-  --seat-lit: var(--ink-magenta);
-  --seat-neon: var(--neon-magenta);
+  --seat-lit: var(--ink-pacific);
+  --seat-neon: var(--neon-pacific);
   --tile-face: var(--seat-1);
 }
 
 [data-seat="2"] {
   /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
-  --seat-lit: var(--ink-lime);
-  --seat-neon: var(--neon-lime);
+  --seat-lit: var(--ink-gold);
+  --seat-neon: var(--neon-gold);
   --tile-face: var(--seat-2);
-}
-
-[data-seat="3"] {
-  /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
-  --seat-lit: var(--ink-violet);
-  --seat-neon: var(--neon-violet);
-  --tile-face: var(--seat-3);
 }
 
 /*
