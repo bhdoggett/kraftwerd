@@ -74,6 +74,12 @@
   --cell-empty: #ffffff;
   --cell-line: #7c7c86;
   --cell-blocked: #0b0b0d;
+  /* No ring needed: a blocked square is already unmistakable against white. */
+  --blocked-ring: none;
+  /* The centre marker, ink on paper: a wash plus a ring, both the "this word
+     checks out" green — see .centre in Board.module.css. */
+  --centre-fill: color-mix(in srgb, var(--valid) 55%, var(--cell-empty));
+  --centre-ring: var(--valid);
 
   /*
    * Tiles are lit signs: a saturated face with the letter cut out of it in
@@ -197,9 +203,25 @@
     --text-muted: #8f8f9b;
     --text-inverse: #08080a;
 
-    --cell-empty: #101014;
-    --cell-line: #35353e;
+    /*
+     * Blueprint: a technical read rather than a warm one, closer to the
+     * band's "Computer World" era than its Bauhaus one. Board and lines
+     * only -- the tiles that sit on top already got their own pass (see
+     * .tile in Board.module.css and Rack.module.css).
+     */
+    --cell-empty: #060608;
+    /* A hairline tinted with the seat-1 colour instead of neutral grey, so
+       the grid itself reads as faintly lit rather than just ruled. */
+    --cell-line: color-mix(in srgb, var(--neon-pacific) 30%, #000);
     --cell-blocked: #000000;
+    /* A blocked square and an empty one are both near-black now that
+       --cell-empty darkened to match the board; this ring is what still
+       tells them apart. */
+    --blocked-ring: inset 0 0 0 1px #2a2a35;
+    /* An outline instead of a wash: this board doesn't tint its squares,
+       so the centre marker says its piece in line rather than in fill. */
+    --centre-fill: var(--cell-empty);
+    --centre-ring: var(--neon-pacific);
 
     /* The faces do not change: that is the point of choosing them this way. */
     --tile-edge: #000000;
@@ -255,9 +277,14 @@
   --text-muted: #8f8f9b;
   --text-inverse: #08080a;
 
-  --cell-empty: #101014;
-  --cell-line: #35353e;
+  /* See the media-query block above: same blueprint read either way a dark
+     theme gets chosen. */
+  --cell-empty: #060608;
+  --cell-line: color-mix(in srgb, var(--neon-pacific) 30%, #000);
   --cell-blocked: #000000;
+  --blocked-ring: inset 0 0 0 1px #2a2a35;
+  --centre-fill: var(--cell-empty);
+  --centre-ring: var(--neon-pacific);
 
   /* The faces do not change: that is the point of choosing them this way. */
   --tile-edge: #000000;
