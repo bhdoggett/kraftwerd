@@ -125,10 +125,14 @@
   --tile-shadow-hover:
     inset 0 1px 0 rgb(255 255 255 / 0.4), 0 4px 6px rgb(0 0 0 / 0.18);
 
-  /* Accents */
-  --accent: #d1009b;
-  --accent-hover: #ab007e;
-  --accent-soft: #ffe0f6;
+  /* Accents. Cobalt, not magenta: the old pink predated the Trio 3 palette
+     and the same "doesn't belong to this colour family" problem dark
+     theme's violet had -- red/coral, yellow/gold and cyan/pacific are all
+     seats, green is Play's, so blue was the one hue left. Matched to the
+     old pink's own button contrast (5.0:1) rather than picked by eye. */
+  --accent: #176ae6;
+  --accent-hover: #145ac3;
+  --accent-soft: #e2edfd;
   --pending: #b45c00;
   --pending-soft: #ffeccc;
   --danger: #c40036;
@@ -292,16 +296,19 @@
       0 2px 4px rgb(0 0 0 / 0.4);
 
     /*
-     * Violet, not magenta: the accent was still pink from the old palette,
-     * unrelated to the seat colors it now sits beside. Checked against
-     * Coral Red, Pacific Blue and Royal Gold the same way a seat color
-     * would be (12+ ΔE under simulated colorblindness), and lightened until
-     * it matched the old pink's own button contrast, 6.2:1, rather than
-     * picked by eye.
+     * Cobalt, not violet: violet fixed the "still pink from the old
+     * palette" problem but turned out to be its own kind of unrelated --
+     * the rest of the palette reads as a primary-colour family (red,
+     * yellow, cyan, now green) and purple was never part of that story.
+     * Blue was the one hue left uncommitted. Checked against Coral Red,
+     * Pacific Blue and Royal Gold the same way a seat colour would be
+     * (11+ ΔE under simulated colourblindness even against Pacific, the
+     * nearest hue), and matched to violet's own button contrast, 6.2:1,
+     * rather than picked by eye.
      */
-    --accent: #9f78f8;
-    --accent-hover: #ba9efa;
-    --accent-soft: #14033a;
+    --accent: #5590e7;
+    --accent-hover: #78a7ec;
+    --accent-soft: #03193a;
     --pending: var(--neon-orange);
     --pending-soft: #2b1405;
     --danger: #ff4d6d;
@@ -371,11 +378,11 @@
     inset 0 1px 0 rgb(255 255 255 / 0.18), 0 16px 26px -8px rgb(0 0 0 / 0.65),
     0 2px 4px rgb(0 0 0 / 0.4);
 
-  /* See the media-query block above: same violet either way a dark theme
+  /* See the media-query block above: same cobalt either way a dark theme
      gets chosen. */
-  --accent: #9f78f8;
-  --accent-hover: #ba9efa;
-  --accent-soft: #14033a;
+  --accent: #5590e7;
+  --accent-hover: #78a7ec;
+  --accent-soft: #03193a;
   --pending: var(--neon-orange);
   --pending-soft: #2b1405;
   --danger: #ff4d6d;
