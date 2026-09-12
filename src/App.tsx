@@ -217,35 +217,29 @@ function SignInForm({ canGuest }: { canGuest: boolean }) {
         has not seen the game yet, and a picture of a board can only say so
         much -- so this hands them a real one and asks afterwards.
 
-        Both ways in, because they are different games: on your own it is a
-        puzzle to take apart, and against the computer somebody is taking the
-        squares you wanted.
+        Against the computer, because that is the game: somebody is taking the
+        squares you wanted. Playing alone was the other way in, and it is gone
+        -- a game of one was never an easier version of this, and there are
+        machines to play now.
       */}
       {canGuest && (
         <div className={styles.guests}>
-          {(["solo", "computer"] as const).map((kind) => (
-            <button
-              key={kind}
-              type="button"
-              className={styles.guest}
-              disabled={guest !== null}
-              onClick={() => {
-                setError(null);
-                setGuest(kind);
-                promiseAGame(kind);
-                void authClient.signIn.anonymous().catch((err: unknown) => {
-                  setGuest(null);
-                  setError(err instanceof Error ? err.message : String(err));
-                });
-              }}
-            >
-              {guest === kind
-                ? "Dealing…"
-                : kind === "solo"
-                  ? "Play on your own"
-                  : "Play the computer"}
-            </button>
-          ))}
+          <button
+            type="button"
+            className={styles.guest}
+            disabled={guest !== null}
+            onClick={() => {
+              setError(null);
+              setGuest("computer");
+              promiseAGame("computer");
+              void authClient.signIn.anonymous().catch((err: unknown) => {
+                setGuest(null);
+                setError(err instanceof Error ? err.message : String(err));
+              });
+            }}
+          >
+            {guest === "computer" ? "Dealing…" : "Play the computer"}
+          </button>
         </div>
       )}
 
