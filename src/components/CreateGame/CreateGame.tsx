@@ -33,8 +33,8 @@ const COUNTS = Array.from({ length: GAME.maxPlayers - 1 }, (_, i) => i + 2);
 /** What a machine plays at until told otherwise. */
 const DEFAULT_LEVEL: Difficulty = "medium";
 
-/** Which game is being set up: alone, people, machines, or not yet said. */
-type Path = "alone" | "people" | "machines" | null;
+/** Which game is being set up: people, machines, or not yet said. */
+type Path = "people" | "machines" | null;
 
 /**
  * Everything about starting a game, in one place.
@@ -131,20 +131,9 @@ export function CreateGame({
             <button
               type="button"
               className={styles.choice}
-              onClick={() => setPath("alone")}
-            >
-              <strong>Myself</strong>
-              <span className={styles.choiceHint}>
-                Just you, against the board. Starts straight away.
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className={styles.choice}
               onClick={() => setPath("people")}
             >
-              <strong>Other humans</strong>
+              <strong>Humans</strong>
               <span className={styles.choiceHint}>
                 Ask a friend, or leave a seat open and send the link.
               </span>
@@ -171,12 +160,6 @@ export function CreateGame({
           >
             ← Change who you’re playing
           </button>
-        )}
-
-        {path === "alone" && (
-          <p className={styles.hint}>
-            Nobody else at the table, nobody to wait for. Press Start.
-          </p>
         )}
 
         {path === "machines" && (
@@ -364,9 +347,7 @@ export function CreateGame({
             onClick={() =>
               path === "machines"
                 ? onStart(count, [], bots, false)
-                : path === "alone"
-                  ? onStart(1, [], [], false)
-                  : onStart(people, picked, [], listed && open > 0)
+                : onStart(people, picked, [], listed && open > 0)
             }
             disabled={starting || path === null || !ready}
           >
