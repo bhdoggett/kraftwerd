@@ -59,36 +59,14 @@ words.add("I");
  *
  * Leaving J/Q/Z out matters especially: with no two-letter word containing
  * them, those letters could never enter a 2x2 at all.
+ *
+ * Lives in `shared/data/two-letter-words.json` rather than here, so the UI
+ * can show players the same list this build enforces without importing a
+ * build script.
  */
-const TWO_LETTER = `
-  aa ab ad ae ag ah ai al am an ar as at aw ax ay
-  ba be bi bo by
-  da de do
-  ed ee ef eh el em en er es et ew ex
-  fa fe
-  gi go
-  ha he hi hm ho
-  id if in is it
-  jo
-  ka ki
-  la li lo
-  ma me mi mm mo mu my
-  na ne no nu
-  od oe of oh oi ok om on op or os ow ox oy
-  pa pe pi po
-  qi
-  re
-  sh si so
-  ta te ti to
-  uh um un up us ut
-  we wo
-  xi xu
-  ya ye yo yu
-  za
-`
-  .split(/\s+/)
-  .filter(Boolean)
-  .map((w) => w.toUpperCase());
+const TWO_LETTER = JSON.parse(
+  readFileSync(join(ROOT, "shared", "data", "two-letter-words.json"), "utf8"),
+);
 
 for (const word of [...words]) if (word.length === 2) words.delete(word);
 for (const word of TWO_LETTER) words.add(word);
