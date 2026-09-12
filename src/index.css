@@ -74,20 +74,23 @@
      Light theme's own identity rather than an import of dark theme's
      Blueprint: technical in the same spirit, native to ink on paper. */
   --cell-empty: #eef4f7;
-  --cell-line: #c3d2da;
-  --board-frame: #8fa4b1;
+  /* First pass at this line (#c3d2da) sat at 1.4:1 against --cell-empty --
+     invisible as a ruled line, just soft antialiased noise. Ruled paper
+     still needs a rule you can actually see; this clears 3:1. */
+  --cell-line: #6090a9;
+  --board-frame: #476f85;
   /* A cancelled square, not an erased one: a hatch instead of a solid fill,
      so a blocked cell reads as marked-through rather than a different
      material. */
   --cell-blocked: repeating-linear-gradient(
       45deg,
-      #7d93a0 0 2px,
+      #6090a9 0 2px,
       transparent 2px 7px
     ),
     var(--cell-empty);
   /* The hatch alone was too close in value to an empty square at a glance --
      the ring is what makes "blocked" readable before the pattern is. */
-  --blocked-ring: inset 0 0 0 1px #7d93a0;
+  --blocked-ring: inset 0 0 0 1px #6090a9;
   /* The centre marker is a drawn crosshair now, not a wash -- see
      .centre::after in Board.module.css. No fill or ring of its own, so it
      reads as a mark on the paper rather than a different square. */
