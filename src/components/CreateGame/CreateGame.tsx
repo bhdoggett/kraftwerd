@@ -7,6 +7,7 @@ import { seatsSpare } from "../../lib/roster";
 import { drawNames } from "../../../shared/names";
 import type { BotSeat } from "../../lib/useStartGame";
 import { Modal } from "../Modal/Modal";
+import { SeatPicker } from "../SeatPicker/SeatPicker";
 import styles from "./CreateGame.module.css";
 
 interface CreateGameProps {
@@ -15,6 +16,7 @@ interface CreateGameProps {
     friendIds: Id<"users">[],
     bots: BotSeat[],
     isPublic: boolean,
+    seat: number,
   ) => void;
   onCancel: () => void;
   starting: boolean;
@@ -75,9 +77,17 @@ export function CreateGame({
     })),
   );
 
+  /** Your own colour. Nobody else at this table has claimed one yet. */
+  const [seatChoice, setSeatChoice] = useState(0);
+
   const available = friends?.friends ?? [];
   const spare = seatsSpare(picked.length, open);
   const people = 1 + picked.length + open;
+  const tableSize = path === "machines" ? count : people;
+  // The table can shrink after a colour was picked (fewer machines, a
+  // friend unticked) — fall back to seat 0 rather than send a seat this
+  // table no longer has.
+  const seat = seatChoice < tableSize ? seatChoice : 0;
 
   const toggle = (userId: Id<"users">) =>
     setPicked((current) =>
@@ -160,6 +170,18 @@ export function CreateGame({
           >
             ← Change who you’re playing
           </button>
+        )}
+
+        {path !== null && (
+          <div className={styles.field}>
+            <span className={styles.label}>Your colour</span>
+            <SeatPicker
+              totalSeats={tableSize}
+              takenSeats={[]}
+              value={seat}
+              onChange={setSeatChoice}
+            />
+          </div>
         )}
 
         {path === "machines" && (
@@ -346,8 +368,8 @@ export function CreateGame({
             className={styles.button}
             onClick={() =>
               path === "machines"
-                ? onStart(count, [], bots, false)
-                : onStart(people, picked, [], listed && open > 0)
+                ? onStart(count, [], bots, false, seat)
+                : onStart(people, picked, [], listed && open > 0, seat)
             }
             disabled={starting || path === null || !ready}
           >

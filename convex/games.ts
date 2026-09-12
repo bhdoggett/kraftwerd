@@ -163,6 +163,12 @@ export const createGame = mutation({
     /** A computer player per entry, seated next to you in the order given. */
     bots: v.optional(v.array(botSeat)),
     /**
+     * Which colour the maker chose. Omitted keeps the old default of 0, so a
+     * caller that has never heard of this (a test, `respondToInvite`'s own
+     * bookkeeping) still gets the table it always got.
+     */
+    seat: v.optional(v.number()),
+    /**
      * Listed for strangers to find. Only meaningful on a game with a seat no
      * name is against yet -- a full table has nothing to offer anybody.
      */
@@ -187,6 +193,10 @@ export const createGame = mutation({
     }
     if (bots.length > args.playerCount - 1) {
       throw new ConvexError("There are not that many seats to fill");
+    }
+    const seat = args.seat ?? 0;
+    if (seat < 0 || seat >= args.playerCount) {
+      throw new ConvexError("Not a seat this table has");
     }
     // The name arrives from the client, so it is checked against the pool
     // rather than trusted: a machine that could be called anything could be
@@ -235,10 +245,15 @@ export const createGame = mutation({
       rulesVersion: RULES_VERSION,
     });
 
-    await joinSeat(ctx, gameId, userId, 0, "joined", alias);
+    await joinSeat(ctx, gameId, userId, seat, "joined", alias);
 
+    // Bots take whatever seats the maker's colour choice left behind, in
+    // order -- they have no preference of their own to express.
+    const openSeats = Array.from({ length: args.playerCount }, (_, i) => i).filter(
+      (s) => s !== seat,
+    );
     for (const [i, bot] of bots.entries()) {
-      await seatBot(ctx, gameId, i + 1, bot.level, bot.name);
+      await seatBot(ctx, gameId, openSeats[i], bot.level, bot.name);
     }
 
     // Nobody left to wait for: a solo game, or one whose other seats are all
@@ -367,7 +382,14 @@ export const createGameWithFriends = mutation({
  * invitations instead and have no free seats to take.
  */
 export const joinGame = mutation({
-  args: { gameId: v.id("games") },
+  args: {
+    gameId: v.id("games"),
+    /**
+     * Which colour the joiner chose. Omitted takes the next open seat in
+     * order, which is what every caller did before this existed.
+     */
+    seat: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const me = await currentUser(ctx);
     refuseGuest(me);
@@ -387,6 +409,18 @@ export const joinGame = mutation({
       throw new ConvexError("Already joined");
     if (players.length >= game.playerCount)
       throw new ConvexError("Game is full");
+
+    const seat = args.seat ?? players.length;
+    if (seat < 0 || seat >= game.playerCount) {
+      throw new ConvexError("Not a seat this table has");
+    }
+    // Two people cannot reach for the same colour: Convex runs this as one
+    // transaction, so whichever request commits first is the one that gets
+    // it, and the second sees this row and is told the truth rather than
+    // silently taking the seat over.
+    if (players.some((p) => p.seat === seat)) {
+      throw new ConvexError("That colour is already taken");
+    }
 
     /*
      * A seat at a public game comes with a name to wear, drawn against the
@@ -408,7 +442,7 @@ export const joinGame = mutation({
           )[0]
         : undefined;
 
-    await joinSeat(ctx, args.gameId, userId, players.length, "joined", alias);
+    await joinSeat(ctx, args.gameId, userId, seat, "joined", alias);
 
     /*
      * Sitting down together is itself the introduction, so no request is
@@ -1553,8 +1587,12 @@ export const listOpenGames = query({
           name: game.name ?? "Game",
           playerCount: game.playerCount,
           seatsFilled: seated.length,
-          /** Who is waiting, as this viewer may see them. */
-          players: seated.map((p) => names.get(p.userId) ?? "Player"),
+          /** Who is waiting, as this viewer may see them, and which colour
+              each one holds -- so a joiner can see what's still open. */
+          players: seated.map((p) => ({
+            name: names.get(p.userId) ?? "Player",
+            seat: p.seat,
+          })),
         };
       }),
     );
