@@ -205,8 +205,13 @@
     --tile-edge: #000000;
     --tile-blank-face: #ffffff;
     --tile-blank-edge: #000000;
-    /* Resolves per tile, since --tile-face is set on the tile itself. */
-    --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
+    /*
+     * No glow: a tile reads as a physical object catching light (see .tile
+     * in Board.module.css) rather than a lit tube, so nothing here casts a
+     * coloured halo. Left as a hook rather than deleted, the way the light
+     * theme's own "none" already does, in case a future look wants it back.
+     */
+    --tile-lit: none;
     /* A bare square is black here, not paper: the letter is the tube itself. */
     --ink-tomato: var(--neon-tomato);
     --menu-face: var(--neon-lime);
@@ -258,7 +263,9 @@
   --tile-edge: #000000;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #000000;
-  --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
+  /* See the media-query block above: no glow, a tile reads as a physical
+     object catching light instead. */
+  --tile-lit: none;
   /* A bare square is black here, not paper: the letter is the tube itself. */
   --ink-tomato: var(--neon-tomato);
   --menu-face: var(--neon-lime);
