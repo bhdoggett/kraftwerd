@@ -52,8 +52,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const { start, starting, error: startError, clearError } = useStartGame();
 
   /**
-   * A game whose every seat is spoken for opens straight away — solo, or one
-   * where friends and machines between them fill the table. Only a game with
+   * A game whose every seat is spoken for opens straight away — one where
+   * friends and machines between them fill the table. Only a game with
    * a seat still empty goes on to the link step, which is what that step is
    * for.
    */
@@ -100,13 +100,11 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     promised.current = true;
     // Out of the effect body, since making the game sets state as it goes.
     queueMicrotask(() =>
-      kind === "solo"
-        ? void startGame(1, [], [])
-        : void startGame(
-            2,
-            [],
-            [{ level: "medium", name: drawNames(1, Math.random)[0] }],
-          ),
+      void startGame(
+        2,
+        [],
+        [{ level: "medium", name: drawNames(1, Math.random)[0] }],
+      ),
     );
     // Once, on arrival: startGame changes on every render, and this is not a
     // thing to redo when it does.
