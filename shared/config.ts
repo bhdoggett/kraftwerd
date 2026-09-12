@@ -130,15 +130,13 @@ export const GAME = {
   boardSize: 15,
   /** Game ends once this many tiles are on the board (design.md §6). */
   endThreshold: 50,
-  /*
-   * Two, because solo is gone: there are machines to play against now, and a
-   * game of one was never an easier version of this one -- it was a different
-   * game, with nobody to take the square you wanted.
-   *
-   * Read when a game is made and nowhere else, so games already in the
-   * database keep working: a solo game still plays out, still ends when its
-   * one player quits, and still shows as "solo" in the lobby.
+  /** 1 is a solo practice game: it starts immediately with no one to wait for. */
+  minPlayers: 1,
+  /**
+   * Three, one for each colour on the board -- see `--seat-0..2` in
+   * `src/index.css`. A colour is always one of those three regardless of how
+   * many people are actually at the table (§ below), so the seat count and
+   * the colour count are the same number by construction, not by accident.
    */
-  minPlayers: 2,
-  maxPlayers: 4,
+  maxPlayers: 3,
 } as const;

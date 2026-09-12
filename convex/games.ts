@@ -195,9 +195,17 @@ export const createGame = mutation({
       throw new ConvexError("There are not that many seats to fill");
     }
     const seat = args.seat ?? 0;
-    if (seat < 0 || seat >= args.playerCount) {
-      throw new ConvexError("Not a seat this table has");
+    if (seat < 0 || seat >= GAME.maxPlayers) {
+      throw new ConvexError("Not a colour this game has");
     }
+    // Bots take whatever colours the maker's choice left behind, in order --
+    // they have no preference of their own to express. Worked out before the
+    // game exists, rather than after, so the game's very first `currentSeat`
+    // can be the lowest seat actually sat in -- not always 0, now that 0
+    // is a colour rather than a guaranteed occupant.
+    const botSeats = Array.from({ length: GAME.maxPlayers }, (_, i) => i)
+      .filter((s) => s !== seat)
+      .slice(0, bots.length);
     // The name arrives from the client, so it is checked against the pool
     // rather than trusted: a machine that could be called anything could be
     // called what one of the people at the table is called.
@@ -237,7 +245,7 @@ export const createGame = mutation({
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
       playerCount: args.playerCount,
-      currentSeat: 0,
+      currentSeat: Math.min(seat, ...botSeats),
       turnNumber: 0,
       tileCount: 0,
       createdBy: userId,
@@ -247,13 +255,8 @@ export const createGame = mutation({
 
     await joinSeat(ctx, gameId, userId, seat, "joined", alias);
 
-    // Bots take whatever seats the maker's colour choice left behind, in
-    // order -- they have no preference of their own to express.
-    const openSeats = Array.from({ length: args.playerCount }, (_, i) => i).filter(
-      (s) => s !== seat,
-    );
     for (const [i, bot] of bots.entries()) {
-      await seatBot(ctx, gameId, openSeats[i], bot.level, bot.name);
+      await seatBot(ctx, gameId, botSeats[i], bot.level, bot.name);
     }
 
     // Nobody left to wait for: a solo game, or one whose other seats are all
@@ -411,8 +414,8 @@ export const joinGame = mutation({
       throw new ConvexError("Game is full");
 
     const seat = args.seat ?? players.length;
-    if (seat < 0 || seat >= game.playerCount) {
-      throw new ConvexError("Not a seat this table has");
+    if (seat < 0 || seat >= GAME.maxPlayers) {
+      throw new ConvexError("Not a colour this game has");
     }
     // Two people cannot reach for the same colour: Convex runs this as one
     // transaction, so whichever request commits first is the one that gets
@@ -1149,6 +1152,22 @@ async function advanceTurn(
   const tileCount = game.tileCount + played;
   const turnNumber = game.turnNumber + 1;
 
+  /*
+   * The next occupied seat after this one, wrapping around -- not
+   * `(currentSeat + 1) % playerCount`. Seats are colours now, chosen freely
+   * from GAME.maxPlayers regardless of how many are actually at the table,
+   * so a two-player game's seats need not be {0, 1}; they could just as
+   * easily be {0, 2}, and modular arithmetic against the headcount would
+   * advance play to a seat nobody sits in.
+   */
+  const seated = await ctx.db
+    .query("players")
+    .withIndex("by_game", (q) => q.eq("gameId", game._id))
+    .take(GAME.maxPlayers);
+  const occupiedSeats = seated.map((p) => p.seat).sort((a, b) => a - b);
+  const nextSeat =
+    occupiedSeats.find((s) => s > game.currentSeat) ?? occupiedSeats[0];
+
   // A turn that only replaced letters grew the board by nothing, but it was
   // not a pass — the board changed, and so did the words on it. Counting it
   // as one ended a solo game the moment two such turns ran together.
@@ -1188,7 +1207,7 @@ async function advanceTurn(
     tileCount,
     turnNumber,
     consecutivePasses,
-    currentSeat: (game.currentSeat + 1) % game.playerCount,
+    currentSeat: nextSeat,
     ...(endsAfterTurn === undefined ? {} : { endsAfterTurn }),
   });
 

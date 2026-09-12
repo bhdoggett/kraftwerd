@@ -63,7 +63,7 @@ export function useStartGame() {
 }
 
 /** The game a guest asked for on the way in. */
-export type PromisedGame = "computer";
+export type PromisedGame = "solo" | "computer";
 
 /**
  * What a guest asked for before they had an account.
@@ -88,7 +88,7 @@ export function promiseAGame(kind: PromisedGame) {
 export function claimPromisedGame(): PromisedGame | null {
   try {
     const kind = window.sessionStorage.getItem(GUEST_START);
-    if (kind !== "computer") return null;
+    if (kind !== "solo" && kind !== "computer") return null;
     window.sessionStorage.removeItem(GUEST_START);
     return kind;
   } catch {
