@@ -60,8 +60,12 @@ export const BLANKS_PER_GAME = 3;
  * 4: added RACK_CLEAR_BONUS (design.md §4.7) — playing every letter in your
  *    rack in one turn now pays extra, so scores under 3 do not compete with
  *    these.
+ * 5: ninety-nine tiles (design.md §5.1), up from seventy-one, favouring
+ *    letters that are good at turning one word on the board into another.
+ *    A bigger bag deals a longer game, and the mix is not a rescale of the
+ *    old one, so scores under 4 do not compete with these.
  */
-export const RULES_VERSION = 4;
+export const RULES_VERSION = 5;
 
 /**
  * How long an invite link works for. Long enough to sit in a message over a
