@@ -22,7 +22,6 @@ interface Standing {
 interface ScoreboardProps {
   players: readonly Standing[];
   currentSeat: number;
-  tileCount: number;
   /** Tiles nobody has drawn yet: what is left of the game. */
   tilesLeft: number;
   bagSize: number;
@@ -34,7 +33,6 @@ interface ScoreboardProps {
 export function Scoreboard({
   players,
   currentSeat,
-  tileCount,
   tilesLeft,
   bagSize,
   status,
@@ -73,7 +71,9 @@ export function Scoreboard({
 
       {ordered.map((p) => (
         <div key={p.userId} className={styles.row}>
-          <span className={styles.dot} style={{ background: `var(--seat-${p.seat % 4})` }} />
+          <span className={styles.dot} style={{ background: `var(--seat-${p.seat % 4})` }}>
+            {p.score}
+          </span>
           <span
             className={[
               styles.name,
@@ -108,21 +108,25 @@ export function Scoreboard({
               {p.tilesInHand}
             </span>
           )}
-          <span className={styles.score}>{p.score}</span>
         </div>
       ))}
 
+      {/*
+        The bar alone says how far through the game is -- exact counts
+        already live in BagContents' own line just below, so a plain
+        "N tiles played" caption here would only repeat it. Kept only for
+        the two states that are actual news: the game ending, and the bag
+        running dry while hands still differ.
+      */}
       <div className={styles.progress}>
         <div className={styles.bar}>
           <div className={styles.fill} style={{ width: `${pct}%` }} />
         </div>
-        <p className={styles.caption}>
-          {status === "finished"
-            ? "Game over"
-            : tilesLeft === 0
-              ? "The bag is empty — play out your hand"
-              : `${tileCount} tiles played`}
-        </p>
+        {(status === "finished" || tilesLeft === 0) && (
+          <p className={styles.caption}>
+            {status === "finished" ? "Game over" : "The bag is empty — play out your hand"}
+          </p>
+        )}
       </div>
 
       {status !== "finished" && <BagContents left={tilesLeft} />}
