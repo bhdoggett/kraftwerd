@@ -198,7 +198,7 @@
   background: var(--tile-face);
   color: var(--tile-text);
   font-size: 1.6rem;
-  font-weight: 800;
+  font-weight: 600;
   box-shadow: var(--shadow-lift);
   pointer-events: none;
   opacity: 0.92;

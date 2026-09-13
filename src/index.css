@@ -210,17 +210,18 @@
   --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.14), 0 6px 16px rgb(0 0 0 / 0.1);
 
   /*
-   * Geometric, after the lettering the band used. Outfit (loaded in
-   * index.html, SIL Open Font License — free, no pageview tiers) leads:
-   * softer and rounder than League Spartan, which it replaced after Clinton
-   * compared both live on the real tiles. Futura and Century Gothic stay
-   * behind it as the fallback this always was, for the moment before the
-   * webfont loads or the rare host that can't reach it.
+   * Readex Pro (loaded in index.html as its real variable range, SIL Open
+   * Font License — free, no pageview tiers) leads: Clinton's own pick,
+   * replacing Outfit, which itself replaced League Spartan. Futura and
+   * Century Gothic stay behind it as the fallback this always was, for the
+   * moment before the webfont loads or the rare host that can't reach it.
    */
-  --font: "Outfit", Futura, "Avenir Next", "Century Gothic",
+  --font: "Readex Pro", Futura, "Avenir Next", "Century Gothic",
     "Helvetica Neue", Helvetica, system-ui, sans-serif;
-  /* Tile letters, where a single glyph has to carry: heavier, tighter. */
-  --font-tile: "Outfit", Futura, "Avenir Next", "Century Gothic",
+  /* Tile letters, where a single glyph has to carry: Semibold rather than
+     the rest of the app's heavier weights -- Readex Pro's own letterforms
+     read cleanly without needing the extra weight Outfit wanted. */
+  --font-tile: "Readex Pro", Futura, "Avenir Next", "Century Gothic",
     "Helvetica Neue", Helvetica, system-ui, sans-serif;
   /* Headings are set like a record sleeve: caps, wide, tight to the grid. */
   --tracking: 0.14em;

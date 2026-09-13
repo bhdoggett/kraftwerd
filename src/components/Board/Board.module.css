@@ -93,7 +93,7 @@
   display: grid;
   place-items: center;
   font-family: var(--font-tile);
-  font-weight: 800;
+  font-weight: 600;
   /* Tied to the cell, so letters grow and shrink with the board when zoomed. */
   font-size: calc(var(--cell-size) * 0.78);
   line-height: 1;
@@ -237,7 +237,7 @@
 .centre::after {
   content: var(--centre-mark-content, none);
   font-family: var(--font-tile);
-  font-weight: 800;
+  font-weight: 600;
   font-size: calc(var(--cell-size) * 0.5);
   line-height: 1;
   color: var(--centre-mark-color, transparent);
