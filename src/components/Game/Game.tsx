@@ -1176,7 +1176,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             tilesInHand: reviewScores === null ? p.letterCount : null,
           }))}
           currentSeat={game.currentSeat}
-          tileCount={game.tileCount}
           tilesLeft={view.tilesLeft}
           bagSize={BAG_SIZE}
             status={game.status}

@@ -60,7 +60,11 @@
   padding: 0;
   /* Square, matching the board's squares. No border: see Board.module.css
      .tile for why — a tile reads as sitting above the board, not inset
-     into it, and casts its shadow rather than wearing a ring. */
+     into it, and casts its shadow rather than wearing a ring. This is a
+     bare <button>, unlike the board's own tile, so the reset has to be
+     explicit here or Chrome's own default 1px outset border shows through
+     as a faint ring/glow around every rack tile. */
+  border: none;
   border-radius: 0;
   background: var(--tile-face);
   color: var(--tile-text);

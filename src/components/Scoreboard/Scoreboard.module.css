@@ -49,11 +49,26 @@
   border-bottom: none;
 }
 
+/*
+ * The score, in the seat's own colour: it reads as one thing per player
+ * now, rather than a colour swatch and a number in separate corners of
+ * the row. A circle for one or two digits; a three-digit score (this game
+ * runs long) pushes it into a pill rather than clipping or shrinking the
+ * text, the same min-width-plus-padding trick .tiles below uses.
+ */
 .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
   flex: none;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  /* Dark ink on a bright seat colour, same pairing a tile itself uses. */
+  color: var(--tile-text);
 }
 
 .name {
@@ -112,18 +127,18 @@
   font-variant-numeric: tabular-nums;
 }
 
-.score {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-}
-
 .progress {
   margin-top: var(--space-4);
 }
 
+/*
+ * Taller than a hairline on purpose: this is the one place the game says
+ * "here is how far through we are" at a glance, so it has to actually read
+ * as a graph rather than a decorative sliver under the scores.
+ */
 .bar {
-  height: 6px;
-  border-radius: 3px;
+  height: 10px;
+  border-radius: 5px;
   background: var(--surface-sunken);
   overflow: hidden;
 }
