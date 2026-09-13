@@ -14,7 +14,6 @@ function draw(status: "lobby" | "active" | "finished", tilesLeft = 0) {
     <Scoreboard
       players={players}
       currentSeat={0}
-      tileCount={12}
       tilesLeft={tilesLeft}
       bagSize={71}
       status={status}
@@ -55,8 +54,7 @@ describe("what everyone is holding", () => {
       <Scoreboard
         players={[{ ...players[1], tilesInHand: 1 }]}
         currentSeat={0}
-        tileCount={12}
-        tilesLeft={0}
+          tilesLeft={0}
         bagSize={71}
         status="active"
       />,
@@ -70,8 +68,7 @@ describe("what everyone is holding", () => {
       <Scoreboard
         players={players.map((p) => ({ ...p, tilesInHand: null }))}
         currentSeat={0}
-        tileCount={12}
-        tilesLeft={0}
+          tilesLeft={0}
         bagSize={71}
         status="finished"
       />,

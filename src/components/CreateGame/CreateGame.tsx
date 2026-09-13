@@ -7,6 +7,7 @@ import { seatsSpare } from "../../lib/roster";
 import { drawNames } from "../../../shared/names";
 import type { BotSeat } from "../../lib/useStartGame";
 import { Modal } from "../Modal/Modal";
+import { SeatPicker } from "../SeatPicker/SeatPicker";
 import styles from "./CreateGame.module.css";
 
 interface CreateGameProps {
@@ -15,6 +16,7 @@ interface CreateGameProps {
     friendIds: Id<"users">[],
     bots: BotSeat[],
     isPublic: boolean,
+    seat: number,
   ) => void;
   onCancel: () => void;
   starting: boolean;
@@ -34,7 +36,7 @@ const COUNTS = Array.from({ length: GAME.maxPlayers - 1 }, (_, i) => i + 2);
 const DEFAULT_LEVEL: Difficulty = "medium";
 
 /** Which game is being set up: people, machines, or not yet said. */
-type Path = "people" | "machines" | null;
+type Path = "alone" | "people" | "machines" | null;
 
 /**
  * Everything about starting a game, in one place.
@@ -74,6 +76,13 @@ export function CreateGame({
       level: DEFAULT_LEVEL,
     })),
   );
+
+  /**
+   * Your own colour. All of GAME.maxPlayers are always on offer, whatever
+   * the table actually seats -- a two-player game is not limited to the
+   * first two.
+   */
+  const [seat, setSeat] = useState(0);
 
   const available = friends?.friends ?? [];
   const spare = seatsSpare(picked.length, open);
@@ -131,9 +140,20 @@ export function CreateGame({
             <button
               type="button"
               className={styles.choice}
+              onClick={() => setPath("alone")}
+            >
+              <strong>Myself</strong>
+              <span className={styles.choiceHint}>
+                Just you, against the board. Starts straight away.
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={styles.choice}
               onClick={() => setPath("people")}
             >
-              <strong>Humans</strong>
+              <strong>Other humans</strong>
               <span className={styles.choiceHint}>
                 Ask a friend, or leave a seat open and send the link.
               </span>
@@ -160,6 +180,24 @@ export function CreateGame({
           >
             ← Change who you’re playing
           </button>
+        )}
+
+        {path !== null && (
+          <div className={styles.field}>
+            <span className={styles.label}>Your colour</span>
+            <SeatPicker
+              totalSeats={GAME.maxPlayers}
+              takenSeats={[]}
+              value={seat}
+              onChange={setSeat}
+            />
+          </div>
+        )}
+
+        {path === "alone" && (
+          <p className={styles.hint}>
+            Nobody else at the table, nobody to wait for. Press Start.
+          </p>
         )}
 
         {path === "machines" && (
@@ -346,8 +384,10 @@ export function CreateGame({
             className={styles.button}
             onClick={() =>
               path === "machines"
-                ? onStart(count, [], bots, false)
-                : onStart(people, picked, [], listed && open > 0)
+                ? onStart(count, [], bots, false, seat)
+                : path === "alone"
+                  ? onStart(1, [], [], false, seat)
+                  : onStart(people, picked, [], listed && open > 0, seat)
             }
             disabled={starting || path === null || !ready}
           >

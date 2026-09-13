@@ -163,6 +163,12 @@ export const createGame = mutation({
     /** A computer player per entry, seated next to you in the order given. */
     bots: v.optional(v.array(botSeat)),
     /**
+     * Which colour the maker chose. Omitted keeps the old default of 0, so a
+     * caller that has never heard of this (a test, `respondToInvite`'s own
+     * bookkeeping) still gets the table it always got.
+     */
+    seat: v.optional(v.number()),
+    /**
      * Listed for strangers to find. Only meaningful on a game with a seat no
      * name is against yet -- a full table has nothing to offer anybody.
      */
@@ -188,6 +194,18 @@ export const createGame = mutation({
     if (bots.length > args.playerCount - 1) {
       throw new ConvexError("There are not that many seats to fill");
     }
+    const seat = args.seat ?? 0;
+    if (seat < 0 || seat >= GAME.maxPlayers) {
+      throw new ConvexError("Not a colour this game has");
+    }
+    // Bots take whatever colours the maker's choice left behind, in order --
+    // they have no preference of their own to express. Worked out before the
+    // game exists, rather than after, so the game's very first `currentSeat`
+    // can be the lowest seat actually sat in -- not always 0, now that 0
+    // is a colour rather than a guaranteed occupant.
+    const botSeats = Array.from({ length: GAME.maxPlayers }, (_, i) => i)
+      .filter((s) => s !== seat)
+      .slice(0, bots.length);
     // The name arrives from the client, so it is checked against the pool
     // rather than trusted: a machine that could be called anything could be
     // called what one of the people at the table is called.
@@ -227,7 +245,7 @@ export const createGame = mutation({
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
       playerCount: args.playerCount,
-      currentSeat: 0,
+      currentSeat: Math.min(seat, ...botSeats),
       turnNumber: 0,
       tileCount: 0,
       createdBy: userId,
@@ -235,10 +253,10 @@ export const createGame = mutation({
       rulesVersion: RULES_VERSION,
     });
 
-    await joinSeat(ctx, gameId, userId, 0, "joined", alias);
+    await joinSeat(ctx, gameId, userId, seat, "joined", alias);
 
     for (const [i, bot] of bots.entries()) {
-      await seatBot(ctx, gameId, i + 1, bot.level, bot.name);
+      await seatBot(ctx, gameId, botSeats[i], bot.level, bot.name);
     }
 
     // Nobody left to wait for: a solo game, or one whose other seats are all
@@ -367,7 +385,14 @@ export const createGameWithFriends = mutation({
  * invitations instead and have no free seats to take.
  */
 export const joinGame = mutation({
-  args: { gameId: v.id("games") },
+  args: {
+    gameId: v.id("games"),
+    /**
+     * Which colour the joiner chose. Omitted takes the next open seat in
+     * order, which is what every caller did before this existed.
+     */
+    seat: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const me = await currentUser(ctx);
     refuseGuest(me);
@@ -387,6 +412,18 @@ export const joinGame = mutation({
       throw new ConvexError("Already joined");
     if (players.length >= game.playerCount)
       throw new ConvexError("Game is full");
+
+    const seat = args.seat ?? players.length;
+    if (seat < 0 || seat >= GAME.maxPlayers) {
+      throw new ConvexError("Not a colour this game has");
+    }
+    // Two people cannot reach for the same colour: Convex runs this as one
+    // transaction, so whichever request commits first is the one that gets
+    // it, and the second sees this row and is told the truth rather than
+    // silently taking the seat over.
+    if (players.some((p) => p.seat === seat)) {
+      throw new ConvexError("That colour is already taken");
+    }
 
     /*
      * A seat at a public game comes with a name to wear, drawn against the
@@ -408,7 +445,7 @@ export const joinGame = mutation({
           )[0]
         : undefined;
 
-    await joinSeat(ctx, args.gameId, userId, players.length, "joined", alias);
+    await joinSeat(ctx, args.gameId, userId, seat, "joined", alias);
 
     /*
      * Sitting down together is itself the introduction, so no request is
@@ -821,7 +858,12 @@ async function playTurn(
     );
     if (!legality.ok) throw new ConvexError(describe(legality.faults));
 
-    const score = scoreTurn(after, placements, { before });
+    // A bingo: every letter that was in the rack went down this turn. Only
+    // `letters` counts toward it — blanks are a separate whole-game
+    // allowance (§5) and were never part of the rack size.
+    const rackCleared =
+      player.letters.length === RACK.size && remaining.length === 0;
+    const score = scoreTurn(after, placements, { before, rackCleared });
 
     const tileAt = new Map(existing.map((t) => [cellKey(t.x, t.y), t]));
 
@@ -1110,6 +1152,22 @@ async function advanceTurn(
   const tileCount = game.tileCount + played;
   const turnNumber = game.turnNumber + 1;
 
+  /*
+   * The next occupied seat after this one, wrapping around -- not
+   * `(currentSeat + 1) % playerCount`. Seats are colours now, chosen freely
+   * from GAME.maxPlayers regardless of how many are actually at the table,
+   * so a two-player game's seats need not be {0, 1}; they could just as
+   * easily be {0, 2}, and modular arithmetic against the headcount would
+   * advance play to a seat nobody sits in.
+   */
+  const seated = await ctx.db
+    .query("players")
+    .withIndex("by_game", (q) => q.eq("gameId", game._id))
+    .take(GAME.maxPlayers);
+  const occupiedSeats = seated.map((p) => p.seat).sort((a, b) => a - b);
+  const nextSeat =
+    occupiedSeats.find((s) => s > game.currentSeat) ?? occupiedSeats[0];
+
   // A turn that only replaced letters grew the board by nothing, but it was
   // not a pass — the board changed, and so did the words on it. Counting it
   // as one ended a solo game the moment two such turns ran together.
@@ -1149,7 +1207,7 @@ async function advanceTurn(
     tileCount,
     turnNumber,
     consecutivePasses,
-    currentSeat: (game.currentSeat + 1) % game.playerCount,
+    currentSeat: nextSeat,
     ...(endsAfterTurn === undefined ? {} : { endsAfterTurn }),
   });
 
@@ -1548,8 +1606,12 @@ export const listOpenGames = query({
           name: game.name ?? "Game",
           playerCount: game.playerCount,
           seatsFilled: seated.length,
-          /** Who is waiting, as this viewer may see them. */
-          players: seated.map((p) => names.get(p.userId) ?? "Player"),
+          /** Who is waiting, as this viewer may see them, and which colour
+              each one holds -- so a joiner can see what's still open. */
+          players: seated.map((p) => ({
+            name: names.get(p.userId) ?? "Player",
+            seat: p.seat,
+          })),
         };
       }),
     );

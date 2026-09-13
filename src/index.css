@@ -13,23 +13,38 @@
 :root,
 [data-theme="light"] {
   /*
-   * The six. Named once, in the open, because they are the identity: neon
-   * tubes over black, after the band this game is named for.
+   * The three seat colours, one per GAME.maxPlayers, plus orange for
+   * `--pending` below (not a seat). Replaced the old cyan/magenta/lime/violet
+   * set outright rather than reshuffling it -- Clinton picked this trio by
+   * name (Tomato, Pacific Blue, Royal Gold) after comparing it against two
+   * others on the real tile face. Measured the same way every palette change
+   * here has been: all three pairs clear 12+ ΔE under simulated
+   * colourblindness (target is 8), well clear of the amber/lime pair that
+   * used to fail at 3.2.
    */
-  --neon-cyan: #00e9f2;
-  --neon-magenta: #ff2bd1;
-  --neon-lime: #b8ff2b;
-  --neon-amber: #ffd400;
+  --neon-tomato: #fe4a49;
+  --neon-pacific: #2ab7ca;
+  --neon-gold: #fed766;
   --neon-orange: #ff7a29;
-  --neon-violet: #d79eff;
+  /*
+   * Not seats any more -- cyan and amber retired outright, nothing left
+   * using them. Magenta went the same way once the app's own accent moved
+   * to violet (see --accent below) -- it was the one seat-colour leftover
+   * still in use after the trio landed, unrelated to who is playing which
+   * colour. Lime is the other leftover still standing, for the menu mark
+   * below; not touched here.
+   */
+  --neon-lime: #b8ff2b;
 
   /*
-   * The same four, darkened to read as ink on paper rather than as a tube on
+   * The same three, darkened to read as ink on paper rather than as a tube on
    * black. A tile solves contrast the other way round — bright face, dark
    * letter — but a full square is bare, so the letter carries the colour
-   * itself and needs the contrast. Each clears 6.5:1 against white.
-   *
-   * Clinton's values, from his stack-richness branch.
+   * itself and needs the contrast. Each targets 6.5:1 against white; Tomato
+   * itself runs a little under that against black ink (5.9:1) at full
+   * brightness, the same as this palette's predecessor did for magenta
+   * (6.1:1) -- close enough to the target that it has not been a real
+   * problem in practice, so left as picked rather than darkened off-brief.
    */
   /*
    * The menu's three tiles. Solid ink on a white bar — outlined squares at
@@ -39,12 +54,9 @@
   --menu-face: #0b0b0d;
   --menu-mark: #0b0b0d;
 
-  --ink-cyan: #00676b;
-  --ink-magenta: #ad0088;
-  --ink-lime: #446600;
-  /* Warm brown rather than the olive a darkened yellow lands on: amber loses
-     its identity going down, so it goes down towards orange instead. */
-  --ink-amber: #7a4b00;
+  --ink-tomato: #bc0201;
+  --ink-pacific: #176570;
+  --ink-gold: #755701;
 
   /* Surfaces, light theme */
   --surface: #f4f4f6;
@@ -58,10 +70,34 @@
   --text-muted: #61616b;
   --text-inverse: #ffffff;
 
-  /* Board */
-  --cell-empty: #ffffff;
-  --cell-line: #7c7c86;
-  --cell-blocked: #0b0b0d;
+  /* Board: "Ledger" -- pale ruled paper, like graph or engineering paper.
+     Light theme's own identity rather than an import of dark theme's
+     Blueprint: technical in the same spirit, native to ink on paper. */
+  --cell-empty: #eef4f7;
+  /* First pass at this line (#c3d2da) sat at 1.4:1 against --cell-empty --
+     invisible as a ruled line, just soft antialiased noise. Ruled paper
+     still needs a rule you can actually see; this clears 3:1. */
+  --cell-line: #6090a9;
+  --board-frame: #476f85;
+  /* A cancelled square, not an erased one: a hatch instead of a solid fill,
+     so a blocked cell reads as marked-through rather than a different
+     material. */
+  --cell-blocked: repeating-linear-gradient(
+      45deg,
+      #6090a9 0 2px,
+      transparent 2px 7px
+    ),
+    var(--cell-empty);
+  /* The hatch alone was too close in value to an empty square at a glance --
+     the ring is what makes "blocked" readable before the pattern is. */
+  --blocked-ring: inset 0 0 0 1px #6090a9;
+  /* The centre marker is a drawn crosshair now, not a wash -- see
+     .centre::after in Board.module.css. No fill or ring of its own, so it
+     reads as a mark on the paper rather than a different square. */
+  --centre-fill: var(--cell-empty);
+  --centre-ring: transparent;
+  --centre-mark-content: "+";
+  --centre-mark-color: #56707f;
 
   /*
    * Tiles are lit signs: a saturated face with the letter cut out of it in
@@ -75,13 +111,29 @@
   --tile-blank-edge: #0b0b0d;
   /* A tube glows against black and does nothing against paper. */
   --tile-lit: none;
-  /* Every square is sunk into the board, tiles included. */
-  --cell-inset: inset 0 2px 5px rgb(0 0 0 / 0.3);
+  /* Ledger is flat ruled paper, not sunken material -- a shadow on every
+     one of 225 cells barely showed against the old stark white, but reads
+     as a haze over the paler paper. The ruled lines carry the definition
+     now. */
+  --cell-inset: none;
+  /* Matte Pro's tile shadow was sized for a tile catching light above a
+     stark white or near-black board -- the same 18px blur over Ledger's
+     paper reads as a soft glow rather than a crisp edge. Tighter and
+     lighter here; dark theme keeps the original below. */
+  --tile-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.4), 0 2px 3px rgb(0 0 0 / 0.15);
+  --tile-shadow-hover:
+    inset 0 1px 0 rgb(255 255 255 / 0.4), 0 4px 6px rgb(0 0 0 / 0.18);
 
-  /* Accents */
-  --accent: #d1009b;
-  --accent-hover: #ab007e;
-  --accent-soft: #ffe0f6;
+  /* Accent is Play's own green now, not a colour of its own: blue (tried
+     as Cobalt) and violet before it both had the same "technically fine,
+     doesn't actually feel right" problem, and a whole extra hue just for
+     "primary action" turned out not to be necessary -- Play's green
+     already carries that weight everywhere else. Referenced rather than
+     duplicated, so the two can never drift apart by accident. */
+  --accent: var(--play);
+  --accent-hover: var(--play-hover);
+  --accent-soft: var(--play-soft);
   --pending: #b45c00;
   --pending-soft: #ffeccc;
   --danger: #c40036;
@@ -104,6 +156,13 @@
   --invalid: #e5002e;
   --invalid-soft: #ffdde4;
 
+  /* Play button and word-validity feedback (the chip, its outline on the
+     board, the points badges) -- an avocado green, kept apart from --valid
+     above so the board's centre marker can keep its own green undisturbed. */
+  --play: #429e00;
+  --play-hover: #378300;
+  --play-soft: #e3f6d5;
+
   /*
    * Player colours. A tile says whose it is by what it is lit in.
    *
@@ -118,10 +177,9 @@
    * each still clears the black letter by 6.5:1 or better at full strength.
    */
   --tile-tint: 100%;
-  --seat-0: color-mix(in srgb, var(--neon-cyan) var(--tile-tint), #ffffff);
-  --seat-1: color-mix(in srgb, var(--neon-magenta) var(--tile-tint), #ffffff);
-  --seat-2: color-mix(in srgb, var(--neon-lime) var(--tile-tint), #ffffff);
-  --seat-3: color-mix(in srgb, var(--neon-amber) var(--tile-tint), #ffffff);
+  --seat-0: color-mix(in srgb, var(--neon-tomato) var(--tile-tint), #ffffff);
+  --seat-1: color-mix(in srgb, var(--neon-pacific) var(--tile-tint), #ffffff);
+  --seat-2: color-mix(in srgb, var(--neon-gold) var(--tile-tint), #ffffff);
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -152,15 +210,19 @@
   --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.14), 0 6px 16px rgb(0 0 0 / 0.1);
 
   /*
-   * Geometric, after the lettering the band used. Futura and Avenir ship on
-   * Apple platforms only, so elsewhere this lands on Century Gothic or plain
-   * Helvetica — same skeleton, less character, still legible.
+   * Readex Pro (loaded in index.html as its real variable range, SIL Open
+   * Font License — free, no pageview tiers) leads: Clinton's own pick,
+   * replacing Outfit, which itself replaced League Spartan. Futura and
+   * Century Gothic stay behind it as the fallback this always was, for the
+   * moment before the webfont loads or the rare host that can't reach it.
    */
-  --font: Futura, "Avenir Next", "Century Gothic", "Helvetica Neue", Helvetica,
-    system-ui, sans-serif;
-  /* Tile letters, where a single glyph has to carry: heavier, tighter. */
-  --font-tile: Futura, "Avenir Next", "Century Gothic", "Helvetica Neue", Helvetica,
-    system-ui, sans-serif;
+  --font: "Readex Pro", Futura, "Avenir Next", "Century Gothic",
+    "Helvetica Neue", Helvetica, system-ui, sans-serif;
+  /* Tile letters, where a single glyph has to carry: Semibold rather than
+     the rest of the app's heavier weights -- Readex Pro's own letterforms
+     read cleanly without needing the extra weight Outfit wanted. */
+  --font-tile: "Readex Pro", Futura, "Avenir Next", "Century Gothic",
+    "Helvetica Neue", Helvetica, system-ui, sans-serif;
   /* Headings are set like a record sleeve: caps, wide, tight to the grid. */
   --tracking: 0.14em;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -183,30 +245,68 @@
     --text-muted: #8f8f9b;
     --text-inverse: #08080a;
 
-    --cell-empty: #101014;
-    --cell-line: #35353e;
+    /*
+     * Blueprint: a technical read rather than a warm one, closer to the
+     * band's "Computer World" era than its Bauhaus one. Board and lines
+     * only -- the tiles that sit on top already got their own pass (see
+     * .tile in Board.module.css and Rack.module.css).
+     */
+    --cell-empty: #060608;
+    /* A hairline tinted with the seat-1 colour instead of neutral grey, so
+       the grid itself reads as faintly lit rather than just ruled. */
+    --cell-line: color-mix(in srgb, var(--neon-pacific) 30%, #000);
     --cell-blocked: #000000;
+    /* A blocked square and an empty one are both near-black now that
+       --cell-empty darkened to match the board; this ring is what still
+       tells them apart. */
+    --blocked-ring: inset 0 0 0 1px #2a2a35;
+    /* An outline instead of a wash: this board doesn't tint its squares,
+       so the centre marker says its piece in line rather than in fill. */
+    --centre-fill: var(--cell-empty);
+    --centre-ring: var(--neon-pacific);
+    /* No crosshair here -- the ring above already marks the centre. */
+    --centre-mark-content: none;
+    --board-frame: var(--border-strong);
 
     /* The faces do not change: that is the point of choosing them this way. */
     --tile-edge: #000000;
     --tile-blank-face: #ffffff;
     --tile-blank-edge: #000000;
-    /* Resolves per tile, since --tile-face is set on the tile itself. */
-    --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
+    /*
+     * No glow: a tile reads as a physical object catching light (see .tile
+     * in Board.module.css) rather than a lit tube, so nothing here casts a
+     * coloured halo. Left as a hook rather than deleted, the way the light
+     * theme's own "none" already does, in case a future look wants it back.
+     */
+    --tile-lit: none;
     /* A bare square is black here, not paper: the letter is the tube itself. */
-    --ink-cyan: var(--neon-cyan);
+    --ink-tomato: var(--neon-tomato);
     --menu-face: var(--neon-lime);
     /* Edge and face the same lime: on a black bar the mark is the shape, and
        an edge in the board's ink only eats into it. */
     --menu-mark: var(--neon-lime);
-    --ink-magenta: var(--neon-magenta);
-    --ink-lime: var(--neon-lime);
-    --ink-amber: var(--neon-amber);
+    --ink-pacific: var(--neon-pacific);
+    --ink-gold: var(--neon-gold);
     --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
+    /* Matte Pro, unchanged: a tile catching light above a near-black board
+       still wants the deeper shadow. */
+    --tile-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18), 0 10px 18px -6px rgb(0 0 0 / 0.6),
+      0 1px 3px rgb(0 0 0 / 0.4);
+    --tile-shadow-hover:
+      inset 0 1px 0 rgb(255 255 255 / 0.18), 0 16px 26px -8px rgb(0 0 0 / 0.65),
+      0 2px 4px rgb(0 0 0 / 0.4);
 
-    --accent: var(--neon-magenta);
-    --accent-hover: #ff5cdc;
-    --accent-soft: #2e0726;
+    /*
+     * Accent is Play's own green, not a colour of its own -- blue (Cobalt)
+     * and violet before it were both technically fine and still didn't
+     * feel right. Play's green already carries "primary action" weight
+     * everywhere else; referenced rather than duplicated here so the two
+     * can't drift apart by accident.
+     */
+    --accent: var(--play);
+    --accent-hover: var(--play-hover);
+    --accent-soft: var(--play-soft);
     --pending: var(--neon-orange);
     --pending-soft: #2b1405;
     --danger: #ff4d6d;
@@ -218,6 +318,10 @@
     --valid-soft: #04301b;
     --invalid: #ff2b55;
     --invalid-soft: #330711;
+
+    --play: #a0da4e;
+    --play-hover: #bde583;
+    --play-soft: #1c280c;
 
     --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
     --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);
@@ -237,29 +341,46 @@
   --text-muted: #8f8f9b;
   --text-inverse: #08080a;
 
-  --cell-empty: #101014;
-  --cell-line: #35353e;
+  /* See the media-query block above: same blueprint read either way a dark
+     theme gets chosen. */
+  --cell-empty: #060608;
+  --cell-line: color-mix(in srgb, var(--neon-pacific) 30%, #000);
   --cell-blocked: #000000;
+  --blocked-ring: inset 0 0 0 1px #2a2a35;
+  --centre-fill: var(--cell-empty);
+  --centre-ring: var(--neon-pacific);
+  --centre-mark-content: none;
+  --board-frame: var(--border-strong);
 
   /* The faces do not change: that is the point of choosing them this way. */
   --tile-edge: #000000;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #000000;
-  --tile-lit: drop-shadow(0 0 5px color-mix(in srgb, var(--tile-face) 55%, transparent));
+  /* See the media-query block above: no glow, a tile reads as a physical
+     object catching light instead. */
+  --tile-lit: none;
   /* A bare square is black here, not paper: the letter is the tube itself. */
-  --ink-cyan: var(--neon-cyan);
+  --ink-tomato: var(--neon-tomato);
   --menu-face: var(--neon-lime);
   /* Edge and face the same lime: on a black bar the mark is the shape, and
      an edge in the board's ink only eats into it. */
   --menu-mark: var(--neon-lime);
-  --ink-magenta: var(--neon-magenta);
-  --ink-lime: var(--neon-lime);
-  --ink-amber: var(--neon-amber);
+  --ink-pacific: var(--neon-pacific);
+  --ink-gold: var(--neon-gold);
   --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
+  /* See the media-query block above: Matte Pro's deeper shadow, unchanged. */
+  --tile-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18), 0 10px 18px -6px rgb(0 0 0 / 0.6),
+    0 1px 3px rgb(0 0 0 / 0.4);
+  --tile-shadow-hover:
+    inset 0 1px 0 rgb(255 255 255 / 0.18), 0 16px 26px -8px rgb(0 0 0 / 0.65),
+    0 2px 4px rgb(0 0 0 / 0.4);
 
-  --accent: var(--neon-magenta);
-  --accent-hover: #ff5cdc;
-  --accent-soft: #2e0726;
+  /* See the media-query block above: accent is Play's own green either
+     way a dark theme gets chosen. */
+  --accent: var(--play);
+  --accent-hover: var(--play-hover);
+  --accent-soft: var(--play-soft);
   --pending: var(--neon-orange);
   --pending-soft: #2b1405;
   --danger: #ff4d6d;
@@ -272,6 +393,12 @@
   --invalid: #ff2b55;
   --invalid-soft: #330711;
 
+  /* See the media-query block above: same avocado green either way a dark
+     theme gets chosen. */
+  --play: #a0da4e;
+  --play-hover: #bde583;
+  --play-soft: #1c280c;
+
   --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
   --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);
 }
@@ -280,34 +407,27 @@
 /*
  * Whose tile this is, wherever it is drawn: on the board, on the rack, or
  * following the pointer. One rule set rather than one per component, since
- * "seat 2 is lime" is a fact about the game, not about the board.
+ * "seat 2 is Royal Gold" is a fact about the game, not about the board.
  */
 [data-seat="0"] {
   /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
-  --seat-lit: var(--ink-cyan);
-  --seat-neon: var(--neon-cyan);
+  --seat-lit: var(--ink-tomato);
+  --seat-neon: var(--neon-tomato);
   --tile-face: var(--seat-0);
 }
 
 [data-seat="1"] {
   /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
-  --seat-lit: var(--ink-magenta);
-  --seat-neon: var(--neon-magenta);
+  --seat-lit: var(--ink-pacific);
+  --seat-neon: var(--neon-pacific);
   --tile-face: var(--seat-1);
 }
 
 [data-seat="2"] {
   /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
-  --seat-lit: var(--ink-lime);
-  --seat-neon: var(--neon-lime);
+  --seat-lit: var(--ink-gold);
+  --seat-neon: var(--neon-gold);
   --tile-face: var(--seat-2);
-}
-
-[data-seat="3"] {
-  /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
-  --seat-lit: var(--ink-amber);
-  --seat-neon: var(--neon-amber);
-  --tile-face: var(--seat-3);
 }
 
 /*

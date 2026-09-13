@@ -198,7 +198,7 @@
   background: var(--tile-face);
   color: var(--tile-text);
   font-size: 1.6rem;
-  font-weight: 800;
+  font-weight: 600;
   box-shadow: var(--shadow-lift);
   pointer-events: none;
   opacity: 0.92;
@@ -337,9 +337,9 @@
 
 /* Same green as the outline the board draws round the word itself. */
 .valid {
-  background: var(--valid-soft);
-  color: var(--valid);
-  border-color: var(--valid);
+  background: var(--play-soft);
+  color: var(--play);
+  border-color: var(--play);
 }
 
 /*
@@ -365,7 +365,7 @@
   min-width: 1.4em;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--valid);
+  background: var(--play);
   color: var(--text-inverse);
   font-size: 0.72rem;
   font-weight: 800;
@@ -443,7 +443,7 @@
   min-width: 2.4em;
   padding: 2px var(--space-2);
   border-radius: var(--radius);
-  background: var(--valid);
+  background: var(--play);
   color: var(--text-inverse);
   font-weight: 800;
   font-size: 1.1rem;

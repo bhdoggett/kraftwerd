@@ -13,7 +13,7 @@ import {
 } from "../../../shared/engine/legality";
 import { boardShapeNamed } from "../../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../../shared/engine/score";
-import { STACK_CAP, RACK } from "../../../shared/config";
+import { STACK_CAP, RACK, GAME } from "../../../shared/config";
 import { newBag, tilesLeft as countTiles } from "../../../shared/engine/bag";
 
 /** How many tiles a game starts with, for the progress bar's sake. */
@@ -30,6 +30,8 @@ import { moveStagedTo, stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
 import { playedSinceYourTurn } from "../../lib/recap";
+import { TwoLetterWordsDialog } from "../TwoLetterWords/TwoLetterWords";
+import { SeatPicker } from "../SeatPicker/SeatPicker";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -206,6 +208,9 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    */
   const [reviewing, setReviewing] = useState(false);
   const [stepAt, setStepAt] = useState<number | null>(null);
+  const [showTwoLetterWords, setShowTwoLetterWords] = useState(false);
+  /** Colour picked while taking an open seat at a game reached by link. */
+  const [joinSeatChoice, setJoinSeatChoice] = useState<number | null>(null);
   // Not fetched until asked for: most visits never open the history.
   const history = useQuery(api.games.listTurns, reviewing ? { gameId } : "skip");
 
@@ -232,12 +237,18 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     return { before, after: applyPlacements(before, placements) };
   }, [view, placements]);
 
+  // Mirrors the server's rackCleared check in convex/games.ts: a full rack,
+  // every slot of it staged.
+  const rackCleared =
+    me?.letters?.length === RACK.size &&
+    pending.filter((p) => p.from.kind === "letter").length === RACK.size;
+
   const preview = useMemo(
     () =>
       boards && placements.length > 0
-        ? scoreTurn(boards.after, placements, { before: boards.before })
+        ? scoreTurn(boards.after, placements, { before: boards.before, rackCleared })
         : null,
-    [boards, placements],
+    [boards, placements, rackCleared],
   );
 
   // The words this play would put on the board. Computed locally by the same
@@ -1046,13 +1057,22 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             ) : view.canJoin ? (
               <>
                 {" "}
-                <button
-                  type="button"
-                  className={styles.inline}
-                  onClick={() => void joinGame({ gameId })}
-                >
-                  Take a seat
-                </button>
+                Pick your colour:{" "}
+                <SeatPicker
+                  totalSeats={GAME.maxPlayers}
+                  takenSeats={view.players.map((p) => p.seat)}
+                  value={joinSeatChoice}
+                  onChange={(seat) => {
+                    setJoinSeatChoice(seat);
+                    setError(null);
+                    joinGame({ gameId, seat }).catch((e: unknown) => {
+                      // Somebody may have just taken it -- back to picking
+                      // rather than showing a seat that didn't take.
+                      setJoinSeatChoice(null);
+                      setError(userMessage(e));
+                    });
+                  }}
+                />
               </>
             ) : (
               <>
@@ -1156,7 +1176,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             tilesInHand: reviewScores === null ? p.letterCount : null,
           }))}
           currentSeat={game.currentSeat}
-          tileCount={game.tileCount}
           tilesLeft={view.tilesLeft}
           bagSize={BAG_SIZE}
             status={game.status}
@@ -1175,6 +1194,18 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           >
             Review turns
           </button>
+        )}
+
+        <button
+          type="button"
+          className={styles.reviewOpen}
+          onClick={() => setShowTwoLetterWords(true)}
+        >
+          Two-letter words
+        </button>
+
+        {showTwoLetterWords && (
+          <TwoLetterWordsDialog onClose={() => setShowTwoLetterWords(false)} />
         )}
 
 
@@ -1290,6 +1321,13 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
               <p className={styles.scoreLine}>
                 Landing on a stacked square:{" "}
                 <span className={styles.previewScore}>+{preview.stackBonus}</span>
+              </p>
+            )}
+
+            {preview && preview.rackBonus > 0 && (
+              <p className={styles.scoreLine}>
+                Clearing your whole rack:{" "}
+                <span className={styles.previewScore}>+{preview.rackBonus}</span>
               </p>
             )}
 

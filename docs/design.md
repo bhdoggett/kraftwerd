@@ -74,9 +74,9 @@ therefore sits in a run of ≥2, therefore must spell something.
 
 **One-letter runs.** A tile with no neighbours must itself be a word — so `A`
 and `I` only. This is reachable *only* on the opening play, since rule 4 gives
-every later tile a neighbour. Note that SCOWL lists all 26 letters as
-one-letter words (a spellchecker artifact); the build script strips all but
-A and I.
+every later tile a neighbour. The build script strips every one-letter entry
+either source lists and adds back exactly these two, rather than trusting
+either source's own idea of which single letters are words.
 
 **Consequence for 3×3s.** Rule 4 kills the trick of laying rows 1 and 3 with a
 gap and filling the middle later — row 3 would touch nothing. A 3×3 is 9 tiles
@@ -227,6 +227,31 @@ fresh square      : 0
 Both live in `shared/config.ts` (`STACK_CAP`) and `shared/engine/score.ts`
 (`scoreTurn`'s `stackBonus`).
 
+### 4.7 Rack clear bonus
+
+**Word points do not reward length.** §4.1 pays 1 point a letter, flat, so a
+lone 7-letter word nets 7 — 1.0 a tile — against a 2x2's 2.0 and a 3x3's 3.8
+(§4.2). Squares were worth chasing; a long single word, on its own, was not.
+
+**Playing every letter in your rack in one turn now pays `RACK_CLEAR_BONUS`
+extra — 15.** A plain 7-letter word (no crosses, no squares) becomes
+7 + 15 = 22, 3.1 a tile: better than a 2x2, still short of a 3x3, which is a
+deliberate ordering — a 3x3 is six simultaneously-valid words (§3) and stays
+the harder, better-paying build. A word that also crosses existing tiles or
+completes a square on the way pays that on top, same as any other turn.
+
+**Flat, not scaled to rack size**, matching `stackBonus`: both are a fixed
+reward for a specific event rather than a formula layered onto word points.
+Computed by the caller, not the engine — `scoreTurn` never sees a rack, only
+a board and placements, so `convex/games.ts` passes `rackCleared` in once it
+knows whether the play emptied the hand it came from. A rack that started
+the turn short of `RACK.size` (the bag running low near the end of a game)
+cannot earn it, the same way Scrabble's bingo requires a full rack.
+
+Lives in `shared/config.ts` (`RACK_CLEAR_BONUS`) and
+`shared/engine/score.ts` (`scoreTurn`'s `rackBonus`). `RULES_VERSION` bumped
+to 4 for it — see that constant's own comment.
+
 ## 5. Rack and letter generation
 
 - Rack is **7 letters**, refilled after every play.
@@ -324,78 +349,102 @@ rolling until a rack met them; a bag cannot, so neither binds any more, and the
 vowel share is set in the bag itself instead. They are documented here because
 they are still in the config, not because they still do anything.
 
+**Grown again, to ninety-nine tiles — `RULES_VERSION` 5.** Not a rescale of
+the seventy-one-tile bag: real games here end when the bag runs dry, not when
+the board fills, so the tile count is the game-length dial, and a deliberately
+longer game was the point of the change, not a side effect of it.
+
+The letter mix was not scaled proportionally either. The adaptability
+measurement above was re-run in full against the shipped dictionary rather
+than re-derived by hand, confirming the same ranks it originally found, and
+the same four letters still show the largest gap between how common they are
+and how useful they are: P, M, B and D each move up by 2 (double the original
+one-tile nudge, matched to the pool roughly doubling). Funding that entirely
+out of the vowels, as the original nudge did with E and A, would have dropped
+vowel share to about 32% — noticeably thinner than the 38% the seventy-one
+bag has been played at. Instead the correction is funded from T, N, F and Y,
+the only other letters whose adaptability rank sits meaningfully below their
+frequency rank (unlike S, R and L, which score just as well on adaptability
+but were left alone here for the same reason they were left alone the first
+time: already common, so boosting them further buys little). H moves down by
+only 1, not 2 — its own gap is a third the size of the vowels', so trimming
+it by the same amount as them was never the data's suggestion, only a
+shortcut an earlier draft of this change took before being corrected. Vowel
+share lands at 38.4%, effectively unchanged from today's bag.
+
+```
+E 10   A 8    I 7    O 7    U 6
+N 4    R 6    T 3    D 6
+L 4    M 6    S 4
+B 5    C 3    G 3    H 2    P 5    Y 2
+F 1    J 1    K 1    Q 1    V 1    W 1    X 1    Z 1
+```
+
+Every letter still draws — nothing suppressed to zero — and T, N, F and Y are
+each at or within one tile of where the seventy-one-tile bag already had
+them; what moves is their *share* of a bigger pool, not their raw count.
+
 ### 5.2 Dictionary
 
-**Source: SCOWL tier 60**, via the `wordlist-english` npm package, built by
-`scripts/build-dictionary.mjs` into `shared/data/words.json` (76,911 words).
-SCOWL's licence permits any use but requires its copyright notice travel with
-the words; the build copies it to `shared/data/SCOWL-Copyright.txt`.
+**Source: ENABLE + 12dicts' `3of6game`**, vendored directly in
+`vendor/wordlists/` (see `ATTRIBUTION.md` there) and built by
+`scripts/build-dictionary.mjs` into `shared/data/words.json` — 172,788 words.
+Both are explicit public domain; neither author requires credit as a licence
+condition, but both ask for it, kept in the vendored attribution file and
+copied alongside the generated data as `WORDLIST-ATTRIBUTION.md`, the same
+spot a SCOWL copyright notice used to live.
 
-*This replaced tier 50 (60k words) — playtesting wanted more words available,
-not fewer, and tier 60 stays short of tier 70's much longer tail of words
-nobody would recognize as valid (`GRIGRI`, `CANULA`, `AXSEED`).*
-
-An accent is stripped rather than treated as disqualifying, so a loanword
-plays as the spelling any tile can actually make: `CAFE`, `CLICHE`, `ENTREE`.
-SCOWL's own accented spelling is what got dropped before; the ordinary word
-was never the problem.
-
-SCOWL is a spellchecker corpus, not moderated for word-game use, so a short
-hand-written list screens out identity-based slurs regardless of tier (see
-`SLURS` in `scripts/build-dictionary.mjs`). It only removes words with no
-everyday meaning worth keeping them for — `PADDY` and `SLOPE` stay, since
-those readings are the primary, everyday one.
-
-Measured across the tiers — the numbers that actually decide the game:
-
-| tier | words | valid 2×2 | valid 3×3 | letters in no 2-letter word |
-|------|-------|-----------|-----------|------------------------------|
-| 35 | 38k | 187 | 39,595 | j k l q v z |
-| 40 | 43k | 327 | 49,576 | j q v z |
-| 50 | 60k | 393 | 95,481 | j q v z |
-| 70 | 108k | 1,094 | 504,440 | v z |
-
-*The 2-letter column above is stale: it predates the hand-curated `TWO_LETTER`
-list in `scripts/build-dictionary.mjs`, which fixes the two-letter words at
-107 regardless of tier rather than taking whatever SCOWL happens to carry at
-that cut. The 2×2/3×3 counts, measured before that list existed, have not been
-re-run since — treat them as directional, not current.*
-
-Two findings from this:
-
-- **The 2×2 is the bottleneck, not the 3×3.** Only 393 valid 2×2 squares exist
-  in the whole language at tier 50, against 95,481 3×3s — 3-letter words are
-  numerous enough that the combinatorics explode. The 34-point payout is far
-  more reachable than the 8-point one. Do not assume the small square is the
-  easy one.
-- **Tier 40 is the floor.** At tier 35 the letter `L` appears in no 2-letter
-  word at all, and a common rack letter that can never enter a 2×2 feels
-  broken. Tier 50 chosen: recognizable vocabulary, and only J/Q/V/Z are
-  2×2-dead.
-
-
+*This replaced SCOWL, tiered at 60 (76,911 words) — not because SCOWL was
+unlicensed (it wasn't), but because selling the app was now a real
+possibility, and that raised the bar on how defensible the whole word-list
+choice needed to be. `3of6game` in particular is built specifically for word
+games rather than assembled as a spellchecker corpus, which SCOWL always was.*
 
 **Do not use NWL, TWL, OSPD, or Collins/SOWPODS.** All are proprietary
 licensed products (NASPA / Merriam-Webster / Collins), and NASPA actively
 issues takedowns against word-list repositories. Whether a word list is
 copyrightable at all is unsettled — facts aren't protectable under *Feist*,
 but editorial selection of "valid words" is a plausible compilation claim.
-Irrelevant in practice: free lists are equally good.
+This matters more, not less, now that selling the app is the plan: a hobby
+project is a poor target for a takedown; a commercial one is a good one.
+Irrelevant in practice regardless, since free lists are equally good.
 
-**Use SCOWL**, at a mid-size frequency cut. Permissive license, and tiered by
-word commonality so the obscurity level is a tunable parameter rather than a
-fixed property of the list. This matters more here than in most word games: a
-3×3 requires six simultaneously-valid words, and if most solutions are words
-no player recognizes, the mechanic reads as a lottery rather than a puzzle.
+An accent is stripped rather than treated as disqualifying, so a loanword
+plays as the spelling any tile can actually make: `CAFE`, `CLICHE`, `ENTREE`.
 
-Alternative: **ENABLE** (~172k, explicit public domain) as a straight drop-in
-if tiering isn't wanted.
+**Ordinary profanity plays, on purpose.** `SHIT`, `FUCK`, `DAMN`, `HELL` and
+the like are not filtered and never have been — this reads as part of the fun
+of a word board rather than something to sand off, including for the
+commercial version. What *is* filtered is identity-based slurs specifically
+(`SLURS` in `scripts/build-dictionary.mjs`), a different category entirely
+and not a general profanity filter. Some of these have an unrelated everyday
+sense too — `CRIPPLE` as a verb, `RETARD` as in "retard growth", `GRINGO`
+used neutrally, `COON` short for raccoon — cut anyway, since the slur sense is
+the one a tile on a board can't explain away. `PADDY` and `SLOPE` stay, since
+those readings are the primary, everyday one; `TRANNY` does not, since unlike
+them its slur sense reads as the primary one today, "transmission" or not.
+Switching sources turned up one slur `SCOWL` did not carry at all —
+`NIGGAZ`, a spelling variant that 12dicts' `3of6game` lists as a neologism —
+added to the filter alongside it. Not exhaustive. Add to it when a game turns
+one up.
+
+Word counts by length roughly doubled against the old SCOWL-60 dictionary —
+109 two-letter words (unchanged; see below), 972 three-letter, 3,894
+four-letter, against 670 and 2,573 before. The historical tier-by-tier 2×2/3×3
+measurements this section used to carry described a SCOWL cut that no longer
+ships and have not been re-run against the new source; the two-letter finding
+below still holds exactly, since it depends only on the curated list, not on
+which dictionary sits underneath it.
 
 **The 2-letter list is hand-curated** (`TWO_LETTER` in the build script), and
-replaces SCOWL's entirely rather than merging with it. SCOWL is a spellchecker
-lexicon and is wrong for this job in both directions: it omitted words every
-word-game player expects (`QI`, `JO`, `ZA`, `XI`) while including plurals of
-letter names (`CS`, `GS`, `TS`) that nobody would accept on a board.
+replaces both sources' two-letter entries entirely rather than merging with
+them — carried over unchanged from the SCOWL era, since the problem it solves
+has nothing to do with which dictionary sits underneath it. A 2×2 is four
+two-letter words, so this one small list alone decides how many squares exist
+at all, and a general-purpose word list is wrong for the job in both
+directions: it omits words every word-game player expects (`QI`, `JO`, `ZA`,
+`XI`) while including things like plurals of letter names (`CS`, `GS`, `TS`)
+that nobody would accept on a board.
 
 Omitting J/Q/Z mattered most: with no two-letter word containing them, those
 letters could never enter a 2×2 at all — which collided with the rare-letter
@@ -403,7 +452,7 @@ floor that had just made them more common.
 
 | list | words | 2×2 squares | rack can build one | without a blank | dead letters |
 |------|-------|-------------|--------------------|-----------------|--------------|
-| SCOWL as-is | 60 | 393 | 96% | 52% | J Q V Z |
+| general-purpose, uncurated | ~60 | 393 | 96% | 52% | J Q V Z |
 | **curated** | **105** | **2,509** | **100%** | **94%** | C V |
 
 This makes 2×2s easy, which is a deliberate trade: a short list rejects words
@@ -901,6 +950,5 @@ Steps 1–3 are where the game is won or lost. The rest is plumbing.
 
 ## 9. Open
 
-- **SCOWL cut size.** Which frequency tier. Needs playtesting.
 - **N.** Tile-count threshold for game end. Needs playtesting; 400 (25% of a
   40×40) is a starting guess.

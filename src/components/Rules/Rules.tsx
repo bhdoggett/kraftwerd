@@ -1,4 +1,4 @@
-import { BLANKS_PER_GAME, RACK, STACK_CAP } from "../../../shared/config";
+import { BLANKS_PER_GAME, RACK, RACK_CLEAR_BONUS, STACK_CAP } from "../../../shared/config";
 import { MiniBoard } from "../MiniBoard/MiniBoard";
 import { Modal } from "../Modal/Modal";
 import styles from "./Rules.module.css";
@@ -116,6 +116,12 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             caption="An O on the A makes COT: three for the word, +2 for the tile on top."
           />
         </div>
+        <p>
+          Playing <strong>every letter in your rack in one turn</strong> pays
+          a flat <strong>+{RACK_CLEAR_BONUS}</strong> on top of everything
+          else — so a plain {RACK.size}-letter word is worth chasing even with
+          no square in reach.
+        </p>
 
         <h3 className={styles.section}>Scoring: squares</h3>
         <p>
@@ -179,15 +185,16 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         <h3 className={styles.section}>Ending</h3>
         <p>
           There is <strong>one bag of tiles</strong> for the table, and the
-          game runs until it is gone. Once the bag is empty everyone plays out
-          what is left in their hand, and the moment somebody empties theirs,
-          the game stops — the others do not get another turn.
+          game runs until it is gone. The moment someone's hand is empty with
+          nothing left to draw, that fixes the last round — everyone still to
+          move gets <strong>one more turn</strong>, so the game always ends
+          with everyone having played the same number of turns.
         </p>
         <p>
-          Whoever goes out <strong>takes a point for every tile</strong> still
-          in everyone else's hands, and they each lose the same. So a Q you
-          never played costs you twice. Highest score wins; quitting hands the
-          win to whoever is left.
+          <strong>Nothing is settled for tiles left in hand</strong> — a
+          score is exactly what you scored, nothing taken and nothing handed
+          over at the end. Highest total wins; quitting hands the win to
+          whoever is left.
         </p>
       </div>
     </Modal>

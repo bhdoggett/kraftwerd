@@ -6,6 +6,8 @@ import { CreateGame } from "../CreateGame/CreateGame";
 import { GuestGame } from "../GuestGame/GuestGame";
 import { DevTools } from "../DevTools/DevTools";
 import { NewGame } from "../NewGame/NewGame";
+import { SeatPicker } from "../SeatPicker/SeatPicker";
+import { GAME } from "../../../shared/config";
 import { drawNames } from "../../../shared/names";
 import {
   claimPromisedGame,
@@ -52,8 +54,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const { start, starting, error: startError, clearError } = useStartGame();
 
   /**
-   * A game whose every seat is spoken for opens straight away — one where
-   * friends and machines between them fill the table. Only a game with
+   * A game whose every seat is spoken for opens straight away — solo, or one
+   * where friends and machines between them fill the table. Only a game with
    * a seat still empty goes on to the link step, which is what that step is
    * for.
    */
@@ -62,8 +64,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     friendIds: Id<"users">[],
     bots: BotSeat[],
     isPublic = false,
+    seat = 0,
   ) {
-    const game = await start(playerCount, friendIds, bots, isPublic);
+    const game = await start(playerCount, friendIds, bots, isPublic, seat);
     if (game === null) return;
 
     setCreating(false);
@@ -73,17 +76,26 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   }
 
   /** Take a seat at a game somebody left open. */
-  async function joinOpen(gameId: Id<"games">) {
+  async function joinOpen(gameId: Id<"games">, seat: number) {
     // A failed attempt's message belongs to that attempt, not the session --
     // clear it before trying again so a retry never sits under stale text.
     setJoinError(null);
     try {
-      await joinGame({ gameId });
+      await joinGame({ gameId, seat });
       onOpen(gameId);
     } catch (err) {
       setJoinError(userMessage(err));
+      // Someone else may have just taken it -- drop back to picking rather
+      // than sitting on a choice that no longer means anything.
+      setChosenSeat(null);
     }
   }
+
+  /** Which open game's colour row is expanded, if any. */
+  const [pickingSeatFor, setPickingSeatFor] = useState<Id<"games"> | null>(
+    null,
+  );
+  const [chosenSeat, setChosenSeat] = useState<number | null>(null);
 
   /*
    * The game a guest was promised on the way in.
@@ -100,11 +112,13 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     promised.current = true;
     // Out of the effect body, since making the game sets state as it goes.
     queueMicrotask(() =>
-      void startGame(
-        2,
-        [],
-        [{ level: "medium", name: drawNames(1, Math.random)[0] }],
-      ),
+      kind === "solo"
+        ? void startGame(1, [], [])
+        : void startGame(
+            2,
+            [],
+            [{ level: "medium", name: drawNames(1, Math.random)[0] }],
+          ),
     );
     // Once, on arrival: startGame changes on every render, and this is not a
     // thing to redo when it does.
@@ -152,8 +166,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           />
         ) : (
           <CreateGame
-            onStart={(playerCount, friendIds, bots, isPublic) =>
-              void startGame(playerCount, friendIds, bots, isPublic)
+            onStart={(playerCount, friendIds, bots, isPublic, seat) =>
+              void startGame(playerCount, friendIds, bots, isPublic, seat)
             }
             onCancel={() => {
               setCreating(false);
@@ -286,17 +300,42 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
                   <span className={styles.grow}>
                     {g.name}
                     <span className={styles.openWith}>
-                      {g.players.join(", ")} · {g.seatsFilled} of{" "}
-                      {g.playerCount}
+                      {g.players.map((p) => p.name).join(", ")} ·{" "}
+                      {g.seatsFilled} of {g.playerCount}
                     </span>
                   </span>
-                  <button
-                    type="button"
-                    className={styles.join}
-                    onClick={() => void joinOpen(g.gameId)}
-                  >
-                    Join
-                  </button>
+                  {pickingSeatFor === g.gameId ? (
+                    <>
+                      <SeatPicker
+                        totalSeats={GAME.maxPlayers}
+                        takenSeats={g.players.map((p) => p.seat)}
+                        value={chosenSeat}
+                        onChange={setChosenSeat}
+                      />
+                      <button
+                        type="button"
+                        className={styles.join}
+                        disabled={chosenSeat === null}
+                        onClick={() =>
+                          chosenSeat !== null && void joinOpen(g.gameId, chosenSeat)
+                        }
+                      >
+                        Confirm
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.join}
+                      onClick={() => {
+                        setPickingSeatFor(g.gameId);
+                        setChosenSeat(null);
+                        setJoinError(null);
+                      }}
+                    >
+                      Join
+                    </button>
+                  )}
                 </div>
               ))}
               {joinError !== null && (

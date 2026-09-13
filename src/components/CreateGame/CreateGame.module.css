@@ -35,7 +35,13 @@
   color: var(--text);
   font-family: var(--font-tile);
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 800;
+  line-height: 1;
+  font-synthesis-weight: none;
+  /* See Board.module.css .glyph: centres on the digit's own cap-height
+     rather than the font's line box. */
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
   display: grid;
   place-items: center;
 }

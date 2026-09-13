@@ -50,9 +50,13 @@
   color: var(--tile-text);
   font-family: var(--font-tile);
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 800;
   font-synthesis-weight: none;
   line-height: 1;
+  /* See Board.module.css .glyph: centres on the letter's own cap-height
+     rather than the font's line box. */
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
   filter: var(--tile-lit);
 }
 

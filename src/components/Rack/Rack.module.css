@@ -51,26 +51,38 @@
   width: var(--rack-tile-width);
   height: var(--rack-tile-height);
   /*
-   * Browsers pad a button by default — 1px 6px in Chrome. On a 46px tile with
-   * a 3px edge that leaves the letter 28px to sit in, so a wide glyph like W
-   * fills its line and shifts off centre. The board's squares set this to
-   * zero, which is why the same letter looked right there and not here.
+   * Browsers pad a button by default — 1px 6px in Chrome. On a 46px tile that
+   * used to leave the letter less room to sit in, so a wide glyph like W
+   * filled its line and shifted off centre. Padding was the fix while the
+   * tile had a border eating into that space; gone now, so this mostly just
+   * keeps the letter off the tile's own edge.
    */
   padding: 0;
-  border: var(--tile-stroke) solid var(--tile-edge);
-  /* Square, matching the board's squares. */
+  /* Square, matching the board's squares. No border: see Board.module.css
+     .tile for why — a tile reads as sitting above the board, not inset
+     into it, and casts its shadow rather than wearing a ring. This is a
+     bare <button>, unlike the board's own tile, so the reset has to be
+     explicit here or Chrome's own default 1px outset border shows through
+     as a faint ring/glow around every rack tile. */
+  border: none;
   border-radius: 0;
   background: var(--tile-face);
   color: var(--tile-text);
   /* Tied to the tile, so a smaller rack keeps its proportions. */
   font-family: var(--font-tile);
-  font-size: calc(var(--rack-tile-width) * 0.55);
-  font-weight: 700;
-  /* See Board.module.css .glyph: no faked bold, or W sits off centre. */
+  font-size: calc(var(--rack-tile-width) * 0.70);
+  font-weight: 600;
+  line-height: 1;
+  /* See Board.module.css .glyph: no faked bold, and the same cap-height trim
+     so the letter centres on its own ink rather than the font's line box. */
   font-synthesis-weight: none;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+  /* A hair of light beneath the ink, echoing the tile's own top highlight. */
+  text-shadow: 0 1px 1px rgb(255 255 255 / 0.15);
   display: grid;
   place-items: center;
-  box-shadow: var(--shadow);
+  box-shadow: var(--tile-shadow);
   filter: var(--tile-lit);
   transition:
     transform 140ms cubic-bezier(0.2, 0, 0, 1),
@@ -89,8 +101,10 @@
 
 .tile:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lift);
-  /* Lifted, so it clears the neighbouring glow rather than sitting under it. */
+  /* Deeper and softer than resting, the way a shadow spreads as the thing
+     casting it lifts further from the surface. */
+  box-shadow: var(--tile-shadow-hover);
+  /* Lifted, so it clears its neighbours rather than sitting under them. */
   position: relative;
   z-index: 1;
 }
@@ -185,16 +199,16 @@
      few pixels taller, which showed as a step in the row. */
   height: 34px;
   padding: 0 var(--space-4);
-  border: 1px solid var(--valid);
+  border: 1px solid var(--play);
   border-radius: var(--radius);
-  background: var(--valid);
+  background: var(--play);
   color: var(--text-inverse);
   font-weight: 700;
 }
 
 .play:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--valid-hover);
-  border-color: var(--valid-hover);
+  background: var(--play-hover);
+  border-color: var(--play-hover);
 }
 
 /*

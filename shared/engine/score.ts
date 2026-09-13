@@ -1,3 +1,4 @@
+import { RACK_CLEAR_BONUS } from "../config.js";
 import { cellKey, type Board, type Coord } from "./board.js";
 import { runsThrough } from "./runs.js";
 import { newSquareBlocks } from "./squares.js";
@@ -21,6 +22,8 @@ export interface TurnScore {
   squares: number[];
   /** Bonus for landing on an already-occupied square (design.md §4, STACK_CAP). */
   stackBonus: number;
+  /** Bonus for playing every letter in your rack this turn (design.md §4.7). */
+  rackBonus: number;
   total: number;
 }
 
@@ -43,6 +46,12 @@ export interface ScoreOptions {
    * square.
    */
   before?: Board;
+  /**
+   * Whether this turn played every letter that was in the rack. Computed by
+   * the caller, which is the only side that knows the rack — the engine
+   * itself only ever sees the board and the placements.
+   */
+  rackCleared?: boolean;
 }
 
 export function scoreTurn(
@@ -93,12 +102,15 @@ export function scoreTurn(
     return sum + (depth >= 2 ? depth : 0);
   }, 0);
 
+  const rackBonus = options.rackCleared ? RACK_CLEAR_BONUS : 0;
+
   return {
     wordPoints,
     words,
     squarePoints,
     squares,
     stackBonus,
-    total: wordPoints + squarePoints + stackBonus,
+    rackBonus,
+    total: wordPoints + squarePoints + stackBonus + rackBonus,
   };
 }

@@ -5,6 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Readex Pro: free (SIL Open Font License), no pageview tiers or
+      subscription, ever — replaces Outfit, which itself replaced League
+      Spartan. Loaded as its actual variable range (160..700) rather than a
+      handful of static steps, so every weight already in use across the
+      app -- 400 through 800 -- renders at its own precise weight instead of
+      snapping to the nearest of a few loaded cuts; 800 clamps to the font's
+      real ceiling, 700, same as a static load would but interpolated
+      rather than stepped everywhere below it.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@160..700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/src/index.css" />
     <title>kraftwerd</title>
     <meta name="description" content="Build word squares against your friends." />
