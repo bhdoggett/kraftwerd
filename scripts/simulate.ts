@@ -228,6 +228,19 @@ const VARIANTS: Variant[] = [
    * what Scrabble ships (on this one).
    */
   { name: "100 / 38%", bag: 100, multiplier: "none", weights: makeBag(100, 0.38) },
+  /*
+   * The hundred-tile bag as it was first added, on 2026-09-12: the row above,
+   * built over the seventy-one-tile bag's consonants. Written out rather than
+   * derived, because derived it follows letter-weights.json -- and that file
+   * became the ninety-nine-tile bag the same day, which quietly turned the row
+   * above into a different bag under the same name. Against the ninety-nine it
+   * has three more each of E, N and T, three fewer U, and two fewer each of B,
+   * D, M and P.
+   */
+  { name: "100 Sep 12 mix", bag: 100, multiplier: "none", weights: {
+    A: 8, B: 3, C: 3, D: 4, E: 13, F: 1, G: 3, H: 3, I: 7, J: 1, K: 1, L: 4, M: 4,
+    N: 7, O: 7, P: 3, Q: 1, R: 7, S: 4, T: 6, U: 3, V: 1, W: 1, X: 1, Y: 3, Z: 1,
+  } },
   { name: "50 / 33%", bag: 50, multiplier: "none", weights: makeBag(50, 0.33) },
   { name: "50 / 42%", bag: 50, multiplier: "none", weights: makeBag(50, 0.42) },
   { name: "62 / 26%", bag: 62, multiplier: "none", weights: makeBag(62, 0.26) },
