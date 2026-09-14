@@ -36,6 +36,7 @@ import {
 } from "./_generated/server";
 import { currentUser, refuseGuest, requireUser } from "./auth_helpers";
 import { friendIdsOf, namesFor } from "./seats";
+import { rowsBetween } from "./friends";
 import { placement } from "./schema";
 
 /**
@@ -107,7 +108,7 @@ export async function drawInto(
 /** Upper bound on tiles we ever read: the game ends at `endThreshold`. */
 const MAX_TILES = 512;
 
-async function loadTiles(ctx: QueryCtx | MutationCtx, gameId: Id<"games">) {
+export async function loadTiles(ctx: QueryCtx | MutationCtx, gameId: Id<"games">) {
   return await ctx.db
     .query("tiles")
     .withIndex("by_game", (q) => q.eq("gameId", gameId))
@@ -132,15 +133,95 @@ async function lookUp(
   candidates: readonly string[],
 ) {
   const found = await Promise.all(
-    [...new Set(candidates)].map(async (word) => {
-      const row = await ctx.db
-        .query("words")
-        .withIndex("by_word", (q) => q.eq("word", word))
-        .unique();
-      return row === null ? null : word;
-    }),
+    [...new Set(candidates)].map(async (word) =>
+      (await hasWord(ctx, word)) ? word : null,
+    ),
   );
   return makeDictionary(found.filter((w): w is string => w !== null));
+}
+
+/** Whether the dictionary table has this word. */
+export async function hasWord(ctx: QueryCtx | MutationCtx, word: string) {
+  const row = await ctx.db
+    .query("words")
+    .withIndex("by_word", (q) => q.eq("word", word))
+    .unique();
+  return row !== null;
+}
+
+/** Everyone at a game, invited seats included. */
+export async function seatedAt(ctx: QueryCtx | MutationCtx, gameId: Id<"games">) {
+  return await ctx.db
+    .query("players")
+    .withIndex("by_game", (q) => q.eq("gameId", gameId))
+    .take(GAME.maxPlayers);
+}
+
+/** This person's seat at a game, or null if they have none. */
+async function seatOf(
+  ctx: QueryCtx | MutationCtx,
+  gameId: Id<"games">,
+  userId: Id<"users">,
+) {
+  return await ctx.db
+    .query("players")
+    .withIndex("by_game_and_user", (q) =>
+      q.eq("gameId", gameId).eq("userId", userId),
+    )
+    .unique();
+}
+
+/** Whoever sits in `seat`, or null if nobody does. */
+async function inSeat(
+  ctx: QueryCtx | MutationCtx,
+  gameId: Id<"games">,
+  seat: number,
+) {
+  return await ctx.db
+    .query("players")
+    .withIndex("by_game_and_seat", (q) =>
+      q.eq("gameId", gameId).eq("seat", seat),
+    )
+    .unique();
+}
+
+/** The player whose move it is, or null if the seat is somehow empty. */
+export async function seatOnTurn(
+  ctx: QueryCtx | MutationCtx,
+  game: Doc<"games">,
+) {
+  return await inSeat(ctx, game._id, game.currentSeat);
+}
+
+/**
+ * The game and the caller's seat, for a move only the player on turn may make.
+ *
+ * Every such move -- a play, a trade, a pass -- starts with the same four
+ * refusals, and they have to be the same four: a check one of them forgot is a
+ * way to act out of turn.
+ */
+async function requireTurn(
+  ctx: MutationCtx,
+  gameId: Id<"games">,
+  userId: Id<"users">,
+) {
+  const game = await ctx.db.get("games", gameId);
+  if (game === null) throw new ConvexError("No such game");
+  if (game.status !== "active") throw new ConvexError("Game is not active");
+
+  const player = await seatOf(ctx, gameId, userId);
+  if (player === null) throw new ConvexError("You are not in this game");
+  if (player.seat !== game.currentSeat) throw new ConvexError("Not your turn");
+  return { game, player };
+}
+
+/** A game still filling, and whoever has sat down at it so far. */
+export async function requireLobby(ctx: MutationCtx, gameId: Id<"games">) {
+  const game = await ctx.db.get("games", gameId);
+  if (game === null) throw new ConvexError("No such game");
+  if (game.status !== "lobby")
+    throw new ConvexError("That game has already started");
+  return { game, players: await seatedAt(ctx, gameId) };
 }
 
 export const difficulty = v.union(
@@ -296,12 +377,7 @@ async function seatBot(
   });
 
   await joinSeat(ctx, gameId, userId, seat, "joined", name);
-  const player = await ctx.db
-    .query("players")
-    .withIndex("by_game_and_seat", (q) =>
-      q.eq("gameId", gameId).eq("seat", seat),
-    )
-    .unique();
+  const player = await inSeat(ctx, gameId, seat);
   if (player !== null)
     await ctx.db.patch("players", player._id, { bot: level });
 }
@@ -398,15 +474,7 @@ export const joinGame = mutation({
     refuseGuest(me);
     const userId = me._id;
 
-    const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new ConvexError("No such game");
-    if (game.status !== "lobby")
-      throw new ConvexError("That game has already started");
-
-    const players = await ctx.db
-      .query("players")
-      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-      .take(GAME.maxPlayers);
+    const { game, players } = await requireLobby(ctx, args.gameId);
 
     if (players.some((p) => p.userId === userId))
       throw new ConvexError("Already joined");
@@ -475,17 +543,8 @@ async function friendshipBetween(
   a: Id<"users">,
   b: Id<"users">,
 ) {
-  const [forward, back] = await Promise.all([
-    ctx.db
-      .query("friendships")
-      .withIndex("by_pair", (q) => q.eq("requesterId", a).eq("addresseeId", b))
-      .unique(),
-    ctx.db
-      .query("friendships")
-      .withIndex("by_pair", (q) => q.eq("requesterId", b).eq("addresseeId", a))
-      .unique(),
-  ]);
-  return forward ?? back;
+  const { mine, theirs } = await rowsBetween(ctx, a, b);
+  return mine ?? theirs;
 }
 
 /** Throw unless these two have an accepted friendship. */
@@ -533,15 +592,7 @@ export const inviteToGame = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
 
-    const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new ConvexError("No such game");
-    if (game.status !== "lobby")
-      throw new ConvexError("That game has already started");
-
-    const players = await ctx.db
-      .query("players")
-      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-      .take(GAME.maxPlayers);
+    const { game, players } = await requireLobby(ctx, args.gameId);
 
     if (!players.some((p) => p.userId === userId)) {
       throw new ConvexError("You are not in this game");
@@ -598,20 +649,7 @@ export const tradeTiles = mutation({
   args: { gameId: v.id("games"), indices: v.array(v.number()) },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
-
-    const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new ConvexError("No such game");
-    if (game.status !== "active") throw new ConvexError("Game is not active");
-
-    const player = await ctx.db
-      .query("players")
-      .withIndex("by_game_and_user", (q) =>
-        q.eq("gameId", args.gameId).eq("userId", userId),
-      )
-      .unique();
-    if (player === null) throw new ConvexError("You are not in this game");
-    if (player.seat !== game.currentSeat)
-      throw new ConvexError("Not your turn");
+    const { game, player } = await requireTurn(ctx, args.gameId, userId);
 
     const chosen = [...new Set(args.indices)];
     if (chosen.length === 0) throw new ConvexError("Choose at least one tile");
@@ -677,20 +715,7 @@ export const passTurn = mutation({
   args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
-
-    const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new ConvexError("No such game");
-    if (game.status !== "active") throw new ConvexError("Game is not active");
-
-    const player = await ctx.db
-      .query("players")
-      .withIndex("by_game_and_user", (q) =>
-        q.eq("gameId", args.gameId).eq("userId", userId),
-      )
-      .unique();
-    if (player === null) throw new ConvexError("You are not in this game");
-    if (player.seat !== game.currentSeat)
-      throw new ConvexError("Not your turn");
+    const { game } = await requireTurn(ctx, args.gameId, userId);
 
     const bag = await bagFor(ctx, args.gameId);
     if (tilesLeft(bag.letters as Bag) > 0) {
@@ -718,12 +743,7 @@ export const respondToInvite = mutation({
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) throw new ConvexError("No such game");
 
-    const me = await ctx.db
-      .query("players")
-      .withIndex("by_game_and_user", (q) =>
-        q.eq("gameId", args.gameId).eq("userId", userId),
-      )
-      .unique();
+    const me = await seatOf(ctx, args.gameId, userId);
     if (me === null) throw new ConvexError("You were not invited to this game");
     if (me.status !== "invited")
       throw new ConvexError("You have already answered");
@@ -742,10 +762,7 @@ export const respondToInvite = mutation({
 
     await ctx.db.patch("players", me._id, { status: "joined" });
 
-    const players = await ctx.db
-      .query("players")
-      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-      .take(GAME.maxPlayers);
+    const players = await seatedAt(ctx, args.gameId);
 
     // Everyone in: the game starts.
     const waiting = players.filter((p) => p.status === "invited");
@@ -797,12 +814,7 @@ export const playForBot = internalMutation({
        * instead of its own. Refuse quietly rather than throwing: the caller's
        * turn has simply already happened.
        */
-      const passer = await ctx.db
-        .query("players")
-        .withIndex("by_game_and_user", (q) =>
-          q.eq("gameId", args.gameId).eq("userId", args.userId),
-        )
-        .unique();
+      const passer = await seatOf(ctx, args.gameId, args.userId);
       if (passer === null || passer.seat !== game.currentSeat) return null;
 
       await noteSkippedTurn(ctx, game, args.userId, "pass");
@@ -824,19 +836,7 @@ async function playTurn(
 ) {
   const args = { gameId, placements: played };
   {
-    const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new ConvexError("No such game");
-    if (game.status !== "active") throw new ConvexError("Game is not active");
-
-    const player = await ctx.db
-      .query("players")
-      .withIndex("by_game_and_user", (q) =>
-        q.eq("gameId", args.gameId).eq("userId", userId),
-      )
-      .unique();
-    if (player === null) throw new ConvexError("You are not in this game");
-    if (player.seat !== game.currentSeat)
-      throw new ConvexError("Not your turn");
+    const { game, player } = await requireTurn(ctx, args.gameId, userId);
 
     const placements: Placement[] = args.placements.map((p) => ({
       ...p,
@@ -1020,10 +1020,7 @@ async function finishGame(
   game: Doc<"games">,
   /** Who emptied their hand, when that is what ended the game. */
 ) {
-  const players = await ctx.db
-    .query("players")
-    .withIndex("by_game", (q) => q.eq("gameId", game._id))
-    .take(GAME.maxPlayers);
+  const players = await seatedAt(ctx, game._id);
 
   /*
    * No settlement for tiles left in hand.
@@ -1090,12 +1087,7 @@ export const resignGame = mutation({
     if (game.status === "finished")
       throw new ConvexError("Game is already over");
 
-    const player = await ctx.db
-      .query("players")
-      .withIndex("by_game_and_user", (q) =>
-        q.eq("gameId", args.gameId).eq("userId", userId),
-      )
-      .unique();
+    const player = await seatOf(ctx, args.gameId, userId);
     if (player === null) throw new ConvexError("You are not in this game");
 
     // Nobody has played yet, so there is nothing to lose: quitting cancels
@@ -1104,10 +1096,7 @@ export const resignGame = mutation({
     // would hand whoever is left a win over a game that never happened.
     if (game.turnNumber === 0) {
       if (game.status !== "lobby" || game.createdBy === userId) {
-        const seated = await ctx.db
-          .query("players")
-          .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-          .take(GAME.maxPlayers);
+        const seated = await seatedAt(ctx, args.gameId);
         for (const seat of seated) {
           await ctx.db.delete("players", seat._id);
           // A machine's user row belongs to this game alone, so it goes with
@@ -1160,10 +1149,7 @@ async function advanceTurn(
    * easily be {0, 2}, and modular arithmetic against the headcount would
    * advance play to a seat nobody sits in.
    */
-  const seated = await ctx.db
-    .query("players")
-    .withIndex("by_game", (q) => q.eq("gameId", game._id))
-    .take(GAME.maxPlayers);
+  const seated = await seatedAt(ctx, game._id);
   const occupiedSeats = seated.map((p) => p.seat).sort((a, b) => a - b);
   const nextSeat =
     occupiedSeats.find((s) => s > game.currentSeat) ?? occupiedSeats[0];
@@ -1278,10 +1264,7 @@ export const listTurns = query({
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) throw new ConvexError("No such game");
 
-    const seated = await ctx.db
-      .query("players")
-      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-      .take(GAME.maxPlayers);
+    const seated = await seatedAt(ctx, args.gameId);
     if (!seated.some((p) => p.userId === userId)) {
       throw new ConvexError("You are not in this game");
     }
@@ -1332,13 +1315,7 @@ export const checkWords = query({
     );
 
     return await Promise.all(
-      unique.map(async (word) => {
-        const row = await ctx.db
-          .query("words")
-          .withIndex("by_word", (q) => q.eq("word", word))
-          .unique();
-        return { word, valid: row !== null };
-      }),
+      unique.map(async (word) => ({ word, valid: await hasWord(ctx, word) })),
     );
   },
 });
@@ -1351,10 +1328,7 @@ export const getGame = query({
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) return null;
 
-    const players = await ctx.db
-      .query("players")
-      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-      .take(GAME.maxPlayers);
+    const players = await seatedAt(ctx, args.gameId);
 
     const tiles = await loadTiles(ctx, args.gameId);
     // A query cannot make the bag, so a game that has not needed one yet
@@ -1481,10 +1455,7 @@ export const listMyGames = query({
 
         // Who else is at the table, so the lobby says who a game is against
         // rather than just naming it.
-        const seated = await ctx.db
-          .query("players")
-          .withIndex("by_game", (q) => q.eq("gameId", game._id))
-          .take(GAME.maxPlayers);
+        const seated = await seatedAt(ctx, game._id);
         const names = await namesFor(ctx, userId, game, seated, friends);
 
         const others = seated
@@ -1590,10 +1561,7 @@ export const listOpenGames = query({
         // A game nobody ever joined would otherwise sit in the list for good.
         if (game._creationTime < fresh) return null;
 
-        const seated = await ctx.db
-          .query("players")
-          .withIndex("by_game", (q) => q.eq("gameId", game._id))
-          .take(GAME.maxPlayers);
+        const seated = await seatedAt(ctx, game._id);
 
         if (seated.length >= game.playerCount) return null;
         // Your own games are in your lobby already.

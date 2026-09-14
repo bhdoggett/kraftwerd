@@ -22,6 +22,28 @@ async function edgesFor(ctx: QueryCtx, userId: Id<"users">) {
   return { sent, received };
 }
 
+/**
+ * The friendship rows between two people, one per direction a request could
+ * have been sent in. Either, both or neither may exist.
+ */
+export async function rowsBetween(
+  ctx: QueryCtx,
+  a: Id<"users">,
+  b: Id<"users">,
+) {
+  const [mine, theirs] = await Promise.all([
+    ctx.db
+      .query("friendships")
+      .withIndex("by_pair", (q) => q.eq("requesterId", a).eq("addresseeId", b))
+      .unique(),
+    ctx.db
+      .query("friendships")
+      .withIndex("by_pair", (q) => q.eq("requesterId", b).eq("addresseeId", a))
+      .unique(),
+  ]);
+  return { mine, theirs };
+}
+
 export const listFriends = query({
   args: {},
   handler: async (ctx) => {
@@ -97,20 +119,7 @@ export const requestFriend = mutation({
     }
 
     // A pair can already be linked from either direction.
-    const [mine, theirs] = await Promise.all([
-      ctx.db
-        .query("friendships")
-        .withIndex("by_pair", (q) =>
-          q.eq("requesterId", me._id).eq("addresseeId", them._id),
-        )
-        .unique(),
-      ctx.db
-        .query("friendships")
-        .withIndex("by_pair", (q) =>
-          q.eq("requesterId", them._id).eq("addresseeId", me._id),
-        )
-        .unique(),
-    ]);
+    const { mine, theirs } = await rowsBetween(ctx, me._id, them._id);
 
     if (mine !== null) throw new ConvexError("You have already asked them");
 
@@ -277,20 +286,7 @@ export const acceptFriendLink = mutation({
 
     // A pair can already be linked from either direction, and either row may
     // still be pending — following a link settles it.
-    const [mine, theirs] = await Promise.all([
-      ctx.db
-        .query("friendships")
-        .withIndex("by_pair", (q) =>
-          q.eq("requesterId", me._id).eq("addresseeId", them._id),
-        )
-        .unique(),
-      ctx.db
-        .query("friendships")
-        .withIndex("by_pair", (q) =>
-          q.eq("requesterId", them._id).eq("addresseeId", me._id),
-        )
-        .unique(),
-    ]);
+    const { mine, theirs } = await rowsBetween(ctx, me._id, them._id);
 
     const edge = mine ?? theirs;
     if (edge !== null) {

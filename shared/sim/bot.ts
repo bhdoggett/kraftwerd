@@ -21,18 +21,12 @@ import { blankMoves, blockMoves, type BlockOptions } from "./blocks.js";
 import { chain } from "./chain.js";
 import { components, moveKey, type Hand, type Move, type ValueFn } from "./components.js";
 import { blankPrice, exposure, type ExposureWeights } from "./judgement.js";
+import type { Difficulty } from "../config.js";
 
-export { indexWords, type LengthIndex, type WordIndex } from "./words.js";
-export {
-  anchors,
-  components,
-  moveKey,
-  type Hand,
-  type Move,
-  type ValueFn,
-} from "./components.js";
+export { indexWords, type WordIndex } from "./words.js";
+export type { Move } from "./components.js";
 
-export interface MoveOptions {
+interface MoveOptions {
   /** Scores a legal turn. Lets a variant reward letters differently. */
   value?: ValueFn;
   /** Longest word to consider. Longer words cost time and are rarely played. */
@@ -67,8 +61,6 @@ export interface MoveOptions {
   /** Let the general search spend blanks too. Slow; for measurement. */
   blanksEverywhere?: boolean;
 }
-
-export type Difficulty = "easy" | "medium" | "hard";
 
 /**
  * How much of what is on offer a player is willing to give up.

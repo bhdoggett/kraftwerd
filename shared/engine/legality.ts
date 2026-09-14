@@ -1,6 +1,6 @@
 import { STACK_CAP } from "../config.js";
 import { cellKey, type Board } from "./board.js";
-import { runsThrough } from "./runs.js";
+import { runsAndLoners, runsThrough } from "./runs.js";
 import type { Placement } from "./score.js";
 
 export interface Dictionary {
@@ -75,7 +75,7 @@ export type Fault =
   | { reason: "unchanged"; at: { x: number; y: number } }
   | { reason: "blank-on-stack"; at: { x: number; y: number } };
 
-export type Legality = { ok: true } | { ok: false; faults: Fault[] };
+type Legality ={ ok: true } | { ok: false; faults: Fault[] };
 
 /** The first of each kind, in the order they were found. */
 function oneOfEach(faults: readonly Fault[]): Fault[] {
@@ -172,13 +172,8 @@ export function applyPlacements(before: Board, placements: readonly Placement[])
  * fetch just these words instead of loading all 59k.
  */
 export function wordsFormed(after: Board, placements: readonly Placement[]): string[] {
-  const runs = runsThrough(after, placements);
-  const covered = new Set(runs.flatMap((r) => r.cells.map((c) => cellKey(c.x, c.y))));
-  const lone = placements
-    .filter((p) => !covered.has(cellKey(p.x, p.y)))
-    .map((p) => p.letter.toUpperCase());
-
-  return [...runs.map((r) => r.word), ...lone];
+  const { runs, lone } = runsAndLoners(after, placements);
+  return [...runs.map((r) => r.word), ...lone.map((p) => p.letter.toUpperCase())];
 }
 
 /** Whether `placements` form a legal turn against `before` (design.md §3). */

@@ -11,7 +11,7 @@ export interface BotSeat {
   readonly name: string;
 }
 
-export interface StartedGame {
+interface StartedGame {
   gameId: Id<"games">;
   name: string;
   playerCount: number;

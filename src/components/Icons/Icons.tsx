@@ -105,21 +105,6 @@ export function SystemIcon({ size = 16 }: IconProps) {
 }
 
 /**
- * The rules. Just the mark, no ring: the button it sits in is already a
- * circle, and a circle drawn inside a circle reads as a mistake.
- */
-export function HelpIcon({ size = 16 }: IconProps) {
-  return (
-    <svg {...base(size)}>
-      {/* Drawn to sit centred in the box: the hook and the dot together span
-          y 6.2 to 17.6, and the hook spans x 9 to 15. */}
-      <path d="M9 9.2a3 3 0 1 1 3 3.4v1.4" />
-      <path d="M12 17.6h.01" />
-    </svg>
-  );
-}
-
-/**
  * The menu: three tiles, drawn the way the board draws one — a coloured face
  * inside an ink edge, square like every tile in the game.
  */

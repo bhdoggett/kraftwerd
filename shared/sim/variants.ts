@@ -5,7 +5,7 @@ import { scoreTurn } from "../engine/score.js";
 /** The four letters worth arguing about. */
 export const RARE = "JQXZ";
 
-export type Multiplier = "none" | "first" | "always";
+type Multiplier = "none" | "first" | "always";
 
 export interface Variant {
   name: string;
@@ -39,7 +39,7 @@ export interface Variant {
   seed?: { word: string; stacked?: boolean };
 }
 
-export interface TurnValue {
+interface TurnValue {
   score: number;
   /** Rare letters this turn doubled for. */
   doubled: string[];

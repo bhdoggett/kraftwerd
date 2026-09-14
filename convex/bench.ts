@@ -12,8 +12,8 @@
  * and take other people's turns, and production has no such variable.
  */
 import { ConvexError, v } from "convex/values";
-import { GAME, BLANKS_PER_GAME } from "../shared/config.js";
-import { drawInto } from "./games.js";
+import { GAME, BLANKS_PER_GAME, type Difficulty } from "../shared/config.js";
+import { difficulty, drawInto } from "./games.js";
 import { internal } from "./_generated/api";
 import {
   env,
@@ -36,7 +36,7 @@ async function seat(
   gameId: Id<"games">,
   userId: Id<"users">,
   index: number,
-  bot: "easy" | "medium" | "hard" | undefined,
+  bot: Difficulty | undefined,
 ) {
   const rack = await drawInto(ctx, gameId, []);
   await ctx.db.insert("players", {
@@ -70,7 +70,7 @@ async function makeGame(
   ctx: MutationCtx,
   bots: number,
   tag: string,
-  level: "easy" | "medium" | "hard" = "hard",
+  level: Difficulty = "hard",
 ) {
   const stamp = `${Date.now()}-${Math.random()}`;
   const users = await Promise.all(
@@ -97,30 +97,32 @@ async function makeGame(
   return gameId;
 }
 
+const sweep = { games: v.number(), tag: v.string(), difficulty: v.optional(difficulty) };
+
+/** Start a sweep's games and wake the machine in seat 0 of each. */
+async function startSweep(
+  ctx: MutationCtx,
+  bots: number,
+  args: { games: number; tag: string; difficulty?: Difficulty },
+) {
+  requireDevTools(ctx);
+  for (let i = 0; i < args.games; i++) {
+    const gameId = await makeGame(ctx, bots, args.tag, args.difficulty);
+    await ctx.scheduler.runAfter(0, internal.bots.takeTurn, { gameId });
+  }
+  return null;
+}
+
 /** One opening move per game -- the worst case on an empty board. */
 export const opening = internalMutation({
-  args: { games: v.number(), tag: v.string(), difficulty: v.optional(v.union(v.literal("easy"), v.literal("medium"), v.literal("hard"))) },
-  handler: async (ctx, args) => {
-    requireDevTools(ctx);
-    for (let i = 0; i < args.games; i++) {
-      const gameId = await makeGame(ctx, 1, args.tag, args.difficulty);
-      await ctx.scheduler.runAfter(0, internal.bots.takeTurn, { gameId });
-    }
-    return null;
-  },
+  args: sweep,
+  handler: (ctx, args) => startSweep(ctx, 1, args),
 });
 
 /** Two machines playing each other out, for whole-game figures. */
 export const wholeGame = internalMutation({
-  args: { games: v.number(), tag: v.string(), difficulty: v.optional(v.union(v.literal("easy"), v.literal("medium"), v.literal("hard"))) },
-  handler: async (ctx, args) => {
-    requireDevTools(ctx);
-    for (let i = 0; i < args.games; i++) {
-      const gameId = await makeGame(ctx, 2, args.tag, args.difficulty);
-      await ctx.scheduler.runAfter(0, internal.bots.takeTurn, { gameId });
-    }
-    return null;
-  },
+  args: sweep,
+  handler: (ctx, args) => startSweep(ctx, 2, args),
 });
 
 /**

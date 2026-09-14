@@ -173,7 +173,7 @@ export function exposure(
 }
 
 /** What a blank is worth keeping, so spending one has to beat it. */
-export const DEFAULT_BLANK_RESERVE = 8;
+const DEFAULT_BLANK_RESERVE = 8;
 
 /**
  * What spending a blank costs beyond the tiles it lays.

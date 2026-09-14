@@ -1,12 +1,12 @@
 import { boardShapeNamed, OPEN_BOARD } from "../boards.js";
-import { GAME, RACK, STACK_CAP } from "../config.js";
+import { GAME, RACK, STACK_CAP, type Difficulty } from "../config.js";
 import { applyPlacements } from "../engine/legality.js";
 import type { Dictionary } from "../engine/legality.js";
 import { makeBoard } from "../engine/board.js";
 import type { Board, TileSpec } from "../engine/board.js";
 import { refill } from "../engine/rack.js";
 import { newSquares } from "../engine/squares.js";
-import { chooseRanked, rank, type Difficulty, type WordIndex } from "./bot.js";
+import { chooseRanked, rank, type WordIndex } from "./bot.js";
 import type { ValueFn } from "./components.js";
 import { bagFlat, bagFromWeights, draw, tilesLeft, type Bag } from "./bag.js";
 import { RARE, turnValue, type Variant } from "./variants.js";

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export type ThemeChoice = "light" | "dark" | "system";
+type ThemeChoice = "light" | "dark" | "system";
 
 const KEY = "kraftwerd:theme";
 export const THEME_CHOICES: ThemeChoice[] = ["light", "dark", "system"];

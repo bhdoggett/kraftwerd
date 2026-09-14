@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
-import { GAME } from "../shared/config.js";
-import { drawInto } from "./games";
+import { drawInto, requireLobby, seatedAt, seatOnTurn } from "./games";
+import type { Id } from "./_generated/dataModel";
 import { env, mutation, query, type MutationCtx } from "./_generated/server";
 import { requireUser } from "./auth_helpers";
 
@@ -16,6 +16,16 @@ function requireDevTools() {
   if (env.DEV_TOOLS !== "1") {
     throw new ConvexError("Dev tools are not enabled on this deployment");
   }
+}
+
+/** The game a dev tool acts on, once dev tools are known to be allowed. */
+async function devGame(ctx: MutationCtx, gameId: Id<"games">) {
+  requireDevTools();
+  await requireUser(ctx);
+
+  const game = await ctx.db.get("games", gameId);
+  if (game === null) throw new ConvexError("No such game");
+  return game;
 }
 
 export const enabled = query({
@@ -75,16 +85,8 @@ export const seedFriends = mutation({
 export const acceptInvites = mutation({
   args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
-    requireDevTools();
-    await requireUser(ctx);
-
-    const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new ConvexError("No such game");
-
-    const players = await ctx.db
-      .query("players")
-      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-      .take(GAME.maxPlayers);
+    const game = await devGame(ctx, args.gameId);
+    const players = await seatedAt(ctx, args.gameId);
 
     for (const player of players) {
       if (player.status !== "invited") continue;
@@ -93,10 +95,7 @@ export const acceptInvites = mutation({
       await ctx.db.patch("players", player._id, { status: "joined" });
     }
 
-    const after = await ctx.db
-      .query("players")
-      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-      .take(GAME.maxPlayers);
+    const after = await seatedAt(ctx, args.gameId);
 
     if (
       after.length === game.playerCount &&
@@ -115,14 +114,7 @@ export const fillSeats = mutation({
     requireDevTools();
     await requireUser(ctx);
 
-    const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new ConvexError("No such game");
-    if (game.status !== "lobby") throw new ConvexError("That game has already started");
-
-    const players = await ctx.db
-      .query("players")
-      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-      .take(GAME.maxPlayers);
+    const { game, players } = await requireLobby(ctx, args.gameId);
 
     let seat = players.length;
     for (const name of STAND_INS) {
@@ -159,19 +151,10 @@ export const fillSeats = mutation({
 export const passForStandIn = mutation({
   args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
-    requireDevTools();
-    await requireUser(ctx);
-
-    const game = await ctx.db.get("games", args.gameId);
-    if (game === null) throw new ConvexError("No such game");
+    const game = await devGame(ctx, args.gameId);
     if (game.status !== "active") throw new ConvexError("Game is not active");
 
-    const current = await ctx.db
-      .query("players")
-      .withIndex("by_game_and_seat", (q) =>
-        q.eq("gameId", args.gameId).eq("seat", game.currentSeat),
-      )
-      .unique();
+    const current = await seatOnTurn(ctx, game);
     if (current === null) throw new ConvexError("No player in that seat");
 
     const user = await ctx.db.get("users", current.userId);

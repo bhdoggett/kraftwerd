@@ -44,9 +44,8 @@
 import { cpus } from "node:os";
 import { Worker } from "node:worker_threads";
 import { type GameResult } from "../shared/sim/game.ts";
-import type { Difficulty } from "../shared/sim/bot.ts";
 import type { Variant } from "../shared/sim/variants.ts";
-import { DIFFICULTIES, RACK } from "../shared/config.ts";
+import { DIFFICULTIES, RACK, type Difficulty } from "../shared/config.ts";
 
 const games = Number(process.argv[2] ?? 40);
 const players = Number(process.argv[3] ?? 2);

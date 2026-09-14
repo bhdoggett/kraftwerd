@@ -60,7 +60,7 @@ import type { BoardShape } from "../boards.js";
 import type { WordIndex } from "./words.js";
 import { moveKey, type Hand, type Move, type ValueFn } from "./components.js";
 
-export interface Candidate {
+interface Candidate {
   k: number;
   x: number;
   y: number;
@@ -511,6 +511,49 @@ function solveBlock(
 }
 
 /**
+ * Where the block searches put what they find: each turn once, and only if the
+ * full rules allow it.
+ *
+ * The solvers only check the runs they close. The full rules -- buried words,
+ * connectivity, the blank rules -- have the last word. Burying a word whole
+ * stopped being hypothetical when re-lettering arrived: two rewrites can cover
+ * a two-letter word entirely, and this is what catches it.
+ *
+ * No `connected: true` in the bounds. That shortcut asks the caller to vouch
+ * for a turn that fills one unbroken straight line touching the mass, and a
+ * block is a square, not a line: its gaps can sit in opposite corners with
+ * board tiles between them, so the placements are not one run of anything. The
+ * shortlisting in `candidateBlocks` argues that a *filled* block joins the
+ * mass, but that is an argument, and the whole point of the walk is not to
+ * take arguments on trust. It is run.
+ */
+function legalMoves(
+  board: Board,
+  dictionary: Dictionary,
+  shape: BoardShape,
+  size: number,
+  scoreOf: ValueFn,
+) {
+  const bounds = { width: size, height: size, blocked: shape.blocked, centre: shape.centre };
+  const found: Move[] = [];
+  const seen = new Set<string>();
+
+  const offer = (placements: Placement[]) => {
+    const key = moveKey(placements);
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    if (!validateTurn(board, placements, dictionary, bounds).ok) return;
+
+    const after = applyPlacements(board, placements);
+    const score = scoreOf(after, placements, board);
+    found.push({ placements, score, value: score });
+  };
+
+  return { found, offer };
+}
+
+/**
  * Turns that finish a k x k block, which the general search cannot see.
  *
  * `words` goes unused: the solver works letter by letter off the rack rather
@@ -533,24 +576,7 @@ export function blockMoves(
     .slice(0, options.maxBlocks ?? BLOCK_DEFAULTS.maxBlocks);
   const reletter = options.reletter ?? 2;
 
-  /*
-   * No `connected: true`. That shortcut asks the caller to vouch for a turn
-   * that fills one unbroken straight line touching the mass, and a block is a
-   * square, not a line: its gaps can sit in opposite corners with board tiles
-   * between them, so the placements are not one run of anything. The
-   * shortlisting in `candidateBlocks` argues that a *filled* block joins the
-   * mass, but that is an argument, and the whole point of the walk is not to
-   * take arguments on trust. It is run.
-   */
-  const bounds = {
-    width: size,
-    height: size,
-    blocked: shape.blocked,
-    centre: shape.centre,
-  };
-
-  const found: Move[] = [];
-  const seen = new Set<string>();
+  const { found, offer } = legalMoves(board, dictionary, shape, size, scoreOf);
 
   for (const block of blocks) {
     /*
@@ -562,20 +588,7 @@ export function blockMoves(
     const budget = Math.min(reletter, tiles - block.gaps.length);
     for (const placements of solveBlock(board, block, hand, dictionary,
                                         options.nodeLimit ?? 20_000, budget)) {
-      const key = moveKey(placements);
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      // The solver only checks the runs it closes. The full rules -- buried
-      // words, connectivity, the blank rules -- have the last word. Burying a
-      // word whole stopped being hypothetical when re-lettering arrived: two
-      // rewrites can cover a two-letter word entirely, and this is what
-      // catches it.
-      if (!validateTurn(board, placements, dictionary, bounds).ok) continue;
-
-      const after = applyPlacements(board, placements);
-      const score = scoreOf(after, placements, board);
-      found.push({ placements, score, value: score });
+      offer(placements);
     }
   }
 
@@ -612,9 +625,7 @@ export function blankMoves(
 ): Move[] {
   if (hand.blanks === 0) return [];
 
-  const bounds = { width: size, height: size, blocked: shape.blocked, centre: shape.centre };
-  const found: Move[] = [];
-  const seen = new Set<string>();
+  const { found, offer } = legalMoves(board, dictionary, shape, size, scoreOf);
 
   // Asking for blocks a single tile can finish names the squares directly:
   // `candidateBlocks` drops the finished ones and anything needing more than
@@ -631,19 +642,9 @@ export function blankMoves(
    * writing the predicate here as well would put back one that cannot fire.
    */
   for (const { x, y } of gaps) {
-    for (const letter of ALPHABET) {
-      const placements = [{ x, y, letter, isBlank: true }];
-      // One square can be the last gap of a 2x2 and of a 3x3 at once.
-      const key = moveKey(placements);
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      if (!validateTurn(board, placements, dictionary, bounds).ok) continue;
-
-      const after = applyPlacements(board, placements);
-      const score = scoreOf(after, placements, board);
-      found.push({ placements, score, value: score });
-    }
+    // One square can be the last gap of a 2x2 and of a 3x3 at once, and
+    // `offer` takes each turn only once.
+    for (const letter of ALPHABET) offer([{ x, y, letter, isBlank: true }]);
   }
 
   return found;

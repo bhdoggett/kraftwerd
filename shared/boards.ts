@@ -10,7 +10,7 @@ import type { Coord } from "./engine/board.js";
  * layout is square, symmetric, centred on an open square, and leaves all its
  * open squares reachable from one another.
  */
-export interface BoardLayout {
+interface BoardLayout {
   name: string;
   rows: readonly string[];
 }

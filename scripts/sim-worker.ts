@@ -10,7 +10,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parentPort } from "node:worker_threads";
 import { makeDictionary } from "../shared/engine/dictionary.ts";
-import { indexWords, type Difficulty } from "../shared/sim/bot.ts";
+import type { Difficulty } from "../shared/config.ts";
+import { indexWords } from "../shared/sim/bot.ts";
 import { playGame } from "../shared/sim/game.ts";
 import type { Variant } from "../shared/sim/variants.ts";
 

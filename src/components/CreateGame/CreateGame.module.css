@@ -141,23 +141,6 @@
   color: var(--tile-text);
 }
 
-.remove {
-  flex: none;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  display: grid;
-  place-items: center;
-}
-
-.remove:hover {
-  color: var(--danger);
-}
-
 /*
  * Back to the first question. Written rather than boxed, and above the screen
  * it leaves rather than beside the buttons that finish it: going back is not

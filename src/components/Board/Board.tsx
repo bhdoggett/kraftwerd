@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { boardShapeNamed } from "../../../shared/boards";
 import type { Placement } from "../../../shared/engine/score";
+import { followPointer } from "../../lib/followPointer";
 import styles from "./Board.module.css";
 
 interface BoardTile {
@@ -148,14 +149,7 @@ export function Board({
       press.current = null;
     };
 
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-    };
+    return followPointer(onMove, onUp);
   }, []);
 
   /**

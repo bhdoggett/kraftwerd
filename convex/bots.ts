@@ -7,7 +7,7 @@ import { makeDictionary } from "../shared/engine/dictionary.js";
 import { applyPlacements, wordsFormed, type Dictionary } from "../shared/engine/legality.js";
 import { chooseRanked, indexWords, rank, type Move, type WordIndex } from "../shared/sim/bot.js";
 import { scoreTurn } from "../shared/engine/score.js";
-import { blanksLeft } from "./games.js";
+import { blanksLeft, hasWord, loadTiles, seatOnTurn } from "./games.js";
 import { internal } from "./_generated/api";
 import {
   env,
@@ -296,18 +296,10 @@ export const turnState = internalQuery({
     const game = await ctx.db.get("games", args.gameId);
     if (game === null || game.status !== "active") return null;
 
-    const player = await ctx.db
-      .query("players")
-      .withIndex("by_game_and_seat", (q) =>
-        q.eq("gameId", args.gameId).eq("seat", game.currentSeat),
-      )
-      .unique();
+    const player = await seatOnTurn(ctx, game);
     if (player === null || player.bot === undefined) return null;
 
-    const tiles = await ctx.db
-      .query("tiles")
-      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-      .take(512);
+    const tiles = await loadTiles(ctx, args.gameId);
 
     return {
       userId: player.userId,
@@ -525,13 +517,9 @@ export const wordsMissing = internalQuery({
   args: { words: v.array(v.string()) },
   handler: async (ctx, args) => {
     const checked = await Promise.all(
-      [...new Set(args.words)].map(async (word) => {
-        const row = await ctx.db
-          .query("words")
-          .withIndex("by_word", (q) => q.eq("word", word))
-          .unique();
-        return row === null ? word : null;
-      }),
+      [...new Set(args.words)].map(async (word) =>
+        (await hasWord(ctx, word)) ? null : word,
+      ),
     );
     return checked.filter((word): word is string => word !== null);
   },
@@ -544,12 +532,7 @@ export const scheduleIfBot = internalMutation({
     const game = await ctx.db.get("games", args.gameId);
     if (game === null || game.status !== "active") return null;
 
-    const player = await ctx.db
-      .query("players")
-      .withIndex("by_game_and_seat", (q) =>
-        q.eq("gameId", args.gameId).eq("seat", game.currentSeat),
-      )
-      .unique();
+    const player = await seatOnTurn(ctx, game);
     if (player?.bot === undefined) return null;
 
     // At once, not after THINKING_MS: the turn holds the pause itself, so that

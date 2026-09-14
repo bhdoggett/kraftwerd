@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
  * dependency, so this is the History API directly. Vite's dev server and any
  * static host with SPA fallback will serve index.html for those paths.
  */
-export type Route =
+type Route =
   | { name: "lobby" }
   | { name: "game"; gameId: string }
   | { name: "friend"; token: string };

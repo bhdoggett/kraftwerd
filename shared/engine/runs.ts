@@ -1,6 +1,6 @@
 import { cellKey, type Board, type Coord } from "./board.js";
 
-export interface Run {
+interface Run {
   word: string;
   cells: Coord[];
 }
@@ -43,4 +43,21 @@ export function runsThrough(board: Board, placements: readonly Coord[]): Run[] {
   }
 
   return runs;
+}
+
+/**
+ * The runs a turn forms, and the placed tiles none of them covers.
+ *
+ * A tile with no neighbours forms no run. It still has to be a word on its own
+ * letter -- reachable only on the opening play, since connectivity gives every
+ * later tile a neighbour -- so checking a turn and scoring one both need it
+ * told apart from the rest.
+ */
+export function runsAndLoners<P extends Coord>(
+  board: Board,
+  placements: readonly P[],
+): { runs: Run[]; lone: P[] } {
+  const runs = runsThrough(board, placements);
+  const covered = new Set(runs.flatMap((r) => r.cells.map((c) => cellKey(c.x, c.y))));
+  return { runs, lone: placements.filter((p) => !covered.has(cellKey(p.x, p.y))) };
 }

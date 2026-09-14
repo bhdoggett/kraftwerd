@@ -7,7 +7,7 @@
  * the letter masks throw out anything the rack cannot spell before the
  * expensive checks run.
  */
-export interface LengthIndex {
+interface LengthIndex {
   words: string[];
   /** Bit per distinct letter, for a subset test against the rack. */
   masks: Uint32Array;
@@ -22,7 +22,7 @@ export interface WordIndex {
   has: (word: string) => boolean;
 }
 
-export const bit = (letter: string) => 1 << (letter.charCodeAt(0) - 65);
+const bit = (letter: string) => 1 << (letter.charCodeAt(0) - 65);
 
 function maskOf(word: string): number {
   let mask = 0;

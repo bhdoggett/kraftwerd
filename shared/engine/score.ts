@@ -1,6 +1,6 @@
 import { RACK_CLEAR_BONUS } from "../config.js";
 import { cellKey, type Board, type Coord } from "./board.js";
-import { runsThrough } from "./runs.js";
+import { runsAndLoners } from "./runs.js";
 import { newSquareBlocks } from "./squares.js";
 
 export interface Placement extends Coord {
@@ -8,7 +8,7 @@ export interface Placement extends Coord {
   isBlank: boolean;
 }
 
-export interface ScoredWord {
+interface ScoredWord {
   word: string;
   /** One point a letter, blanks included once they are on the board. */
   points: number;
@@ -37,7 +37,7 @@ export interface TurnScore {
  *
  * Squares pay k^2 on top, counting nested sub-squares.
  */
-export interface ScoreOptions {
+interface ScoreOptions {
   /**
    * The board before the turn. Only squares that were not already complete
    * pay, and with tiles landing on top of tiles that can no longer be worked
@@ -63,8 +63,7 @@ export function scoreTurn(
     options.before ??
     new Map([...board].filter(([key]) => !placements.some((p) => cellKey(p.x, p.y) === key)));
 
-  const runs = runsThrough(board, placements);
-  const covered = new Set(runs.flatMap((r) => r.cells.map((c) => cellKey(c.x, c.y))));
+  const { runs, lone } = runsAndLoners(board, placements);
 
   /*
    * Every letter counts, a blank as much as any other.
@@ -83,10 +82,7 @@ export function scoreTurn(
 
   // A tile touching nothing forms no run. It still has to be a word in its own
   // right to be legal, so it scores as one.
-  for (const p of placements) {
-    if (covered.has(cellKey(p.x, p.y))) continue;
-    words.push({ word: p.letter.toUpperCase(), points: 1 });
-  }
+  for (const p of lone) words.push({ word: p.letter.toUpperCase(), points: 1 });
 
   const wordPoints = words.reduce((sum, w) => sum + w.points, 0);
   const blocks = newSquareBlocks(before, board, placements);

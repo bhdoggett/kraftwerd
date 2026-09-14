@@ -1,5 +1,5 @@
 /** What a turn did, as much of it as rebuilding the board needs. */
-export interface ReplayTurn {
+interface ReplayTurn {
   userId: string;
   kind: "play" | "pass" | "trade";
   /** What it scored, so a review can count up as it goes. */
@@ -12,7 +12,7 @@ export interface ReplayTurn {
   }[];
 }
 
-export interface ReplayTile {
+interface ReplayTile {
   x: number;
   y: number;
   letter: string;

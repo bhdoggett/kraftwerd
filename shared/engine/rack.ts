@@ -10,7 +10,7 @@ export interface RackConfig {
   maxDuplicates: number;
 }
 
-export interface Rack {
+interface Rack {
   letters: string[];
   /** One blank slot, refilled every turn whether or not it was used (§5). */
   blank: boolean;

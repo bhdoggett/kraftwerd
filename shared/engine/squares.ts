@@ -19,7 +19,7 @@ function isFilled(board: Board, ox: number, oy: number, k: number): boolean {
  * so a block can contain this turn's work and still have been complete all
  * along. Those pay nothing: the square was already somebody's.
  */
-export interface SquareBlock {
+interface SquareBlock {
   /** Side length. */
   k: number;
   /** Top-left corner. */

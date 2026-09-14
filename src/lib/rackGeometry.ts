@@ -7,7 +7,7 @@
  * question in the wrong frame of reference.
  */
 
-export interface RackTarget {
+interface RackTarget {
   overRack: boolean;
   /** Position among the visible tiles, or null when not over the rack. */
   position: number | null;

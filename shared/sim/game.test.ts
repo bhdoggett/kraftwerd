@@ -2,12 +2,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
-import { RACK } from "../config";
+import { RACK, type Difficulty } from "../config";
 import { makeDictionary } from "../engine/dictionary";
 import { indexWords } from "./words";
 import { playGame, seedTiles } from "./game";
 import { boardShapeNamed, OPEN_BOARD } from "../boards";
-import type { Difficulty } from "./bot";
 
 /*
  * A whole game is the only place the difficulty knob can be caught doing

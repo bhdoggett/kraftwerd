@@ -28,6 +28,7 @@ import { boardAfter, scoresAfter } from "../../lib/replay";
 import { moveToPosition, rackSlotUnder, shuffled } from "../../lib/rackGeometry";
 import { moveStagedTo, stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
+import { followPointer } from "../../lib/followPointer";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
 import { playedSinceYourTurn } from "../../lib/recap";
 import { TwoLetterWordsDialog } from "../TwoLetterWords/TwoLetterWords";
@@ -510,14 +511,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
       }
     };
 
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-    };
+    return followPointer(onMove, onUp);
   }, [dragging, drag?.origin]);
 
   if (view === undefined) return <p className={styles.notice}>Loading game…</p>;
