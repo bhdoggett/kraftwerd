@@ -22,10 +22,10 @@
    * colourblindness (target is 8), well clear of the amber/lime pair that
    * used to fail at 3.2.
    */
-  --neon-tomato: #fe4a49;
-  --neon-pacific: #2ab7ca;
-  --neon-gold: #fed766;
-  --neon-orange: #ff7a29;
+  --full-tomato: #fe4a49;
+  --full-pacific: #2ab7ca;
+  --full-gold: #fed766;
+  --full-orange: #ff7a29;
   /*
    * Not seats any more -- cyan and amber retired outright, nothing left
    * using them. Magenta went the same way once the app's own accent moved
@@ -34,7 +34,7 @@
    * colour. Lime is the other leftover still standing, for the menu mark
    * below; not touched here.
    */
-  --neon-lime: #b8ff2b;
+  --full-lime: #b8ff2b;
 
   /*
    * The same three, darkened to read as ink on paper rather than as a tube on
@@ -177,9 +177,9 @@
    * each still clears the black letter by 6.5:1 or better at full strength.
    */
   --tile-tint: 100%;
-  --seat-0: color-mix(in srgb, var(--neon-tomato) var(--tile-tint), #ffffff);
-  --seat-1: color-mix(in srgb, var(--neon-pacific) var(--tile-tint), #ffffff);
-  --seat-2: color-mix(in srgb, var(--neon-gold) var(--tile-tint), #ffffff);
+  --seat-0: color-mix(in srgb, var(--full-tomato) var(--tile-tint), #ffffff);
+  --seat-1: color-mix(in srgb, var(--full-pacific) var(--tile-tint), #ffffff);
+  --seat-2: color-mix(in srgb, var(--full-gold) var(--tile-tint), #ffffff);
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -254,7 +254,7 @@
     --cell-empty: #060608;
     /* A hairline tinted with the seat-1 colour instead of neutral grey, so
        the grid itself reads as faintly lit rather than just ruled. */
-    --cell-line: color-mix(in srgb, var(--neon-pacific) 30%, #000);
+    --cell-line: color-mix(in srgb, var(--full-pacific) 30%, #000);
     --cell-blocked: #000000;
     /* A blocked square and an empty one are both near-black now that
        --cell-empty darkened to match the board; this ring is what still
@@ -263,7 +263,7 @@
     /* An outline instead of a wash: this board doesn't tint its squares,
        so the centre marker says its piece in line rather than in fill. */
     --centre-fill: var(--cell-empty);
-    --centre-ring: var(--neon-pacific);
+    --centre-ring: var(--full-pacific);
     /* No crosshair here -- the ring above already marks the centre. */
     --centre-mark-content: none;
     --board-frame: var(--border-strong);
@@ -280,13 +280,13 @@
      */
     --tile-lit: none;
     /* A bare square is black here, not paper: the letter is the tube itself. */
-    --ink-tomato: var(--neon-tomato);
-    --menu-face: var(--neon-lime);
+    --ink-tomato: var(--full-tomato);
+    --menu-face: var(--full-lime);
     /* Edge and face the same lime: on a black bar the mark is the shape, and
        an edge in the board's ink only eats into it. */
-    --menu-mark: var(--neon-lime);
-    --ink-pacific: var(--neon-pacific);
-    --ink-gold: var(--neon-gold);
+    --menu-mark: var(--full-lime);
+    --ink-pacific: var(--full-pacific);
+    --ink-gold: var(--full-gold);
     --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
     /* Matte Pro, unchanged: a tile catching light above a near-black board
        still wants the deeper shadow. */
@@ -307,7 +307,7 @@
     --accent: var(--play);
     --accent-hover: var(--play-hover);
     --accent-soft: var(--play-soft);
-    --pending: var(--neon-orange);
+    --pending: var(--full-orange);
     --pending-soft: #2b1405;
     --danger: #ff4d6d;
     --danger-soft: #2e0711;
@@ -344,11 +344,11 @@
   /* See the media-query block above: same blueprint read either way a dark
      theme gets chosen. */
   --cell-empty: #060608;
-  --cell-line: color-mix(in srgb, var(--neon-pacific) 30%, #000);
+  --cell-line: color-mix(in srgb, var(--full-pacific) 30%, #000);
   --cell-blocked: #000000;
   --blocked-ring: inset 0 0 0 1px #2a2a35;
   --centre-fill: var(--cell-empty);
-  --centre-ring: var(--neon-pacific);
+  --centre-ring: var(--full-pacific);
   --centre-mark-content: none;
   --board-frame: var(--border-strong);
 
@@ -360,13 +360,13 @@
      object catching light instead. */
   --tile-lit: none;
   /* A bare square is black here, not paper: the letter is the tube itself. */
-  --ink-tomato: var(--neon-tomato);
-  --menu-face: var(--neon-lime);
+  --ink-tomato: var(--full-tomato);
+  --menu-face: var(--full-lime);
   /* Edge and face the same lime: on a black bar the mark is the shape, and
      an edge in the board's ink only eats into it. */
-  --menu-mark: var(--neon-lime);
-  --ink-pacific: var(--neon-pacific);
-  --ink-gold: var(--neon-gold);
+  --menu-mark: var(--full-lime);
+  --ink-pacific: var(--full-pacific);
+  --ink-gold: var(--full-gold);
   --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
   /* See the media-query block above: Matte Pro's deeper shadow, unchanged. */
   --tile-shadow:
@@ -381,7 +381,7 @@
   --accent: var(--play);
   --accent-hover: var(--play-hover);
   --accent-soft: var(--play-soft);
-  --pending: var(--neon-orange);
+  --pending: var(--full-orange);
   --pending-soft: #2b1405;
   --danger: #ff4d6d;
   --danger-soft: #2e0711;
@@ -412,21 +412,21 @@
 [data-seat="0"] {
   /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
   --seat-lit: var(--ink-tomato);
-  --seat-neon: var(--neon-tomato);
+  --seat-full: var(--full-tomato);
   --tile-face: var(--seat-0);
 }
 
 [data-seat="1"] {
   /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
   --seat-lit: var(--ink-pacific);
-  --seat-neon: var(--neon-pacific);
+  --seat-full: var(--full-pacific);
   --tile-face: var(--seat-1);
 }
 
 [data-seat="2"] {
   /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
   --seat-lit: var(--ink-gold);
-  --seat-neon: var(--neon-gold);
+  --seat-full: var(--full-gold);
   --tile-face: var(--seat-2);
 }
 
@@ -437,7 +437,7 @@
  * Mixed here rather than by moving --tile-tint, which is what the first
  * attempt at this did. --seat-N is a color-mix defined at :root, so changing
  * the tint further down does not reliably re-resolve it; taking the seat's
- * raw neon and mixing on the tile itself always does.
+ * raw full colour and mixing on the tile itself always does.
  */
 /*
  * Full. The square goes back to reading as bare board and the letter lights
@@ -467,7 +467,7 @@
 /* The mark in the header: the pure tube, not the pale first rung of the ramp
    that an ordinary tile starts on. */
 [data-face="brand"] {
-  --tile-face: var(--seat-neon);
+  --tile-face: var(--seat-full);
 }
 
 *,
