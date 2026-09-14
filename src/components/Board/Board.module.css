@@ -279,16 +279,18 @@
  *
  * A ring inside the square rather than anything that moves it: these are
  * tiles you are about to play around, and a square that grows or shifts is a
- * square you cannot aim at. It pulses in the colour of whoever put it there,
- * so a table of four says who as well as where, and it is gone in about two
- * seconds -- a reminder, not a state to dismiss.
+ * square you cannot aim at. It pulses in the tile's own ink, not the seat
+ * colour: the face already says who put it there, and a ring in that same
+ * colour vanished into it once tiles stopped having a dark edge to show
+ * against. It is gone in about two seconds -- a reminder, not a state to
+ * dismiss.
  */
 .recent::after {
   content: "";
   grid-area: cell;
   align-self: stretch;
   justify-self: stretch;
-  border: 2px solid var(--seat-neon);
+  border: 3px solid var(--tile-text);
   pointer-events: none;
   animation: recent-play 640ms ease-out 3;
 }
