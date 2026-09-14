@@ -506,6 +506,16 @@
   color: var(--text-muted);
 }
 
+/*
+ * Nothing to bank because the play is not legal, once that is known: ringed
+ * in the red the bad words are outlined in. Not while the words are still
+ * being checked -- that 0 lasts a moment after every tile, and a red flash on
+ * each one would cry wolf. Inset, so the box keeps its size.
+ */
+.previewInvalid {
+  box-shadow: inset 0 0 0 2px var(--invalid);
+}
+
 .breakdown {
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;

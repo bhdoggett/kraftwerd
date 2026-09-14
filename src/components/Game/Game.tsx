@@ -1015,6 +1015,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
       className={[
         styles.previewScore,
         legality?.ok === true ? "" : styles.previewNothing,
+        legality !== null && !legality.ok ? styles.previewInvalid : "",
       ].join(" ")}
     >
       {legality?.ok === true ? preview.total : 0}
