@@ -279,38 +279,41 @@
  *
  * A ring inside the square rather than anything that moves it: these are
  * tiles you are about to play around, and a square that grows or shifts is a
- * square you cannot aim at. It pulses in the tile's own ink, not the seat
- * colour: the face already says who put it there, and a ring in that same
- * colour vanished into it once tiles stopped having a dark edge to show
- * against. It is gone in about two seconds -- a reminder, not a state to
- * dismiss.
+ * square you cannot aim at. Only the ring moves -- the tile underneath stays
+ * exactly as it is. It fades from bare board into the colour of whoever
+ * played it, three times, and then it is gone: about two seconds, a reminder
+ * rather than a state to dismiss.
+ *
+ * Into the seat colour, never the tile's own face: a full stack's face is
+ * bare board, and a ring in the face's colour was black on black on one theme
+ * and white on white on the other.
  */
 .recent::after {
   content: "";
   grid-area: cell;
   align-self: stretch;
   justify-self: stretch;
-  border: 3px solid var(--tile-text);
+  border: 3px solid transparent;
   pointer-events: none;
   animation: recent-play 640ms ease-out 3;
 }
 
 @keyframes recent-play {
   from {
-    opacity: 1;
+    border-color: var(--cell-empty);
   }
   to {
-    opacity: 0;
+    border-color: var(--seat-full);
   }
 }
 
 /*
- * No pulsing where that is unwelcome: the ring simply sits there instead, and
- * is taken away on the same timer.
+ * No fading where that is unwelcome: the ring simply sits there in the seat
+ * colour instead, and is taken away on the same timer.
  */
 @media (prefers-reduced-motion: reduce) {
   .recent::after {
     animation: none;
-    opacity: 1;
+    border-color: var(--seat-full);
   }
 }
