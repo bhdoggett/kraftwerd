@@ -148,6 +148,55 @@
   animation: refusal-in 140ms ease-out;
 }
 
+/*
+ * What the play being recapped was, over the board while its squares light
+ * up. Dressed as the refusal is, but higher, so the two never sit on top of
+ * each other when a tile is refused in the middle of a recap.
+ */
+.recapNote {
+  composes: refusal;
+  top: 10%;
+  /* Two lines: who, then what it earned. */
+  display: grid;
+  justify-items: center;
+  line-height: 1.2;
+  white-space: nowrap;
+  /* In the colour of whoever made the play, worn the way a tile wears it:
+     data-seat sets the colour, and the ink is the tile's own. */
+  background: var(--seat-full);
+  border-color: var(--seat-full);
+  color: var(--tile-text);
+}
+
+/*
+ * What the play scores, over the board's top-right corner. Only where the
+ * layout stacks: the panel that says so in full is below the board there, a
+ * scroll away, while on a wide screen it sits right beside it. Taps go
+ * through to the square underneath.
+ */
+.boardTally {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .boardTally {
+    display: block;
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    z-index: 5;
+    pointer-events: none;
+    box-shadow: var(--shadow-lift);
+    border-radius: var(--radius);
+  }
+}
+
+.recapPoints {
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 @keyframes refusal-in {
   from {
     opacity: 0;

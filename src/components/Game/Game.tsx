@@ -30,11 +30,23 @@ import { moveStagedTo, stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
 import { followPointer } from "../../lib/followPointer";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
-import { playedSinceYourTurn } from "../../lib/recap";
+import { playsSinceYourTurn } from "../../lib/recap";
 import { TwoLetterWordsDialog } from "../TwoLetterWords/TwoLetterWords";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+/**
+ * How long each play in the recap is pointed out: the three pulses of
+ * `recent-play` in Board.module.css, and a beat after them.
+ */
+const RECAP_PLAY_MS = 2200;
+
+/**
+ * How long the replay holds the board as you left it before the first play
+ * lands: long enough to register as the position you remember.
+ */
+const RECAP_LEAD_MS = 700;
 
 /**
  * The score split by what earned it: the tiles themselves, then each size of
@@ -180,11 +192,13 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const [refusal, setRefusal] = useState<string | null>(null);
   const refusalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
-   * The turn whose recap has already had its two seconds. Kept rather than
-   * the squares themselves: what to point out is worked out while rendering,
-   * and all this has to remember is that the reminder is over.
+   * How far this turn's replay has got. Phase 0 is the board as you left it,
+   * phase i is the board with the i-th play since then added, and past the
+   * last play it is over. Kept rather than the boards themselves -- those are
+   * worked out while rendering -- and keyed by the turn, so a new turn starts
+   * again from phase 0 without anything having to reset it.
    */
-  const [recapShown, setRecapShown] = useState<number | null>(null);
+  const [recapStep, setRecapStep] = useState<{ turn: number; step: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   /**
@@ -212,8 +226,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const [showTwoLetterWords, setShowTwoLetterWords] = useState(false);
   /** Colour picked while taking an open seat at a game reached by link. */
   const [joinSeatChoice, setJoinSeatChoice] = useState<number | null>(null);
-  // Not fetched until asked for: most visits never open the history.
-  const history = useQuery(api.games.listTurns, reviewing ? { gameId } : "skip");
 
   /** Live pointer drag: the tile that follows the finger/cursor. */
   const [drag, setDrag] = useState<{
@@ -395,12 +407,12 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
 
 
-  /** What was played while you were away, to point out as your turn opens. */
-  const playedSinceYou = useMemo(
+  /** What was played while you were away, a play at a time, oldest first. */
+  const playsSinceYou = useMemo(
     () =>
       view === undefined || view === null
-        ? new Set<string>()
-        : playedSinceYourTurn(view.tiles, view.viewerUserId),
+        ? []
+        : playsSinceYourTurn(view.tiles, view.viewerUserId),
     [view],
   );
 
@@ -409,25 +421,65 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     view.yourSeat !== null &&
     view.yourSeat === view.game.currentSeat;
 
-  /**
-   * Squares to point out right now, or null when there is nothing to say.
-   *
-   * Shown once, as the turn opens: a reminder of what you missed belongs at
-   * the moment you arrive and nowhere after. Worked out here rather than held
-   * in state, so it follows the board instead of going stale behind it.
-   */
-  const recap =
-    yourTurn && !reviewing && recapShown !== view?.game.turnNumber && playedSinceYou.size > 0
-      ? playedSinceYou
-      : null;
+  const turnNow = view?.game.turnNumber;
+  const recapPhase =
+    recapStep !== null && recapStep.turn === turnNow ? recapStep.step : 0;
 
-  // The only thing the timer does is end it.
+  /*
+   * Whether there is a replay to give. Shown once, as the turn opens: a
+   * reminder of what you missed belongs at the moment you arrive and nowhere
+   * after. At a table of three that is the play two turns back and then the
+   * one just before yours -- the board re-read in the order it was built.
+   */
+  const recapWanted =
+    yourTurn &&
+    !reviewing &&
+    playsSinceYou.length > 0 &&
+    recapPhase <= playsSinceYou.length;
+
+  /*
+   * The turn history, fetched while it is being reviewed and while a recap is
+   * replaying what was played. Most visits need neither, so it is not fetched
+   * the rest of the time.
+   */
+  const history = useQuery(
+    api.games.listTurns,
+    reviewing || recapWanted ? { gameId } : "skip",
+  );
+
+  /*
+   * The replay runs off the history, because rewinding a stacked square means
+   * knowing the tile that was under it -- so it starts once the history is
+   * here, rather than on a board it cannot rebuild.
+   */
+  const recapping = recapWanted && history !== undefined;
+
+  /** The play being added right now: none before the first, none after the last. */
+  const recapPlay =
+    recapping && recapPhase > 0 ? playsSinceYou[recapPhase - 1] : undefined;
+
+  /** That play in words: who made it, what it spelled and what it scored. */
+  const recapTurn =
+    recapPlay === undefined
+      ? undefined
+      : history?.find((t) => t.turnNumber === recapPlay.turnNumber);
+
+  // All the timer does is move the replay on a phase, and past the last, end it.
   useEffect(() => {
-    if (recap === null) return;
-    const turn = view?.game.turnNumber;
-    const done = setTimeout(() => setRecapShown(turn ?? null), 2200);
-    return () => clearTimeout(done);
-  }, [recap, view?.game.turnNumber]);
+    if (!recapping || turnNow === undefined) return;
+    const next = setTimeout(
+      () => setRecapStep({ turn: turnNow, step: recapPhase + 1 }),
+      recapPhase === 0 ? RECAP_LEAD_MS : RECAP_PLAY_MS,
+    );
+    return () => clearTimeout(next);
+  }, [recapping, turnNow, recapPhase]);
+
+  /** Any press on the board ends the replay: it must never stand between you and your turn. */
+  const skipRecap = () => {
+    if (turnNow !== undefined) {
+      setRecapStep({ turn: turnNow, step: playsSinceYou.length + 1 });
+    }
+  };
 
   // A turn is mostly thinking, so the screen should not dim mid-thought.
   useWakeLock(view?.game.status === "active");
@@ -817,7 +869,44 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   // Live tiles until the history has actually arrived: swapping in an empty
   // board while it loads reads as the game having been wiped, which is the
   // one thing a review must never look like.
-  const shown = ready ? boardAfter(turns, step) : view.tiles;
+  /*
+   * The board the replay is showing: as it stood before the first play since
+   * your turn, then with each play added in order. Rebuilt from the history
+   * the way a review is, which is what gives a stacked square back the tile
+   * it had before.
+   */
+  const recapFrom = recapPlay ?? playsSinceYou[0];
+  const recapAt =
+    recapping && recapFrom !== undefined
+      ? turns.findIndex((t) => t.turnNumber === recapFrom.turnNumber)
+      : -1;
+  const recapBoard =
+    recapAt < 0 ? null : boardAfter(turns, recapPlay === undefined ? recapAt : recapAt + 1);
+
+  /*
+   * Until the history arrives, the replay's opening board is the live one with
+   * the plays since your turn taken off. It cannot give a stacked square back
+   * the tile it had -- only the history knows that -- but it means a refresh
+   * never shows the finished board first and then takes the plays away.
+   */
+  const recapCells =
+    recapWanted && !recapping
+      ? new Set(playsSinceYou.flatMap((p) => [...p.cells]))
+      : null;
+  const liveTiles =
+    recapCells === null
+      ? view.tiles
+      : view.tiles.filter((t) => !recapCells.has(cellKey(t.x, t.y)));
+
+  const shown = ready ? boardAfter(turns, step) : (recapBoard ?? liveTiles);
+
+  /*
+   * Your draft belongs to the live board, not to one being replayed or
+   * reviewed: its tiles, the outlines saying whether its words check out, the
+   * blank waiting for a letter and its score all stand down until the live
+   * board is back, since they point at squares that board has yet to reach.
+   */
+  const showDraft = !reviewing && !recapWanted;
   const lastTurn = step > 0 ? turns[step - 1] : undefined;
 
   /*
@@ -833,6 +922,22 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    */
   const reviewScores =
     ready && step < turns.length ? scoresAfter(turns, step) : null;
+
+  /*
+   * What this play scores. A play that is not legal scores nothing, whatever
+   * its words and squares would have added up to. Drawn in the play panel, and
+   * over the board on a small screen, where the panel is a scroll away.
+   */
+  const scoreBadge = preview && (
+    <span
+      className={[
+        styles.previewScore,
+        legality?.ok === true ? "" : styles.previewNothing,
+      ].join(" ")}
+    >
+      {legality?.ok === true ? preview.total : 0}
+    </span>
+  );
 
   return (
     <div className={styles.layout}>
@@ -857,12 +962,15 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
 
         {/* The refusal floats over the board, so the board is what it is
             measured against. */}
-        <div className={styles.boardArea}>
+        <div
+          className={styles.boardArea}
+          onPointerDownCapture={recapWanted ? skipRecap : undefined}
+        >
           <Board
             boardSize={game.boardSize}
             layout={view.layout}
             tiles={shown}
-            pending={ready ? [] : pending}
+            pending={showDraft ? pending : []}
             seatOf={seatOf}
             yourSeat={view.yourSeat}
             /* Not gated on the turn: a play can be laid out and priced while
@@ -872,10 +980,10 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             canPlace={!reviewing && selected !== null && !choosingBlank}
             onPlace={place}
             onPickUp={pickUp}
-            awaitingBlankAt={blankAt}
-            goodCells={wordCells.good}
-            badCells={wordCells.bad}
-            recentCells={recap ?? undefined}
+            awaitingBlankAt={showDraft ? blankAt : null}
+            goodCells={showDraft ? wordCells.good : undefined}
+            badCells={showDraft ? wordCells.bad : undefined}
+            recentCells={recapPlay?.cells}
             onGrabStaged={!reviewing ? grabStaged : undefined}
           />
 
@@ -885,6 +993,31 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           {refusal !== null && (
             <div className={styles.refusal} role="status" aria-live="polite">
               {refusal}
+            </div>
+          )}
+
+          {/* The recap lights up where a play went; this says who made it and
+              what it scored -- the words are on the board already. Keyed by
+              the turn, so each play in the sequence pops in as its own. */}
+          {recapTurn !== undefined && (
+            <div
+              key={recapTurn.turnNumber}
+              className={styles.recapNote}
+              data-seat={seatOf.get(recapTurn.userId)}
+              role="status"
+              aria-live="polite"
+            >
+              <span>{recapTurn.name}</span>
+              <span className={styles.recapPoints}>+{recapTurn.score}</span>
+            </div>
+          )}
+
+          {/* The play's score in the board's corner, for a phone: the panel
+              that says so in full sits below the board there. Hidden from
+              screen readers, which get the same number from the panel. */}
+          {scoreBadge && showDraft && (
+            <div className={styles.boardTally} aria-hidden="true">
+              {scoreBadge}
             </div>
           )}
         </div>
@@ -1328,18 +1461,9 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             {preview && (
               <p className={styles.scoreLine}>
                 This play scores{" "}
-                {/* A play that is not legal scores nothing, whatever its
-                    words and squares would have added up to. The line stays
-                    put either way: it is the panel changing height that made
-                    the page jump. */}
-                <span
-                  className={[
-                    styles.previewScore,
-                    legality?.ok === true ? "" : styles.previewNothing,
-                  ].join(" ")}
-                >
-                  {legality?.ok === true ? preview.total : 0}
-                </span>
+                {/* The line stays put whether the play is legal or not: it is
+                    the panel changing height that made the page jump. */}
+                {scoreBadge}
               </p>
             )}
           </section>
