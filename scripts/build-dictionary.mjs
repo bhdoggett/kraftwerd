@@ -28,14 +28,18 @@ const admit = (raw) => {
   if (/^[a-z]+$/.test(plain)) words.add(plain.toUpperCase());
 };
 
-for (const line of readFileSync(join(VENDOR, "enable1.txt"), "utf8").split("\n")) {
+for (const line of readFileSync(join(VENDOR, "enable1.txt"), "utf8").split(/\r?\n/)) {
   if (line) admit(line);
 }
 
 // 3of6game annotates some entries with a trailing $ + ^ & ! marking *why* the
 // word was included (rare, signature, inflected, spelling-variant,
 // neologism) — meaningful provenance for the compiler, not part of the word.
-for (const line of readFileSync(join(VENDOR, "3of6game.txt"), "utf8").split("\n")) {
+// The file itself is CRLF -- splitting on a bare "\n" alone leaves a
+// trailing \r on every line, which fails the plain-word test below and
+// silently dropped every single word this source exists to add (1,948 of
+// them, MEME included) since the day it was vendored in.
+for (const line of readFileSync(join(VENDOR, "3of6game.txt"), "utf8").split(/\r?\n/)) {
   if (line) admit(line.replace(/[$+^&!]$/, ""));
 }
 
