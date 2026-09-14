@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "convex dev --start 'vite --open'",
     "predev": "convex init && node setup.mjs --once",
-    "typecheck": "tsc6 -b",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
+    "typecheck": "tsc6 -b && tsc6 -p convex/tsconfig.json --noEmit",
     "build": "npm run typecheck && vite build",
     "lint": "npm run typecheck && eslint .  --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:scoped": "bash scripts/lint-scoped.sh",
