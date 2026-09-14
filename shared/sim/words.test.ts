@@ -66,7 +66,7 @@ describe("covering a standing letter", () => {
   const three = index.byLength.get(3)!;
   // The board says CAT; BAT covers position 0, COT position 1, CAB position 2.
   const fixed: [number, string][] = [[0, "C"], [1, "A"], [2, "T"]];
-  const named = (pool: number[]) => pool.map((i) => three.words[i]!).sort();
+  const named = (pool: number[]) => pool.map((i) => three.words[i]).sort();
 
   test("leaves out words that would cover a square nothing may be laid on", () => {
     expect(named(withOneCovered(three, fixed, [], new Set([1, 2])))).toEqual(["CAB", "CAT", "COT"]);

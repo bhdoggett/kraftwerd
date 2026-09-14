@@ -21,7 +21,6 @@ import {
   newBag,
   returnTiles,
   tilesLeft,
-  type Bag,
 } from "../shared/engine/bag.js";
 import { scoreTurn, type Placement } from "../shared/engine/score.js";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -97,7 +96,7 @@ export async function drawInto(
   putBack: readonly string[] = [],
 ) {
   const row = await bagFor(ctx, gameId);
-  const returned = returnTiles(row.letters as Bag, putBack);
+  const returned = returnTiles(row.letters, putBack);
   const { drawn, bag } = draw(returned, RACK.size - keep.length, Math.random);
 
   await ctx.db.patch("bags", row._id, { letters: bag });
@@ -657,7 +656,7 @@ export const tradeTiles = mutation({
     const given = player.letters.filter((_, i) => chosen.includes(i));
 
     const bag = await bagFor(ctx, args.gameId);
-    if (tilesLeft(bag.letters as Bag) === 0) {
+    if (tilesLeft(bag.letters) === 0) {
       throw new ConvexError("The bag is empty — there is nothing to trade for");
     }
 
@@ -714,7 +713,7 @@ export const passTurn = mutation({
     const { game } = await requireTurn(ctx, args.gameId, userId);
 
     const bag = await bagFor(ctx, args.gameId);
-    if (tilesLeft(bag.letters as Bag) > 0) {
+    if (tilesLeft(bag.letters) > 0) {
       throw new ConvexError("There are still tiles in the bag — trade instead");
     }
 
@@ -1372,7 +1371,7 @@ export const getGame = query({
        * How many tiles nobody has drawn yet. The count, never the contents —
        * knowing what is in the bag is knowing everyone's future draws.
        */
-      tilesLeft: tilesLeft((bag?.letters ?? newBag(RACK)) as Bag),
+      tilesLeft: tilesLeft((bag?.letters ?? newBag(RACK))),
       viewerUserId: userId,
       /** Null when the viewer is looking at a game they have not joined. */
       yourSeat: you?.seat ?? null,

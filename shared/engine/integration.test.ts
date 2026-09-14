@@ -7,7 +7,7 @@ import { makeDictionary } from "./dictionary.js";
 import { applyPlacements, validateTurn, type Bounds } from "./legality.js";
 import { scoreTurn, type Placement } from "./score.js";
 
-const dict = makeDictionary(words as string[]);
+const dict = makeDictionary(words);
 const bounds: Bounds = { width: 40, height: 40 };
 
 const at = (x: number, y: number, letter: string): Placement => ({
@@ -124,7 +124,7 @@ describe("racks drawn from the real bag", () => {
     return true;
   };
 
-  const short = (words as string[]).filter((w) => w.length === 2 || w.length === 3);
+  const short = (words).filter((w) => w.length === 2 || w.length === 3);
 
   test("almost every rack can spell at least one short word", () => {
     const playable = racks.filter((r) => short.some((w) => canSpell(r, w))).length;

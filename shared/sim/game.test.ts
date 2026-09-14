@@ -121,7 +121,7 @@ describe("a seeded board", () => {
       2, dictionary, words, seeded(9), ["hard"],
     );
 
-    expect(seededBoard.turnScores[0]!).toBeGreaterThan(bare.turnScores[0]! * 2);
+    expect(seededBoard.turnScores[0]).toBeGreaterThan(bare.turnScores[0] * 2);
   }, 60_000);
 });
 

@@ -22,7 +22,7 @@ const siteUrls = (env.SITE_URL ?? "http://localhost:5175")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-const siteUrl = siteUrls[0]!;
+const siteUrl = siteUrls[0];
 
 /**
  * Whether a Google OAuth client has been configured.

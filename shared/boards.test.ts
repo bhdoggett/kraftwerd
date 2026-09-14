@@ -44,13 +44,13 @@ describe.each(BOARD_LAYOUTS)("$name", (layout) => {
       for (let x = 0; x < size; x++) if (!blocked(x, y)) open.push(`${x},${y}`);
     }
 
-    const seen = new Set([open[0]!]);
-    const queue = [open[0]!];
+    const seen = new Set([open[0]]);
+    const queue = [open[0]];
     while (queue.length > 0) {
       const [x, y] = queue.pop()!.split(",").map(Number);
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = x! + dx!;
-        const ny = y! + dy!;
+        const nx = x + dx;
+        const ny = y + dy;
         const key = `${nx},${ny}`;
         if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
         if (blocked(nx, ny) || seen.has(key)) continue;
@@ -66,7 +66,7 @@ describe.each(BOARD_LAYOUTS)("$name", (layout) => {
   test("never blocks a square adjacent to the centre", () => {
     const { x, y } = shape.centre;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      expect(blocked(x + dx!, y + dy!)).toBe(false);
+      expect(blocked(x + dx, y + dy)).toBe(false);
     }
   });
 });

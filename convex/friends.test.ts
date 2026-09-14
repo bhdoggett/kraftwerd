@@ -38,7 +38,7 @@ describe("friends", () => {
 
     const pending = await asBo.query(api.friends.listFriends);
     await asBo.mutation(api.friends.respondToRequest, {
-      friendshipId: pending.incoming[0]!.friendshipId,
+      friendshipId: pending.incoming[0].friendshipId,
       accept: true,
     });
 
@@ -52,7 +52,7 @@ describe("friends", () => {
 
     const pending = await asBo.query(api.friends.listFriends);
     await asBo.mutation(api.friends.respondToRequest, {
-      friendshipId: pending.incoming[0]!.friendshipId,
+      friendshipId: pending.incoming[0].friendshipId,
       accept: false,
     });
 
@@ -67,7 +67,7 @@ describe("friends", () => {
 
     await expect(
       asAna.mutation(api.friends.respondToRequest, {
-        friendshipId: pending.incoming[0]!.friendshipId,
+        friendshipId: pending.incoming[0].friendshipId,
         accept: true,
       }),
     ).rejects.toThrow("not yours");
@@ -109,7 +109,7 @@ describe("friends", () => {
     const { asAna } = await twoUsers();
     await asAna.mutation(api.friends.requestFriend, { email: "nobody@example.com" });
 
-    const held = (await asAna.query(api.friends.listFriends)).invited[0]!;
+    const held = (await asAna.query(api.friends.listFriends)).invited[0];
     await asAna.mutation(api.friends.cancelInvite, { inviteId: held.inviteId });
 
     expect((await asAna.query(api.friends.listFriends)).invited).toHaveLength(0);

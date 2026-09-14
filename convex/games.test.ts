@@ -850,7 +850,7 @@ describe("joining by link", () => {
     const { t, gameId, asHost, asGuest } = await lobbyGame(2);
     const [host, guest] = await t.run(async (ctx) => {
       const rows = await ctx.db.query("users").take(5);
-      return [rows[0]!._id, rows[1]!._id];
+      return [rows[0]._id, rows[1]._id];
     });
     await t.run(async (ctx) => {
       await ctx.db.insert("friendships", {
@@ -1383,7 +1383,7 @@ describe("computer players", () => {
     );
     await t.run(async (ctx) => {
       await ctx.db.insert("friendships", {
-        requesterId: (await ctx.db.query("users").take(10))[0]!._id,
+        requesterId: (await ctx.db.query("users").take(10))[0]._id,
         addresseeId: bob,
         status: "accepted",
       });
