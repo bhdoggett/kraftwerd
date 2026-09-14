@@ -8,7 +8,6 @@ import styles from "./NewGame.module.css";
 
 interface NewGameProps {
   gameId: Id<"games">;
-  name: string;
   playerCount: number;
   /**
    * Friends already asked when the game was made. Their seats are taken —
@@ -29,7 +28,6 @@ interface NewGameProps {
  */
 export function NewGame({
   gameId,
-  name,
   playerCount,
   invitedAlready = 0,
   onOpen,
@@ -74,7 +72,7 @@ export function NewGame({
     <Modal>
       <div className={styles.body}>
         <div>
-          <h2 className={styles.title}>{name}</h2>
+          <h2 className={styles.title}>Waiting for players</h2>
           <p className={styles.subtitle}>
             {seatsToFill > 0
               ? `${seatsToFill} more ${seatsToFill === 1 ? "player" : "players"} needed. The game starts once every seat is taken.`

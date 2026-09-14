@@ -17,6 +17,17 @@ import {
 import { userMessage } from "../../lib/errors";
 import styles from "./Lobby.module.css";
 
+/**
+ * Who a game is against, which is how the lobby tells one game from another:
+ * games carry no name of their own.
+ */
+function against(opponents: readonly { name: string; pending: boolean }[]) {
+  if (opponents.length === 0) return "Solo";
+  return opponents
+    .map((o) => (o.pending ? `${o.name} (invited)` : o.name))
+    .join(", ");
+}
+
 export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const mine = useQuery(api.games.listMyGames);
   const respondToInvite = useMutation(api.games.respondToInvite);
@@ -43,7 +54,6 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   /** The game just created, still choosing who fills its seats. */
   const [setup, setSetup] = useState<{
     gameId: Id<"games">;
-    name: string;
     playerCount: number;
     /** How many friends were asked as the game was made. */
     invited: number;
@@ -130,7 +140,6 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
       {setup && (
         <NewGame
           gameId={setup.gameId}
-          name={setup.name}
           playerCount={setup.playerCount}
           invitedAlready={setup.invited}
           onOpen={(id) => {
@@ -184,7 +193,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           {invitations.map((g) => (
             <div key={g.gameId} className={styles.row}>
               <span className={styles.grow}>
-                {g.invitedBy} invited you to {g.name}
+                {g.invitedBy} invited you to a game
                 <br />
                 <span className={styles.meta}>{g.playerCount} players</span>
               </span>
@@ -220,15 +229,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         {myGames.map((g) => (
           <div key={g.gameId} className={styles.row}>
             <span className={styles.grow}>
-              {g.name}
+              {against(g.opponents)}
               <br />
               <span className={styles.meta}>
-                {g.opponents.length === 0
-                  ? "solo"
-                  : g.opponents
-                      .map((o) => (o.pending ? `${o.name} (invited)` : o.name))
-                      .join(", ")}
-                {" · "}
                 {g.status === "lobby"
                   ? "waiting for players"
                   : `${g.yourScore} pts`}
@@ -298,10 +301,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               {openGames?.games.map((g) => (
                 <div key={g.gameId} className={styles.row}>
                   <span className={styles.grow}>
-                    {g.name}
+                    {g.players.map((p) => p.name).join(", ")}
                     <span className={styles.openWith}>
-                      {g.players.map((p) => p.name).join(", ")} ·{" "}
-                      {g.seatsFilled} of {g.playerCount}
+                      {g.seatsFilled} of {g.playerCount} seats taken
                     </span>
                   </span>
                   {pickingSeatFor === g.gameId ? (
@@ -361,9 +363,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
             past.map((g) => (
               <div key={g.gameId} className={styles.row}>
                 <span className={styles.grow}>
-                  {g.name} — {g.youWon ? "won" : "lost"} · {g.yourScore} pts
-                  {g.opponents.length > 0 &&
-                    ` vs ${g.opponents.map((o) => o.name).join(", ")}`}
+                  {against(g.opponents)} — {g.youWon ? "won" : "lost"} ·{" "}
+                  {g.yourScore} pts
                   <br />
                   <span className={styles.meta}>
                     {g.abandoned ? "someone quit" : `${g.tileCount} tiles`}

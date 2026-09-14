@@ -8,7 +8,6 @@ import {
 } from "../shared/config.js";
 import { drawNames, NAMES, robotName } from "../shared/names.js";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
-import { gameName } from "../shared/gameNames.js";
 import { cellKey, makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
 import {
@@ -318,9 +317,7 @@ export const createGame = mutation({
         )[0]
       : undefined;
 
-    const name = gameName(Math.random);
     const gameId = await ctx.db.insert("games", {
-      name,
       layout: pickLayout(),
       status: "lobby",
       boardSize: GAME.boardSize,
@@ -347,7 +344,7 @@ export const createGame = mutation({
       await wakeBot(ctx, gameId);
     }
 
-    return { gameId, name, playerCount: args.playerCount };
+    return { gameId, playerCount: args.playerCount };
   },
 });
 
@@ -432,7 +429,6 @@ export const createGameWithFriends = mutation({
 
     // Starts in the lobby: an invitation is an offer, not a seating.
     const gameId = await ctx.db.insert("games", {
-      name: gameName(Math.random),
       layout: pickLayout(),
       status: "lobby",
       boardSize: GAME.boardSize,
@@ -1476,7 +1472,6 @@ export const listMyGames = query({
         return {
           opponents: others,
           gameId: game._id,
-          name: game.name ?? "Game",
           status: game.status,
           playerCount: game.playerCount,
           tileCount: game.tileCount,
@@ -1571,7 +1566,6 @@ export const listOpenGames = query({
 
         return {
           gameId: game._id,
-          name: game.name ?? "Game",
           playerCount: game.playerCount,
           seatsFilled: seated.length,
           /** Who is waiting, as this viewer may see them, and which colour

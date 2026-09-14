@@ -83,7 +83,11 @@ export default defineSchema({
   }).index("by_game", ["gameId"]),
 
   games: defineTable({
-    /** A generated name, so games are tellable apart at a glance. */
+    /**
+     * No longer given to a player's game: the lobby tells games apart by who
+     * they are against. Games made before that keep the name they were dealt,
+     * and the bench writes its sweep tag here so a run can be read back.
+     */
     name: v.optional(v.string()),
     status: gameStatus,
     boardSize: v.number(),

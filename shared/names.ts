@@ -43,7 +43,7 @@ export const ROBOT_PREFIX = "Robo-";
  * serves a whole game, so a machine and an aliased person can never end up
  * under the same name.
  *
- * The rng is passed in the way `gameName` takes one, so a test can pin a draw.
+ * The rng is passed in, so a test can pin a draw.
  */
 export function drawNames(
   count: number,

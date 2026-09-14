@@ -13,7 +13,6 @@ export interface BotSeat {
 
 interface StartedGame {
   gameId: Id<"games">;
-  name: string;
   playerCount: number;
 }
 
