@@ -117,8 +117,8 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
           />
         </div>
         <p>
-          Playing <strong>every letter in your rack in one turn</strong> pays
-          a flat <strong>+{RACK_CLEAR_BONUS}</strong> on top of everything
+          <strong>Emptying a full rack</strong> pays a flat{" "}
+          <strong>+{RACK_CLEAR_BONUS}</strong> on top of everything
           else — so a plain {RACK.size}-letter word is worth chasing even with
           no square in reach.
         </p>
