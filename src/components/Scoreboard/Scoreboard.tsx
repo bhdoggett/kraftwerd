@@ -71,7 +71,13 @@ export function Scoreboard({
 
       {ordered.map((p) => (
         <div key={p.userId} className={styles.row}>
-          <span className={styles.dot} style={{ background: `var(--seat-${p.seat % 4})` }}>
+          <span
+            className={[
+              styles.dot,
+              p.seat === currentSeat && status === "active" ? styles.onTurn : "",
+            ].join(" ")}
+            style={{ background: `var(--seat-${p.seat % 4})` }}
+          >
             {p.score}
           </span>
           <span
@@ -83,11 +89,6 @@ export function Scoreboard({
             {p.name}
             {p.isYou && <span className={styles.you}> (you)</span>}
           </span>
-          {p.seat === currentSeat && status === "active" && (
-            <span className={styles.playing} aria-label="to play">
-              ▸
-            </span>
-          )}
           {/*
             How many tiles they are holding, once the bag can no longer top
             anyone up.

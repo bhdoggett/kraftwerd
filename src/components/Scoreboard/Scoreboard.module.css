@@ -103,10 +103,17 @@
   font-weight: 700;
 }
 
-/* And marked on the row itself, for the seat that is on the move. */
-.playing {
-  color: var(--accent);
-  font-size: 0.7rem;
+/*
+ * And marked on the row itself: a ring round the score of the seat on the
+ * move. An arrow used to sit between the name and the score, pointing at it;
+ * once the score moved into the dot, the arrow was left at the end of the row
+ * pointing at nothing, so the mark went onto the thing it is about. The gap in
+ * the panel's colour keeps the ring clear of the pill's own.
+ */
+.onTurn {
+  box-shadow:
+    0 0 0 2px var(--surface-raised),
+    0 0 0 4px var(--accent);
 }
 
 /*
