@@ -176,6 +176,7 @@ const SLURS = `
   nigga niggas niggaz
   fag fags
   faggot faggots
+  bulldyke bulldykes
   cunt cunts
   mulatto mulattoes mulattos
   yid yids
