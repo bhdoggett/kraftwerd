@@ -72,8 +72,13 @@ export function turnValue(
   variant: Variant,
   claimed: ReadonlySet<string>,
   before?: Board,
+  /**
+   * Whether the turn emptied a full rack, which pays `RACK_CLEAR_BONUS`. Only
+   * the caller holds the rack, the same split `scoreTurn` makes.
+   */
+  rackCleared = false,
 ): TurnValue {
-  const base = scoreTurn(board, placements, { before }).total;
+  const base = scoreTurn(board, placements, { before, rackCleared }).total;
 
 
   if (variant.multiplier === "none") return { score: base, doubled: [] };

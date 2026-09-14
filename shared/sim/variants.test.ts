@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { RACK_CLEAR_BONUS } from "../config";
 import { makeBoard } from "../engine/board";
 import { applyPlacements } from "../engine/legality";
 import type { Placement } from "../engine/score";
@@ -64,5 +65,20 @@ describe("what a turn is worth", () => {
      * that was already somebody's looks newly closed and pays 4 again.
      */
     expect(turnValue(after, placements, PLAIN, new Set(), board).score).toBe(6);
+  });
+
+  test("a turn that empties a full rack collects the bonus on top", () => {
+    const board = makeBoard([..."OATS"].map((letter, i) => ({
+      x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
+    })));
+    const placements: Placement[] = [{ x: 5, y: 7, letter: "C", isBlank: false }];
+    const after = applyPlacements(board, placements);
+
+    // COATS is five points either way. Only the caller holds the rack, so only
+    // the caller can say this C was the last of a full one -- and the simulator
+    // never did, which left every game it played short of the rule that ships.
+    expect(turnValue(after, placements, PLAIN, new Set(), board, true).score)
+      .toBe(5 + RACK_CLEAR_BONUS);
+    expect(turnValue(after, placements, PLAIN, new Set(), board, false).score).toBe(5);
   });
 });

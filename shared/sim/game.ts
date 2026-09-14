@@ -213,7 +213,19 @@ export function playGame(
     // extended is read in full, and the before-board is the only record of what
     // a stacked tile landed on. This used to pass the pre-move board as the
     // first argument and nothing as the last, and so got both halves wrong.
-    const { score, doubled } = turnValue(board, move.placements, variant, claimed, boardBefore);
+    //
+    // A turn that empties a full rack pays the bonus, exactly as
+    // convex/games.ts decides it: every letter went down, and blanks -- a
+    // separate allowance, never part of the rack -- neither count nor spoil
+    // it. Paid here and not in `scoreOf`, because the live bot ranks its moves
+    // without it too: it collects the bonus when it happens rather than
+    // hunting for it.
+    const rackCleared =
+      player.letters.length === RACK.size &&
+      move.placements.filter((p) => !p.isBlank).length === player.letters.length;
+    const { score, doubled } = turnValue(
+      board, move.placements, variant, claimed, boardBefore, rackCleared,
+    );
     for (const letter of doubled) claimed.add(letter);
     for (const p of move.placements) {
       if (!p.isBlank && RARE.includes(p.letter)) rarePlayed.push(p.letter);
