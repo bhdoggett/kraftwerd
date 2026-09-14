@@ -63,6 +63,7 @@
 .diagrams {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-5);
+  /* --space-6: the scale skips 5, and a missing token dropped the gap to 0. */
+  gap: var(--space-6);
   margin: var(--space-3) 0 var(--space-4);
 }
