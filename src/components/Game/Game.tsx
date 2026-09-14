@@ -30,7 +30,11 @@ import { moveStagedTo, stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
 import { followPointer } from "../../lib/followPointer";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
-import { playsSinceYourTurn } from "../../lib/recap";
+import {
+  latestPlayByOthers,
+  playsInHistorySinceYourTurn,
+  playsSinceYourTurn,
+} from "../../lib/recap";
 import { TwoLetterWordsDialog } from "../TwoLetterWords/TwoLetterWords";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
 
@@ -194,11 +198,33 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   /**
    * How far this turn's replay has got. Phase 0 is the board as you left it,
    * phase i is the board with the i-th play since then added, and past the
-   * last play it is over. Kept rather than the boards themselves -- those are
+   * last play it is `done`. Kept rather than the boards themselves -- those are
    * worked out while rendering -- and keyed by the turn, so a new turn starts
    * again from phase 0 without anything having to reset it.
    */
-  const [recapStep, setRecapStep] = useState<{ turn: number; step: number } | null>(null);
+  const [recapStep, setRecapStep] = useState<{
+    turn: number;
+    step: number;
+    done: boolean;
+  } | null>(null);
+
+  /**
+   * The turn the game was on when this page opened it. Plays from then on were
+   * watched as they landed, so they are shown as they happen and never
+   * replayed; only what came before is news to catch up on. Keyed by game,
+   * since the page can move to another game without being made again, and set
+   * while rendering so the first frame with a game already knows it.
+   */
+  const [openedAt, setOpenedAt] = useState<{ gameId: Id<"games">; turn: number } | null>(
+    null,
+  );
+  if (view && openedAt?.gameId !== gameId) {
+    setOpenedAt({ gameId, turn: view.game.turnNumber });
+  }
+  const openedAtTurn = openedAt?.gameId === gameId ? openedAt.turn : undefined;
+
+  /** The newest play watched live that has had its moment. */
+  const [liveShown, setLiveShown] = useState(-1);
   const [submitting, setSubmitting] = useState(false);
 
   /**
@@ -410,11 +436,39 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   /** What was played while you were away, a play at a time, oldest first. */
   const playsSinceYou = useMemo(
     () =>
-      view === undefined || view === null
+      view === undefined || view === null || openedAtTurn === undefined
         ? []
-        : playsSinceYourTurn(view.tiles, view.viewerUserId),
+        : playsSinceYourTurn(view.tiles, view.viewerUserId).filter(
+            (p) => p.turnNumber < openedAtTurn,
+          ),
+    [view, openedAtTurn],
+  );
+
+  /*
+   * A play landing while you watch is shown as it lands -- the ring and the
+   * card on the live board, no rewind -- rather than saved up for a replay.
+   * Not your own: you know what you just played.
+   */
+  const latestTheirs = useMemo(
+    () => (view ? latestPlayByOthers(view.tiles, view.viewerUserId) : null),
     [view],
   );
+  const livePlay =
+    !reviewing &&
+    latestTheirs !== null &&
+    openedAtTurn !== undefined &&
+    latestTheirs.turnNumber >= openedAtTurn &&
+    latestTheirs.turnNumber > liveShown
+      ? latestTheirs
+      : null;
+  const liveTurn = livePlay?.turnNumber;
+
+  // Its moment is a play's length; a newer play landing sooner replaces it.
+  useEffect(() => {
+    if (liveTurn === undefined) return;
+    const done = setTimeout(() => setLiveShown(liveTurn), RECAP_PLAY_MS);
+    return () => clearTimeout(done);
+  }, [liveTurn]);
 
   const yourTurn =
     view?.game.status === "active" &&
@@ -422,8 +476,9 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     view.yourSeat === view.game.currentSeat;
 
   const turnNow = view?.game.turnNumber;
-  const recapPhase =
-    recapStep !== null && recapStep.turn === turnNow ? recapStep.step : 0;
+  const recapState =
+    recapStep !== null && recapStep.turn === turnNow ? recapStep : null;
+  const recapPhase = recapState?.step ?? 0;
 
   /*
    * Whether there is a replay to give. Shown once, as the turn opens: a
@@ -432,10 +487,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * one just before yours -- the board re-read in the order it was built.
    */
   const recapWanted =
-    yourTurn &&
-    !reviewing &&
-    playsSinceYou.length > 0 &&
-    recapPhase <= playsSinceYou.length;
+    yourTurn && !reviewing && playsSinceYou.length > 0 && recapState?.done !== true;
 
   /*
    * The turn history, fetched while it is being reviewed and while a recap is
@@ -444,19 +496,40 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    */
   const history = useQuery(
     api.games.listTurns,
-    reviewing || recapWanted ? { gameId } : "skip",
+    reviewing || recapWanted || livePlay !== null ? { gameId } : "skip",
   );
+
+  /*
+   * The plays to replay, read off the history rather than the board: the board
+   * only says who owns each square now, so a tile the next play built on would
+   * count as that play's, and the play that laid it would land with no ring.
+   */
+  const viewerId = view?.viewerUserId;
+  const replayPlays = useMemo(
+    () =>
+      history === undefined || viewerId === undefined || openedAtTurn === undefined
+        ? null
+        : playsInHistorySinceYourTurn(history, viewerId).filter(
+            (p) => p.turnNumber < openedAtTurn,
+          ),
+    [history, viewerId, openedAtTurn],
+  );
+  const replayCount = replayPlays?.length ?? 0;
 
   /*
    * The replay runs off the history, because rewinding a stacked square means
    * knowing the tile that was under it -- so it starts once the history is
-   * here, rather than on a board it cannot rebuild.
+   * here, rather than on a board it cannot rebuild. Until then the board holds
+   * at the rewound position it can work out without it.
    */
-  const recapping = recapWanted && history !== undefined;
+  const recapLoading = recapWanted && history === undefined;
+  const recapping = recapWanted && replayCount > 0;
+  /** Whether the board on screen is anything but the live one. */
+  const recapActive = recapLoading || recapping;
 
   /** The play being added right now: none before the first, none after the last. */
   const recapPlay =
-    recapping && recapPhase > 0 ? playsSinceYou[recapPhase - 1] : undefined;
+    recapping && recapPhase > 0 ? replayPlays?.[recapPhase - 1] : undefined;
 
   /** That play in words: who made it, what it spelled and what it scored. */
   const recapTurn =
@@ -464,21 +537,31 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
       ? undefined
       : history?.find((t) => t.turnNumber === recapPlay.turnNumber);
 
+  /** What the card over the board speaks for: the play being replayed, or the one just watched. */
+  const noteTurn =
+    recapTurn ??
+    (livePlay === null
+      ? undefined
+      : history?.find((t) => t.turnNumber === livePlay.turnNumber));
+
   // All the timer does is move the replay on a phase, and past the last, end it.
   useEffect(() => {
     if (!recapping || turnNow === undefined) return;
     const next = setTimeout(
-      () => setRecapStep({ turn: turnNow, step: recapPhase + 1 }),
+      () =>
+        setRecapStep({
+          turn: turnNow,
+          step: recapPhase + 1,
+          done: recapPhase >= replayCount,
+        }),
       recapPhase === 0 ? RECAP_LEAD_MS : RECAP_PLAY_MS,
     );
     return () => clearTimeout(next);
-  }, [recapping, turnNow, recapPhase]);
+  }, [recapping, turnNow, recapPhase, replayCount]);
 
   /** Any press on the board ends the replay: it must never stand between you and your turn. */
   const skipRecap = () => {
-    if (turnNow !== undefined) {
-      setRecapStep({ turn: turnNow, step: playsSinceYou.length + 1 });
-    }
+    if (turnNow !== undefined) setRecapStep({ turn: turnNow, step: 0, done: true });
   };
 
   // A turn is mostly thinking, so the screen should not dim mid-thought.
@@ -875,7 +958,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * the way a review is, which is what gives a stacked square back the tile
    * it had before.
    */
-  const recapFrom = recapPlay ?? playsSinceYou[0];
+  const recapFrom = recapPlay ?? replayPlays?.[0];
   const recapAt =
     recapping && recapFrom !== undefined
       ? turns.findIndex((t) => t.turnNumber === recapFrom.turnNumber)
@@ -889,8 +972,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * the tile it had -- only the history knows that -- but it means a refresh
    * never shows the finished board first and then takes the plays away.
    */
-  const recapCells =
-    recapWanted && !recapping
+  const recapCells = recapLoading
       ? new Set(playsSinceYou.flatMap((p) => [...p.cells]))
       : null;
   const liveTiles =
@@ -906,7 +988,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * blank waiting for a letter and its score all stand down until the live
    * board is back, since they point at squares that board has yet to reach.
    */
-  const showDraft = !reviewing && !recapWanted;
+  const showDraft = !reviewing && !recapActive;
   const lastTurn = step > 0 ? turns[step - 1] : undefined;
 
   /*
@@ -964,7 +1046,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             measured against. */}
         <div
           className={styles.boardArea}
-          onPointerDownCapture={recapWanted ? skipRecap : undefined}
+          onPointerDownCapture={recapActive ? skipRecap : undefined}
         >
           <Board
             boardSize={game.boardSize}
@@ -983,7 +1065,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
             awaitingBlankAt={showDraft ? blankAt : null}
             goodCells={showDraft ? wordCells.good : undefined}
             badCells={showDraft ? wordCells.bad : undefined}
-            recentCells={recapPlay?.cells}
+            recentCells={recapPlay?.cells ?? livePlay?.cells}
             onGrabStaged={!reviewing ? grabStaged : undefined}
           />
 
@@ -999,16 +1081,16 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           {/* The recap lights up where a play went; this says who made it and
               what it scored -- the words are on the board already. Keyed by
               the turn, so each play in the sequence pops in as its own. */}
-          {recapTurn !== undefined && (
+          {noteTurn !== undefined && (
             <div
-              key={recapTurn.turnNumber}
+              key={noteTurn.turnNumber}
               className={styles.recapNote}
-              data-seat={seatOf.get(recapTurn.userId)}
+              data-seat={seatOf.get(noteTurn.userId)}
               role="status"
               aria-live="polite"
             >
-              <span>{recapTurn.name}</span>
-              <span className={styles.recapPoints}>+{recapTurn.score}</span>
+              <span>{noteTurn.name}</span>
+              <span className={styles.recapPoints}>+{noteTurn.score}</span>
             </div>
           )}
 

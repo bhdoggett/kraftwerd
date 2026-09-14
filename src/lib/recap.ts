@@ -51,3 +51,63 @@ export function playsSinceYourTurn(
     .sort(([a], [b]) => a - b)
     .map(([turnNumber, cells]) => ({ turnNumber, cells }));
 }
+
+/**
+ * The latest play by anyone but you, as the squares it covers.
+ *
+ * For a play landing while you watch: it is the newest thing on the board, so
+ * every tile it laid is on top and the board alone says where it went. Null
+ * when nobody else has played.
+ */
+export function latestPlayByOthers(
+  tiles: readonly PlacedTile[],
+  you: string,
+): RecapPlay | null {
+  const theirs = tiles.filter((t) => t.placedBy !== you);
+  if (theirs.length === 0) return null;
+
+  const turnNumber = theirs.reduce((max, t) => Math.max(max, t.turnNumber), 0);
+  return {
+    turnNumber,
+    cells: new Set(
+      theirs.filter((t) => t.turnNumber === turnNumber).map((t) => cellKey(t.x, t.y)),
+    ),
+  };
+}
+
+/** A turn as the history reports it: whose it was, and where its tiles went. */
+interface HistoryTurn {
+  turnNumber: number;
+  userId: string;
+  placements: readonly { x: number; y: number }[];
+}
+
+/**
+ * The same plays, read off the turn history rather than the board.
+ *
+ * The board only says who owns each square now: a tile the next play built on
+ * counts as the next play's, and a play covered entirely is gone from it. The
+ * history remembers every placement, which is what a replay that rewinds the
+ * board needs to mark each play where it actually went.
+ *
+ * "Since your turn" is your last turn of any kind here -- a trade or a pass
+ * was still a turn you saw the board on. Before your first, it is the play
+ * before yours on its own, as it is for the board.
+ */
+export function playsInHistorySinceYourTurn(
+  turns: readonly HistoryTurn[],
+  you: string,
+): RecapPlay[] {
+  const yours = turns.filter((t) => t.userId === you).map((t) => t.turnNumber);
+  const played = turns
+    .filter((t) => t.placements.length > 0)
+    .sort((a, b) => a.turnNumber - b.turnNumber);
+
+  const since = yours.length > 0 ? Math.max(...yours) : null;
+  const plays = since === null ? played.slice(-1) : played.filter((t) => t.turnNumber > since);
+
+  return plays.map((t) => ({
+    turnNumber: t.turnNumber,
+    cells: new Set(t.placements.map((p) => cellKey(p.x, p.y))),
+  }));
+}
