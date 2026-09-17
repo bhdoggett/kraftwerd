@@ -33,8 +33,8 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { currentUser, refuseGuest, requireUser } from "./auth_helpers";
-import { friendIdsOf, namesFor } from "./seats";
-import { rowsBetween } from "./friends";
+import { friendIdsOf, namesFor, seatOf } from "./seats";
+import { askToBeFriends, rowsBetween } from "./friends";
 import { placement } from "./schema";
 
 /**
@@ -153,20 +153,6 @@ export async function seatedAt(ctx: QueryCtx | MutationCtx, gameId: Id<"games">)
     .query("players")
     .withIndex("by_game", (q) => q.eq("gameId", gameId))
     .take(GAME.maxPlayers);
-}
-
-/** This person's seat at a game, or null if they have none. */
-async function seatOf(
-  ctx: QueryCtx | MutationCtx,
-  gameId: Id<"games">,
-  userId: Id<"users">,
-) {
-  return await ctx.db
-    .query("players")
-    .withIndex("by_game_and_user", (q) =>
-      q.eq("gameId", gameId).eq("userId", userId),
-    )
-    .unique();
 }
 
 /** Whoever sits in `seat`, or null if nobody does. */
@@ -511,17 +497,21 @@ export const joinGame = mutation({
     await joinSeat(ctx, args.gameId, userId, seat, "joined", alias);
 
     /*
-     * Sitting down together is itself the introduction, so no request is
-     * needed: everyone already at the table becomes a friend, which is what
-     * makes a second game possible without passing another link around.
+     * The link is an invitation, and an invitation carries a request to be
+     * friends -- from whoever sent it, to whoever followed it. A request, not
+     * a friendship: ignore it and the game plays out exactly the same. Sitting
+     * down used to settle it for you, everyone at the table at once, which
+     * decided something on your behalf that you never agreed to.
      *
-     * Not at a public game. There the link was a list anyone can read, and
-     * the whole point of the aliases is that these people have not met.
+     * Only the maker. The others at the table did not invite you, and asking
+     * on their behalf would be the same presumption in a smaller coat -- two
+     * guests of the same host ask each other from inside the game, or not.
+     *
+     * Not at a public game at all. There the link was a list anyone can read,
+     * and the whole point of the aliases is that these people have not met.
      */
     if (game.isPublic !== true) {
-      for (const other of players) {
-        await befriend(ctx, userId, other.userId);
-      }
+      await askToBeFriends(ctx, game.createdBy, userId);
     }
 
     // Last seat taken: the game starts.
@@ -552,29 +542,6 @@ async function requireFriendship(
   if (edge?.status !== "accepted") {
     throw new ConvexError("You are not friends with that player");
   }
-}
-
-/**
- * Link the two players as friends, unless they already are. Idempotent, and
- * safe in either direction: a pending request from either side is accepted
- * rather than duplicated.
- */
-async function befriend(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
-  if (a === b) return;
-
-  const existing = await friendshipBetween(ctx, a, b);
-  if (existing !== null) {
-    if (existing.status !== "accepted") {
-      await ctx.db.patch("friendships", existing._id, { status: "accepted" });
-    }
-    return;
-  }
-
-  await ctx.db.insert("friendships", {
-    requesterId: a,
-    addresseeId: b,
-    status: "accepted",
-  });
 }
 
 /**

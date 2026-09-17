@@ -20,6 +20,28 @@ import { displayName } from "./auth_helpers";
 const FRIEND_ROWS = 500;
 
 /**
+ * This person's seat at a game, or null if they have none.
+ *
+ * Here rather than in games.ts because two modules ask it and neither may
+ * import the other: games.ts reads it to refuse a move from somebody who is
+ * not playing, friends.ts to refuse a request between two people who never
+ * sat at the same table. "Who is at this game" is a seat question, and this
+ * is the module that answers those.
+ */
+export async function seatOf(
+  ctx: QueryCtx,
+  gameId: Id<"games">,
+  userId: Id<"users">,
+) {
+  return await ctx.db
+    .query("players")
+    .withIndex("by_game_and_user", (q) =>
+      q.eq("gameId", gameId).eq("userId", userId),
+    )
+    .unique();
+}
+
+/**
  * Who a viewer already knows.
  *
  * Loaded once per read rather than once per player: `getGame` is the hottest

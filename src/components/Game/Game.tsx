@@ -500,6 +500,19 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   );
 
   /*
+   * Where you stand with the other people at this table, for the invite under
+   * Review turns: friends already, asked, asking, or nothing yet. Read only
+   * while that panel is open -- most turns never ask, and friendships are kept
+   * out of the board's own subscription on purpose (see `getGame`).
+   */
+  const friendStates = useQuery(
+    api.friends.statesAt,
+    reviewing ? { gameId } : "skip",
+  );
+  const inviteFriend = useMutation(api.friends.inviteFromGame);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  /*
    * The plays to replay, read off the history rather than the board: the board
    * only says who owns each square now, so a tile the next play built on would
    * count as that play's, and the play that laid it would land with no ring.
@@ -1157,6 +1170,57 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                     : describeTurn(lastTurn)}
                 </span>
               </>
+            )}
+
+            {/*
+              An invitation gathers people who may not know each other: it
+              asked each of them, and could not ask on their behalf. This is
+              where they get to. Nothing here at a game with strangers, where
+              the aliases mean these people have not met -- the query returns
+              nobody for one.
+            */}
+            {friendStates !== undefined && friendStates.length > 0 && (
+              <div className={styles.reviewFriends}>
+                {friendStates.map((who) => {
+                  const name =
+                    view.players.find((p) => p.userId === who.userId)?.name ??
+                    "Player";
+
+                  if (who.state === "friends") return null;
+                  if (who.state === "asked") {
+                    return (
+                      <span key={who.userId} className={styles.reviewSays}>
+                        Friend invite sent to {name}
+                      </span>
+                    );
+                  }
+                  if (who.state === "asking") {
+                    return (
+                      <span key={who.userId} className={styles.reviewSays}>
+                        {name} sent you a friend invite — answer it in Friends
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={who.userId}
+                      type="button"
+                      className={styles.reviewFriend}
+                      onClick={() => {
+                        setInviteError(null);
+                        void inviteFriend({ gameId, userId: who.userId }).catch(
+                          (err: unknown) => setInviteError(userMessage(err)),
+                        );
+                      }}
+                    >
+                      Send friend invite to {name}
+                    </button>
+                  );
+                })}
+                {inviteError !== null && (
+                  <span className={styles.reviewSays}>{inviteError}</span>
+                )}
+              </div>
             )}
           </div>
         )}

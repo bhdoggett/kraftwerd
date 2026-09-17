@@ -831,22 +831,42 @@ describe("joining by link", () => {
     ).rejects.toThrow("already started");
   });
 
-  test("joining by link makes everyone at the table friends", async () => {
+  test("joining by link asks the maker to be friends, rather than deciding it", async () => {
     const { gameId, asHost, asGuest, asThird } = await lobbyGame(3);
 
     await asGuest.mutation(api.games.joinGame, { gameId });
     await asThird.mutation(api.games.joinGame, { gameId });
 
-    // All three can now start a game with each other without another link.
-    for (const who of [asHost, asGuest, asThird]) {
+    // The link carries the request; sitting down at the table does not answer
+    // it. Ignore it and the game plays out exactly the same.
+    const host = await asHost.query(api.friends.listFriends);
+    expect(host.friends).toHaveLength(0);
+    expect(host.outgoing).toHaveLength(2);
+
+    for (const who of [asGuest, asThird]) {
       const list = await who.query(api.friends.listFriends);
-      expect(list.friends).toHaveLength(2);
-      expect(list.incoming).toHaveLength(0);
-      expect(list.outgoing).toHaveLength(0);
+      expect(list.friends).toHaveLength(0);
+      expect(list.incoming).toHaveLength(1);
+      expect(list.incoming[0]?.name).toBe("Host");
     }
   });
 
-  test("joining someone you already asked accepts, rather than duplicating", async () => {
+  test("two guests of the same host are left strangers to each other", async () => {
+    const { gameId, asGuest, asThird } = await lobbyGame(3);
+
+    await asGuest.mutation(api.games.joinGame, { gameId });
+    await asThird.mutation(api.games.joinGame, { gameId });
+
+    // Neither asked the other, and the host cannot ask on their behalf: this
+    // is the gap the invite under Review turns exists to close.
+    for (const who of [asGuest, asThird]) {
+      const list = await who.query(api.friends.listFriends);
+      expect(list.outgoing).toHaveLength(0);
+      expect(list.incoming).toHaveLength(1);
+    }
+  });
+
+  test("joining someone who already asked you leaves the one request standing", async () => {
     const { t, gameId, asHost, asGuest } = await lobbyGame(2);
     const [host, guest] = await t.run(async (ctx) => {
       const rows = await ctx.db.query("users").take(5);
@@ -862,9 +882,11 @@ describe("joining by link", () => {
 
     await asGuest.mutation(api.games.joinGame, { gameId });
 
+    // Joining is not answering: the request the host already sent is still
+    // theirs to accept, and joining neither duplicates nor settles it.
     const list = await asHost.query(api.friends.listFriends);
-    expect(list.friends).toHaveLength(1);
-    expect(list.outgoing).toHaveLength(0);
+    expect(list.friends).toHaveLength(0);
+    expect(list.outgoing).toHaveLength(1);
   });
 
   test("you cannot take two seats", async () => {
