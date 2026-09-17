@@ -232,10 +232,21 @@
     var(--cell-inset);
 }
 
-/* The Ledger crosshair. `content: none` on the blueprint board suppresses
-   this box entirely, so the two marks never fight. */
+/*
+ * The Ledger crosshair. `content: none` on the blueprint board suppresses
+ * this box entirely, so the two marks never fight. `grid-area: cell`
+ * matters here the same way it does on .glyph below: with no explicit
+ * area, a pseudo-element that isn't the cell's only content falls through
+ * to grid auto-placement and lands in a fresh implicit row of its own,
+ * stacked under the diamond rather than centred on top of it.
+ */
 .centre::after {
   content: var(--centre-mark-content, none);
+  grid-area: cell;
+  /* Grid items paint in DOM order without this: ::before is the cell's
+     first child and ::after its last, but empirically the diamond still
+     painted over the crosshair until this said otherwise outright. */
+  z-index: 1;
   font-family: var(--font-tile);
   font-weight: 600;
   font-size: calc(var(--cell-size) * 0.5);
@@ -244,19 +255,33 @@
 }
 
 /*
- * A double-word square, one in from each corner: reaching one pays for
- * stretching a word all the way out rather than clustering near the
- * centre. Play's own green, not a colour of its own -- a bonus square
- * shares that "good thing is happening" reading with the word-validity
- * feedback it sits next to on the same board. Single-use by construction:
- * this class only ever lands on an `empty` cell (see Board.tsx), so the
- * diamond is gone for good the moment any tile -- this turn's or a much
- * later one -- covers it, with no separate "spent" flag to track.
+ * A double-word square, one in from each corner and at the centre:
+ * reaching a corner one pays for stretching a word all the way out rather
+ * than clustering near the middle. Play's own green, not a colour of its
+ * own -- a bonus square shares that "good thing is happening" reading with
+ * the word-validity feedback it sits next to on the same board. Single-use
+ * by construction: this class only ever lands on an `empty` cell (see
+ * Board.tsx), so the diamond is gone for good the moment any tile -- this
+ * turn's or a much later one -- covers it, with no separate "spent" flag
+ * to track.
+ *
+ * `::before`, not `::after`: the centre square is a bonus square too now,
+ * and its own marker (the ring/crosshair above) already owns `::after` --
+ * a single element only gets one of each, so the two markers need
+ * separate pseudo-elements to coexist there.
+ *
+ * Sized off --cell-size directly rather than a percentage: this cell's
+ * only track in each axis is `auto`, and an auto grid track sizes to fit
+ * its content rather than stretching to fill the cell, so a percentage
+ * here resolved circularly and gave the two axes different pixel values --
+ * a "diamond" that was actually a sideways sliver. --cell-size is the same
+ * fixed length regardless of axis, so both sides always agree.
  */
-.bonus::after {
+.bonus::before {
   content: "";
-  width: 44%;
-  height: 44%;
+  grid-area: cell;
+  width: calc(var(--cell-size) * 0.32);
+  height: calc(var(--cell-size) * 0.32);
   background: var(--play);
   transform: rotate(45deg);
 }

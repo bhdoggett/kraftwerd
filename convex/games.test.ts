@@ -97,8 +97,9 @@ describe("placeTiles", () => {
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
     });
 
-    // Four 2-letter words (8) plus the square (4).
-    expect(result).toEqual({ score: 12, squares: [2] });
+    // Four 2-letter words (8, doubled to 12 -- the two crossing the centre
+    // bonus square pay double) plus the square (4).
+    expect(result).toEqual({ score: 16, squares: [2] });
 
     const player = await t.run(async (ctx) =>
       ctx.db
@@ -108,7 +109,7 @@ describe("placeTiles", () => {
         )
         .unique(),
     );
-    expect(player?.score).toBe(12);
+    expect(player?.score).toBe(16);
   });
 
   test("refills the rack back to full after a play", async () => {
@@ -376,8 +377,9 @@ describe("placeTiles", () => {
       ],
     });
 
-    // Four 2-letter words and 4 for the square: the blank pays its way.
-    expect(result).toEqual({ score: 12, squares: [2] });
+    // Four 2-letter words (8, doubled to 12 -- the two crossing the centre
+    // bonus square pay double) plus 4 for the square: the blank pays its way.
+    expect(result).toEqual({ score: 16, squares: [2] });
   });
 });
 
@@ -459,8 +461,10 @@ describe("end of game", () => {
     const aliceRow = players.find((p) => p.userId !== bob);
 
     // Each scored a two-letter word and neither was charged for what was left
-    // in hand: going out settles nothing, it only sets the last turn.
-    expect(aliceRow?.score).toBe(2);
+    // in hand: going out settles nothing, it only sets the last turn. Alice's
+    // doubles: hers is the opening play, and the centre is a bonus square.
+    // Bob's crosses the same square a turn later, already spent by then.
+    expect(aliceRow?.score).toBe(4);
     expect(bobRow?.score).toBe(2);
   });
 
@@ -596,7 +600,8 @@ describe("resigning and stats", () => {
       "O",
     ]);
 
-    // Alice scores 8, then quits anyway.
+    // Alice's opening 2x2 (16, the centre bonus doubling two of its four
+    // words), then she quits anyway.
     await asAlice.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
@@ -613,7 +618,7 @@ describe("resigning and stats", () => {
     expect(users.alice?.wins ?? 0).toBe(0);
     expect(users.bob?.wins).toBe(1);
     // The score still counts toward personal bests.
-    expect(users.alice?.bestGameScore).toBe(12);
+    expect(users.alice?.bestGameScore).toBe(16);
   });
 
   test("records the best single turn as it happens", async () => {
@@ -630,7 +635,7 @@ describe("resigning and stats", () => {
     });
 
     const user = await t.run(async (ctx) => ctx.db.get("users", alice));
-    expect(user?.bestTurnScore).toBe(12);
+    expect(user?.bestTurnScore).toBe(16);
   });
 
   test("counts a game for everyone who played, won or not", async () => {
@@ -1897,7 +1902,8 @@ describe("turn history", () => {
     // which is exactly how a skipped turn reads to the player waiting on it.
     const history = await asAlice.query(api.games.listTurns, { gameId });
     expect(history.map((h) => h.kind)).toEqual(["play", "trade", "pass"]);
-    expect(history[0]).toMatchObject({ score: 2, seat: 0 });
+    // Doubled: the opening play, and the centre is a bonus square.
+    expect(history[0]).toMatchObject({ score: 4, seat: 0 });
     expect(history[1]).toMatchObject({ score: 0, seat: 1 });
   });
 
