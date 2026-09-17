@@ -386,9 +386,19 @@ them; what moves is their *share* of a bigger pool, not their raw count.
 
 ### 5.2 Dictionary
 
+**The word list is part of the rules — `RULES_VERSION` 6.** Which words play
+decides what a rack is worth and what a board can become, so a score set
+against a different dictionary is not competing with one set against this
+list, any more than a score from a different bag is. Two changes went by
+unstamped before this was written down (SCOWL to ENABLE + 12dicts, and the
+line-ending fix below), which is why `shared/config.ts` now records
+`DICTIONARY_WORDS` and `shared/dictionary-version.test.ts` holds the shipped
+list to it: rebuild the dictionary and that test goes red, which is the moment
+to decide what the change is worth.
+
 **Source: ENABLE + 12dicts' `3of6game`**, vendored directly in
 `vendor/wordlists/` (see `ATTRIBUTION.md` there) and built by
-`scripts/build-dictionary.mjs` into `shared/data/words.json` — 172,788 words.
+`scripts/build-dictionary.mjs` into `shared/data/words.json` — 175,800 words.
 Both are explicit public domain; neither author requires credit as a licence
 condition, but both ask for it, kept in the vendored attribution file and
 copied alongside the generated data as `WORDLIST-ATTRIBUTION.md`, the same
@@ -425,11 +435,13 @@ those readings are the primary, everyday one; `TRANNY` does not, since unlike
 them its slur sense reads as the primary one today, "transmission" or not.
 Switching sources turned up one slur `SCOWL` did not carry at all —
 `NIGGAZ`, a spelling variant that 12dicts' `3of6game` lists as a neologism —
-added to the filter alongside it. Not exhaustive. Add to it when a game turns
-one up.
+added to the filter alongside it. `BULLDYKE` followed once the line-ending fix
+let `3of6game` contribute at all: the filter had never been tested against a
+word from that source, since none had ever arrived. Not exhaustive. Add to it
+when a game turns one up.
 
 Word counts by length roughly doubled against the old SCOWL-60 dictionary —
-109 two-letter words (unchanged; see below), 972 three-letter, 3,894
+109 two-letter words (unchanged; see below), 1,000 three-letter, 3,953
 four-letter, against 670 and 2,573 before. The historical tier-by-tier 2×2/3×3
 measurements this section used to carry described a SCOWL cut that no longer
 ships and have not been re-run against the new source; the two-letter finding

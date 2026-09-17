@@ -221,8 +221,15 @@ copyFileSync(join(VENDOR, "ATTRIBUTION.md"), join(outDir, "WORDLIST-ATTRIBUTION.
 // than derived from this dictionary, so it does not depend on which sources
 // are built and survives a rebuild untouched.
 
+// The word list is part of the rules (design.md §5.2), and a rebuild is where
+// it changes -- so this is where to say so, rather than in a test somebody
+// reads after the fact.
 const byLength = (n) => sorted.filter((w) => w.length === n).length;
 console.log(`${sorted.length} words`);
+console.log(
+  `  if that moved: update DICTIONARY_WORDS in shared/config.ts and bump\n` +
+    `  RULES_VERSION with it -- a different dictionary is different rules.`,
+);
 console.log(`  2-letter: ${byLength(2)}`);
 console.log(`  3-letter: ${byLength(3)}`);
 console.log(`  4-letter: ${byLength(4)}`);

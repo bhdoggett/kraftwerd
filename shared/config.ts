@@ -64,8 +64,25 @@ export const BLANKS_PER_GAME = 3;
  *    letters that are good at turning one word on the board into another.
  *    A bigger bag deals a longer game, and the mix is not a rescale of the
  *    old one, so scores under 4 do not compete with these.
+ * 6: the word list, which is part of the rules and had not been treated as
+ *    it. Which words play decides what a rack is worth and what a board can
+ *    become, so a score set against a different dictionary is not competing
+ *    with these -- as surely as one set from a different bag. Two changes
+ *    had already gone by unstamped: SCOWL's 76,911 words to ENABLE +
+ *    12dicts' 172,788, and then 175,800 when a line-ending bug stopped
+ *    dropping the second source. This version is that list.
  */
-export const RULES_VERSION = 5;
+export const RULES_VERSION = 6;
+
+/**
+ * How many words the shipped dictionary holds.
+ *
+ * Written down so a rebuild cannot change the language quietly:
+ * shared/dictionary-version.test.ts holds shared/data/words.json to this
+ * number and goes red the moment the list moves. Update it and RULES_VERSION
+ * together -- that red is the reminder the word list is part of the rules.
+ */
+export const DICTIONARY_WORDS = 175800;
 
 /**
  * How long an invite link works for. Long enough to sit in a message over a
