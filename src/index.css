@@ -91,13 +91,11 @@
   /* The hatch alone was too close in value to an empty square at a glance --
      the ring is what makes "blocked" readable before the pattern is. */
   --blocked-ring: inset 0 0 0 1px #6090a9;
-  /* The centre marker is a drawn crosshair now, not a wash -- see
-     .centre::after in Board.module.css. No fill or ring of its own, so it
-     reads as a mark on the paper rather than a different square. */
+  /* No fill or ring of its own any more -- the centre is a bonus square
+     now (shared/boards.ts) and the diamond that marks one is enough on
+     its own, the same as it is at every corner. */
   --centre-fill: var(--cell-empty);
   --centre-ring: transparent;
-  --centre-mark-content: "+";
-  --centre-mark-color: #56707f;
 
   /*
    * Tiles are lit signs: a saturated face with the letter cut out of it in
@@ -264,8 +262,6 @@
        so the centre marker says its piece in line rather than in fill. */
     --centre-fill: var(--cell-empty);
     --centre-ring: var(--full-pacific);
-    /* No crosshair here -- the ring above already marks the centre. */
-    --centre-mark-content: none;
     --board-frame: var(--border-strong);
 
     /* The faces do not change: that is the point of choosing them this way. */
@@ -349,7 +345,6 @@
   --blocked-ring: inset 0 0 0 1px #2a2a35;
   --centre-fill: var(--cell-empty);
   --centre-ring: var(--full-pacific);
-  --centre-mark-content: none;
   --board-frame: var(--border-strong);
 
   /* The faces do not change: that is the point of choosing them this way. */
