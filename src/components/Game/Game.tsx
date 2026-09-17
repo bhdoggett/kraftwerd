@@ -282,13 +282,17 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
     me?.letters?.length === RACK.size &&
     pending.filter((p) => p.from.kind === "letter").length === RACK.size;
 
-  const preview = useMemo(
-    () =>
-      boards && placements.length > 0
-        ? scoreTurn(boards.after, placements, { before: boards.before, rackCleared })
-        : null,
-    [boards, placements, rackCleared],
-  );
+  const preview = useMemo(() => {
+    if (!boards || placements.length === 0 || !view) return null;
+    // Mirrors the server's own boardShape(game): bonus squares are the same
+    // regardless of layout, so the live preview and the played score agree.
+    const shape = boardShapeNamed(view.layout, view.game.boardSize);
+    return scoreTurn(boards.after, placements, {
+      before: boards.before,
+      rackCleared,
+      bonusSquares: shape.bonusSquares,
+    });
+  }, [boards, placements, rackCleared, view]);
 
   // The words this play would put on the board. Computed locally by the same
   // engine the server uses, so only these few words need checking.

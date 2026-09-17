@@ -243,6 +243,23 @@
   color: var(--centre-mark-color, transparent);
 }
 
+/*
+ * A double-word square, one in from each corner: reaching one pays for
+ * stretching a word all the way out rather than clustering near the
+ * centre. Play's own green, not a colour of its own -- a bonus square
+ * shares that "good thing is happening" reading with the word-validity
+ * feedback it sits next to on the same board. Single-use by construction:
+ * this class only ever lands on an `empty` cell (see Board.tsx), so the
+ * diamond is gone for good the moment any tile -- this turn's or a much
+ * later one -- covers it, with no separate "spent" flag to track.
+ */
+.bonus::after {
+  content: "";
+  width: 44%;
+  height: 44%;
+  background: var(--play);
+  transform: rotate(45deg);
+}
 
 
 /* A blank that has landed but has not been told its letter yet. */

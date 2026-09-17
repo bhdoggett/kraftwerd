@@ -62,6 +62,7 @@ function boardShape(game: Doc<"games">) {
     height: game.boardSize,
     blocked: shape.blocked,
     centre: shape.centre,
+    bonusSquares: shape.bonusSquares,
   };
 }
 
@@ -846,12 +847,8 @@ async function playTurn(
     const after = applyPlacements(before, placements);
     const dictionary = await lookUp(ctx, wordsFormed(after, placements));
 
-    const legality = validateTurn(
-      before,
-      placements,
-      dictionary,
-      boardShape(game),
-    );
+    const shape = boardShape(game);
+    const legality = validateTurn(before, placements, dictionary, shape);
     if (!legality.ok) throw new ConvexError(describe(legality.faults));
 
     // A bingo: every letter that was in the rack went down this turn. Only
@@ -859,7 +856,11 @@ async function playTurn(
     // allowance (§5) and were never part of the rack size.
     const rackCleared =
       player.letters.length === RACK.size && remaining.length === 0;
-    const score = scoreTurn(after, placements, { before, rackCleared });
+    const score = scoreTurn(after, placements, {
+      before,
+      rackCleared,
+      bonusSquares: shape.bonusSquares,
+    });
 
     const tileAt = new Map(existing.map((t) => [cellKey(t.x, t.y), t]));
 

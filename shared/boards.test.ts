@@ -69,6 +69,16 @@ describe.each(BOARD_LAYOUTS)("$name", (layout) => {
       expect(blocked(x + dx!, y + dy!)).toBe(false);
     }
   });
+
+  test("has a bonus square one in from each corner, none of them blocked", () => {
+    expect([...shape.bonusSquares].sort()).toEqual(
+      ["1,1", "1,13", "13,1", "13,13"],
+    );
+    for (const key of shape.bonusSquares) {
+      const [x, y] = key.split(",").map(Number);
+      expect(blocked(x, y)).toBe(false);
+    }
+  });
 });
 
 describe("boardShapeNamed", () => {
@@ -83,5 +93,12 @@ describe("boardShapeNamed", () => {
   test("a name that is drawn still resolves to that board", () => {
     const shape = boardShapeNamed("Bars", 15);
     expect(shape.blocked.size).toBeGreaterThan(0);
+  });
+
+  test("the open board gets bonus squares too, not just drawn layouts", () => {
+    const shape = boardShapeNamed("Open", 15);
+    expect([...shape.bonusSquares].sort()).toEqual(
+      ["1,1", "1,13", "13,1", "13,13"],
+    );
   });
 });

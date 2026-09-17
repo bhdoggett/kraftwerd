@@ -263,6 +263,7 @@ export function Board({
       const tile = committed.get(k);
       const stage = staged.get(k);
       const isCentre = x === shape.centre.x && y === shape.centre.y;
+      const isBonus = shape.bonusSquares.has(k);
       const awaiting = awaitingBlankAt?.x === x && awaitingBlankAt?.y === y;
       const empty = !blocked && tile === undefined && stage === undefined;
       /* Not empty, but still somewhere a tile may go. */
@@ -296,6 +297,10 @@ export function Board({
       if (empty && !awaiting) {
         classes.push(styles.open);
         if (isCentre) classes.push(styles.centre);
+        // Single-use: gated on `empty` like the centre marker above, so the
+        // diamond is simply gone for good once any tile -- this play's or a
+        // later one -- ever lands here. No separate "spent" state to track.
+        if (isBonus) classes.push(styles.bonus);
       }
       if (playable && canPlace && !awaiting) {
         classes.push(styles.playable);

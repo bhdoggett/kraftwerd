@@ -84,6 +84,30 @@ export interface BoardShape {
   size: number;
   blocked: ReadonlySet<string>;
   centre: Coord;
+  /** Double-word squares, one in from each corner -- see bonusSquaresFor. */
+  bonusSquares: ReadonlySet<string>;
+}
+
+/**
+ * One double-word square inset from each corner, on every board regardless
+ * of layout -- the corner itself stays open (nothing to stretch toward if
+ * the bonus square you're reaching for *is* the edge), and inset by one
+ * rather than sitting on it is what makes reaching a corner pay for
+ * building all the way out, not just for starting near one.
+ *
+ * A board would need to be at least 4x4 for these not to collide with each
+ * other or the centre; every real layout is 15x15, so this is more a
+ * documented assumption than a runtime concern.
+ */
+function bonusSquaresFor(size: number): ReadonlySet<string> {
+  const near = 1;
+  const far = size - 2;
+  return new Set([
+    `${near},${near}`,
+    `${near},${far}`,
+    `${far},${near}`,
+    `${far},${far}`,
+  ]);
 }
 
 export function shapeOf(layout: BoardLayout): BoardShape {
@@ -97,7 +121,13 @@ export function shapeOf(layout: BoardLayout): BoardShape {
   }
 
   const middle = (size - 1) / 2;
-  return { name: layout.name, size, blocked, centre: { x: middle, y: middle } };
+  return {
+    name: layout.name,
+    size,
+    blocked,
+    centre: { x: middle, y: middle },
+    bonusSquares: bonusSquaresFor(size),
+  };
 }
 
 
@@ -122,5 +152,6 @@ export function boardShapeNamed(name: string | undefined, size: number): BoardSh
     size,
     blocked: new Set<string>(),
     centre: { x: middle, y: middle },
+    bonusSquares: bonusSquaresFor(size),
   };
 }

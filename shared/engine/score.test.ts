@@ -197,3 +197,89 @@ describe("stack bonus", () => {
     expect(scoreTurn(after, [at(0, 0, "A")], { before }).stackBonus).toBe(3);
   });
 });
+
+describe("bonus squares", () => {
+  const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
+
+  test("a word crossing a fresh bonus square doubles", () => {
+    const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
+    const bonusSquares = new Set(["1,0"]);
+
+    const score = scoreTurn(makeBoard(tiles), place(tiles), {
+      before: makeBoard([]),
+      bonusSquares,
+    });
+
+    expect(score.words).toEqual([{ word: "CAT", points: 6, bonus: true }]);
+    expect(score.total).toBe(6);
+  });
+
+  test("a word nowhere near a bonus square scores normally", () => {
+    const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
+    const bonusSquares = new Set(["7,7"]);
+
+    const score = scoreTurn(makeBoard(tiles), place(tiles), {
+      before: makeBoard([]),
+      bonusSquares,
+    });
+
+    expect(score.words).toEqual([{ word: "CAT", points: 3 }]);
+  });
+
+  test("single-use: a square already covered in `before` has already been spent", () => {
+    // The bonus square (1,0) was covered on an earlier turn -- extending the
+    // word now must not pay it out a second time.
+    const before = makeBoard([at(0, 0, "C"), at(1, 0, "A")]);
+    const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
+    const bonusSquares = new Set(["1,0"]);
+
+    const score = scoreTurn(makeBoard(tiles), [at(2, 0, "T")], { before, bonusSquares });
+
+    expect(score.words).toEqual([{ word: "CAT", points: 3 }]);
+  });
+
+  test("two words crossing the same fresh square in one play both double", () => {
+    // CAT across, ARC down, sharing the A at (1,0) -- a bonus square there
+    // pays out on both words this play forms.
+    const tiles = [
+      at(0, 0, "C"),
+      at(1, 0, "A"),
+      at(2, 0, "T"),
+      at(1, 1, "R"),
+      at(1, 2, "C"),
+    ];
+    const bonusSquares = new Set(["1,0"]);
+
+    const score = scoreTurn(makeBoard(tiles), place(tiles), {
+      before: makeBoard([]),
+      bonusSquares,
+    });
+
+    expect(score.words).toEqual(
+      expect.arrayContaining([
+        { word: "CAT", points: 6, bonus: true },
+        { word: "ARC", points: 6, bonus: true },
+      ]),
+    );
+  });
+
+  test("a word crossing two fresh bonus squares in one play quadruples", () => {
+    const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
+    const bonusSquares = new Set(["0,0", "2,0"]);
+
+    const score = scoreTurn(makeBoard(tiles), place(tiles), {
+      before: makeBoard([]),
+      bonusSquares,
+    });
+
+    expect(score.words).toEqual([{ word: "CAT", points: 12, bonus: true }]);
+  });
+
+  test("with no bonus squares configured, nothing doubles", () => {
+    const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
+
+    const score = scoreTurn(makeBoard(tiles), place(tiles), { before: makeBoard([]) });
+
+    expect(score.words).toEqual([{ word: "CAT", points: 3 }]);
+  });
+});

@@ -10,8 +10,11 @@ export interface Placement extends Coord {
 
 interface ScoredWord {
   word: string;
-  /** One point a letter, blanks included once they are on the board. */
+  /** One point a letter, blanks included once they are on the board, doubled
+   * for each fresh bonus square (see ScoreOptions.bonusSquares) it crosses. */
   points: number;
+  /** Whether a bonus square doubled this word -- for the UI to say so. */
+  bonus?: boolean;
 }
 
 export interface TurnScore {
@@ -52,6 +55,14 @@ interface ScoreOptions {
    * itself only ever sees the board and the placements.
    */
   rackCleared?: boolean;
+  /**
+   * Double-word squares, one in from each corner (shared/boards.ts). A
+   * square pays out exactly once, to whichever play first covers it -- a
+   * square already in `before` has already been paid, tile stacked on top
+   * of it or not. A word that crosses two still doubles twice, the same way
+   * two premium squares under one word always have in this kind of game.
+   */
+  bonusSquares?: ReadonlySet<string>;
 }
 
 export function scoreTurn(
@@ -75,14 +86,25 @@ export function scoreTurn(
   const scoreCells = (cells: readonly Coord[]) =>
     cells.filter((c) => board.has(cellKey(c.x, c.y))).length;
 
-  const words: ScoredWord[] = runs.map((run) => ({
-    word: run.word,
-    points: scoreCells(run.cells),
-  }));
+  // A bonus square pays out on whichever play first covers it -- one that was
+  // already sitting under a tile in `before` has already been spent, so only
+  // a cell bonusSquares names *and* before doesn't have counts here.
+  const bonusSquares = options.bonusSquares ?? new Set<string>();
+  const freshBonusHits = (cells: readonly Coord[]) =>
+    cells.filter((c) => bonusSquares.has(cellKey(c.x, c.y)) && !before.has(cellKey(c.x, c.y)))
+      .length;
+
+  const scoredWord = (word: string, cells: readonly Coord[]): ScoredWord => {
+    const hits = freshBonusHits(cells);
+    const points = scoreCells(cells) * 2 ** hits;
+    return hits > 0 ? { word, points, bonus: true } : { word, points };
+  };
+
+  const words: ScoredWord[] = runs.map((run) => scoredWord(run.word, run.cells));
 
   // A tile touching nothing forms no run. It still has to be a word in its own
   // right to be legal, so it scores as one.
-  for (const p of lone) words.push({ word: p.letter.toUpperCase(), points: 1 });
+  for (const p of lone) words.push(scoredWord(p.letter.toUpperCase(), [p]));
 
   const wordPoints = words.reduce((sum, w) => sum + w.points, 0);
   const blocks = newSquareBlocks(before, board, placements);
