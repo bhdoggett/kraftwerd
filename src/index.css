@@ -91,11 +91,13 @@
   /* The hatch alone was too close in value to an empty square at a glance --
      the ring is what makes "blocked" readable before the pattern is. */
   --blocked-ring: inset 0 0 0 1px #6090a9;
-  /* No fill or ring of its own any more -- the centre is a bonus square
-     now (shared/boards.ts) and the diamond that marks one is enough on
-     its own, the same as it is at every corner. */
+  /* The centre is a plain start now, not a bonus square (shared/boards.ts)
+     -- doubling it gave whoever went first a bigger, more reliable bonus
+     than reaching any other one honestly requires. No fill, ring only,
+     same ledger ink the ruled lines and the blocked hatch already use:
+     a mark on the paper rather than a wash over it. */
   --centre-fill: var(--cell-empty);
-  --centre-ring: transparent;
+  --centre-ring: #6090a9;
 
   /*
    * Tiles are lit signs: a saturated face with the letter cut out of it in

@@ -221,9 +221,10 @@
  * Where the first word has to start: the one lit square on an empty board.
  * On the blueprint board (dark theme) it's an unfilled ring in the seat-1
  * colour, since that board doesn't tint any of its squares -- see
- * index.css. On the Ledger board (light theme) `--centre-fill`/
- * `--centre-ring` are both switched off; the diamond below, which marks
- * this square as a bonus square too, is enough on its own.
+ * index.css. On the Ledger board (light theme) `--centre-ring` draws the
+ * same kind of ring in that board's own ink -- the centre isn't a bonus
+ * square any more (shared/boards.ts), so it needs a marker of its own
+ * again rather than borrowing the diamond's.
  */
 .centre {
   background: var(--centre-fill);
@@ -233,12 +234,14 @@
 }
 
 /*
- * A double-word square, one in from each corner and at the centre:
- * reaching a corner one pays for stretching a word all the way out rather
- * than clustering near the middle. Play's own green, not a colour of its
- * own -- a bonus square shares that "good thing is happening" reading with
- * the word-validity feedback it sits next to on the same board. Single-use
- * by construction: this class only ever lands on an `empty` cell (see
+ * A double-word square, one in from each corner along the diagonal:
+ * reaching one pays for stretching a word out toward the edge rather than
+ * clustering near the middle. Play's own green, not a colour of its own --
+ * a bonus square shares that "good thing is happening" reading with the
+ * word-validity feedback it sits next to on the same board -- but at low
+ * opacity, since a dozen of them at full strength read as clutter rather
+ * than as twelve individually-interesting squares. Single-use by
+ * construction: this class only ever lands on an `empty` cell (see
  * Board.tsx), so the diamond is gone for good the moment any tile -- this
  * turn's or a much later one -- covers it, with no separate "spent" flag
  * to track.
@@ -261,6 +264,7 @@
   width: calc(var(--cell-size) * 0.44);
   height: calc(var(--cell-size) * 0.44);
   background: var(--play);
+  opacity: 0.4;
   transform: rotate(45deg);
 }
 

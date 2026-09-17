@@ -70,10 +70,21 @@ describe.each(BOARD_LAYOUTS)("$name", (layout) => {
     }
   });
 
-  test("has a bonus square one in from each corner plus the centre, none blocked", () => {
-    expect([...shape.bonusSquares].sort()).toEqual(
-      ["1,1", "1,13", "13,1", "13,13", "7,7"],
-    );
+  test("has bonus squares on all four diagonals, skipping any a layout blocks", () => {
+    // Three waypoints per corner (1, 3 and 5 steps in), the centre itself
+    // left out. A layout whose own blocked bars land on one of those exact
+    // squares (Bars does, at all four innermost waypoints) just goes
+    // without a bonus there -- the same way blocked squares already vary
+    // layout to layout -- rather than the two disagreeing.
+    const waypoints = [
+      "1,1", "1,13", "11,11", "11,3", "13,1", "13,13",
+      "3,11", "3,3", "5,5", "5,9", "9,5", "9,9",
+    ];
+    for (const key of waypoints) {
+      const [x, y] = key.split(",").map(Number);
+      expect(shape.bonusSquares.has(key)).toBe(!blocked(x, y));
+    }
+    expect(shape.bonusSquares.has("7,7")).toBe(false);
     for (const key of shape.bonusSquares) {
       const [x, y] = key.split(",").map(Number);
       expect(blocked(x, y)).toBe(false);
@@ -97,8 +108,7 @@ describe("boardShapeNamed", () => {
 
   test("the open board gets bonus squares too, not just drawn layouts", () => {
     const shape = boardShapeNamed("Open", 15);
-    expect([...shape.bonusSquares].sort()).toEqual(
-      ["1,1", "1,13", "13,1", "13,13", "7,7"],
-    );
+    expect(shape.bonusSquares.size).toBe(12);
+    expect(shape.bonusSquares.has("7,7")).toBe(false);
   });
 });
