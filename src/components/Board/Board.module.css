@@ -244,37 +244,35 @@
 /*
  * A double-word square, one in from each corner along the diagonal:
  * reaching one pays for stretching a word out toward the edge rather than
- * clustering near the middle. An outline in the grid's own line colour
- * (--cell-line, the same hairline the cells are ruled with) rather than a
- * filled shape in an accent colour -- twelve solid diamonds read as
- * clutter next to the placed tiles, where twelve faint ones read as part
- * of the same drawn grid, just marked. Single-use by construction: this
- * class only ever lands on an `empty` cell (see Board.tsx), so the
- * diamond is gone for good the moment any tile -- this turn's or a much
- * later one -- covers it, with no separate "spent" flag to track.
+ * clustering near the middle. Hatched rather than outlined now, the same
+ * technique --blocked uses (see --cell-blocked in index.css) and the same
+ * line colour, but on the other diagonal: a blocked square is crossed out
+ * and unplayable, a bonus square is very much playable, and the opposite
+ * slash keeps the two from reading as the same mark at a glance. Single-use
+ * by construction: this class only ever lands on an `empty` cell (see
+ * Board.tsx), so the hatch is gone for good the moment any tile -- this
+ * turn's or a much later one -- covers it, with no separate "spent" flag
+ * to track.
  *
  * `grid-area: cell` matters the same way it does on .glyph below: with no
  * explicit area, a pseudo-element that isn't the cell's only content falls
  * through to grid auto-placement and lands in a fresh implicit row of its
- * own rather than centred in the cell.
- *
- * Sized off --cell-size directly rather than a percentage: this cell's
- * only track in each axis is `auto`, and an auto grid track sizes to fit
- * its content rather than stretching to fill the cell, so a percentage
- * here resolved circularly and gave the two axes different pixel values --
- * a "diamond" that was actually a sideways sliver. --cell-size is the same
- * fixed length regardless of axis, so both sides always agree. The border
- * is boxed inward off that same size rather than added on top of it, so
- * it doesn't grow the diamond past the square it is sized against.
+ * own rather than centred in the cell. Sized to the full cell rather than
+ * a fraction of it, since this layer IS the shading, not an icon floating
+ * inside it -- but it stays a separate layer over the cell's own
+ * background rather than replacing it, so an armed or hovered bonus
+ * square still shows that tint through the gaps between slashes.
  */
 .bonus::before {
   content: "";
   grid-area: cell;
-  box-sizing: border-box;
-  width: calc(var(--cell-size) * 0.44);
-  height: calc(var(--cell-size) * 0.44);
-  border: calc(var(--cell-size) * 0.045) solid var(--cell-line);
-  transform: rotate(45deg);
+  width: var(--cell-size);
+  height: var(--cell-size);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--cell-line) 0 2px,
+    transparent 2px 7px
+  );
 }
 
 
