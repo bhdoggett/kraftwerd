@@ -418,8 +418,28 @@
  * crosses a square.
  */
 .doubled {
+  /*
+   * The hatch is the accent mixed half out, not the accent itself. At full
+   * strength it was the very ink the word is written in --
+   * `.valid` colours the text `--play` -- so the stripes ran through the
+   * letters at identical weight and the word stopped being readable. It is
+   * a texture under the word, not a second mark competing with it.
+   *
+   * The geometry is the board's exactly (135deg, 1px on, 7px off, see
+   * .bonus in Board.module.css), so the chip and the square that caused it
+   * stay recognisably the same mark. Only the ink is softer: on the chip it
+   * lies under text, and on the board it does not.
+   *
+   * `--play-soft` stays the bottom layer, so the ground a valid word
+   * already had is unchanged and the hatch sits on top of it -- both below
+   * the letters either way.
+   */
   background:
-    repeating-linear-gradient(135deg, var(--play) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--play) 50%, transparent) 0 1px,
+      transparent 1px 7px
+    ),
     var(--play-soft);
   box-shadow: 0 0 0 1px var(--play);
 }
