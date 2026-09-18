@@ -17,9 +17,12 @@ create or touch must spell a valid word. You score 1 point per tile you
 placed, plus a bonus for every filled square block your placement completes —
 including squares built mostly from your opponent's tiles.
 
-The game is not Scrabble. There are no letter values, no premium squares, no
-fixed board, no connectivity requirement, and the central mechanic (square
-construction) does not exist in Scrabble. IP exposure is limited to the name.
+The game is not Scrabble. There are no letter values, no fixed board, no
+connectivity requirement, and the central mechanic (square construction) does
+not exist in Scrabble. It does have double-word squares (§2, §4.8) — the one
+idea taken wholesale, and a common one: Words With Friends and Crossplay each
+have premium squares of their own. The name remains the closest thing here to
+anybody else's.
 
 ## 2. Board
 
@@ -29,7 +32,15 @@ construction) does not exist in Scrabble. IP exposure is limited to the name.
   dealt one still plays — but new games get an open board while the simpler
   shape is tried out.
 - **The opening word must cover the centre square.** Everything after it is
-  anchored by connectivity (§3) back to that first word.
+  anchored by connectivity (§3) back to that first word. The centre pays
+  nothing: it is where the game starts, not a bonus for whoever goes first.
+- **Twelve double-word squares, on the four corner diagonals.** Two, four and
+  six steps out from the centre along each diagonal — one in from each corner,
+  then every other square on the way back in, stopping short of the centre.
+  §4.8 says what they pay. They are placed by geometry rather than drawn into
+  a layout, so a drawn layout whose blocked bars land on one simply goes
+  without it (Bars does, at all four of its innermost waypoints): a blocked
+  square cannot score a word at all, let alone a doubled one.
 - **Layouts live in `shared/boards.ts`, written as pictures** — `#` blocked,
   `.` open — so a new one is drawn by editing the art rather than listing
   coordinates. Each game is dealt one at random.
@@ -251,6 +262,50 @@ cannot earn it, the same way Scrabble's bingo requires a full rack.
 Lives in `shared/config.ts` (`RACK_CLEAR_BONUS`) and
 `shared/engine/score.ts` (`scoreTurn`'s `rackBonus`). `RULES_VERSION` bumped
 to 4 for it — see that constant's own comment.
+
+### 4.8 Double-word squares
+
+**Twelve squares on the four corner diagonals double a word that covers one**
+— §2 says where they sit. The doubling applies to **word points only** (§4.1),
+not to the square bonus (§4.2), the stack bonus (§4.6) or the rack clear
+(§4.7): those are paid for building, and a square you complete is worth `k²`
+wherever on the board you complete it.
+
+**A square pays once, to whoever first covers it.** A square already under a
+tile before the turn began has been spent — extending that word later collects
+nothing, and neither does stacking on top of it (§4.6). A board therefore has
+twelve of these to give out in a whole game, and they are gone in the order
+players reach them.
+
+| play | word points | paid |
+|------|-------------|------|
+| `CAT`, no bonus square | 3 | **3** |
+| `CAT` covering one fresh square | 3 | **6** |
+| `CAT` covering two fresh squares | 3 | **12** |
+| `CAT` over a square spent last turn | 3 | **3** |
+
+**Each fresh square doubles independently**, so a word crossing two quadruples
+— the reason the squares are spaced every other cell rather than run
+continuously, since a solid diagonal would make the run a single line to walk
+rather than a series of waypoints to reach for. And **a fresh square pays every
+word the play forms through it**: a cross where both words run over the same
+new square doubles both, the way two premium squares under one word have always
+compounded in this kind of game.
+
+The squares are visible from the first turn — hatched on the board, with a
+legend beside it — so reaching one is a plan rather than a surprise. That also
+makes them snipeable: a square you are one turn away from is a square your
+opponent can see you approaching.
+
+Lives in `shared/boards.ts` (`bonusSquaresFor`, and `BoardShape.bonusSquares`)
+and `shared/engine/score.ts` (`scoreTurn`'s `bonusSquares` option).
+`RULES_VERSION` bumped to 7 for it — see that constant's own comment.
+
+**The machines do not know about them yet.** `convex/bots.ts` values candidate
+moves with `scoreTurn` and does not pass `bonusSquares`, so a bot's play is
+paid correctly but never *chosen* for a double; the simulations in
+`shared/sim` score the same way. Both are deliberate follow-up work, held
+until the rule has been played enough to know it is worth keeping.
 
 ## 5. Rack and letter generation
 

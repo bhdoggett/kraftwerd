@@ -71,8 +71,13 @@ export const BLANKS_PER_GAME = 3;
  *    had already gone by unstamped: SCOWL's 76,911 words to ENABLE +
  *    12dicts' 172,788, and then 175,800 when a line-ending bug stopped
  *    dropping the second source. This version is that list.
+ * 7: double-word squares (design.md §2, §4) — twelve of them, on the four
+ *    corner diagonals, each paying once to whoever first covers it. A word
+ *    crossing two of them in one play quadruples, so the ceiling on a turn
+ *    moves as well as the average: a score set on a board without them is
+ *    not competing with these.
  */
-export const RULES_VERSION = 6;
+export const RULES_VERSION = 7;
 
 /**
  * How many words the shipped dictionary holds.
