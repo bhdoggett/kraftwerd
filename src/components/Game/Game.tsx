@@ -1099,6 +1099,12 @@ export function Game({
           )}
         </div>
 
+        {/* What the board's hatching means, said once rather than left for
+            a dozen shaded squares to explain themselves. */}
+        <div className={styles.legend}>
+          <span className={styles.legendSwatch} aria-hidden="true" />
+          <span>Shaded squares score double word</span>
+        </div>
 
         {/* Nothing left to play once it is over: the rack would be a row of
             tiles the game will never take. The scores stay. */}

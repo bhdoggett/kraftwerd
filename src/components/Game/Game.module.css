@@ -646,3 +646,32 @@
   /* Whole line to itself on a narrow screen rather than squeezing the slider. */
   flex-basis: 100%;
 }
+
+/*
+ * Says what the board's own hatching means, in words, once, rather than
+ * leaving a dozen shaded squares to speak for themselves. Sits right under
+ * the board they describe, not in the side panel, which is a scroll away on
+ * a phone.
+ */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* The exact hatch Board.module.css draws a bonus square with -- a swatch
+   of the real thing, not a description of it. */
+.legendSwatch {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: 1px solid var(--cell-line);
+  background: repeating-linear-gradient(
+      135deg,
+      var(--cell-line) 0 1px,
+      transparent 1px 7px
+    ),
+    var(--cell-empty);
+}
