@@ -79,6 +79,42 @@
   white-space: nowrap;
 }
 
+/*
+ * Asking somebody to be friends, beside their name. A plus rather than a
+ * word: the row is a colour, a name and a count already, and "Add friend"
+ * spelled out was the longest thing in it.
+ */
+.invite {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.invite:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/*
+ * Already said, either way round: the question has been asked and answering
+ * it belongs in the friends list, not here. Dimmer than the button, since
+ * there is nothing to press.
+ */
+.invited {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 .you {
   color: var(--text-muted);
   font-size: 0.8rem;

@@ -505,12 +505,8 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
    * while that panel is open -- most turns never ask, and friendships are kept
    * out of the board's own subscription on purpose (see `getGame`).
    */
-  const friendStates = useQuery(
-    api.friends.statesAt,
-    reviewing ? { gameId } : "skip",
-  );
+  const friendStates = useQuery(api.friends.statesAt, { gameId });
   const inviteFriend = useMutation(api.friends.inviteFromGame);
-  const [inviteError, setInviteError] = useState<string | null>(null);
 
   /*
    * The plays to replay, read off the history rather than the board: the board
@@ -1172,56 +1168,6 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
               </>
             )}
 
-            {/*
-              An invitation gathers people who may not know each other: it
-              asked each of them, and could not ask on their behalf. This is
-              where they get to. Nothing here at a game with strangers, where
-              the aliases mean these people have not met -- the query returns
-              nobody for one.
-            */}
-            {friendStates !== undefined && friendStates.length > 0 && (
-              <div className={styles.reviewFriends}>
-                {friendStates.map((who) => {
-                  const name =
-                    view.players.find((p) => p.userId === who.userId)?.name ??
-                    "Player";
-
-                  if (who.state === "friends") return null;
-                  if (who.state === "asked") {
-                    return (
-                      <span key={who.userId} className={styles.reviewSays}>
-                        Friend invite sent to {name}
-                      </span>
-                    );
-                  }
-                  if (who.state === "asking") {
-                    return (
-                      <span key={who.userId} className={styles.reviewSays}>
-                        {name} sent you a friend invite — answer it in Friends
-                      </span>
-                    );
-                  }
-                  return (
-                    <button
-                      key={who.userId}
-                      type="button"
-                      className={styles.reviewFriend}
-                      onClick={() => {
-                        setInviteError(null);
-                        void inviteFriend({ gameId, userId: who.userId }).catch(
-                          (err: unknown) => setInviteError(userMessage(err)),
-                        );
-                      }}
-                    >
-                      Send friend invite to {name}
-                    </button>
-                  );
-                })}
-                {inviteError !== null && (
-                  <span className={styles.reviewSays}>{inviteError}</span>
-                )}
-              </div>
-            )}
           </div>
         )}
 
@@ -1453,6 +1399,19 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           tilesLeft={view.tilesLeft}
           bagSize={BAG_SIZE}
             status={game.status}
+          /*
+           * Asking somebody to be friends sits beside their name, for as long
+           * as the game does: an invitation gathers people who may never have
+           * met, and it cannot introduce them to each other. Nothing is shown
+           * at a game with strangers -- the query says nothing about those.
+           */
+          friendStates={friendStates}
+          onInvite={(userId) => {
+            void inviteFriend({
+              gameId,
+              userId: userId as Id<"users">,
+            }).catch((err: unknown) => refuse(userMessage(err)));
+          }}
         />
 
         {/*
