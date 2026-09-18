@@ -13,8 +13,14 @@ interface ScoredWord {
   /** One point a letter, blanks included once they are on the board, doubled
    * for each fresh bonus square (see ScoreOptions.bonusSquares) it crosses. */
   points: number;
-  /** Whether a bonus square doubled this word -- for the UI to say so. */
-  bonus?: boolean;
+  /**
+   * What a bonus square multiplied this word by -- 2 for one fresh square, 4
+   * for two -- or absent when none applied. A number rather than a flag
+   * because a word crossing two doubles twice, and a chip that said "x2"
+   * about a quadrupled word would be wrong in the one place that explains
+   * where the points came from.
+   */
+  bonus?: number;
 }
 
 export interface TurnScore {
@@ -96,8 +102,9 @@ export function scoreTurn(
 
   const scoredWord = (word: string, cells: readonly Coord[]): ScoredWord => {
     const hits = freshBonusHits(cells);
-    const points = scoreCells(cells) * 2 ** hits;
-    return hits > 0 ? { word, points, bonus: true } : { word, points };
+    const multiplier = 2 ** hits;
+    const points = scoreCells(cells) * multiplier;
+    return hits > 0 ? { word, points, bonus: multiplier } : { word, points };
   };
 
   const words: ScoredWord[] = runs.map((run) => scoredWord(run.word, run.cells));

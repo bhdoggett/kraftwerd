@@ -1506,9 +1506,20 @@ export function Game({
                           : valid
                             ? styles.valid
                             : styles.invalid,
+                      // Only once it counts: a chip still being checked, or one
+                      // that turns out not to be a word, has nothing doubled.
+                      scored.bonus !== undefined && valid === true && !unplayable
+                        ? styles.doubled
+                        : "",
                     ].join(" ")}
                   >
                     {scored.word}
+                    {/* The multiplier the square applied, said rather than
+                        left to be inferred from a number that looks too big.
+                        x4 when the play crossed two of them. */}
+                    {scored.bonus !== undefined && valid === true && !unplayable && (
+                      <span className={styles.doubleMark}>×{scored.bonus}</span>
+                    )}
                     {/* While the verdict is out the points hold their space, so
                         the chip does not resize when it lands. Once the answer
                         is in and the word scores nothing, the space goes: it
