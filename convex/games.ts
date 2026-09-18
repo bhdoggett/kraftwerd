@@ -32,7 +32,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { currentUser, refuseGuest, requireUser } from "./auth_helpers";
+import { currentUser, displayName, refuseGuest, requireUser } from "./auth_helpers";
 import { friendIdsOf, namesFor, seatOf } from "./seats";
 import { askToBeFriends, rowsBetween } from "./friends";
 import { placement } from "./schema";
@@ -711,13 +711,18 @@ export const respondToInvite = mutation({
       throw new ConvexError("You have already answered");
 
     if (!args.accept) {
-      // The game can never fill now, so it ends rather than lingering as a
-      // lobby nobody can enter.
+      /*
+       * The game can never fill now, so it ends rather than lingering as a
+       * lobby nobody can enter -- and it says who ended it. Everyone else at
+       * the table is told the next time they open the app: a game that simply
+       * disappeared out of the lobby reads as a bug rather than as an answer.
+       */
       await ctx.db.delete("players", me._id);
       await ctx.db.patch("games", args.gameId, {
         status: "finished",
         winnerIds: [],
         finishedAt: Date.now(),
+        declinedBy: userId,
       });
       return null;
     }
@@ -731,6 +736,59 @@ export const respondToInvite = mutation({
     if (waiting.length === 0 && players.length === game.playerCount) {
       await ctx.db.patch("games", args.gameId, { status: "active" });
     }
+    return null;
+  },
+});
+
+/**
+ * Games of yours that somebody turned down, and that you have not been told
+ * about yet.
+ *
+ * Read off your own player rows rather than the games table: the decline
+ * deletes only the decliner's seat, so everyone still owed the news still has
+ * one. The decliner is excluded by construction -- their seat is gone -- and
+ * anyone already told is filtered out below.
+ */
+export const declineNotices = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUser(ctx);
+
+    const mine = await ctx.db
+      .query("players")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .take(LOBBY_ROWS);
+
+    const notices = await Promise.all(
+      mine.map(async (seat) => {
+        const game = await ctx.db.get("games", seat.gameId);
+        if (game?.declinedBy === undefined) return null;
+        if ((game.declineSeenBy ?? []).includes(userId)) return null;
+
+        const who = await ctx.db.get("users", game.declinedBy);
+        return { gameId: game._id, name: displayName(who) };
+      }),
+    );
+
+    return notices.filter((notice) => notice !== null);
+  },
+});
+
+/** Take the news away, once it has been read. */
+export const dismissDecline = mutation({
+  args: { gameId: v.id("games") },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+
+    const game = await ctx.db.get("games", args.gameId);
+    if (game === null) return null;
+
+    const seen = game.declineSeenBy ?? [];
+    if (seen.includes(userId)) return null;
+
+    await ctx.db.patch("games", args.gameId, {
+      declineSeenBy: [...seen, userId],
+    });
     return null;
   },
 });

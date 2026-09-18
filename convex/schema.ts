@@ -135,6 +135,19 @@ export default defineSchema({
     finishedAt: v.optional(v.number()),
     /** Players who quit. They forfeit and cannot win. */
     resignedBy: v.optional(v.array(v.id("users"))),
+    /**
+     * Who turned the invitation down, on a game cancelled by a decline.
+     *
+     * Kept because a game that simply vanished from the lobby reads as a bug
+     * rather than as an answer. Whoever is left is told once, the next time
+     * they open the app.
+     */
+    declinedBy: v.optional(v.id("users")),
+    /**
+     * Who has already been told. An array rather than a flag: a three-player
+     * game has two people to tell, and they open the app at their own times.
+     */
+    declineSeenBy: v.optional(v.array(v.id("users"))),
     createdBy: v.id("users"),
     /**
      * Listed for anyone with an account to find and join.

@@ -7,6 +7,7 @@ import { GuestGame } from "../GuestGame/GuestGame";
 import { DevTools } from "../DevTools/DevTools";
 import { NewGame } from "../NewGame/NewGame";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
+import { Modal } from "../Modal/Modal";
 import { GAME } from "../../../shared/config";
 import { drawNames } from "../../../shared/names";
 import {
@@ -58,6 +59,15 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     /** How many friends were asked as the game was made. */
     invited: number;
   } | null>(null);
+
+  /*
+   * Games somebody turned down while you were away, one at a time and oldest
+   * first. A game that vanished out of the lobby reads as a bug; this is the
+   * answer it owes you, and it waits here until you have read it.
+   */
+  const declines = useQuery(api.games.declineNotices);
+  const dismissDecline = useMutation(api.games.dismissDecline);
+  const told = declines?.[0];
 
   const viewer = useQuery(api.users.viewer);
   const [creating, setCreating] = useState(false);
@@ -137,6 +147,21 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
   return (
     <div className={styles.lobby}>
+      {told !== undefined && (
+        <Modal onDismiss={() => void dismissDecline({ gameId: told.gameId })}>
+          <div className={styles.declined}>
+            <p className={styles.declinedSays}>{told.name} declined the game.</p>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => void dismissDecline({ gameId: told.gameId })}
+            >
+              OK
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {setup && (
         <NewGame
           gameId={setup.gameId}

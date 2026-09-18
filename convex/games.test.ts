@@ -762,6 +762,28 @@ describe("game invitations", () => {
     expect((await asBo.query(api.games.listMyGames)).games).toHaveLength(1);
   });
 
+  test("the one left behind is told who declined, once", async () => {
+    const { gameId, asAna, asBo } = await invitedGame();
+
+    await asBo.mutation(api.games.respondToInvite, { gameId, accept: false });
+
+    // Waiting for them the next time they open the app, and said plainly:
+    // a game that simply vanished would read as a bug.
+    const waiting = await asAna.query(api.games.declineNotices);
+    expect(waiting).toEqual([expect.objectContaining({ gameId, name: "Bo" })]);
+
+    await asAna.mutation(api.games.dismissDecline, { gameId });
+    expect(await asAna.query(api.games.declineNotices)).toEqual([]);
+  });
+
+  test("the one who declined is not told about their own decline", async () => {
+    const { gameId, asBo } = await invitedGame();
+
+    await asBo.mutation(api.games.respondToInvite, { gameId, accept: false });
+
+    expect(await asBo.query(api.games.declineNotices)).toEqual([]);
+  });
+
   test("declining ends the game rather than leaving a lobby nobody can fill", async () => {
     const { t, gameId, asBo } = await invitedGame();
 
