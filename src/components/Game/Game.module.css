@@ -598,6 +598,23 @@
   width: 100%;
 }
 
+/*
+ * Playing these people again is the one thing on this panel that starts
+ * something, so it is the green the Play button is -- the colour this game
+ * has used for "go" since the first tile. Everything else here looks back at
+ * the game that just ended.
+ */
+.playAgain {
+  border-color: var(--play);
+  background: var(--play);
+  color: var(--text-inverse);
+}
+
+.playAgain:hover {
+  background: var(--play-hover);
+  border-color: var(--play-hover);
+}
+
 .reviewStep {
   flex: none;
   width: 32px;

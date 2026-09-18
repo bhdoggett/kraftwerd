@@ -26,6 +26,7 @@ import { userMessage } from "../../lib/errors";
 import { markCells } from "../../lib/boardFeedback";
 import { boardAfter, scoresAfter } from "../../lib/replay";
 import { moveToPosition, rackSlotUnder, shuffled } from "../../lib/rackGeometry";
+import { readDraft, writeDraft } from "../../lib/draft";
 import { moveStagedTo, stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
 import { followPointer } from "../../lib/followPointer";
@@ -111,44 +112,6 @@ interface Staged extends Placement {
 /** Where a drag started: the rack, or a tile already staged on the board. */
 type Origin = { kind: "rack"; selection: Selection } | { kind: "cell"; x: number; y: number };
 
-/**
- * Drafts survive a reload, and a re-mount. Keyed by turn so a draft is
- * discarded the moment the turn moves on rather than reappearing later.
- */
-const draftKey = (gameId: string) => `kraftwerd:draft:${gameId}`;
-
-/** The key used before the rename. Read once, then dropped. */
-const legacyDraftKey = (gameId: string) => `wordcraft:draft:${gameId}`;
-
-function readDraft(gameId: string, turnNumber: number): Staged[] {
-  try {
-    let raw = window.localStorage.getItem(draftKey(gameId));
-    if (raw === null) {
-      raw = window.localStorage.getItem(legacyDraftKey(gameId));
-      if (raw !== null) window.localStorage.removeItem(legacyDraftKey(gameId));
-    }
-    if (raw === null) return [];
-    const parsed = JSON.parse(raw) as { turnNumber: number; pending: Staged[] };
-    return parsed.turnNumber === turnNumber ? parsed.pending : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeDraft(gameId: string, turnNumber: number, pending: Staged[]) {
-  try {
-    if (pending.length === 0) window.localStorage.removeItem(draftKey(gameId));
-    else {
-      window.localStorage.setItem(
-        draftKey(gameId),
-        JSON.stringify({ turnNumber, pending }),
-      );
-    }
-  } catch {
-    // Private browsing or a full quota: a lost draft is not worth failing over.
-  }
-}
-
 /** One line saying what a turn did, for the review bar. */
 function describeTurn(turn: {
   name: string;
@@ -165,7 +128,16 @@ function describeTurn(turn: {
   return `${turn.name} played ${turn.words.join(", ")} for ${turn.score}${made}`;
 }
 
-export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => void }) {
+export function Game({
+  gameId,
+  onLeave,
+  /** Where playing these people again goes: the table it just made. */
+  onOpen,
+}: {
+  gameId: Id<"games">;
+  onLeave: () => void;
+  onOpen: (gameId: Id<"games">) => void;
+}) {
   const view = useQuery(api.games.getGame, { gameId });
   /** Only for what a guest may not do; the game itself does not care. */
   const viewer = useQuery(api.users.viewer);
@@ -174,6 +146,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const tradeTiles = useMutation(api.games.tradeTiles);
   const passTurn = useMutation(api.games.passTurn);
   const joinGame = useMutation(api.games.joinGame);
+  const rematch = useMutation(api.games.rematch);
   const [copied, setCopied] = useState(false);
 
   const [pending, setPending] = useState<Staged[]>([]);
@@ -581,19 +554,27 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   useWakeLock(view?.game.status === "active");
 
   const turnNumber = view?.game.turnNumber;
+  /**
+   * Whether a draft still means anything here. A game that is over takes no
+   * more turns, so the tiles staged for one belong to nothing -- and quitting
+   * ends a game without moving the turn on, which is how they used to come
+   * back on the final board.
+   */
+  const playable =
+    view !== undefined && view !== null && view.game.status !== "finished";
 
   // Load the draft for this turn, and drop it when the turn moves on.
   useEffect(() => {
     if (turnNumber === undefined) return;
-    setPending(readDraft(gameId, turnNumber));
+    setPending(readDraft<Staged>(gameId, turnNumber, playable));
     setSelected(null);
     setBlankAt(null);
-  }, [gameId, turnNumber]);
+  }, [gameId, turnNumber, playable]);
 
   useEffect(() => {
     if (turnNumber === undefined) return;
-    writeDraft(gameId, turnNumber, pending);
-  }, [gameId, turnNumber, pending]);
+    writeDraft(gameId, turnNumber, pending, playable);
+  }, [gameId, turnNumber, pending, playable]);
 
   // Kept in a ref so the pointer listeners below can call the current
   // `place` without re-subscribing on every mouse move.
@@ -1266,14 +1247,24 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           </div>
         )}
 
-        {game.status === "lobby" && (
+        {view.seatsFilled < game.playerCount && (
           <div className={styles.waiting}>
             {/* Name who has not arrived: "2 of 3 seats filled" says how many
                 are missing, never which. */}
             <strong>Waiting for players.</strong> {view.seatsFilled} of{" "}
             {game.playerCount} seats filled
             {invitees.length > 0 && <> — yet to accept: {invitees.join(", ")}</>}
-            . Nobody can place tiles until the game is full.
+            {game.status === "lobby" ? (
+              // Offered to strangers: nobody has agreed to anything yet, so
+              // the game waits for the table to fill before it begins.
+              <>. Nobody can place tiles until the game is full.</>
+            ) : view.turnHeld ? (
+              // Among friends the game is already under way, and has come
+              // round to a seat nobody is in.
+              <>. The turn is waiting for whoever takes the next seat.</>
+            ) : (
+              <>. The game is under way — play carries on as seats fill.</>
+            )}
             {view.canJoin && viewer?.isGuest === true ? (
               // A guest cannot hold a seat: the mutation refuses it, and being
               // told why here beats pressing a button that says no.
@@ -1424,22 +1415,49 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           way to lose your place rather than find it.
         */}
         {game.status === "finished" && game.turnNumber > 0 && !reviewing && (
+          <>
+            <button
+              type="button"
+              className={styles.reviewOpen}
+              onClick={() => setReviewing(true)}
+            >
+              Review turns
+            </button>
+
+            {/*
+              The same table over again: same people, same colours, same
+              machines. It is under way the moment it is asked for, on the
+              seat of whoever asked -- so this button is the first turn of
+              the new game as much as it is the end of the old one.
+            */}
+            <button
+              type="button"
+              className={[styles.reviewOpen, styles.playAgain].join(" ")}
+              onClick={() => {
+                void rematch({ gameId })
+                  .then((again) => onOpen(again.gameId))
+                  .catch((err: unknown) => refuse(userMessage(err)));
+              }}
+            >
+              Play again
+            </button>
+          </>
+        )}
+
+        {/*
+          A list of what you could have played is help while you are playing.
+          Once the game is over it is only clutter, in the one place where
+          what to do next is the whole question.
+        */}
+        {game.status !== "finished" && (
           <button
             type="button"
             className={styles.reviewOpen}
-            onClick={() => setReviewing(true)}
+            onClick={() => setShowTwoLetterWords(true)}
           >
-            Review turns
+            Two-letter words
           </button>
         )}
-
-        <button
-          type="button"
-          className={styles.reviewOpen}
-          onClick={() => setShowTwoLetterWords(true)}
-        >
-          Two-letter words
-        </button>
 
         {showTwoLetterWords && (
           <TwoLetterWordsDialog onClose={() => setShowTwoLetterWords(false)} />

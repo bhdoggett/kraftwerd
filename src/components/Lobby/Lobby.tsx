@@ -257,9 +257,16 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               {against(g.opponents)}
               <br />
               <span className={styles.meta}>
+                {/*
+                  A game among friends is playable while it fills, so a seat
+                  still open no longer means nothing has happened: it says
+                  both, and the score is the part you came back for.
+                */}
                 {g.status === "lobby"
                   ? "waiting for players"
-                  : `${g.yourScore} pts`}
+                  : g.opponents.length + 1 < g.playerCount
+                    ? `${g.yourScore} pts · a seat still open`
+                    : `${g.yourScore} pts`}
                 {/* Whose move it is, by name — the row said so only when the
                     answer was you, which is the case you least need told. */}
                 {g.waitingFor !== null && !g.yourTurn && (
