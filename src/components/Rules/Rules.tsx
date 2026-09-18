@@ -27,63 +27,59 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         </div>
 
         <p>
-          Words in both directions, a point a letter. Then fill a 2×2 block of
-          tiles and take 4 more — a 3×3 takes 9.
+          Words score a point a letter, in both directions. Fill a 2×2 block
+          of tiles and take 4 more — a 3×3 takes 9.
         </p>
 
         <h3 className={styles.section}>Placing tiles</h3>
         <ul>
           <li>
-            You hold {RACK.size} letters, refilled after every play, and{" "}
+            You hold {RACK.size} letters, refilled after every play, plus{" "}
             <strong>{BLANKS_PER_GAME} blanks for the whole game</strong> —
-            once spent, they are gone.
+            once spent, gone.
           </li>
           <li>
-            The <strong>first word must cover the centre square</strong>,
+            The <strong>first word must cover the center square</strong>,
             marked in green.
           </li>
           <li>
-            Everything after that must <strong>touch what is already on
-            the board</strong>, edge to edge — corners do not count.
+            Everything after that must <strong>touch what's already on the
+            board</strong>, edge to edge — corners don't count.
           </li>
           <li>
             Every run of two or more tiles, across and down, has to be a
             word.
           </li>
           <li>
-            A tile may be laid <strong>on top of a tile already
-            there</strong>, so long as every word it leaves still reads:
-            CAT becomes COT, but never CZT. The words you make that way
-            score in full, like any others — so a board tangled beyond
-            playing is never quite stuck.
+            A tile may land <strong>on a tile already there</strong> as long
+            as every word it leaves still reads: CAT becomes COT, never CZT.
+            Those words score in full — so the board is never truly stuck.
           </li>
           <li>
-            A word already on the board must <strong>keep at least one of
-            its letters</strong>. You can build over CAT to make COT, but
-            you cannot pave the whole word over and start again.
+            A word on the board must <strong>keep at least one
+            letter</strong>. Build CAT into COT, but you can't replace the
+            whole word.
           </li>
           <li>
-            A tile laid on another has to <strong>change the letter
-            underneath</strong>. Laying an A back on an A leaves the board
-            as it was and would collect for the same words twice.
+            A tile placed on another must <strong>change the letter
+            underneath</strong> — replacing an A with an A would score the
+            same words twice.
           </li>
           <li>
-            A square can only take so much traffic: once{" "}
-            <strong>{STACK_CAP} tiles</strong> have landed on it, it is
-            full and nobody may play there again.
+            Once <strong>{STACK_CAP} tiles</strong> have landed on a square,
+            it's full and closed to further play.
           </li>
         </ul>
 
         <h3 className={styles.section}>Scoring: words</h3>
         <p>
-          A word scores <strong>one point per letter, counting letters
-          already on the board</strong>. A letter where two words cross is
-          paid for in both.
+          A word scores <strong>one point per letter, including letters
+          already there</strong>. A crossing letter is paid in both words.
         </p>
         <p>
           So adding one tile to <strong>RISE</strong> scores{" "}
-          <strong>RISEN</strong> in full: five points for one tile. Which
-          means a word left extendable is a gift to whoever plays next.
+          <strong>RISEN</strong> in full — five points for one tile. An
+          extendable word is a gift to whoever plays next.
         </p>
         <div className={styles.diagrams}>
           <MiniBoard
@@ -96,14 +92,13 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             seat={1}
             played={["4,0"]}
             ring={["4,0"]}
-            caption="One tile makes RISEN, and scores all five letters."
+            caption="One tile makes RISEN and scores all five letters."
           />
         </div>
         <p>
-          Landing on a square that already has a tile on it pays{" "}
-          <strong>+2</strong> on top of the word. That fills the square, and
-          a full square is out of play for good — it goes back to bare board
-          with its letter lit in the colour of whoever closed it.
+          Landing on a tile that's already there pays <strong>+2</strong> on
+          top of the word, and fills the square for good — it goes bare
+          again, its letter lit in the color of whoever closed it.
         </p>
         <div className={styles.diagrams}>
           <MiniBoard rows={["CAT"]} seat={1} caption="CAT." />
@@ -113,22 +108,20 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             played={["1,0"]}
             full={["1,0"]}
             ring={["1,0"]}
-            caption="An O on the A makes COT: three for the word, +2 for the tile on top."
+            caption="An O on the A makes COT: 3 for the word, +2 for the tile on top."
           />
         </div>
         <p>
-          <strong>Emptying a full rack</strong> pays a flat{" "}
-          <strong>+{RACK_CLEAR_BONUS}</strong> on top of everything
-          else — so a plain {RACK.size}-letter word is worth chasing even with
-          no square in reach.
+          <strong>Emptying your rack</strong> pays a flat{" "}
+          <strong>+{RACK_CLEAR_BONUS}</strong> on top of everything else —
+          worth chasing even with no square in reach.
         </p>
 
         <h3 className={styles.section}>Scoring: squares</h3>
         <p>
-          A block of tiles with no gap in it scores again on the turn it is
-          completed: <strong>a k×k block is worth k²</strong> — 4 for a 2×2,
-          9 for a 3×3 — and bigger blocks contain smaller ones, which all
-          count.
+          A gapless block of tiles scores again the turn it's completed:{" "}
+          <strong>a k×k block is worth k²</strong> — 4 for a 2×2, 9 for a
+          3×3 — and bigger blocks count their smaller ones too.
         </p>
         <div className={styles.diagrams}>
           <MiniBoard
@@ -136,7 +129,7 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             seat={1}
             played={["1,1"]}
             ring={["0,0", "1,0", "0,1", "1,1"]}
-            caption="A 2×2: four two-letter words, and 4 again for the block. 12 in all."
+            caption="A 2×2: four two-letter words plus 4 for the block — 12 in all."
           />
           <MiniBoard
             rows={["CAT", "ARE", "TEN"]}
@@ -148,27 +141,25 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         </div>
         <p>
           A square is scored by <strong>whoever places its final
-          tile</strong>, no matter who placed the rest — so leaving a
-          corner open is dangerous.
+          tile</strong> — no matter who placed the rest, so leaving a corner
+          open is risky.
         </p>
         <p>
           Each square pays <strong>once</strong>. Replacing a letter inside
-          a block that was already complete scores nothing for it; only a
-          block that was not there at the start of your turn pays.
+          an already-complete block scores nothing more; only a newly
+          completed block pays.
         </p>
 
         <h3 className={styles.section}>Blanks</h3>
         <p>
-          You get {BLANKS_PER_GAME} for the whole game. Drop one, then choose
-          the letter it stands for. Once it has a letter it is an ordinary
-          tile — it <strong>scores its point</strong> and wears your colour
-          like any other.
+          You get {BLANKS_PER_GAME} for the whole game. Play one, then choose
+          its letter. Once assigned, it's an ordinary tile — it{" "}
+          <strong>scores its point</strong> and wears your color like any
+          other.
         </p>
         <p>
-          The one thing a blank may not do is{" "}
-          <strong>land on top of another tile</strong>. A square takes one tile
-          on top and is then full, and the tile that closes it has to be a
-          letter you actually drew.
+          A blank alone can't <strong>land on another tile</strong> — the
+          tile that closes a square has to be a letter you actually drew.
         </p>
 
         <h3 className={styles.section}>Trading and passing</h3>
@@ -177,24 +168,22 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
           Trading <strong>gives up your turn</strong>.
         </p>
         <p>
-          Once the bag is empty there is nothing to trade for, and the same
-          button becomes <strong>Pass</strong> — for the hand that will not
-          play anywhere. Enough passes in a row and the game ends.
+          Once the bag is empty, the same button becomes{" "}
+          <strong>Pass</strong> — for a hand that can't play. Enough passes
+          in a row ends the game.
         </p>
 
         <h3 className={styles.section}>Ending</h3>
         <p>
-          There is <strong>one bag of tiles</strong> for the table, and the
-          game runs until it is gone. The moment someone's hand is empty with
-          nothing left to draw, that fixes the last round — everyone still to
-          move gets <strong>one more turn</strong>, so the game always ends
-          with everyone having played the same number of turns.
+          <strong>One bag of tiles</strong> serves the whole table, and the
+          game runs until it's gone. The moment a hand empties with nothing
+          left to draw, everyone else gets <strong>one more turn</strong> —
+          so the game always ends with equal turns played.
         </p>
         <p>
-          <strong>Nothing is settled for tiles left in hand</strong> — a
-          score is exactly what you scored, nothing taken and nothing handed
-          over at the end. Highest total wins; quitting hands the win to
-          whoever is left.
+          <strong>Nothing is settled for tiles left in hand</strong> — your
+          score is exactly what you scored. Highest total wins; quitting
+          hands the win to whoever remains.
         </p>
       </div>
     </Modal>
