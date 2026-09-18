@@ -26,6 +26,7 @@ import { userMessage } from "../../lib/errors";
 import { markCells } from "../../lib/boardFeedback";
 import { boardAfter, scoresAfter } from "../../lib/replay";
 import { moveToPosition, rackSlotUnder, shuffled } from "../../lib/rackGeometry";
+import { readDraft, writeDraft } from "../../lib/draft";
 import { moveStagedTo, stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
 import { followPointer } from "../../lib/followPointer";
@@ -110,44 +111,6 @@ interface Staged extends Placement {
 
 /** Where a drag started: the rack, or a tile already staged on the board. */
 type Origin = { kind: "rack"; selection: Selection } | { kind: "cell"; x: number; y: number };
-
-/**
- * Drafts survive a reload, and a re-mount. Keyed by turn so a draft is
- * discarded the moment the turn moves on rather than reappearing later.
- */
-const draftKey = (gameId: string) => `kraftwerd:draft:${gameId}`;
-
-/** The key used before the rename. Read once, then dropped. */
-const legacyDraftKey = (gameId: string) => `wordcraft:draft:${gameId}`;
-
-function readDraft(gameId: string, turnNumber: number): Staged[] {
-  try {
-    let raw = window.localStorage.getItem(draftKey(gameId));
-    if (raw === null) {
-      raw = window.localStorage.getItem(legacyDraftKey(gameId));
-      if (raw !== null) window.localStorage.removeItem(legacyDraftKey(gameId));
-    }
-    if (raw === null) return [];
-    const parsed = JSON.parse(raw) as { turnNumber: number; pending: Staged[] };
-    return parsed.turnNumber === turnNumber ? parsed.pending : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeDraft(gameId: string, turnNumber: number, pending: Staged[]) {
-  try {
-    if (pending.length === 0) window.localStorage.removeItem(draftKey(gameId));
-    else {
-      window.localStorage.setItem(
-        draftKey(gameId),
-        JSON.stringify({ turnNumber, pending }),
-      );
-    }
-  } catch {
-    // Private browsing or a full quota: a lost draft is not worth failing over.
-  }
-}
 
 /** One line saying what a turn did, for the review bar. */
 function describeTurn(turn: {
@@ -587,19 +550,27 @@ export function Game({
   useWakeLock(view?.game.status === "active");
 
   const turnNumber = view?.game.turnNumber;
+  /**
+   * Whether a draft still means anything here. A game that is over takes no
+   * more turns, so the tiles staged for one belong to nothing -- and quitting
+   * ends a game without moving the turn on, which is how they used to come
+   * back on the final board.
+   */
+  const playable =
+    view !== undefined && view !== null && view.game.status !== "finished";
 
   // Load the draft for this turn, and drop it when the turn moves on.
   useEffect(() => {
     if (turnNumber === undefined) return;
-    setPending(readDraft(gameId, turnNumber));
+    setPending(readDraft<Staged>(gameId, turnNumber, playable));
     setSelected(null);
     setBlankAt(null);
-  }, [gameId, turnNumber]);
+  }, [gameId, turnNumber, playable]);
 
   useEffect(() => {
     if (turnNumber === undefined) return;
-    writeDraft(gameId, turnNumber, pending);
-  }, [gameId, turnNumber, pending]);
+    writeDraft(gameId, turnNumber, pending, playable);
+  }, [gameId, turnNumber, pending, playable]);
 
   // Kept in a ref so the pointer listeners below can call the current
   // `place` without re-subscribing on every mouse move.
