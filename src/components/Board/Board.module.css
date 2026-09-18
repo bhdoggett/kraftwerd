@@ -270,8 +270,8 @@
   height: var(--cell-size);
   background: repeating-linear-gradient(
     135deg,
-    var(--cell-line) 0 2px,
-    transparent 2px 7px
+    var(--cell-line) 0 1px,
+    transparent 1px 7px
   );
 }
 
