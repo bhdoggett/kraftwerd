@@ -236,15 +236,14 @@
 /*
  * A double-word square, one in from each corner along the diagonal:
  * reaching one pays for stretching a word out toward the edge rather than
- * clustering near the middle. Play's own green, not a colour of its own --
- * a bonus square shares that "good thing is happening" reading with the
- * word-validity feedback it sits next to on the same board -- but at low
- * opacity, since a dozen of them at full strength read as clutter rather
- * than as twelve individually-interesting squares. Single-use by
- * construction: this class only ever lands on an `empty` cell (see
- * Board.tsx), so the diamond is gone for good the moment any tile -- this
- * turn's or a much later one -- covers it, with no separate "spent" flag
- * to track.
+ * clustering near the middle. An outline in the grid's own line colour
+ * (--cell-line, the same hairline the cells are ruled with) rather than a
+ * filled shape in an accent colour -- twelve solid diamonds read as
+ * clutter next to the placed tiles, where twelve faint ones read as part
+ * of the same drawn grid, just marked. Single-use by construction: this
+ * class only ever lands on an `empty` cell (see Board.tsx), so the
+ * diamond is gone for good the moment any tile -- this turn's or a much
+ * later one -- covers it, with no separate "spent" flag to track.
  *
  * `grid-area: cell` matters the same way it does on .glyph below: with no
  * explicit area, a pseudo-element that isn't the cell's only content falls
@@ -256,15 +255,17 @@
  * its content rather than stretching to fill the cell, so a percentage
  * here resolved circularly and gave the two axes different pixel values --
  * a "diamond" that was actually a sideways sliver. --cell-size is the same
- * fixed length regardless of axis, so both sides always agree.
+ * fixed length regardless of axis, so both sides always agree. The border
+ * is boxed inward off that same size rather than added on top of it, so
+ * it doesn't grow the diamond past the square it is sized against.
  */
 .bonus::before {
   content: "";
   grid-area: cell;
+  box-sizing: border-box;
   width: calc(var(--cell-size) * 0.44);
   height: calc(var(--cell-size) * 0.44);
-  background: var(--play);
-  opacity: 0.4;
+  border: calc(var(--cell-size) * 0.045) solid var(--cell-line);
   transform: rotate(45deg);
 }
 
