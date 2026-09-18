@@ -114,13 +114,19 @@ export function Board({
   const focus = useRef<{ x: number; y: number } | null>(null);
   const zoomWas = useRef(1);
 
-  // Zoom is for looking closer. The board already fits at its base size, so
-  // shrinking it only costs legibility -- the floor barely goes below 1.
+  /*
+   * Mostly for looking closer, but it has to go the other way too: the base
+   * size fits the board in its box on a roomy screen and not on a cramped
+   * one, and a floor of 0.95 left nothing to do about that but scroll. At 0.75
+   * a full-size cell is around 27px: enough room to pull the board back into
+   * its box, and still well clear of the 22px a phone plays at, where a board
+   * this wide stops being something you read at a glance.
+   */
   const clamp = (value: number) =>
     // Rounded to hundredths: a pinch reports a new distance every frame, and
     // re-laying out 225 squares for a change too small to see is most of what
     // made the gesture feel rough.
-    Math.round(Math.min(2.5, Math.max(0.95, value)) * 100) / 100;
+    Math.round(Math.min(2.5, Math.max(0.75, value)) * 100) / 100;
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {

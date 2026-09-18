@@ -504,6 +504,15 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   );
 
   /*
+   * Where you stand with the other people at this table, for the invite under
+   * Review turns: friends already, asked, asking, or nothing yet. Read only
+   * while that panel is open -- most turns never ask, and friendships are kept
+   * out of the board's own subscription on purpose (see `getGame`).
+   */
+  const friendStates = useQuery(api.friends.statesAt, { gameId });
+  const inviteFriend = useMutation(api.friends.inviteFromGame);
+
+  /*
    * The plays to replay, read off the history rather than the board: the board
    * only says who owns each square now, so a tile the next play built on would
    * count as that play's, and the play that laid it would land with no ring.
@@ -1162,6 +1171,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
                 </span>
               </>
             )}
+
           </div>
         )}
 
@@ -1393,6 +1403,19 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           tilesLeft={view.tilesLeft}
           bagSize={BAG_SIZE}
             status={game.status}
+          /*
+           * Asking somebody to be friends sits beside their name, for as long
+           * as the game does: an invitation gathers people who may never have
+           * met, and it cannot introduce them to each other. Nothing is shown
+           * at a game with strangers -- the query says nothing about those.
+           */
+          friendStates={friendStates}
+          onInvite={(userId) => {
+            void inviteFriend({
+              gameId,
+              userId: userId as Id<"users">,
+            }).catch((err: unknown) => refuse(userMessage(err)));
+          }}
         />
 
         {/*

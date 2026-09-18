@@ -30,7 +30,7 @@ export function bagFromWeights(
   // Rounding up the rare letters overshoots; take the difference off the
   // commonest ones, which is where a tile either way matters least.
   let over = tilesLeft(bag) - tiles;
-  const commonest = [...bag.keys()].sort((a, b) => weights[b]! - weights[a]!);
+  const commonest = [...bag.keys()].sort((a, b) => weights[b] - weights[a]);
   for (const letter of commonest) {
     if (over <= 0) break;
     const held = bag.get(letter)!;

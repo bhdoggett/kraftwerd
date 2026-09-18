@@ -21,7 +21,6 @@ import {
   newBag,
   returnTiles,
   tilesLeft,
-  type Bag,
 } from "../shared/engine/bag.js";
 import { scoreTurn, type Placement } from "../shared/engine/score.js";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -33,9 +32,9 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { currentUser, refuseGuest, requireUser } from "./auth_helpers";
-import { friendIdsOf, namesFor } from "./seats";
-import { rowsBetween } from "./friends";
+import { currentUser, displayName, refuseGuest, requireUser } from "./auth_helpers";
+import { friendIdsOf, namesFor, seatOf } from "./seats";
+import { askToBeFriends, rowsBetween } from "./friends";
 import { placement } from "./schema";
 
 /**
@@ -98,7 +97,7 @@ export async function drawInto(
   putBack: readonly string[] = [],
 ) {
   const row = await bagFor(ctx, gameId);
-  const returned = returnTiles(row.letters as Bag, putBack);
+  const returned = returnTiles(row.letters, putBack);
   const { drawn, bag } = draw(returned, RACK.size - keep.length, Math.random);
 
   await ctx.db.patch("bags", row._id, { letters: bag });
@@ -155,20 +154,6 @@ export async function seatedAt(ctx: QueryCtx | MutationCtx, gameId: Id<"games">)
     .query("players")
     .withIndex("by_game", (q) => q.eq("gameId", gameId))
     .take(GAME.maxPlayers);
-}
-
-/** This person's seat at a game, or null if they have none. */
-async function seatOf(
-  ctx: QueryCtx | MutationCtx,
-  gameId: Id<"games">,
-  userId: Id<"users">,
-) {
-  return await ctx.db
-    .query("players")
-    .withIndex("by_game_and_user", (q) =>
-      q.eq("gameId", gameId).eq("userId", userId),
-    )
-    .unique();
 }
 
 /** Whoever sits in `seat`, or null if nobody does. */
@@ -513,17 +498,21 @@ export const joinGame = mutation({
     await joinSeat(ctx, args.gameId, userId, seat, "joined", alias);
 
     /*
-     * Sitting down together is itself the introduction, so no request is
-     * needed: everyone already at the table becomes a friend, which is what
-     * makes a second game possible without passing another link around.
+     * The link is an invitation, and an invitation carries a request to be
+     * friends -- from whoever sent it, to whoever followed it. A request, not
+     * a friendship: ignore it and the game plays out exactly the same. Sitting
+     * down used to settle it for you, everyone at the table at once, which
+     * decided something on your behalf that you never agreed to.
      *
-     * Not at a public game. There the link was a list anyone can read, and
-     * the whole point of the aliases is that these people have not met.
+     * Only the maker. The others at the table did not invite you, and asking
+     * on their behalf would be the same presumption in a smaller coat -- two
+     * guests of the same host ask each other from inside the game, or not.
+     *
+     * Not at a public game at all. There the link was a list anyone can read,
+     * and the whole point of the aliases is that these people have not met.
      */
     if (game.isPublic !== true) {
-      for (const other of players) {
-        await befriend(ctx, userId, other.userId);
-      }
+      await askToBeFriends(ctx, game.createdBy, userId);
     }
 
     // Last seat taken: the game starts.
@@ -554,29 +543,6 @@ async function requireFriendship(
   if (edge?.status !== "accepted") {
     throw new ConvexError("You are not friends with that player");
   }
-}
-
-/**
- * Link the two players as friends, unless they already are. Idempotent, and
- * safe in either direction: a pending request from either side is accepted
- * rather than duplicated.
- */
-async function befriend(ctx: MutationCtx, a: Id<"users">, b: Id<"users">) {
-  if (a === b) return;
-
-  const existing = await friendshipBetween(ctx, a, b);
-  if (existing !== null) {
-    if (existing.status !== "accepted") {
-      await ctx.db.patch("friendships", existing._id, { status: "accepted" });
-    }
-    return;
-  }
-
-  await ctx.db.insert("friendships", {
-    requesterId: a,
-    addresseeId: b,
-    status: "accepted",
-  });
 }
 
 /**
@@ -658,7 +624,7 @@ export const tradeTiles = mutation({
     const given = player.letters.filter((_, i) => chosen.includes(i));
 
     const bag = await bagFor(ctx, args.gameId);
-    if (tilesLeft(bag.letters as Bag) === 0) {
+    if (tilesLeft(bag.letters) === 0) {
       throw new ConvexError("The bag is empty — there is nothing to trade for");
     }
 
@@ -715,7 +681,7 @@ export const passTurn = mutation({
     const { game } = await requireTurn(ctx, args.gameId, userId);
 
     const bag = await bagFor(ctx, args.gameId);
-    if (tilesLeft(bag.letters as Bag) > 0) {
+    if (tilesLeft(bag.letters) > 0) {
       throw new ConvexError("There are still tiles in the bag — trade instead");
     }
 
@@ -746,13 +712,18 @@ export const respondToInvite = mutation({
       throw new ConvexError("You have already answered");
 
     if (!args.accept) {
-      // The game can never fill now, so it ends rather than lingering as a
-      // lobby nobody can enter.
+      /*
+       * The game can never fill now, so it ends rather than lingering as a
+       * lobby nobody can enter -- and it says who ended it. Everyone else at
+       * the table is told the next time they open the app: a game that simply
+       * disappeared out of the lobby reads as a bug rather than as an answer.
+       */
       await ctx.db.delete("players", me._id);
       await ctx.db.patch("games", args.gameId, {
         status: "finished",
         winnerIds: [],
         finishedAt: Date.now(),
+        declinedBy: userId,
       });
       return null;
     }
@@ -766,6 +737,59 @@ export const respondToInvite = mutation({
     if (waiting.length === 0 && players.length === game.playerCount) {
       await ctx.db.patch("games", args.gameId, { status: "active" });
     }
+    return null;
+  },
+});
+
+/**
+ * Games of yours that somebody turned down, and that you have not been told
+ * about yet.
+ *
+ * Read off your own player rows rather than the games table: the decline
+ * deletes only the decliner's seat, so everyone still owed the news still has
+ * one. The decliner is excluded by construction -- their seat is gone -- and
+ * anyone already told is filtered out below.
+ */
+export const declineNotices = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUser(ctx);
+
+    const mine = await ctx.db
+      .query("players")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .take(LOBBY_ROWS);
+
+    const notices = await Promise.all(
+      mine.map(async (seat) => {
+        const game = await ctx.db.get("games", seat.gameId);
+        if (game?.declinedBy === undefined) return null;
+        if ((game.declineSeenBy ?? []).includes(userId)) return null;
+
+        const who = await ctx.db.get("users", game.declinedBy);
+        return { gameId: game._id, name: displayName(who) };
+      }),
+    );
+
+    return notices.filter((notice) => notice !== null);
+  },
+});
+
+/** Take the news away, once it has been read. */
+export const dismissDecline = mutation({
+  args: { gameId: v.id("games") },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+
+    const game = await ctx.db.get("games", args.gameId);
+    if (game === null) return null;
+
+    const seen = game.declineSeenBy ?? [];
+    if (seen.includes(userId)) return null;
+
+    await ctx.db.patch("games", args.gameId, {
+      declineSeenBy: [...seen, userId],
+    });
     return null;
   },
 });
@@ -1373,7 +1397,7 @@ export const getGame = query({
        * How many tiles nobody has drawn yet. The count, never the contents —
        * knowing what is in the bag is knowing everyone's future draws.
        */
-      tilesLeft: tilesLeft((bag?.letters ?? newBag(RACK)) as Bag),
+      tilesLeft: tilesLeft((bag?.letters ?? newBag(RACK))),
       viewerUserId: userId,
       /** Null when the viewer is looking at a game they have not joined. */
       yourSeat: you?.seat ?? null,

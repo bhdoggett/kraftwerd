@@ -18,13 +18,18 @@
 # pass -- that is the one move this file exists to prevent.
 set -uo pipefail
 
-CEILING=41
+# Zero since 2026-09-14: the assertions went with `--fix`, and scripts/ is in
+# tsconfig.node.json, so its files parse for the typed rules at last.
+CEILING=0
 
 output=$(./node_modules/.bin/eslint shared convex scripts 2>&1) || true
 echo "$output"
 
 # eslint prints "✖ N problems (...)" only when there are any; no line means none.
-count=$(printf '%s\n' "$output" | sed -n 's/^.*✖ \([0-9][0-9]*\) problems.*$/\1/p' | tail -1)
+# Singular for exactly one -- "✖ 1 problem" -- which the plural-only pattern
+# this used to be read as none: harmless at forty, the first regression past
+# a ceiling of zero.
+count=$(printf '%s\n' "$output" | sed -n 's/^.*✖ \([0-9][0-9]*\) problems\{0,1\} .*$/\1/p' | tail -1)
 count=${count:-0}
 
 if [ "$count" -gt "$CEILING" ]; then

@@ -17,20 +17,20 @@ interface Rack {
 }
 
 function pick(pool: readonly string[], weights: RackConfig["weights"], rng: () => number): string {
-  const total = pool.reduce((sum, letter) => sum + weights[letter]!, 0);
+  const total = pool.reduce((sum, letter) => sum + weights[letter], 0);
   let roll = rng() * total;
   for (const letter of pool) {
-    roll -= weights[letter]!;
+    roll -= weights[letter];
     if (roll < 0) return letter;
   }
-  return pool[pool.length - 1]!;
+  return pool[pool.length - 1];
 }
 
 /** Top up `keep` to a full rack. `rng` returns a float in [0, 1). */
 export function refill(keep: readonly string[], rng: () => number, config: RackConfig): Rack {
   const { size, weights, vowels, minVowels, maxDuplicates } = config;
   const letters = [...keep].slice(0, size);
-  const playable = Object.keys(weights).filter((l) => weights[l]! > 0);
+  const playable = Object.keys(weights).filter((l) => weights[l] > 0);
 
   while (letters.length < size) {
     const counts = new Map<string, number>();

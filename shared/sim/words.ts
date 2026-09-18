@@ -89,7 +89,7 @@ export function rackWords(index: LengthIndex, letters: readonly string[], length
     for (let i = from; i < letters.length; i++) {
       // Identical letters at the same depth give the same subset twice.
       if (i > from && letters[i] === letters[i - 1]) continue;
-      chosen.push(letters[i]!);
+      chosen.push(letters[i]);
       walk(i + 1);
       chosen.pop();
     }
@@ -127,7 +127,7 @@ export function withOneCovered(
      * lookup and the walk, and removes no move: see the callers in
      * components.ts for what makes a square uncoverable.
      */
-    if (!coverable.has(fixed[skip]![0]!)) continue;
+    if (!coverable.has(fixed[skip][0])) continue;
     const rest = fixed.filter((_, i) => i !== skip);
     // Nothing left to match on: the rack decides, exactly as for a span with
     // no letters in it at all.
@@ -173,7 +173,7 @@ export function candidates(index: LengthIndex, fixed: [number, string][]): numbe
   // the result only shrinks from there.
   lists.sort((a, b) => a.length - b.length);
 
-  let hits = lists[0]!;
+  let hits = lists[0];
   for (const list of lists.slice(1)) {
     hits = meet(hits, list);
     if (hits.length === 0) break;

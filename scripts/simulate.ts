@@ -165,12 +165,12 @@ function makeBag(size: number, vowelShare: number): Record<string, number> {
       .map(([l]) => l);
     let i = 0;
     while (given !== tiles) {
-      const letter = order[i % order.length]!;
-      if (given > tiles && out[letter]! > 1) {
-        out[letter]!--;
+      const letter = order[i % order.length];
+      if (given > tiles && out[letter] > 1) {
+        out[letter]--;
         given--;
       } else if (given < tiles) {
-        out[letter]!++;
+        out[letter]++;
         given++;
       }
       i++;
@@ -316,8 +316,8 @@ if (CHAIN_ARG !== undefined) {
       process.exit(1);
     }
     return parts.length === 3
-      ? { depth: d!, breadth: b!, enablement: e }
-      : { depth: d!, breadth: b! };
+      ? { depth: d, breadth: b, enablement: e }
+      : { depth: d, breadth: b };
   });
 }
 
@@ -458,13 +458,13 @@ await pool.close();
 // claim about a table that never played.
 const shapeOf = (i: number) => {
   if (CHAINS === undefined) return "";
-  const c = CHAINS[i % CHAINS.length]!;
+  const c = CHAINS[i % CHAINS.length];
   return ` depth ${c.depth} breadth ${c.breadth}` +
     (c.enablement === undefined ? "" : ` enablement ${c.enablement}`);
 };
 const seating = Array.from(
   { length: players },
-  (_, i) => `seat ${i} ${LEVELS[i % LEVELS.length]!}${shapeOf(i)}`,
+  (_, i) => `seat ${i} ${LEVELS[i % LEVELS.length]}${shapeOf(i)}`,
 ).join(", ");
 
 console.log(

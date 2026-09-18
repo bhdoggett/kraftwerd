@@ -52,6 +52,6 @@ export function refuseGuest(user: Doc<"users">): void {
 export function displayName(user: Doc<"users"> | null): string {
   if (user === null) return "Unknown";
   if (user.name && user.name.trim() !== "") return user.name;
-  if (user.email) return user.email.split("@")[0]!;
+  if (user.email) return user.email.split("@")[0];
   return "Player";
 }

@@ -19,9 +19,28 @@ interface Standing {
   tilesInHand: number | null;
 }
 
+/**
+ * Where you stand with somebody at this table: friends already, one of you
+ * has asked, or neither has. Absent for machines, for your own seat, and for
+ * every seat at a game with strangers -- the server says nothing about those,
+ * so nothing is offered.
+ */
+interface FriendState {
+  userId: string;
+  state: "friends" | "asked" | "asking" | "none";
+}
+
 interface ScoreboardProps {
   players: readonly Standing[];
   currentSeat: number;
+  /**
+   * Asking lives beside the name, and stays there: an invitation gathers
+   * people who may never have met, and this is the only way two of them find
+   * each other afterwards. Empty until the states are loaded, which is why
+   * nothing here waits on them.
+   */
+  friendStates?: readonly FriendState[];
+  onInvite?: (userId: string) => void;
   /** Tiles nobody has drawn yet: what is left of the game. */
   tilesLeft: number;
   bagSize: number;
@@ -33,6 +52,8 @@ interface ScoreboardProps {
 export function Scoreboard({
   players,
   currentSeat,
+  friendStates,
+  onInvite,
   tilesLeft,
   bagSize,
   status,
@@ -89,6 +110,49 @@ export function Scoreboard({
             {p.name}
             {p.isYou && <span className={styles.you}> (you)</span>}
           </span>
+
+          {/*
+            Asked and asking both read as text rather than a control: the
+            first has nothing left to do, and the second is answered in the
+            friends list, where accept and decline already live.
+          */}
+          {(() => {
+            const friend = friendStates?.find((f) => f.userId === p.userId);
+            if (friend === undefined || friend.state === "friends") return null;
+
+            if (friend.state === "asked") {
+              return (
+                <span
+                  className={styles.invited}
+                  aria-label={`Friend invite sent to ${p.name}`}
+                >
+                  asked
+                </span>
+              );
+            }
+
+            if (friend.state === "asking") {
+              return (
+                <span
+                  className={styles.invited}
+                  aria-label={`${p.name} sent you a friend invite`}
+                >
+                  asks you
+                </span>
+              );
+            }
+
+            return (
+              <button
+                type="button"
+                className={styles.invite}
+                aria-label={`Send friend invite to ${p.name}`}
+                onClick={() => onInvite?.(p.userId)}
+              >
+                +
+              </button>
+            );
+          })()}
           {/*
             How many tiles they are holding, once the bag can no longer top
             anyone up.

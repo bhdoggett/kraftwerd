@@ -324,7 +324,7 @@ describe("playing over what is already there", () => {
       m.placements.some((p) => p.x === 7 && p.y === 7),
     );
     expect(covering.length).toBeGreaterThan(0);
-    expect(covering[0]!.placements).toEqual([
+    expect(covering[0].placements).toEqual([
       { x: 7, y: 7, letter: "O", isBlank: false },
     ]);
   });

@@ -38,7 +38,7 @@ describe("friends", () => {
 
     const pending = await asBo.query(api.friends.listFriends);
     await asBo.mutation(api.friends.respondToRequest, {
-      friendshipId: pending.incoming[0]!.friendshipId,
+      friendshipId: pending.incoming[0].friendshipId,
       accept: true,
     });
 
@@ -52,7 +52,7 @@ describe("friends", () => {
 
     const pending = await asBo.query(api.friends.listFriends);
     await asBo.mutation(api.friends.respondToRequest, {
-      friendshipId: pending.incoming[0]!.friendshipId,
+      friendshipId: pending.incoming[0].friendshipId,
       accept: false,
     });
 
@@ -67,7 +67,7 @@ describe("friends", () => {
 
     await expect(
       asAna.mutation(api.friends.respondToRequest, {
-        friendshipId: pending.incoming[0]!.friendshipId,
+        friendshipId: pending.incoming[0].friendshipId,
         accept: true,
       }),
     ).rejects.toThrow("not yours");
@@ -109,7 +109,7 @@ describe("friends", () => {
     const { asAna } = await twoUsers();
     await asAna.mutation(api.friends.requestFriend, { email: "nobody@example.com" });
 
-    const held = (await asAna.query(api.friends.listFriends)).invited[0]!;
+    const held = (await asAna.query(api.friends.listFriends)).invited[0];
     await asAna.mutation(api.friends.cancelInvite, { inviteId: held.inviteId });
 
     expect((await asAna.query(api.friends.listFriends)).invited).toHaveLength(0);
@@ -272,5 +272,185 @@ describe("invite links", () => {
     expect(
       await asBo.mutation(api.friends.acceptFriendLink, { token: "nonsense" }),
     ).toEqual({ ok: false, reason: "unknown" });
+  });
+});
+
+/**
+ * Two people invited by the same host are strangers to each other: the host's
+ * link asked each of them, and asking on their behalf is not the host's to do.
+ * Before this they could only meet by one of them knowing the other's email
+ * address, which is a strange thing to need after a game together.
+ */
+describe("asking from inside a game", () => {
+  async function tableOfThree() {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
+      await ctx.db.insert("users", { authId: "auth|guest", name: "Guest" });
+      await ctx.db.insert("users", { authId: "auth|third", name: "Third" });
+    });
+
+    const asHost = t.withIdentity({ subject: "auth|host" });
+    const asGuest = t.withIdentity({ subject: "auth|guest" });
+    const asThird = t.withIdentity({ subject: "auth|third" });
+
+    const { gameId } = await asHost.mutation(api.games.createGame, { playerCount: 3 });
+    await asGuest.mutation(api.games.joinGame, { gameId });
+    await asThird.mutation(api.games.joinGame, { gameId });
+
+    const third = await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("users")
+        .withIndex("by_authId", (q) => q.eq("authId", "auth|third"))
+        .unique();
+      return row!._id;
+    });
+
+    return { t, gameId, asHost, asGuest, asThird, third };
+  }
+
+  test("asking someone at your table sends a request, not a friendship", async () => {
+    const { gameId, asGuest, asThird, third } = await tableOfThree();
+
+    await asGuest.mutation(api.friends.inviteFromGame, { gameId, userId: third });
+
+    const guest = await asGuest.query(api.friends.listFriends);
+    const theirs = await asThird.query(api.friends.listFriends);
+
+    expect(guest.friends).toHaveLength(0);
+    expect(guest.outgoing.map((o) => o.name)).toEqual(["Third"]);
+    // Alongside the host's own request, which joining the game sent.
+    expect(theirs.incoming.map((i) => i.name)).toContain("Guest");
+  });
+
+  test("the table says who has been asked, and by whom", async () => {
+    const { t, gameId, asGuest, asThird, third } = await tableOfThree();
+    const guest = await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("users")
+        .withIndex("by_authId", (q) => q.eq("authId", "auth|guest"))
+        .unique();
+      return row!._id;
+    });
+
+    // Nothing between the two guests: the host asked each of them, not them
+    // each other.
+    const before = await asGuest.query(api.friends.statesAt, { gameId });
+    expect(before.find((s) => s.userId === third)?.state).toBe("none");
+
+    await asGuest.mutation(api.friends.inviteFromGame, { gameId, userId: third });
+
+    const after = await asGuest.query(api.friends.statesAt, { gameId });
+    expect(after.find((s) => s.userId === third)?.state).toBe("asked");
+
+    const theirs = await asThird.query(api.friends.statesAt, { gameId });
+    expect(theirs.find((s) => s.userId === guest)?.state).toBe("asking");
+  });
+
+  test("asking twice leaves the one request", async () => {
+    const { gameId, asGuest, third } = await tableOfThree();
+
+    await asGuest.mutation(api.friends.inviteFromGame, { gameId, userId: third });
+    await asGuest.mutation(api.friends.inviteFromGame, { gameId, userId: third });
+
+    expect((await asGuest.query(api.friends.listFriends)).outgoing).toHaveLength(1);
+  });
+
+  test("asking somebody who already asked you leaves theirs to answer", async () => {
+    const { gameId, asGuest, asThird, third, t } = await tableOfThree();
+    const guest = await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("users")
+        .withIndex("by_authId", (q) => q.eq("authId", "auth|guest"))
+        .unique();
+      return row!._id;
+    });
+
+    await asThird.mutation(api.friends.inviteFromGame, { gameId, userId: guest });
+    await asGuest.mutation(api.friends.inviteFromGame, { gameId, userId: third });
+
+    // Pressing a button is not answering a question: theirs is still waiting
+    // in the friends list, where answering it belongs.
+    const mine = await asGuest.query(api.friends.listFriends);
+    expect(mine.friends).toHaveLength(0);
+    expect(mine.outgoing).toHaveLength(0);
+    expect(mine.incoming.map((i) => i.name)).toContain("Third");
+  });
+
+  test("nobody is asked from a game with strangers", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
+      await ctx.db.insert("users", { authId: "auth|guest", name: "Guest" });
+      await ctx.db.insert("users", { authId: "auth|third", name: "Third" });
+    });
+    const asHost = t.withIdentity({ subject: "auth|host" });
+    const asGuest = t.withIdentity({ subject: "auth|guest" });
+    const asThird = t.withIdentity({ subject: "auth|third" });
+    const { gameId } = await asHost.mutation(api.games.createGame, {
+      playerCount: 3,
+      isPublic: true,
+    });
+    await asGuest.mutation(api.games.joinGame, { gameId });
+    await asThird.mutation(api.games.joinGame, { gameId });
+    const third = await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("users")
+        .withIndex("by_authId", (q) => q.eq("authId", "auth|third"))
+        .unique();
+      return row!._id;
+    });
+
+    // The aliases exist because these people have not met. A request would
+    // put a real name to one of them.
+    await expect(
+      asGuest.mutation(api.friends.inviteFromGame, { gameId, userId: third }),
+    ).rejects.toThrow("strangers");
+  });
+
+  test("you cannot ask about a game you are not at", async () => {
+    const { t, gameId, third } = await tableOfThree();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|outsider", name: "Outsider" });
+    });
+    const asOutsider = t.withIdentity({ subject: "auth|outsider" });
+
+    await expect(
+      asOutsider.mutation(api.friends.inviteFromGame, { gameId, userId: third }),
+    ).rejects.toThrow("not in this game");
+  });
+
+  test("you cannot ask somebody who is not at the table", async () => {
+    const { t, gameId, asGuest } = await tableOfThree();
+    const outsider = await t.run(async (ctx) =>
+      ctx.db.insert("users", { authId: "auth|outsider", name: "Outsider" }),
+    );
+
+    await expect(
+      asGuest.mutation(api.friends.inviteFromGame, { gameId, userId: outsider }),
+    ).rejects.toThrow("not in this game");
+  });
+
+  test("a machine has nobody to be friends with", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|solo", name: "Solo" });
+    });
+    const asSolo = t.withIdentity({ subject: "auth|solo" });
+    const { gameId } = await asSolo.mutation(api.games.createGame, {
+      playerCount: 2,
+      bots: [{ level: "medium", name: "Gawain" }],
+    });
+    const machine = await t.run(async (ctx) => {
+      const seats = await ctx.db
+        .query("players")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .take(4);
+      return seats.find((p) => p.bot !== undefined)!.userId;
+    });
+
+    await expect(
+      asSolo.mutation(api.friends.inviteFromGame, { gameId, userId: machine }),
+    ).rejects.toThrow("computer player");
   });
 });

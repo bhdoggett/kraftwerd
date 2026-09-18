@@ -25,7 +25,15 @@
    * pinching this area zooms the board, and panning is handled above.
    */
   touch-action: none;
-  overscroll-behavior: contain;
+  /*
+   * Sideways is contained -- a horizontal overscroll is the browser's back
+   * gesture, and panning a board must never navigate away from the game.
+   * Vertical is not: a wheel that has reached the bottom of the board should
+   * carry on scrolling the page, or the only way back up to the top of the
+   * board is to move the pointer off it first.
+   */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
   /*
    * Hidden, not disabled: panning moves the scroll position, so the board
    * still has to scroll -- it just does not need bars to say so.

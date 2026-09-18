@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#
+# Refuse a push to main that the `checks` workflow would fail.
+#
+# CI only reports after the push has landed, which is how main spent days red
+# on a lint ceiling nobody was told about until a deploy email arrived. This
+# runs the same fast gates first, and a push that fails them never leaves the
+# machine: the typecheck (app, scripts and convex) and the scoped lint.
+#
+# The test suite stays in CI -- at over ten minutes it would make every push a
+# coffee break, and it is not what went red here.
+#
+# Only pushes to main are checked; a branch for a pull request goes through as
+# before, and CI reviews it there. To push anyway, deliberately:
+#   git push --no-verify
+#
+# Installed by `npm install` (the `prepare` script points core.hooksPath here).
+set -uo pipefail
+
+zero=0000000000000000000000000000000000000000
+pushing_main=false
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ] && [ "$local_sha" != "$zero" ]; then
+    pushing_main=true
+  fi
+done
+$pushing_main || exit 0
+
+echo "pre-push: checking main before it goes to GitHub…"
+
+# The checks read the working tree, not the commits being pushed, so anything
+# uncommitted is checked too. Say so rather than guess which one was meant.
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo "pre-push: note -- you have uncommitted changes, and they are included in these checks."
+fi
+
+if ! npm run --silent typecheck; then
+  echo ""
+  echo "✖ push refused: the typecheck failed. Fix it, or push with --no-verify to override."
+  exit 1
+fi
+
+if ! npm run --silent lint:scoped; then
+  echo ""
+  echo "✖ push refused: lint is over its ceiling. Fix it, or push with --no-verify to override."
+  exit 1
+fi
+
+echo "pre-push: typecheck and lint pass."

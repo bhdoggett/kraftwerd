@@ -111,6 +111,22 @@
 }
 
 /* The one thing you came here to do, if you are not opening a game. */
+/*
+ * A game somebody turned down, said once and then gone. Short on purpose:
+ * there is one fact here, and the only thing to do about it is read it.
+ */
+.declined {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.declinedSays {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
 .newGame {
   width: 100%;
   padding: var(--space-3) var(--space-4);

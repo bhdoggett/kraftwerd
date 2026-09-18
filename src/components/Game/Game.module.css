@@ -169,26 +169,20 @@
 }
 
 /*
- * What the play scores, over the board's top-right corner. Only where the
- * layout stacks: the panel that says so in full is below the board there, a
- * scroll away, while on a wide screen it sits right beside it. Taps go
+ * What the play scores, over the board's top-right corner, at every width.
+ * The panel says it in full as well -- below the board on a narrow screen, a
+ * scroll away, and beside it on a wide one -- but the number belongs where
+ * the tiles are either way, under the eye that is placing them. Taps go
  * through to the square underneath.
  */
 .boardTally {
-  display: none;
-}
-
-@media (max-width: 860px) {
-  .boardTally {
-    display: block;
-    position: absolute;
-    top: var(--space-2);
-    right: var(--space-2);
-    z-index: 5;
-    pointer-events: none;
-    box-shadow: var(--shadow-lift);
-    border-radius: var(--radius);
-  }
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 5;
+  pointer-events: none;
+  box-shadow: var(--shadow-lift);
+  border-radius: var(--radius);
 }
 
 .recapPoints {

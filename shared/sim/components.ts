@@ -112,7 +112,7 @@ function fit(
   for (let i = 0; i < span.length; i++) {
     const x = span.x + i * span.dx;
     const y = span.y + i * span.dy;
-    const letter = word[i]!;
+    const letter = word[i];
     const sitting = board.get(cellKey(x, y));
 
     if (sitting !== undefined) {
@@ -174,7 +174,7 @@ function fit(
         [-1, 0],
         [0, 1],
         [0, -1],
-      ].some(([dx, dy]) => board.has(cellKey(x + dx!, y + dy!))),
+      ].some(([dx, dy]) => board.has(cellKey(x + dx, y + dy))),
     );
     if (!near) return null;
   }
@@ -307,9 +307,9 @@ export function components(
       for (const i of pool) {
         // Every letter the word needs must be in the rack, unless a blank can
         // stand in. Cheapest rejection there is, so it goes first.
-        if (!anyLetter && (index.masks[i]! & ~(rackMask | spanMask)) !== 0) continue;
+        if (!anyLetter && (index.masks[i] & ~(rackMask | spanMask)) !== 0) continue;
 
-        const laid = fit(board, span, index.words[i]!, rack);
+        const laid = fit(board, span, index.words[i], rack);
         if (laid === null) continue;
 
         // A turn found down an earlier span is the same turn, and validating
