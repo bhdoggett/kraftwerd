@@ -1,22 +1,23 @@
 import { useState } from "react";
 import { RACK } from "../../../shared/config";
-import { newBag } from "../../../shared/engine/bag";
+import { newBag, tilesLeft } from "../../../shared/engine/bag";
 import styles from "./BagContents.module.css";
 
 /**
- * What a full bag holds, letter by letter.
- *
- * The composition is public — it is the same for every game, and knowing it
- * is part of playing well, the way a Scrabble player knows there are four Ss.
- * What stays secret is which of them are still in the bag rather than in
- * somebody's hand.
+ * What is actually left in the bag, letter by letter, against the full
+ * starting count -- each letter a small gauge, filled in proportion to how
+ * much of it remains, rather than a fraction to do arithmetic on. The exact
+ * numbers are still there, on hover and for a screen reader, for anyone who
+ * wants them; the tile itself is meant to be read at a glance, the way an
+ * emptying tank is.
  */
-export function BagContents({ left }: { left: number }) {
+export function BagContents({ remaining }: { remaining: Record<string, number> }) {
   const [open, setOpen] = useState(false);
-  const bag = newBag(RACK);
-  const total = Object.values(bag).reduce((sum, n) => sum + n, 0);
+  const full = newBag(RACK);
+  const total = tilesLeft(full);
+  const left = tilesLeft(remaining);
 
-  const letters = Object.entries(bag).sort(
+  const letters = Object.entries(full).sort(
     ([a, na], [b, nb]) => nb - na || a.localeCompare(b),
   );
 
@@ -36,14 +37,23 @@ export function BagContents({ left }: { left: number }) {
 
       {open && (
         <>
-          <p className={styles.note}>What a full bag holds:</p>
+          <p className={styles.note}>Left in the bag, out of the starting count:</p>
           <div className={styles.letters}>
-            {letters.map(([letter, count]) => (
-              <span key={letter} className={styles.letter}>
-                {letter}
-                <span className={styles.count}>{count}</span>
-              </span>
-            ))}
+            {letters.map(([letter, startingCount]) => {
+              const remainingCount = remaining[letter] ?? 0;
+              const fill = startingCount === 0 ? 0 : remainingCount / startingCount;
+              return (
+                <span
+                  key={letter}
+                  className={styles.letter}
+                  style={{ "--fill": fill } as React.CSSProperties}
+                  title={`${remainingCount} of ${startingCount} left`}
+                  aria-label={`${letter}: ${remainingCount} of ${startingCount} left`}
+                >
+                  {letter}
+                </span>
+              );
+            })}
           </div>
         </>
       )}

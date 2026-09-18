@@ -43,6 +43,8 @@ interface ScoreboardProps {
   onInvite?: (userId: string) => void;
   /** Tiles nobody has drawn yet: what is left of the game. */
   tilesLeft: number;
+  /** The same count, letter by letter -- what BagContents actually draws. */
+  bagRemaining: Record<string, number>;
   bagSize: number;
   status: "lobby" | "active" | "finished";
   /** Absent when there is nothing to quit — a finished game, or a spectator. */
@@ -55,6 +57,7 @@ export function Scoreboard({
   friendStates,
   onInvite,
   tilesLeft,
+  bagRemaining,
   bagSize,
   status,
   onQuit,
@@ -194,7 +197,7 @@ export function Scoreboard({
         )}
       </div>
 
-      {status !== "finished" && <BagContents left={tilesLeft} />}
+      {status !== "finished" && <BagContents remaining={bagRemaining} />}
     </aside>
   );
 }
