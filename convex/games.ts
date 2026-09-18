@@ -200,12 +200,26 @@ async function requireTurn(
 }
 
 /** A game still filling, and whoever has sat down at it so far. */
+/**
+ * A game still taking seats, and whoever has taken one so far.
+ *
+ * "Still taking seats" rather than "not started": a game among friends is
+ * playable from the moment it is made (see `createGame`), so being under way
+ * no longer means being full. What closes a game to newcomers is every seat
+ * being spoken for, or the game being over -- and a public game reaches the
+ * first of those before anybody has played at all.
+ */
 export async function requireLobby(ctx: MutationCtx, gameId: Id<"games">) {
   const game = await ctx.db.get("games", gameId);
   if (game === null) throw new ConvexError("No such game");
-  if (game.status !== "lobby")
+  if (game.status === "finished")
+    throw new ConvexError("That game is already over");
+
+  const players = await seatedAt(ctx, gameId);
+  if (players.length >= game.playerCount)
     throw new ConvexError("That game has already started");
-  return { game, players: await seatedAt(ctx, gameId) };
+
+  return { game, players };
 }
 
 export const difficulty = v.union(
@@ -322,10 +336,23 @@ export const createGame = mutation({
       await seatBot(ctx, gameId, botSeats[i], bot.level, bot.name);
     }
 
-    // Nobody left to wait for: a solo game, or one whose other seats are all
-    // machines. Either way it is playable at once.
-    if (args.playerCount === 1 + bots.length) {
-      await ctx.db.patch("games", gameId, { status: "active" });
+    /*
+     * Who the game is for decides whether it waits.
+     *
+     * Among friends it is playable the moment it exists, on the maker's own
+     * seat: a seat kept for somebody is a seat they will take, and staring at
+     * an empty board until they do buys nothing. The turn waits at an empty
+     * seat when it reaches one, and whoever sits down takes it.
+     *
+     * Offered to strangers it waits until it is full, which is what it always
+     * did: nobody at a public table has agreed to anything yet, and a game
+     * half-played before the second player arrives is a poor introduction.
+     */
+    if (isPublic !== true) {
+      await ctx.db.patch("games", gameId, {
+        status: "active",
+        currentSeat: seat,
+      });
       await wakeBot(ctx, gameId);
     }
 
@@ -393,47 +420,6 @@ async function joinSeat(
  * a link around. Only accepted friends may be seated -- otherwise anyone could
  * drag a stranger into a game.
  */
-export const createGameWithFriends = mutation({
-  args: { friendIds: v.array(v.id("users")) },
-  handler: async (ctx, args) => {
-    const userId = await requireUser(ctx);
-
-    const playerCount = args.friendIds.length + 1;
-    if (playerCount < 2 || playerCount > GAME.maxPlayers) {
-      throw new ConvexError(`Games take up to ${GAME.maxPlayers} players`);
-    }
-    if (new Set(args.friendIds).size !== args.friendIds.length) {
-      throw new ConvexError("Duplicate player");
-    }
-    if (args.friendIds.includes(userId))
-      throw new ConvexError("You are already seated");
-
-    for (const friendId of args.friendIds) {
-      await requireFriendship(ctx, userId, friendId);
-    }
-
-    // Starts in the lobby: an invitation is an offer, not a seating.
-    const gameId = await ctx.db.insert("games", {
-      layout: pickLayout(),
-      status: "lobby",
-      boardSize: GAME.boardSize,
-      endThreshold: GAME.endThreshold,
-      playerCount,
-      currentSeat: 0,
-      turnNumber: 0,
-      tileCount: 0,
-      createdBy: userId,
-    });
-
-    await joinSeat(ctx, gameId, userId, 0, "joined");
-    for (const [i, friendId] of args.friendIds.entries()) {
-      await joinSeat(ctx, gameId, friendId, i + 1, "invited");
-    }
-
-    return gameId;
-  },
-});
-
 /**
  * Take a free seat in a game you have the link to.
  *
@@ -514,9 +500,30 @@ export const joinGame = mutation({
       await askToBeFriends(ctx, game.createdBy, userId);
     }
 
-    // Last seat taken: the game starts.
-    if (players.length + 1 === game.playerCount) {
-      await ctx.db.patch("games", args.gameId, { status: "active" });
+    /*
+     * A game offered to strangers begins when its last seat is taken: nobody
+     * there agreed to anything until everybody had.
+     *
+     * A game among friends was already under way, and may have been waiting
+     * on this very seat -- the turn holds at an empty one rather than wrap
+     * back round, so whoever sits down takes it. `waitingHere` asks whether
+     * the seat being filled is the one the turn is held at, since a joiner
+     * taking some other colour has no claim on a turn that is not theirs.
+     */
+    if (game.isPublic === true) {
+      if (players.length + 1 === game.playerCount) {
+        await ctx.db.patch("games", args.gameId, { status: "active" });
+      }
+      return null;
+    }
+
+    // The turn was held for want of anybody to pass it to, and here they are.
+    if (game.turnHeld === true) {
+      await ctx.db.patch("games", args.gameId, {
+        currentSeat: seat,
+        turnHeld: false,
+      });
+      await wakeBot(ctx, args.gameId);
     }
     return null;
   },
@@ -731,10 +738,23 @@ export const respondToInvite = mutation({
 
     const players = await seatedAt(ctx, args.gameId);
 
-    // Everyone in: the game starts.
+    // Everyone in: a game that was waiting on its last answer starts.
     const waiting = players.filter((p) => p.status === "invited");
     if (waiting.length === 0 && players.length === game.playerCount) {
       await ctx.db.patch("games", args.gameId, { status: "active" });
+    }
+
+    /*
+     * Accepting is sitting down, so it takes a held turn the same way joining
+     * by link does -- the seat was already yours, and the game was waiting on
+     * somebody to fill it.
+     */
+    if (game.turnHeld === true) {
+      await ctx.db.patch("games", args.gameId, {
+        currentSeat: me.seat,
+        turnHeld: false,
+      });
+      await wakeBot(ctx, args.gameId);
     }
     return null;
   },
@@ -1115,7 +1135,18 @@ export const resignGame = mutation({
     // into your record, and a game nobody played into your history — and
     // would hand whoever is left a win over a game that never happened.
     if (game.turnNumber === 0) {
-      if (game.status !== "lobby" || game.createdBy === userId) {
+      /*
+       * Whose game it is decides what leaving means, not what state it is in.
+       * The maker walking away takes the game with them -- nobody else is
+       * left holding a table they did not set. Anyone else just gives the
+       * seat back, and the game goes on waiting for somebody to take it.
+       *
+       * This asked `status !== "lobby"` until games among friends became
+       * playable from the moment they are made, at which point every such
+       * game was "started" and a guest leaving cancelled it out from under
+       * the person who made it.
+       */
+      if (game.createdBy === userId) {
         const seated = await seatedAt(ctx, args.gameId);
         for (const seat of seated) {
           await ctx.db.delete("players", seat._id);
@@ -1171,8 +1202,20 @@ async function advanceTurn(
    */
   const seated = await seatedAt(ctx, game._id);
   const occupiedSeats = seated.map((p) => p.seat).sort((a, b) => a - b);
+  /*
+   * Nobody to pass to yet: a game among friends is playable before its seats
+   * are all spoken for, so the rotation can come round to a seat that has no
+   * one in it. The turn holds where it is until somebody sits down and takes
+   * it (`joinGame`, `respondToInvite`) rather than wrapping onto the one
+   * player as though this were a solo game.
+   */
+  const waitingForSomebody = seated.length < game.playerCount;
+  const nobodyAfterThem =
+    occupiedSeats.find((s) => s > game.currentSeat) === undefined;
+  const turnHeld = waitingForSomebody && nobodyAfterThem;
   const nextSeat =
-    occupiedSeats.find((s) => s > game.currentSeat) ?? occupiedSeats[0];
+    occupiedSeats.find((s) => s > game.currentSeat) ??
+    (turnHeld ? game.currentSeat : occupiedSeats[0]);
 
   // A turn that only replaced letters grew the board by nothing, but it was
   // not a pass — the board changed, and so did the words on it. Counting it
@@ -1203,8 +1246,14 @@ async function advanceTurn(
     game.endsAfterTurn ??
     (playedOut ? game.turnNumber + game.playerCount - 1 : undefined);
 
-  // Two full rounds where nobody places anything: the game is going nowhere.
-  const stalled = consecutivePasses >= game.playerCount * 2;
+  /*
+   * Two full rounds where nobody places anything: the game is going nowhere.
+   *
+   * Never while the turn is held, though. A game waiting for somebody to take
+   * a seat is not a table refusing to play; counting those would end a game
+   * before its second player ever arrived.
+   */
+  const stalled = !turnHeld && consecutivePasses >= game.playerCount * 2;
   const finished =
     stalled ||
     (endsAfterTurn !== undefined && game.turnNumber >= endsAfterTurn);
@@ -1214,6 +1263,7 @@ async function advanceTurn(
     turnNumber,
     consecutivePasses,
     currentSeat: nextSeat,
+    turnHeld,
     ...(endsAfterTurn === undefined ? {} : { endsAfterTurn }),
   });
 
@@ -1385,12 +1435,18 @@ export const getGame = query({
 
     return {
       layout: OPEN_BOARD,
-      /** A free seat, in a game filled by link rather than by invitation. */
-      canJoin:
-        you === undefined &&
-        game.status === "lobby" &&
-        players.length < game.playerCount,
+      /**
+       * A free seat, in a game filled by link rather than by invitation.
+       *
+       * Asked of the seats rather than of the status: a game among friends is
+       * playable from the moment it is made, so being under way no longer
+       * means being full. This read `status === "lobby"`, which stopped being
+       * true for those games and took the colour picker with it.
+       */
+      canJoin: you === undefined && players.length < game.playerCount,
       seatsFilled: seated.length,
+      /** The turn is waiting for somebody to take the seat it landed on. */
+      turnHeld: game.turnHeld === true,
       game,
       /**
        * How many tiles nobody has drawn yet. The count, never the contents —
@@ -1488,8 +1544,15 @@ export const listMyGames = query({
         // Who the game is waiting on, by name: "your turn" answers the
         // question only when the answer is you.
         const inSeat = seated.find((other) => other.seat === game.currentSeat);
+        /*
+         * Whose move it is, or null when that is nobody: a game still filling
+         * its seats can be waiting on a person who has not arrived, and naming
+         * the seat that holds the turn would name the player who last moved.
+         */
         const waitingFor =
-          game.status !== "active" || inSeat === undefined
+          game.status !== "active" ||
+          game.turnHeld === true ||
+          inSeat === undefined
             ? null
             : (names.get(inSeat.userId) ?? "Player");
 
@@ -1529,9 +1592,17 @@ export const listMyGames = query({
     const mineOnly = visible.filter((r) => !r.invited);
 
     return {
-      // An invitation is not a game you are in yet, so it is kept separate:
-      // the lobby offers accept/decline rather than a way in.
-      invitations: visible.filter((r) => r.invited && r.status === "lobby"),
+      /*
+       * An invitation is not a game you are in yet, so it is kept separate:
+       * the lobby offers accept/decline rather than a way in.
+       *
+       * Whether you have answered, not what state the game is in. This asked
+       * for `status === "lobby"` back when an invited game could not start
+       * without you -- now that a game among friends is playable while it
+       * waits, that test dropped the invitation out of your lobby and left
+       * you no way to accept it at all.
+       */
+      invitations: visible.filter((r) => r.invited && r.status !== "finished"),
       games: mineOnly.filter((r) => r.status !== "finished"),
       // Finished games are history: kept, out of the way, and newest first --
       // the last game you played is the one you want to look at. Rows come

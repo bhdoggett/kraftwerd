@@ -1262,14 +1262,24 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           </div>
         )}
 
-        {game.status === "lobby" && (
+        {view.seatsFilled < game.playerCount && (
           <div className={styles.waiting}>
             {/* Name who has not arrived: "2 of 3 seats filled" says how many
                 are missing, never which. */}
             <strong>Waiting for players.</strong> {view.seatsFilled} of{" "}
             {game.playerCount} seats filled
             {invitees.length > 0 && <> — yet to accept: {invitees.join(", ")}</>}
-            . Nobody can place tiles until the game is full.
+            {game.status === "lobby" ? (
+              // Offered to strangers: nobody has agreed to anything yet, so
+              // the game waits for the table to fill before it begins.
+              <>. Nobody can place tiles until the game is full.</>
+            ) : view.turnHeld ? (
+              // Among friends the game is already under way, and has come
+              // round to a seat nobody is in.
+              <>. The turn is waiting for whoever takes the next seat.</>
+            ) : (
+              <>. The game is under way — play carries on as seats fill.</>
+            )}
             {view.canJoin && viewer?.isGuest === true ? (
               // A guest cannot hold a seat: the mutation refuses it, and being
               // told why here beats pressing a button that says no.

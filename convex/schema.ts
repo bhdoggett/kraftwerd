@@ -125,6 +125,18 @@ export default defineSchema({
      * that ends a game.
      */
     consecutivePasses: v.optional(v.number()),
+    /**
+     * The turn has nowhere to go: a game among friends is playable before
+     * every seat is spoken for, so the rotation can come round to a seat
+     * nobody is in. Set when that happens, cleared by whoever sits down and
+     * takes the turn.
+     *
+     * A flag rather than something worked out from the seats, because after a
+     * held turn `currentSeat` names an occupied seat -- the player who just
+     * moved -- and nothing else in the row tells "held, waiting for somebody"
+     * apart from "their turn came round again".
+     */
+    turnHeld: v.optional(v.boolean()),
     /** Set when the game finishes; ties give every leader a win. */
     winnerIds: v.optional(v.array(v.id("users"))),
     /**

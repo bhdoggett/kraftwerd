@@ -557,7 +557,17 @@ describe("solo games", () => {
     expect(game?.status).toBe("active");
   });
 
-  test("a two-player game still waits in the lobby", async () => {
+  /*
+   * Who you made the game for decides whether it waits.
+   *
+   * A game among friends is playable the moment it exists: the seat you kept
+   * for somebody is a seat they will take, and there is nothing to be gained
+   * by making you stare at an empty board until they do. A game offered to
+   * strangers waits until it is full, because nobody has agreed to anything
+   * yet -- `isPublic` is that difference, and it already means "people who
+   * have not met".
+   */
+  test("a game among friends is playable the moment it is made", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) =>
       ctx.db.insert("users", { authId: "auth|a", name: "A" }),
@@ -566,6 +576,23 @@ describe("solo games", () => {
     const { gameId } = await t
       .withIdentity({ subject: "auth|a" })
       .mutation(api.games.createGame, { playerCount: 2 });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("active");
+    // On the maker's own seat: whoever made it goes first, whatever colour
+    // they took.
+    expect(game?.currentSeat).toBe(0);
+  });
+
+  test("a game offered to strangers waits until it is full", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) =>
+      ctx.db.insert("users", { authId: "auth|a", name: "A" }),
+    );
+
+    const { gameId } = await t
+      .withIdentity({ subject: "auth|a" })
+      .mutation(api.games.createGame, { playerCount: 2, isPublic: true });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("lobby");
@@ -725,22 +752,34 @@ describe("game invitations", () => {
 
     const asAna = t.withIdentity({ subject: "auth|ana" });
     const asBo = t.withIdentity({ subject: "auth|bo" });
-    const gameId = await asAna.mutation(api.games.createGameWithFriends, {
-      friendIds: [bo],
+    // The two steps the app itself takes: make the game, then ask people to
+    // it. There used to be a `createGameWithFriends` that did both, which
+    // nothing but this helper called -- and being the one creation path that
+    // never stamped a rules version, it was quietly making games that could
+    // not count toward anybody's record.
+    const { gameId } = await asAna.mutation(api.games.createGame, {
+      playerCount: 2,
     });
+    await asAna.mutation(api.games.inviteToGame, { gameId, friendIds: [bo] });
     return { t, gameId, asAna, asBo, ana, bo };
   }
 
-  test("an invited game waits in the lobby rather than starting", async () => {
+  test("an invited game is playable while the answer is outstanding", async () => {
     const { t, gameId } = await invitedGame();
 
+    // A seat kept for somebody is a seat they will take: the maker does not
+    // sit staring at an empty board until they answer.
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
-    expect(game?.status).toBe("lobby");
+    expect(game?.status).toBe("active");
+    expect(game?.currentSeat).toBe(0);
   });
 
   test("the invitee sees an invitation, not a game to enter", async () => {
     const { asBo, asAna } = await invitedGame();
 
+    // Still an invitation, not a game he is in, even though the game is
+    // already under way: he has not answered, and answering is the whole
+    // difference between the two lists.
     const bo = await asBo.query(api.games.listMyGames);
     expect(bo.invitations).toHaveLength(1);
     expect(bo.games).toHaveLength(0);
@@ -793,6 +832,24 @@ describe("game invitations", () => {
     expect(game?.status).toBe("finished");
   });
 
+  test("declining cancels a game that has already been played in", async () => {
+    const { t, gameId, asAna, asBo } = await invitedGame();
+
+    // Ana does not wait for the answer -- the game is playable the moment it
+    // is made -- and then the answer is no.
+    await asAna.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+    await asBo.mutation(api.games.respondToInvite, { gameId, accept: false });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("finished");
+    expect(game?.winnerIds).toEqual([]);
+
+    // Cancelled, not lost: nobody won it and it is not a game Ana played and
+    // failed to win.
+    const ana = await asAna.query(api.users.viewer);
+    expect(ana?.stats?.gamesPlayed).toBe(0);
+  });
+
   test("an invitation cannot be answered twice", async () => {
     const { gameId, asBo } = await invitedGame();
     await asBo.mutation(api.games.respondToInvite, { gameId, accept: true });
@@ -832,16 +889,46 @@ describe("joining by link", () => {
     };
   }
 
-  test("the game starts only once every seat is taken", async () => {
+  test("the turn waits at a seat nobody has taken yet", async () => {
+    const { t, gameId, asHost, asGuest } = await lobbyGame(3);
+
+    // A trade rather than a play: this is about who the turn goes to, and a
+    // play would need a dictionary and a known rack to say anything at all.
+    await asHost.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+
+    // Nobody to pass to, so the turn stays put rather than wrapping back
+    // round to the one player as though this were a solo game.
+    const waiting = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(waiting?.status).toBe("active");
+    expect(waiting?.currentSeat).toBe(0);
+
+    // And whoever sits down next takes it.
+    await asGuest.mutation(api.games.joinGame, { gameId, seat: 1 });
+    const joined = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(joined?.currentSeat).toBe(1);
+  });
+
+  test("a seat can be taken at a game already under way", async () => {
     const { t, gameId, asGuest, asThird } = await lobbyGame(3);
 
-    await asGuest.mutation(api.games.joinGame, { gameId });
+    // Playable from the moment it was made -- the link is an invitation to a
+    // game, not to a waiting room.
     let game = await t.run(async (ctx) => ctx.db.get("games", gameId));
-    expect(game?.status).toBe("lobby");
+    expect(game?.status).toBe("active");
 
+    await asGuest.mutation(api.games.joinGame, { gameId });
     await asThird.mutation(api.games.joinGame, { gameId });
+
     game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("active");
+
+    const seated = await t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .take(4),
+    );
+    expect(seated).toHaveLength(3);
   });
 
   test("a full game cannot be joined", async () => {
@@ -1442,8 +1529,11 @@ describe("computer players", () => {
       friendIds: [bob],
     });
 
-    const lobby = await t.run(async (ctx) => ctx.db.get("games", gameId));
-    expect(lobby?.status).toBe("lobby");
+    // Playable at once, on Alice's own seat: a seat kept for Bob is one he
+    // will take, and the machine beside her is not waiting on him either.
+    const started = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(started?.status).toBe("active");
+    expect(started?.currentSeat).toBe(0);
 
     // The bot took the seat next to the creator; the invitation went to the
     // one after it, rather than to a seat the bot already holds.
@@ -1454,8 +1544,12 @@ describe("computer players", () => {
     await t
       .withIdentity({ subject: "auth|bob" })
       .mutation(api.games.respondToInvite, { gameId, accept: true });
-    const started = await t.run(async (ctx) => ctx.db.get("games", gameId));
-    expect(started?.status).toBe("active");
+
+    // Accepting seats him rather than starting anything: the game was under
+    // way before he answered, which is the whole point of the change.
+    const afterAccept = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(afterAccept?.status).toBe("active");
+    expect((await seatsOf(t, gameId))[2]?.status).toBe("joined");
   });
 
   test("a trade hands the turn over to the machine, not to nobody", async () => {
