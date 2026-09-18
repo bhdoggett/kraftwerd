@@ -104,6 +104,26 @@ export async function drawInto(
   return { letters: [...keep, ...drawn], left: tilesLeft(bag) };
 }
 
+/**
+ * Add this turn's placements to the running count of what has ever landed on
+ * the board, letter by letter. Blanks are skipped -- they are a whole-game
+ * allowance rather than tiles drawn from the bag, so they were never part of
+ * this tally to begin with.
+ */
+async function recordPlayed(
+  ctx: MutationCtx,
+  gameId: Id<"games">,
+  placements: readonly Placement[],
+) {
+  const row = await bagFor(ctx, gameId);
+  const played = { ...(row.played ?? {}) };
+  for (const p of placements) {
+    if (p.isBlank) continue;
+    played[p.letter] = (played[p.letter] ?? 0) + 1;
+  }
+  await ctx.db.patch("bags", row._id, { played });
+}
+
 /** Upper bound on tiles we ever read: the game ends at `endThreshold`. */
 const MAX_TILES = 512;
 
@@ -1024,6 +1044,8 @@ async function playTurn(
       }
     }
 
+    await recordPlayed(ctx, args.gameId, placements);
+
     await ctx.db.insert("turns", {
       gameId: args.gameId,
       turnNumber: game.turnNumber,
@@ -1518,6 +1540,27 @@ export const getGame = query({
         : new Set<Id<"users">>();
     const names = await namesFor(ctx, userId, game, players, friends);
 
+    /**
+     * What hasn't been played yet, letter by letter -- the starting
+     * composition (public) minus your own rack (yours to know) minus
+     * everything ever played (public, on the board). Never touches
+     * `bag.letters`, which stays exactly as secret as it always was: this is
+     * the bag *and* everyone else's hand combined, undivided between them,
+     * the same total a diligent player could already reach by tallying the
+     * board and their own rack by hand.
+     */
+    const full = newBag(RACK);
+    const played = bag?.played ?? {};
+    const myLetters = you?.letters ?? [];
+    const remainingLetters: Record<string, number> = {};
+    for (const letter of Object.keys(full)) {
+      const mine = myLetters.filter((l) => l === letter).length;
+      remainingLetters[letter] = Math.max(
+        0,
+        (full[letter] ?? 0) - mine - (played[letter] ?? 0),
+      );
+    }
+
     return {
       layout: OPEN_BOARD,
       /**
@@ -1535,16 +1578,7 @@ export const getGame = query({
       game,
       /** How many tiles nobody has drawn yet. */
       tilesLeft: tilesLeft((bag?.letters ?? newBag(RACK))),
-      /**
-       * What is left of the bag, letter by letter -- not just the count.
-       * Deliberately more than the count used to give away: subtracted
-       * against the public starting composition, the board and a player's
-       * own hand, this is also everyone else's combined hand letters, with
-       * nothing attributed to a particular seat. A player who wanted that
-       * badly enough could already tally it turn by turn; this just answers
-       * "what's left" outright instead of making them keep score on paper.
-       */
-      bagRemaining: bag?.letters ?? newBag(RACK),
+      remainingLetters,
       viewerUserId: userId,
       /** Null when the viewer is looking at a game they have not joined. */
       yourSeat: you?.seat ?? null,

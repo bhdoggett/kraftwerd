@@ -15,7 +15,7 @@ function draw(status: "lobby" | "active" | "finished", tilesLeft = 0) {
       players={players}
       currentSeat={0}
       tilesLeft={tilesLeft}
-      bagRemaining={{}}
+      remainingLetters={{}}
       bagSize={71}
       status={status}
     />,
@@ -42,7 +42,7 @@ describe("asking somebody to be friends", () => {
         players={players}
         currentSeat={0}
         tilesLeft={0}
-        bagRemaining={{}}
+        remainingLetters={{}}
         bagSize={71}
         status="active"
         friendStates={friendStates}
@@ -121,7 +121,7 @@ describe("what everyone is holding", () => {
         players={[{ ...players[1], tilesInHand: 1 }]}
         currentSeat={0}
           tilesLeft={0}
-        bagRemaining={{}}
+        remainingLetters={{}}
         bagSize={71}
         status="active"
       />,
@@ -136,7 +136,7 @@ describe("what everyone is holding", () => {
         players={players.map((p) => ({ ...p, tilesInHand: null }))}
         currentSeat={0}
           tilesLeft={0}
-        bagRemaining={{}}
+        remainingLetters={{}}
         bagSize={71}
         status="finished"
       />,
