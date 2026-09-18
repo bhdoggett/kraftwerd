@@ -1391,7 +1391,7 @@ export function Game({
           }))}
           currentSeat={game.currentSeat}
           tilesLeft={view.tilesLeft}
-          bagRemaining={view.bagRemaining}
+          unseen={view.unseen}
           bagSize={BAG_SIZE}
             status={game.status}
           /*

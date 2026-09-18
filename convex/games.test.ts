@@ -400,7 +400,11 @@ describe("getGame", () => {
     expect(theirs?.letterCount).toBe(2);
   });
 
-  test("reports what is left of the bag, not just the count", async () => {
+  test("says how many tiles are left, never which ones", async () => {
+    // The count is public; the contents are not. Board + your own rack +
+    // the bag accounts for every tile in the game, so a client holding all
+    // three could subtract out the other players' racks exactly -- and in a
+    // two-hander that is the opponent's hand, letter for letter, every turn.
     const { t, gameId, asAlice } = await twoPlayerGame(["A", "D"]);
 
     await t.run(async (ctx) => {
@@ -414,8 +418,38 @@ describe("getGame", () => {
 
     const view = await asAlice.query(api.games.getGame, { gameId });
 
-    expect(view!.bagRemaining).toEqual({ A: 1, Z: 1 });
     expect(view!.tilesLeft).toBe(2);
+    expect(view).not.toHaveProperty("bagRemaining");
+  });
+
+  test("reports what is unseen: the bag and the other hands, added together", async () => {
+    // What a player could work out with a pencil -- the starting letters,
+    // less the board, less their own hand -- and no more than that. Adding
+    // the bag to the other racks is what keeps it un-splittable: knowing an
+    // opponent's rack from this would need the bag, which never leaves.
+    const { t, gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+
+    await t.run(async (ctx) => {
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      if (bag === null) await ctx.db.insert("bags", { gameId, letters: { A: 1, Z: 1 } });
+      else await ctx.db.patch("bags", bag._id, { letters: { A: 1, Z: 1 } });
+
+      const bob = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_seat", (q) => q.eq("gameId", gameId).eq("seat", 1))
+        .unique();
+      if (bob !== null) await ctx.db.patch("players", bob._id, { letters: ["Q", "A"] });
+    });
+
+    const view = await asAlice.query(api.games.getGame, { gameId });
+
+    // The bag's A and Z, plus Bob's Q and A. Alice's own letters are hers to
+    // see and so are not unseen; nothing here says which side of the table
+    // either A is on.
+    expect(view!.unseen).toEqual({ A: 2, Z: 1, Q: 1 });
   });
 });
 

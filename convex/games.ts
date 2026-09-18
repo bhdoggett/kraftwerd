@@ -1475,6 +1475,31 @@ export const checkWords = query({
   },
 });
 
+/**
+ * Every letter not on the board and not in the viewer's own hand: the bag,
+ * plus everybody else's racks, added together and attributed to nobody.
+ *
+ * Added up rather than subtracted from the board for two reasons. The board
+ * cannot answer it -- a stacked square keeps one row with the top letter, so
+ * the letter underneath it is not there to subtract -- and the two halves
+ * being inseparable is the whole safety of it: an opponent's rack could be
+ * recovered from this only with the bag, which never leaves the server.
+ */
+function unseenLetters(
+  bag: Record<string, number>,
+  players: readonly Doc<"players">[],
+  viewerId: Id<"users">,
+): Record<string, number> {
+  const unseen: Record<string, number> = { ...bag };
+  for (const player of players) {
+    if (player.userId === viewerId) continue;
+    for (const letter of player.letters) {
+      unseen[letter] = (unseen[letter] ?? 0) + 1;
+    }
+  }
+  return unseen;
+}
+
 export const getGame = query({
   args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
@@ -1533,18 +1558,42 @@ export const getGame = query({
       /** The turn is waiting for somebody to take the seat it landed on. */
       turnHeld: game.turnHeld === true,
       game,
-      /** How many tiles nobody has drawn yet. */
+      /**
+       * How many tiles nobody has drawn yet. The count, never the contents —
+       * knowing what is in the bag is knowing everyone's future draws.
+       *
+       * Sending the contents was tried and taken back out. Board, your own
+       * rack and the bag account for every tile in the game, so a client
+       * holding all three subtracts out the other players' hands exactly —
+       * in a two-hander, the opponent's rack letter for letter, and diffed
+       * turn to turn, precisely what they just drew. What the bag holds is
+       * the one fact at this table that cannot be public.
+       *
+       * The per-letter display that wanted it is fed from `unseen` below
+       * instead.
+       */
       tilesLeft: tilesLeft((bag?.letters ?? newBag(RACK))),
       /**
-       * What is left of the bag, letter by letter -- not just the count.
-       * Deliberately more than the count used to give away: subtracted
-       * against the public starting composition, the board and a player's
-       * own hand, this is also everyone else's combined hand letters, with
-       * nothing attributed to a particular seat. A player who wanted that
-       * badly enough could already tally it turn by turn; this just answers
-       * "what's left" outright instead of making them keep score on paper.
+       * Every letter not on the board and not in your own hand: the bag and
+       * the other players' racks, added together and attributed to nobody.
+       *
+       * This is what a player can already work out with a pencil — the
+       * starting composition, less the board, less what they are holding —
+       * so answering it outright gives away nothing they could not count.
+       * What keeps it safe is that the two halves stay added up: recovering
+       * an opponent's rack from this would take the bag, and the bag never
+       * leaves this function.
+       *
+       * Summed from the bag and the racks rather than by subtracting the
+       * board, because the board cannot answer it. A stacked square keeps
+       * one row with the top letter and a count (see `tiles` in schema.ts),
+       * so the letter underneath is not on the board to subtract — a client
+       * doing this arithmetic itself would report every buried tile as still
+       * out there. Invited seats count: a rack is dealt when the seat is
+       * made, so those letters are out of the bag whether or not the answer
+       * has come back yet.
        */
-      bagRemaining: bag?.letters ?? newBag(RACK),
+      unseen: unseenLetters(bag?.letters ?? newBag(RACK), players, userId),
       viewerUserId: userId,
       /** Null when the viewer is looking at a game they have not joined. */
       yourSeat: you?.seat ?? null,

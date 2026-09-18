@@ -4,18 +4,35 @@ import { newBag, tilesLeft } from "../../../shared/engine/bag";
 import styles from "./BagContents.module.css";
 
 /**
- * What is actually left in the bag, letter by letter, against the full
- * starting count -- each letter a small gauge, filled in proportion to how
- * much of it remains, rather than a fraction to do arithmetic on. The exact
- * numbers are still there, on hover and for a screen reader, for anyone who
- * wants them; the tile itself is meant to be read at a glance, the way an
- * emptying tank is.
+ * What is still out there, letter by letter, against the full starting count
+ * -- each letter a small gauge filled in proportion to how much of it is
+ * unaccounted for, rather than a fraction to do arithmetic on. The exact
+ * numbers are on hover and for a screen reader; the tile itself is meant to
+ * be read at a glance, the way an emptying tank is.
+ *
+ * "Still out there" is not "still in the bag", and the wording matters. What
+ * is drawn here is the bag *and* the other players' hands together, which is
+ * exactly what anyone could work out by counting the board against the
+ * starting letters. What is in the bag alone is never shown and never sent:
+ * board, your own rack and the bag account for every tile in the game, so
+ * knowing all three gives you the other players' racks by subtraction -- in
+ * a two-hander, the opponent's whole rack, letter for letter, every turn.
+ *
+ * The headline count is the bag's own, which is public on its own: how many
+ * tiles are left to draw says nothing about which.
  */
-export function BagContents({ remaining }: { remaining: Record<string, number> }) {
+export function BagContents({
+  left,
+  unseen,
+}: {
+  /** Tiles still in the bag. The count is public; the contents are not. */
+  left: number;
+  /** The bag and the other hands together, by letter. */
+  unseen: Record<string, number>;
+}) {
   const [open, setOpen] = useState(false);
   const full = newBag(RACK);
   const total = tilesLeft(full);
-  const left = tilesLeft(remaining);
 
   const letters = Object.entries(full).sort(
     ([a, na], [b, nb]) => nb - na || a.localeCompare(b),
@@ -37,18 +54,20 @@ export function BagContents({ remaining }: { remaining: Record<string, number> }
 
       {open && (
         <>
-          <p className={styles.note}>Left in the bag, out of the starting count:</p>
+          <p className={styles.note}>
+            Still out there — in the bag or in somebody's hand:
+          </p>
           <div className={styles.letters}>
             {letters.map(([letter, startingCount]) => {
-              const remainingCount = remaining[letter] ?? 0;
-              const fill = startingCount === 0 ? 0 : remainingCount / startingCount;
+              const outThere = unseen[letter] ?? 0;
+              const fill = startingCount === 0 ? 0 : outThere / startingCount;
               return (
                 <span
                   key={letter}
                   className={styles.letter}
                   style={{ "--fill": fill } as React.CSSProperties}
-                  title={`${remainingCount} of ${startingCount} left`}
-                  aria-label={`${letter}: ${remainingCount} of ${startingCount} left`}
+                  title={`${outThere} of ${startingCount} still out there`}
+                  aria-label={`${letter}: ${outThere} of ${startingCount} still out there`}
                 >
                   {letter}
                 </span>
