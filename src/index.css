@@ -176,7 +176,7 @@
    * tile is simply the tube itself. Lower this to soften every face at once —
    * each still clears the black letter by 6.5:1 or better at full strength.
    */
-  --tile-tint: 100%;
+  --tile-tint: 97%;
   --seat-0: color-mix(in srgb, var(--full-tomato) var(--tile-tint), #ffffff);
   --seat-1: color-mix(in srgb, var(--full-pacific) var(--tile-tint), #ffffff);
   --seat-2: color-mix(in srgb, var(--full-gold) var(--tile-tint), #ffffff);
