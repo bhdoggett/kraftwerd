@@ -399,6 +399,24 @@ describe("getGame", () => {
     expect(theirs?.letters).toBeNull();
     expect(theirs?.letterCount).toBe(2);
   });
+
+  test("reports what is left of the bag, not just the count", async () => {
+    const { t, gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+
+    await t.run(async (ctx) => {
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      if (bag === null) await ctx.db.insert("bags", { gameId, letters: { A: 1, Z: 1 } });
+      else await ctx.db.patch("bags", bag._id, { letters: { A: 1, Z: 1 } });
+    });
+
+    const view = await asAlice.query(api.games.getGame, { gameId });
+
+    expect(view!.bagRemaining).toEqual({ A: 1, Z: 1 });
+    expect(view!.tilesLeft).toBe(2);
+  });
 });
 
 describe("end of game", () => {

@@ -43,24 +43,36 @@
   gap: 3px;
 }
 
-/* Small tiles, drawn the way the board draws one. */
+/*
+ * A ring, not a fraction: --fill (0 to 1, set inline per letter) draws a pie
+ * chart around each letter -- accent colour for what's left, a plain border
+ * tone for what's already drawn -- the same track-and-fill idea the game's
+ * other progress bar uses (see .bar/.fill in Scoreboard.module.css), bent
+ * into a circle so 26 of them read as one glance instead of one bar chart
+ * each. The letter itself sits on a fixed disc in the middle, painted over
+ * the ring rather than tinted by it, precisely so its text colour never has
+ * to fight a background that ranges from solid accent green to solid black
+ * depending on the letter -- readable is worth more here than the ring
+ * reaching all the way to the centre. A letter at zero is still drawn, at
+ * the same size as every other one, just an empty ring rather than a
+ * missing tile -- dropping it from the row would read as a shrinking
+ * alphabet, not a shrinking bag. Exact numbers live in `title` and
+ * `aria-label` rather than on the tile itself, for whoever wants to check
+ * rather than glance.
+ */
 .letter {
   display: inline-flex;
-  align-items: baseline;
-  gap: 2px;
-  padding: 2px 4px;
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, var(--surface-sunken) 10px, transparent 10px),
+    conic-gradient(var(--accent) calc(var(--fill) * 100%), var(--border-strong) 0);
   color: var(--text);
   font-family: var(--font-tile);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 800;
   font-synthesis-weight: none;
-}
-
-.count {
-  color: var(--text-muted);
-  font-size: 0.62rem;
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
 }

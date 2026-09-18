@@ -1533,11 +1533,18 @@ export const getGame = query({
       /** The turn is waiting for somebody to take the seat it landed on. */
       turnHeld: game.turnHeld === true,
       game,
-      /**
-       * How many tiles nobody has drawn yet. The count, never the contents —
-       * knowing what is in the bag is knowing everyone's future draws.
-       */
+      /** How many tiles nobody has drawn yet. */
       tilesLeft: tilesLeft((bag?.letters ?? newBag(RACK))),
+      /**
+       * What is left of the bag, letter by letter -- not just the count.
+       * Deliberately more than the count used to give away: subtracted
+       * against the public starting composition, the board and a player's
+       * own hand, this is also everyone else's combined hand letters, with
+       * nothing attributed to a particular seat. A player who wanted that
+       * badly enough could already tally it turn by turn; this just answers
+       * "what's left" outright instead of making them keep score on paper.
+       */
+      bagRemaining: bag?.letters ?? newBag(RACK),
       viewerUserId: userId,
       /** Null when the viewer is looking at a game they have not joined. */
       yourSeat: you?.seat ?? null,
