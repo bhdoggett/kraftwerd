@@ -169,6 +169,15 @@ export default defineSchema({
      */
     isPublic: v.optional(v.boolean()),
     /**
+     * The game made to play this table again.
+     *
+     * Kept so that the button means the same thing to everybody who presses
+     * it: the second person to ask is sent to the rematch the first one made,
+     * rather than to a rival table where they sit waiting on an answer from
+     * somebody already sitting at the other one.
+     */
+    rematchId: v.optional(v.id("games")),
+    /**
      * The rules in force when this game was created. Absent on games from
      * before it was recorded, which are older than the current rules by
      * definition and so count for nothing.

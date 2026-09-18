@@ -91,6 +91,7 @@ export default function App() {
             <Game
               gameId={route.gameId as Id<"games">}
               onLeave={() => navigate({ name: "lobby" })}
+              onOpen={(gameId) => navigate({ name: "game", gameId })}
             />
           ) : route.name === "friend" ? (
             <AcceptFriend

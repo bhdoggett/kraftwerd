@@ -165,7 +165,16 @@ function describeTurn(turn: {
   return `${turn.name} played ${turn.words.join(", ")} for ${turn.score}${made}`;
 }
 
-export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => void }) {
+export function Game({
+  gameId,
+  onLeave,
+  /** Where playing these people again goes: the table it just made. */
+  onOpen,
+}: {
+  gameId: Id<"games">;
+  onLeave: () => void;
+  onOpen: (gameId: Id<"games">) => void;
+}) {
   const view = useQuery(api.games.getGame, { gameId });
   /** Only for what a guest may not do; the game itself does not care. */
   const viewer = useQuery(api.users.viewer);
@@ -174,6 +183,7 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
   const tradeTiles = useMutation(api.games.tradeTiles);
   const passTurn = useMutation(api.games.passTurn);
   const joinGame = useMutation(api.games.joinGame);
+  const rematch = useMutation(api.games.rematch);
   const [copied, setCopied] = useState(false);
 
   const [pending, setPending] = useState<Staged[]>([]);
@@ -1430,22 +1440,49 @@ export function Game({ gameId, onLeave }: { gameId: Id<"games">; onLeave: () => 
           way to lose your place rather than find it.
         */}
         {game.status === "finished" && game.turnNumber > 0 && !reviewing && (
+          <>
+            <button
+              type="button"
+              className={styles.reviewOpen}
+              onClick={() => setReviewing(true)}
+            >
+              Review turns
+            </button>
+
+            {/*
+              The same table over again: same people, same colours, same
+              machines. It is under way the moment it is asked for, on the
+              seat of whoever asked -- so this button is the first turn of
+              the new game as much as it is the end of the old one.
+            */}
+            <button
+              type="button"
+              className={[styles.reviewOpen, styles.playAgain].join(" ")}
+              onClick={() => {
+                void rematch({ gameId })
+                  .then((again) => onOpen(again.gameId))
+                  .catch((err: unknown) => refuse(userMessage(err)));
+              }}
+            >
+              Play again
+            </button>
+          </>
+        )}
+
+        {/*
+          A list of what you could have played is help while you are playing.
+          Once the game is over it is only clutter, in the one place where
+          what to do next is the whole question.
+        */}
+        {game.status !== "finished" && (
           <button
             type="button"
             className={styles.reviewOpen}
-            onClick={() => setReviewing(true)}
+            onClick={() => setShowTwoLetterWords(true)}
           >
-            Review turns
+            Two-letter words
           </button>
         )}
-
-        <button
-          type="button"
-          className={styles.reviewOpen}
-          onClick={() => setShowTwoLetterWords(true)}
-        >
-          Two-letter words
-        </button>
 
         {showTwoLetterWords && (
           <TwoLetterWordsDialog onClose={() => setShowTwoLetterWords(false)} />

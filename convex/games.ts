@@ -761,6 +761,90 @@ export const respondToInvite = mutation({
 });
 
 /**
+ * Play the same people again.
+ *
+ * Anyone who was at the table may ask for it, and the game is under way the
+ * moment they do, on their own seat: the colours carry over, the colours are
+ * the turn order, and asking for the rematch is taking the first turn of it.
+ * Everybody else is invited back to the colour they had, and answers the way
+ * they would answer any other invitation.
+ *
+ * The machines come back as they were, same seat and same difficulty. Half of
+ * what makes a table the same table is who at it is hard to beat.
+ */
+export const rematch = mutation({
+  args: { gameId: v.id("games") },
+  handler: async (ctx, args) => {
+    const me = await currentUser(ctx);
+    const userId = me._id;
+
+    const before = await ctx.db.get("games", args.gameId);
+    if (before === null) throw new ConvexError("No such game");
+    if (before.status !== "finished") {
+      throw new ConvexError("That game is not over yet");
+    }
+
+    const players = await seatedAt(ctx, args.gameId);
+    const mine = players.find((p) => p.userId === userId);
+    if (mine === undefined) throw new ConvexError("You were not in this game");
+
+    /*
+     * A finished game with a seat missing was never a table: declining an
+     * invitation ends the game and takes the decliner's seat away with it.
+     * Playing "again" what nobody played would seat whoever is left against a
+     * gap, and a rematch is supposed to be the same table over again.
+     */
+    if (players.length !== before.playerCount) {
+      throw new ConvexError("That game never got going");
+    }
+
+    // Somebody at this table got there first. Theirs is the rematch.
+    if (before.rematchId !== undefined) return { gameId: before.rematchId };
+
+    const gameId = await ctx.db.insert("games", {
+      layout: pickLayout(),
+      status: "active",
+      boardSize: GAME.boardSize,
+      endThreshold: GAME.endThreshold,
+      playerCount: before.playerCount,
+      currentSeat: mine.seat,
+      turnNumber: 0,
+      tileCount: 0,
+      createdBy: userId,
+      /*
+       * Carried rather than cleared. On a game with strangers the alias is
+       * what each seat is known by, and `isPublic` is the flag that keeps the
+       * real names hidden -- dropping it here would introduce everybody by
+       * name to people they played a whole game without meeting. It lists the
+       * game to nobody: only a game still in its lobby is offered around, and
+       * this one is under way from the moment it exists.
+       */
+      isPublic: before.isPublic,
+      rulesVersion: RULES_VERSION,
+    });
+
+    for (const player of players) {
+      if (player.bot !== undefined) {
+        await seatBot(ctx, gameId, player.seat, player.bot, player.alias ?? "");
+        continue;
+      }
+      await joinSeat(
+        ctx,
+        gameId,
+        player.userId,
+        player.seat,
+        player.userId === userId ? "joined" : "invited",
+        player.alias,
+      );
+    }
+
+    await ctx.db.patch("games", args.gameId, { rematchId: gameId });
+    await wakeBot(ctx, gameId);
+    return { gameId };
+  },
+});
+
+/**
  * Games of yours that somebody turned down, and that you have not been told
  * about yet.
  *

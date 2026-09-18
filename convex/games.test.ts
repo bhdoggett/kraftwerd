@@ -2502,3 +2502,148 @@ describe("who you are allowed to see", () => {
     expect(open.games.map((g) => g.gameId)).not.toContain(gameId);
   });
 });
+
+describe("playing the same people again", () => {
+  /** Alice and Bob, friends, with a finished game behind them. */
+  async function played() {
+    const t = convexTest(schema, modules);
+    const [alice, bob] = await t.run(async (ctx) => {
+      for (const word of WORDS) await ctx.db.insert("words", { word });
+      const a = await ctx.db.insert("users", {
+        authId: "auth|alice",
+        name: "Alice",
+      });
+      const b = await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
+      await ctx.db.insert("friendships", {
+        requesterId: a,
+        addresseeId: b,
+        status: "accepted",
+      });
+      return [a, b];
+    });
+
+    const asAlice = t.withIdentity({ subject: "auth|alice" });
+    const asBob = t.withIdentity({ subject: "auth|bob" });
+
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+    });
+    await asAlice.mutation(api.games.inviteToGame, { gameId, friendIds: [bob] });
+    await asBob.mutation(api.games.respondToInvite, { gameId, accept: true });
+    await t.run(async (ctx) => {
+      await ctx.db.patch("games", gameId, {
+        status: "finished",
+        winnerIds: [],
+        finishedAt: Date.now(),
+      });
+    });
+
+    return { t, gameId, asAlice, asBob, alice, bob };
+  }
+
+  const seatsAt = (
+    t: Awaited<ReturnType<typeof played>>["t"],
+    gameId: Id<"games">,
+  ) =>
+    t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("players")
+          .withIndex("by_game", (q) => q.eq("gameId", gameId))
+          .take(10)
+      ).sort((a, b) => a.seat - b.seat),
+    );
+
+  test("everybody keeps the colour they had, and whoever asked plays first", async () => {
+    const { t, gameId, asBob, alice, bob } = await played();
+
+    const again = await asBob.mutation(api.games.rematch, { gameId });
+
+    expect(again.gameId).not.toBe(gameId);
+    const seats = await seatsAt(t, again.gameId);
+    expect(seats.map((p) => [p.userId, p.status])).toEqual([
+      [alice, "invited"],
+      [bob, "joined"],
+    ]);
+
+    // Bob asked for it, so it is under way on Bob's own seat: the colours are
+    // the turn order, and his is the second of them.
+    const game = await t.run(async (ctx) => ctx.db.get("games", again.gameId));
+    expect(game?.status).toBe("active");
+    expect(game?.currentSeat).toBe(1);
+  });
+
+  test("the same machines come back, at the same seats and just as hard", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+      for (const word of WORDS) await ctx.db.insert("words", { word });
+    });
+    const asAlice = t.withIdentity({ subject: "auth|alice" });
+
+    const { gameId } = await asAlice.mutation(api.games.createGame, {
+      playerCount: 3,
+      bots: [
+        { level: "easy", name: "Gawain" },
+        { level: "hard", name: "Sigurd" },
+      ],
+    });
+    await t.run(async (ctx) => {
+      await ctx.db.patch("games", gameId, {
+        status: "finished",
+        winnerIds: [],
+        finishedAt: Date.now(),
+      });
+    });
+
+    const again = await asAlice.mutation(api.games.rematch, { gameId });
+
+    const seats = await seatsAt(t, again.gameId);
+    expect(seats.map((p) => p.bot)).toEqual([undefined, "easy", "hard"]);
+    expect(seats.map((p) => p.alias)).toEqual([undefined, "Gawain", "Sigurd"]);
+  });
+
+  test("two people asking for a rematch get the one table", async () => {
+    // Otherwise the pair end up at a game each, both waiting on an answer the
+    // other will never give, and neither game is the rematch they wanted.
+    const { t, gameId, asAlice, asBob } = await played();
+
+    const bobs = await asBob.mutation(api.games.rematch, { gameId });
+    const alices = await asAlice.mutation(api.games.rematch, { gameId });
+
+    expect(alices.gameId).toBe(bobs.gameId);
+    const games = await t.run(async (ctx) => ctx.db.query("games").take(10));
+    expect(games).toHaveLength(2);
+  });
+
+  test("a game still being played cannot be asked for again", async () => {
+    const { gameId, asBob, t } = await played();
+    await t.run(async (ctx) => {
+      await ctx.db.patch("games", gameId, { status: "active" });
+    });
+
+    await expect(
+      asBob.mutation(api.games.rematch, { gameId }),
+    ).rejects.toThrow("not over");
+  });
+
+  test("a game nobody ever played is not a game to play again", async () => {
+    // A declined invitation leaves a finished game with a seat missing. There
+    // is no table there to sit back down at.
+    const { t, gameId, asAlice, asBob, bob } = await played();
+    await t.run(async (ctx) => {
+      const seat = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", bob),
+        )
+        .unique();
+      if (seat !== null) await ctx.db.delete("players", seat._id);
+    });
+    expect(asBob).toBeDefined();
+
+    await expect(
+      asAlice.mutation(api.games.rematch, { gameId }),
+    ).rejects.toThrow("never got going");
+  });
+});
