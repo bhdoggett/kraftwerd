@@ -44,21 +44,24 @@
 }
 
 /*
- * A ring, not a fraction: --fill (0 to 1, set inline per letter) draws a pie
- * chart around each letter -- accent colour for what's left, a plain border
- * tone for what's already drawn -- the same track-and-fill idea the game's
- * other progress bar uses (see .bar/.fill in Scoreboard.module.css), bent
- * into a circle so 26 of them read as one glance instead of one bar chart
- * each. The letter itself sits on a fixed disc in the middle, painted over
- * the ring rather than tinted by it, precisely so its text colour never has
- * to fight a background that ranges from solid accent green to solid black
- * depending on the letter -- readable is worth more here than the ring
- * reaching all the way to the centre. A letter at zero is still drawn, at
- * the same size as every other one, just an empty ring rather than a
- * missing tile -- dropping it from the row would read as a shrinking
- * alphabet, not a shrinking bag. Exact numbers live in `title` and
- * `aria-label` rather than on the tile itself, for whoever wants to check
- * rather than glance.
+ * A ring, not a fraction: --fill (0 to 1, set inline per letter, the share
+ * still in the bag) draws a pie chart around each letter -- accent colour
+ * for what's drawn, --surface-sunken (the tile's own resting colour, black
+ * on Blueprint and near-white on Ledger) for what's left, bent into a
+ * circle so 26 of them read at one glance instead of as one bar chart each.
+ * The unused wedge matching the disc behind the letter is deliberate: with
+ * nothing drawn yet, the tile should read as plain and untouched in
+ * whichever theme it is, not as a ring in a colour of its own -- only the
+ * drawn share should stand out. The letter itself sits on that same fixed
+ * disc, painted over the ring rather than tinted by it, so its text colour
+ * never has to fight a background that ranges from solid accent green to
+ * solid black or white depending on the letter -- readable is worth more
+ * here than the ring reaching all the way to the centre. A letter at zero
+ * drawn is still shown, at the same size as every other one, just a plain
+ * disc rather than a missing tile -- dropping it from the row would read as
+ * a shrinking alphabet, not a shrinking bag. Exact numbers live in `title`
+ * and `aria-label` rather than on the tile itself, for whoever wants to
+ * check rather than glance.
  */
 .letter {
   display: inline-flex;
@@ -69,7 +72,7 @@
   border-radius: 50%;
   background:
     radial-gradient(circle at center, var(--surface-sunken) 10px, transparent 10px),
-    conic-gradient(var(--accent) calc(var(--fill) * 100%), var(--border-strong) 0);
+    conic-gradient(var(--accent) calc((1 - var(--fill)) * 100%), var(--surface-sunken) 0);
   color: var(--text);
   font-family: var(--font-tile);
   font-size: 0.7rem;
