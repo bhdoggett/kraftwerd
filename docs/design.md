@@ -478,11 +478,11 @@ to 52% in one step, without ever rejecting a real word.
 
 ## 6. Game end
 
-- A player is **out** when the bag is empty and they have nothing left in hand.
-  Blanks count: a hand holding one is not empty.
-- Going out does **not** end the game where it happens. It fixes the last turn,
-  and **everyone still to move gets one more**, so a game always ends on a full
-  round with every player having had the same number of turns.
+- The bag decides it, not a hand: the last round starts the moment a refill
+  takes the final tile from the bag, whatever that player is still holding.
+- That turn is the drawer's own last one. **Everyone else still to move gets
+  one more**, so a game always ends on a full round with every player having
+  had the same number of turns. A final turn is allowed to be a pass.
 - **Nothing is settled for tiles left in hand.** A score is what you scored.
 - Highest total score wins.
 
@@ -514,6 +514,21 @@ having when you are ahead and worth avoiding when you are behind.
 That last change also closes a live/simulator divergence nobody had catalogued:
 `shared/sim/game.ts` never modelled the swing, so every score in this section
 was already measured under the rule that now ships.
+
+**Termination moved from the hand to the bag — 2026-09-18.** The bullets
+above used to define "going out" as the bag empty *and* the player's hand,
+blanks included, also empty. That left a gap: the bag could sit at zero for
+several ordinary turns while nobody happened to empty a rack, with the
+passes-in-a-row stall guard (`consecutivePasses`, feeding `stalled` in
+`advanceTurn`) as the only other way out. `out` — `rack.left === 0 &&
+rack.letters.length === 0 && blanksHeld === 0` — became `drainedBag`, just
+`rack.left === 0`: the last round now starts exactly when the bag does, and
+a player who draws the final tile mid-refill does not get those remaining
+letters back on a later turn. The stall guard steps back to its original
+job, a board nobody can play at all, rather than also covering "the bag is
+dry but nobody has managed to go out yet." Nothing else about §6 moves —
+`endsAfterTurn` is still `playerCount - 1` turns out, a final turn was
+always allowed to be a pass, and there is still no leftover-tile swing.
 
 **These numbers were re-measured in September 2026**, four times. First after the bot
 learned to chain plays and build squares deliberately — everything measured

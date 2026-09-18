@@ -175,10 +175,12 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
 
         <h3 className={styles.section}>Ending</h3>
         <p>
-          <strong>One bag of tiles</strong> serves the whole table, and the
-          game runs until it's gone. The moment a hand empties with nothing
-          left to draw, everyone else gets <strong>one more turn</strong> —
-          so the game always ends with equal turns played.
+          <strong>One bag of tiles</strong> serves the whole table. The
+          moment someone draws the last one, that's their final turn —
+          whatever they're still holding — and{" "}
+          <strong>everyone else gets one more turn</strong> each, so the
+          game always ends with equal turns played. A final turn can be a
+          pass.
         </p>
         <p>
           <strong>Nothing is settled for tiles left in hand</strong> — your

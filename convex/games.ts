@@ -1077,17 +1077,14 @@ async function playTurn(
     }
 
     /*
-     * Nothing left in the bag and nothing left to play with: the last round
-     * starts here.
-     *
-     * Blanks count. They used to be left out of this, so a player could go
-     * out -- and end everyone's game -- while still holding three of them,
-     * which are the most valuable tiles on the table (§5). A hand is empty
-     * when there is nothing in it, and a blank is something in it.
+     * The last round starts the moment the bag itself runs dry, not when a
+     * hand does. A refill can take the last tile while the drawer is still
+     * holding several -- they are not owed those back later. The turn that
+     * emptied the bag is their last one, the same as everyone else's is
+     * about to become theirs.
      */
-    const out =
-      rack.left === 0 && rack.letters.length === 0 && blanksHeld === 0;
-    await advanceTurn(ctx, game, placements.length, out);
+    const drainedBag = rack.left === 0;
+    await advanceTurn(ctx, game, placements.length, drainedBag);
     await wakeBot(ctx, args.gameId);
 
     return { score: score.total, squares: score.squares };
@@ -1293,8 +1290,8 @@ async function advanceTurn(
   game: Doc<"games">,
   /** Tiles played, replacements included. */
   played: number,
-  /** Whether the bag is empty and the player who just moved has played out. */
-  playedOut = false,
+  /** Whether this turn's refill just took the last tile from the bag. */
+  drainedBag = false,
 ) {
   const tileCount = game.tileCount + played;
   const turnNumber = game.turnNumber + 1;
@@ -1333,25 +1330,22 @@ async function advanceTurn(
   /*
    * The game runs until the tiles run out.
    *
-   * The bag empties, everyone plays out what is left in their hands, and
-   * somebody gets rid of theirs first. There used to be a count of fifty
-   * tiles instead, which was a stand-in for a supply back when the draw was
-   * endless and nothing could ever run out.
+   * Draining the bag does not end the game where it happens -- the turn
+   * that took the last tile is that player's own last turn, and everyone
+   * else still to move gets exactly one more each, so the game always ends
+   * on a full round with every player having had the same number of turns.
+   * A final turn can be a pass: nobody waits for a player to find a play
+   * that is not there, and nobody is owed an extra turn for not finding
+   * one. There used to be a count of fifty tiles instead of a real bag,
+   * back when the draw was endless and nothing could ever run out.
    *
-   * Going out does not end the game where it happens. It sets the last turn,
-   * and everyone still to move gets one -- so a game ends on a full round and
-   * every player has had the same number of turns. That is what §6 has always
-   * said and what `endsAfterTurn` was added for; nothing ever set it, so the
-   * game really ended mid-round on whoever went out, and the players seated
-   * after them simply lost their last turn. This is the line that was missing.
-   *
-   * `playerCount - 1` because the player who went out has just had theirs.
-   * Once set it is never moved: a second player going out during the final
-   * round does not restart it.
+   * `playerCount - 1` because the player who drained the bag has just had
+   * theirs. Once set it is never moved: draining stopped mattering the
+   * instant it happened once.
    */
   const endsAfterTurn =
     game.endsAfterTurn ??
-    (playedOut ? game.turnNumber + game.playerCount - 1 : undefined);
+    (drainedBag ? game.turnNumber + game.playerCount - 1 : undefined);
 
   /*
    * Two full rounds where nobody places anything: the game is going nowhere.
