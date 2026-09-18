@@ -59,16 +59,28 @@
  * here than the ring reaching all the way to the centre. A letter at zero
  * drawn is still shown, at the same size as every other one, just a plain
  * disc rather than a missing tile -- dropping it from the row would read as
- * a shrinking alphabet, not a shrinking bag. Exact numbers live in `title`
- * and `aria-label` rather than on the tile itself, for whoever wants to
- * check rather than glance.
+ * a shrinking alphabet, not a shrinking bag. The exact number is a tap away
+ * (the popover below), and stays in `title` and `aria-label` for a pointer
+ * and a screen reader, rather than on the tile itself.
+ *
+ * It is a button because it is tapped, and it must not look like one. Every
+ * affordance is stripped: no border, no padding, no press or hover colour,
+ * and no tap highlight -- mobile browsers paint a grey overlay on tap unless
+ * told not to, which is exactly the flash a gauge should not do. What is
+ * left is the tile that was always here. Keyboard focus is the one exception
+ * and shows a ring, because a control nobody can see themselves on is not
+ * reachable without a pointer.
  */
 .letter {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 26px;
   height: 26px;
+  appearance: none;
+  border: none;
+  padding: 0;
   border-radius: 50%;
   background:
     radial-gradient(circle at center, var(--surface-sunken) 10px, transparent 10px),
@@ -78,4 +90,35 @@
   font-size: 0.7rem;
   font-weight: 800;
   font-synthesis-weight: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * What the tile is worth saying, over the row rather than in it: the panel
+ * is narrow and the letters wrap, so a number placed in the flow would
+ * reshuffle the whole grid every time one was asked for.
+ *
+ * `pointer-events: none` so it can never swallow the tap meant for the tile
+ * underneath or beside it, and `white-space: nowrap` because the sentence is
+ * the point -- a popover that wrapped to three lines over a 26px disc would
+ * be harder to read than the tooltip it replaces.
+ */
+.popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-body, inherit);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--shadow-lift);
+  pointer-events: none;
 }
