@@ -104,26 +104,6 @@ export async function drawInto(
   return { letters: [...keep, ...drawn], left: tilesLeft(bag) };
 }
 
-/**
- * Add this turn's placements to the running count of what has ever landed on
- * the board, letter by letter. Blanks are skipped -- they are a whole-game
- * allowance rather than tiles drawn from the bag, so they were never part of
- * this tally to begin with.
- */
-async function recordPlayed(
-  ctx: MutationCtx,
-  gameId: Id<"games">,
-  placements: readonly Placement[],
-) {
-  const row = await bagFor(ctx, gameId);
-  const played = { ...(row.played ?? {}) };
-  for (const p of placements) {
-    if (p.isBlank) continue;
-    played[p.letter] = (played[p.letter] ?? 0) + 1;
-  }
-  await ctx.db.patch("bags", row._id, { played });
-}
-
 /** Upper bound on tiles we ever read: the game ends at `endThreshold`. */
 const MAX_TILES = 512;
 
@@ -1044,8 +1024,6 @@ async function playTurn(
       }
     }
 
-    await recordPlayed(ctx, args.gameId, placements);
-
     await ctx.db.insert("turns", {
       gameId: args.gameId,
       turnNumber: game.turnNumber,
@@ -1491,6 +1469,31 @@ export const checkWords = query({
   },
 });
 
+/**
+ * Every letter not on the board and not in the viewer's own hand: the bag,
+ * plus everybody else's racks, added together and attributed to nobody.
+ *
+ * Added up rather than subtracted from the board for two reasons. The board
+ * cannot answer it -- a stacked square keeps one row with the top letter, so
+ * the letter underneath it is not there to subtract -- and the two halves
+ * being inseparable is the whole safety of it: an opponent's rack could be
+ * recovered from this only with the bag, which never leaves the server.
+ */
+function unseenLetters(
+  bag: Record<string, number>,
+  players: readonly Doc<"players">[],
+  viewerId: Id<"users">,
+): Record<string, number> {
+  const unseen: Record<string, number> = { ...bag };
+  for (const player of players) {
+    if (player.userId === viewerId) continue;
+    for (const letter of player.letters) {
+      unseen[letter] = (unseen[letter] ?? 0) + 1;
+    }
+  }
+  return unseen;
+}
+
 export const getGame = query({
   args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
@@ -1534,27 +1537,6 @@ export const getGame = query({
         : new Set<Id<"users">>();
     const names = await namesFor(ctx, userId, game, players, friends);
 
-    /**
-     * What hasn't been played yet, letter by letter -- the starting
-     * composition (public) minus your own rack (yours to know) minus
-     * everything ever played (public, on the board). Never touches
-     * `bag.letters`, which stays exactly as secret as it always was: this is
-     * the bag *and* everyone else's hand combined, undivided between them,
-     * the same total a diligent player could already reach by tallying the
-     * board and their own rack by hand.
-     */
-    const full = newBag(RACK);
-    const played = bag?.played ?? {};
-    const myLetters = you?.letters ?? [];
-    const remainingLetters: Record<string, number> = {};
-    for (const letter of Object.keys(full)) {
-      const mine = myLetters.filter((l) => l === letter).length;
-      remainingLetters[letter] = Math.max(
-        0,
-        (full[letter] ?? 0) - mine - (played[letter] ?? 0),
-      );
-    }
-
     return {
       layout: OPEN_BOARD,
       /**
@@ -1570,9 +1552,42 @@ export const getGame = query({
       /** The turn is waiting for somebody to take the seat it landed on. */
       turnHeld: game.turnHeld === true,
       game,
-      /** How many tiles nobody has drawn yet. */
+      /**
+       * How many tiles nobody has drawn yet. The count, never the contents —
+       * knowing what is in the bag is knowing everyone's future draws.
+       *
+       * Sending the contents was tried and taken back out. Board, your own
+       * rack and the bag account for every tile in the game, so a client
+       * holding all three subtracts out the other players' hands exactly —
+       * in a two-hander, the opponent's rack letter for letter, and diffed
+       * turn to turn, precisely what they just drew. What the bag holds is
+       * the one fact at this table that cannot be public.
+       *
+       * The per-letter display that wanted it is fed from `unseen` below
+       * instead.
+       */
       tilesLeft: tilesLeft((bag?.letters ?? newBag(RACK))),
-      remainingLetters,
+      /**
+       * Every letter not on the board and not in your own hand: the bag and
+       * the other players' racks, added together and attributed to nobody.
+       *
+       * This is what a player can already work out with a pencil — the
+       * starting composition, less the board, less what they are holding —
+       * so answering it outright gives away nothing they could not count.
+       * What keeps it safe is that the two halves stay added up: recovering
+       * an opponent's rack from this would take the bag, and the bag never
+       * leaves this function.
+       *
+       * Summed from the bag and the racks rather than by subtracting the
+       * board, because the board cannot answer it. A stacked square keeps
+       * one row with the top letter and a count (see `tiles` in schema.ts),
+       * so the letter underneath is not on the board to subtract — a client
+       * doing this arithmetic itself would report every buried tile as still
+       * out there. Invited seats count: a rack is dealt when the seat is
+       * made, so those letters are out of the bag whether or not the answer
+       * has come back yet.
+       */
+      unseen: unseenLetters(bag?.letters ?? newBag(RACK), players, userId),
       viewerUserId: userId,
       /** Null when the viewer is looking at a game they have not joined. */
       yourSeat: you?.seat ?? null,

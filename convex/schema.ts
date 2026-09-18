@@ -76,19 +76,10 @@ export default defineSchema({
    * Its own table because it must never reach a player: `getGame` returns the
    * game document more or less whole, and the tiles nobody has drawn yet are
    * the one thing at the table that is secret from everybody.
-   *
-   * `played` is a different count living on the same row: how many of each
-   * letter have actually landed on the board, ever -- kept here rather than
-   * derived from the `tiles` table because a tile that lands on another
-   * overwrites it, and the letter buried underneath would otherwise vanish
-   * from the tally the moment it was covered. `getGame` uses it, alongside
-   * the starting composition and a player's own rack, to show what is not
-   * yet played without ever reading `letters` itself.
    */
   bags: defineTable({
     gameId: v.id("games"),
     letters: v.record(v.string(), v.number()),
-    played: v.optional(v.record(v.string(), v.number())),
   }).index("by_game", ["gameId"]),
 
   games: defineTable({

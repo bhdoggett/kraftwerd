@@ -403,6 +403,58 @@
   text-decoration: line-through;
 }
 
+/*
+ * A word a double-word square paid for (design.md §4.8).
+ *
+ * Wearing the board's own hatch, at the board's own angle, so the chip and
+ * the square that caused it are recognisably the same mark -- a legend saying
+ * "Double Word" could only say that the rule exists, never which of these
+ * words it landed on. The hatch sits under the chip's own background rather
+ * than over it, so the green of a valid word still reads first and the
+ * doubling is the texture behind it.
+ *
+ * The second border is drawn rather than widened: growing `border-width`
+ * would move the chip and shuffle the row it sits in every time a play
+ * crosses a square.
+ */
+.doubled {
+  /*
+   * The hatch is the accent mixed half out, not the accent itself. At full
+   * strength it was the very ink the word is written in --
+   * `.valid` colours the text `--play` -- so the stripes ran through the
+   * letters at identical weight and the word stopped being readable. It is
+   * a texture under the word, not a second mark competing with it.
+   *
+   * The geometry is the board's exactly (135deg, 1px on, 7px off, see
+   * .bonus in Board.module.css), so the chip and the square that caused it
+   * stay recognisably the same mark. Only the ink is softer: on the chip it
+   * lies under text, and on the board it does not.
+   *
+   * `--play-soft` stays the bottom layer, so the ground a valid word
+   * already had is unchanged and the hatch sits on top of it -- both below
+   * the letters either way.
+   */
+  background:
+    repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--play) 50%, transparent) 0 1px,
+      transparent 1px 7px
+    ),
+    var(--play-soft);
+  box-shadow: 0 0 0 1px var(--play);
+}
+
+/* Says the multiplier in the one place the chip says numbers. */
+.doubleMark {
+  padding: 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--play);
+  color: var(--play);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 /* What the word itself is worth: every letter in it, blanks aside. */
 .wordPoints {
   min-width: 1.4em;

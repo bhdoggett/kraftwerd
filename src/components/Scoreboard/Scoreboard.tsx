@@ -44,12 +44,11 @@ interface ScoreboardProps {
   /** Tiles nobody has drawn yet: what is left of the game. */
   tilesLeft: number;
   /**
-   * What hasn't been played yet, letter by letter -- the bag and everyone
-   * else's hand combined, undivided between them. Not the same pool as
-   * `tilesLeft`, which is the literal bag alone; see `getGame` in
-   * convex/games.ts for exactly what this does and doesn't reveal.
+   * Every letter not on the board and not in your own hand -- the bag and
+   * the other hands together. What BagContents actually draws, and not the
+   * same thing as what is left in the bag: see `unseen` in `getGame`.
    */
-  remainingLetters: Record<string, number>;
+  unseen: Record<string, number>;
   bagSize: number;
   status: "lobby" | "active" | "finished";
   /** Absent when there is nothing to quit — a finished game, or a spectator. */
@@ -62,7 +61,7 @@ export function Scoreboard({
   friendStates,
   onInvite,
   tilesLeft,
-  remainingLetters,
+  unseen,
   bagSize,
   status,
   onQuit,
@@ -202,9 +201,7 @@ export function Scoreboard({
         )}
       </div>
 
-      {status !== "finished" && (
-        <BagContents tilesLeft={tilesLeft} remaining={remainingLetters} />
-      )}
+      {status !== "finished" && <BagContents left={tilesLeft} unseen={unseen} />}
     </aside>
   );
 }

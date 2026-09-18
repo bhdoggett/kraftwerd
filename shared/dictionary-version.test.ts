@@ -23,9 +23,11 @@ describe("the shipped dictionary", () => {
   });
 
   test("counts as rules: changing the list means changing the version", () => {
-    // Version 6 is the ENABLE + 12dicts list at 175,800 words. If the count
-    // above moved, this pair has to move with it.
-    expect(RULES_VERSION).toBe(6);
+    // The list is still the ENABLE + 12dicts one at 175,800 words; version 7
+    // is that list under double-word squares (design.md §4.8). The pair moves
+    // together whenever either half does -- this test going red is the point
+    // of it, not a failure.
+    expect(RULES_VERSION).toBe(7);
     expect(DICTIONARY_WORDS).toBe(175800);
   });
 });

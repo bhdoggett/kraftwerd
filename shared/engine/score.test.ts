@@ -210,7 +210,7 @@ describe("bonus squares", () => {
       bonusSquares,
     });
 
-    expect(score.words).toEqual([{ word: "CAT", points: 6, bonus: true }]);
+    expect(score.words).toEqual([{ word: "CAT", points: 6, bonus: 2 }]);
     expect(score.total).toBe(6);
   });
 
@@ -257,8 +257,8 @@ describe("bonus squares", () => {
 
     expect(score.words).toEqual(
       expect.arrayContaining([
-        { word: "CAT", points: 6, bonus: true },
-        { word: "ARC", points: 6, bonus: true },
+        { word: "CAT", points: 6, bonus: 2 },
+        { word: "ARC", points: 6, bonus: 2 },
       ]),
     );
   });
@@ -272,7 +272,7 @@ describe("bonus squares", () => {
       bonusSquares,
     });
 
-    expect(score.words).toEqual([{ word: "CAT", points: 12, bonus: true }]);
+    expect(score.words).toEqual([{ word: "CAT", points: 12, bonus: 4 }]);
   });
 
   test("with no bonus squares configured, nothing doubles", () => {

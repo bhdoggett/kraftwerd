@@ -111,24 +111,6 @@ describe("placeTiles", () => {
     expect(player?.score).toBe(12);
   });
 
-  test("counts what has been played, so it survives a tile being buried later", async () => {
-    const { gameId, asAlice, t } = await twoPlayerGame(["A", "D", "D", "O"]);
-
-    await asAlice.mutation(api.games.placeTiles, {
-      gameId,
-      placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
-    });
-
-    const bag = await t.run((ctx) =>
-      ctx.db
-        .query("bags")
-        .withIndex("by_game", (q) => q.eq("gameId", gameId))
-        .unique(),
-    );
-
-    expect(bag?.played).toEqual({ A: 1, D: 2, O: 1 });
-  });
-
   test("refills the rack back to full after a play", async () => {
     const { gameId, asAlice, alice, t } = await twoPlayerGame([
       "A",
@@ -418,7 +400,11 @@ describe("getGame", () => {
     expect(theirs?.letterCount).toBe(2);
   });
 
-  test("reports what hasn't been played yet, never the literal bag", async () => {
+  test("says how many tiles are left, never which ones", async () => {
+    // The count is public; the contents are not. Board + your own rack +
+    // the bag accounts for every tile in the game, so a client holding all
+    // three could subtract out the other players' racks exactly -- and in a
+    // two-hander that is the opponent's hand, letter for letter, every turn.
     const { t, gameId, asAlice } = await twoPlayerGame(["A", "D"]);
 
     await t.run(async (ctx) => {
@@ -426,20 +412,44 @@ describe("getGame", () => {
         .query("bags")
         .withIndex("by_game", (q) => q.eq("gameId", gameId))
         .unique();
-      if (bag === null) await ctx.db.insert("bags", { gameId, letters: {}, played: { E: 3 } });
-      else await ctx.db.patch("bags", bag._id, { played: { E: 3 } });
+      if (bag === null) await ctx.db.insert("bags", { gameId, letters: { A: 1, Z: 1 } });
+      else await ctx.db.patch("bags", bag._id, { letters: { A: 1, Z: 1 } });
     });
 
     const view = await asAlice.query(api.games.getGame, { gameId });
 
-    // Her own rack (one A, one D) and the three Es already played both come
-    // out of the starting count (A: 8, D: 6, E: 10, Z: 1); everything else --
-    // the real bag, whatever anyone else is holding -- still reads as out
-    // there, undivided between the two.
-    expect(view!.remainingLetters.A).toBe(7);
-    expect(view!.remainingLetters.D).toBe(5);
-    expect(view!.remainingLetters.E).toBe(7);
-    expect(view!.remainingLetters.Z).toBe(1);
+    expect(view!.tilesLeft).toBe(2);
+    expect(view).not.toHaveProperty("bagRemaining");
+  });
+
+  test("reports what is unseen: the bag and the other hands, added together", async () => {
+    // What a player could work out with a pencil -- the starting letters,
+    // less the board, less their own hand -- and no more than that. Adding
+    // the bag to the other racks is what keeps it un-splittable: knowing an
+    // opponent's rack from this would need the bag, which never leaves.
+    const { t, gameId, asAlice } = await twoPlayerGame(["A", "D"]);
+
+    await t.run(async (ctx) => {
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      if (bag === null) await ctx.db.insert("bags", { gameId, letters: { A: 1, Z: 1 } });
+      else await ctx.db.patch("bags", bag._id, { letters: { A: 1, Z: 1 } });
+
+      const bob = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_seat", (q) => q.eq("gameId", gameId).eq("seat", 1))
+        .unique();
+      if (bob !== null) await ctx.db.patch("players", bob._id, { letters: ["Q", "A"] });
+    });
+
+    const view = await asAlice.query(api.games.getGame, { gameId });
+
+    // The bag's A and Z, plus Bob's Q and A. Alice's own letters are hers to
+    // see and so are not unseen; nothing here says which side of the table
+    // either A is on.
+    expect(view!.unseen).toEqual({ A: 2, Z: 1, Q: 1 });
   });
 });
 
