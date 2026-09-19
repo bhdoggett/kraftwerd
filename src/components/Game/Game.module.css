@@ -455,6 +455,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * The long-word bonus, on whichever word earned it -- the same shape as
+ * .doubleMark (same badge, same border, same place in the chip) since it is
+ * the same kind of thing: a number that would otherwise have to be inferred,
+ * said outright. A plus rather than a times is the only difference, because
+ * unlike the multiplier this is flat and never baked into the word's own
+ * points -- see the "Long words" line below for where it actually lands.
+ */
+.longMark {
+  padding: 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--play);
+  color: var(--play);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 /* What the word itself is worth: every letter in it, blanks aside. */
 .wordPoints {
   min-width: 1.4em;
