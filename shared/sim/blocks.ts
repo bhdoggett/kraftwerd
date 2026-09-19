@@ -120,9 +120,10 @@ export interface BlockOptions {
 /**
  * Blocks worth trying to finish this turn, best payoff first.
  *
- * Squares pay SQUARE_BONUS_STEP * k and nest from 3x3 up -- a finished 4x4
- * also closes four 3x3s, though a 2x2 no longer counts toward anything, bare
- * or nested (RULES_VERSION 8) -- so the biggest block goes first, and among
+ * Squares pay a flat SQUARE_BONUS at 3x3, and only at 3x3 (RULES_VERSION 9)
+ * -- a finished 4x4 pays for its four nested 3x3s and nothing more, and a
+ * 2x2 still counts toward nothing at all, bare or nested (RULES_VERSION 8)
+ * -- so the biggest block goes first, and among
  * blocks of a size the one asking for fewest tiles, since that is both the
  * likeliest to close and the cheapest to search. The list is then cut by the
  * caller, and the cut bites: a mid-game board yields around a hundred of
@@ -146,8 +147,10 @@ export interface BlockOptions {
  * spends the shortlist on 3x3s instead of on proving 4x4s impossible, which is
  * why it is *cheaper* as well (512ms against 631ms a turn, live, over seven
  * hundred turns apiece). It bounds this solver's targets, not the board: the
- * span and chain searches can still complete a 4x4 incidentally, and
- * `newSquareBlocks` still pays 44 (SQUARE_BONUS_STEP * 4) when they do.
+ * span and chain searches can still complete a 4x4 incidentally, and when
+ * they do, `newSquareBlocks` pays for its four nested 3x3s (132) and nothing
+ * for the 4x4 itself -- there is no separate size to pay any more
+ * (RULES_VERSION 9).
  *
  * Ordering by fewest gaps *across* sizes was measured too, and is worse: it
  * fills the shortlist with 2x2s, which re-letters happily and closes fewer
@@ -502,8 +505,7 @@ function solveBlock(
      * On a gap this is the one place in the search where a blank does its real
      * work. Elsewhere it substitutes for a letter in a word the rack nearly
      * spells, which is worth a few points. Here it closes a square the rack
-     * could not close at all, which for k >= MIN_SQUARE_SIZE is worth
-     * SQUARE_BONUS_STEP * k.
+     * could not close at all, which is worth the flat SQUARE_BONUS.
      */
     const priorStack = standing?.stacked ?? 0;
     const barred = priorStack + 1 >= STACK_CAP && priorStack > 0;

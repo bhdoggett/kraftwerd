@@ -189,7 +189,7 @@ describe("turns that are legal only as a whole", () => {
       { before: board });
 
     // Every corner is the last tile of a different 2x2, but 2x2s do not pay
-    // any more -- only the 3x3 itself does, at 33 (SQUARE_BONUS_STEP * 3).
+    // any more -- only the 3x3 itself does, at the flat SQUARE_BONUS (33).
     expect(scored.squarePoints).toBe(33);
     expect(full.score).toBe(scored.total);
   });

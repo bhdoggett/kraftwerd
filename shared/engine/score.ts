@@ -2,7 +2,7 @@ import {
   LONG_WORD_BONUS,
   LONG_WORD_MIN,
   RACK_CLEAR_BONUS,
-  SQUARE_BONUS_STEP,
+  SQUARE_BONUS,
 } from "../config.js";
 import { cellKey, type Board, type Coord } from "./board.js";
 import { runsAndLoners } from "./runs.js";
@@ -51,10 +51,10 @@ export interface TurnScore {
  * extendable is a liability: the next player collects its whole length for one
  * tile, the same way an open corner hands away a square.
  *
- * Squares of MIN_SQUARE_SIZE or bigger pay SQUARE_BONUS_STEP * k on top,
- * counting nested sub-squares; a word of LONG_WORD_MIN letters or more pays
- * a flat LONG_WORD_BONUS on top of its own points, whether or not it used
- * the whole rack.
+ * Each completed SCORING_SQUARE_SIZE x SCORING_SQUARE_SIZE block pays a flat
+ * SQUARE_BONUS on top, counting nested sub-squares; a word of LONG_WORD_MIN
+ * letters or more pays a flat LONG_WORD_BONUS on top of its own points,
+ * whether or not it used the whole rack.
  */
 interface ScoreOptions {
   /**
@@ -127,10 +127,7 @@ export function scoreTurn(
   const blocks = newSquareBlocks(before, board, placements);
   const squares = blocks.map((block) => block.k);
 
-  const squarePoints = blocks.reduce(
-    (sum, block) => sum + SQUARE_BONUS_STEP * block.k,
-    0,
-  );
+  const squarePoints = blocks.length * SQUARE_BONUS;
 
   // Landing on an already-occupied square pays extra, equal to how deep the
   // stack now runs: 2 for the first tile on top, 3 for the second (the most

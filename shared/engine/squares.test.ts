@@ -34,13 +34,11 @@ describe("newSquares", () => {
     expect(sizes(makeBoard(tiles), coords(tiles))).toEqual([3]);
   });
 
-  test("a 4x4 yields four 3x3 and one 4x4, no 2x2s", () => {
+  test("a 4x4 yields its four nested 3x3s only, no 4x4 of its own", () => {
     const tiles = block(0, 0, 4, 4);
     const result = sizes(makeBoard(tiles), coords(tiles));
 
-    expect(result.filter((k) => k === 2)).toHaveLength(0);
-    expect(result.filter((k) => k === 3)).toHaveLength(4);
-    expect(result.filter((k) => k === 4)).toHaveLength(1);
+    expect(result).toEqual([3, 3, 3, 3]);
   });
 
   test("one tile completing a 2x2 scores nothing", () => {

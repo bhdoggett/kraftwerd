@@ -52,7 +52,8 @@ describe("scoreTurn", () => {
     };
 
     // An n x n block is 2n words of n letters, so n^2 * 2 word points.
-    // Square bonuses start at 3x3 and pay SQUARE_BONUS_STEP * k, nested.
+    // Only a 3x3 pays a square bonus, flat at SQUARE_BONUS, and a bigger
+    // block pays once for each 3x3 nested inside it.
     test("2x2 scores nothing beyond its words", () => {
       const s = totalFor(2);
       expect([s.wordPoints, s.squarePoints, s.total]).toEqual([8, 0, 8]);
@@ -63,10 +64,9 @@ describe("scoreTurn", () => {
       expect([s.wordPoints, s.squarePoints, s.total]).toEqual([18, 33, 51]);
     });
 
-    test("4x4 scores 208", () => {
+    test("4x4 scores its four nested 3x3s, nothing for itself", () => {
       const s = totalFor(4);
-      // Four nested 3x3s at 33 each, plus the 4x4 itself at 44.
-      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([32, 176, 208]);
+      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([32, 132, 164]);
     });
   });
 

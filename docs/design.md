@@ -143,39 +143,49 @@ letter, so this is most of the board rather than an edge case.
 
 ### 4.2 Square bonus — nested
 
-Every axis-aligned, fully-filled `k×k` block on the board, for `k ≥ 2`, is a
-*square*. A square of size `k` is worth `k²`.
+Every axis-aligned, fully-filled `SCORING_SQUARE_SIZE × SCORING_SQUARE_SIZE`
+block on the board is a *square*, worth a flat `SQUARE_BONUS`.
+`SCORING_SQUARE_SIZE` is 3 and `SQUARE_BONUS` is 33 — the only size that pays
+anything, and the only amount it pays (`RULES_VERSION` 9). A 2×2 pays
+nothing, at any size it's nested inside (`RULES_VERSION` 8); a 4×4 or bigger
+was never its own separate bonus and no longer scales toward one — see
+below.
 
-**Nested counting**: a 3×3 contains four 2×2s and one 3×3. All of them count.
+**Nested counting**: a bigger completed region still pays once for every 3×3
+anchor inside it. A 4×4 built in one turn contains four such anchors, so it
+pays `4 × 33 = 132` — nothing extra for being a 4×4, since 4×4 is no longer a
+recognized block size at all.
 
-| Build | Tiles | Sub-squares | Bonus | Total | Pts/tile |
-|-------|-------|-------------|-------|-------|----------|
-| 2×2 | 4 | 1×(2×2 @4) | 4 | **8** | 2.0 |
-| 3×3 | 9 | 4×(2×2 @4) + 1×(3×3 @9) | 25 | **34** | 3.8 |
-| 4×4 | 16 | 9×@4 + 4×@9 + 1×@16 | 88 | **104** | 6.5 |
+| Build | Tiles | 3×3s completed | Bonus | Total | Pts/tile |
+|-------|-------|-----------------|-------|-------|----------|
+| 2×2 | 4 | 0 | 0 | **8** | 2.0 |
+| 3×3 | 9 | 1 | 33 | **51** | 5.7 |
+| 4×4 | 16 | 4 | 132 | **164** | 10.3 |
 
-Rate climbs 2.0 → 3.8 → 6.5. Big builds are worth chasing, which is correct
-given a 4×4 word square is brutally hard.
+A 4×4 essentially never happens — sixteen cells against a rack of seven — so
+it is not a size worth having its own rule about; a board that gets there
+anyway is simply paid for the four 3×3s it happens to contain.
 
 ### 4.3 Completion — squares score ONCE
 
 A square scores only on the turn it first comes into existence. Without this,
-a 2×2 would pay out every turn forever.
+one would pay out every turn forever.
 
-**No diff is needed.** Placements only ever *add* tiles, so a block is new iff
-at least one of its cells was empty before the turn — i.e. iff it contains at
-least one placed cell:
+**No diff is needed.** Placements only ever *add* tiles (or replace a letter
+without changing what's filled, §4.6), so a block is new iff at least one of
+its cells was empty before the turn — i.e. iff it contains at least one
+placed cell:
 
 ```
-new squares = { filled k×k blocks containing ≥1 placed cell },  k ≥ 2
-score       = Σ k²
+new squares = { filled SCORING_SQUARE_SIZE × SCORING_SQUARE_SIZE blocks
+                containing ≥1 placed cell }
+score       = (count of new squares) × SQUARE_BONUS
 ```
 
 Provably equivalent to `squares_after − squares_before`, but needs no board
 history and no set subtraction. Enumerate candidate blocks by anchoring each
-size-k block at `(px − i, py − j)` for `i, j ∈ [0, k)` around each placed cell,
-dedupe by `(anchor, k)`, and keep those fully filled. `k` is bounded by
-`⌊√(tiles on board)⌋`, since a k×k block needs k² tiles.
+block at `(px − i, py − j)` for `i, j ∈ [0, SCORING_SQUARE_SIZE)` around each
+placed cell, dedupe by anchor, and keep those fully filled.
 
 Implemented in `shared/engine/squares.ts`.
 
@@ -187,8 +197,9 @@ regardless of who placed the other tiles.
 ```
 opponent (o), you (Y):
 
-  o o          o o
-  o .    ->    o Y      you score: 1 tile + 4 = 5
+  o o o        o o o
+  o o o   ->   o o o
+  o o .        o o Y    you score: 1 tile + 33 = 34
 ```
 
 This falls out of the diff rule with zero extra logic and it is the sole
@@ -199,18 +210,18 @@ is a risk.
 
 ```
 1. sum every letter of every word formed  -> word points (blanks count too)
-2. diff square sets                       -> + Σ k² for new squares
+2. diff square sets                       -> + SQUARE_BONUS per new 3x3
 3. sum                                    -> turn score
 ```
 
-An n×n block is 2n words of n letters, so the two halves of the score grow at
-different rates:
+An n×n block is 2n words of n letters, so word points grow with the square of
+the side while the square bonus grows only with how many 3×3s fit inside it:
 
 | build | word points | square bonus | total |
 |-------|-------------|--------------|-------|
-| 2×2 | 8 | 4 | **12** |
-| 3×3 | 18 | 25 | **43** |
-| 4×4 | 32 | 88 | **120** |
+| 2×2 | 8 | 0 | **8** |
+| 3×3 | 18 | 33 | **51** |
+| 4×4 | 32 | 132 | **164** |
 
 ### 4.6 Landing on a tile, and the stack
 
@@ -536,10 +547,16 @@ to 52% in one step, without ever rejecting a real word.
 - The bag decides it, not a hand: the last round starts the moment a refill
   takes the final tile from the bag, whatever that player is still holding.
 - That turn is the drawer's own last one. **Everyone else still to move gets
-  one more**, so a game always ends on a full round with every player having
-  had the same number of turns. A final turn is allowed to be a pass.
+  one more**, so a game that runs its course always ends on a full round,
+  with every player having had the same number of turns. A final turn is
+  allowed to be a pass.
 - **Nothing is settled for tiles left in hand.** A score is what you scored.
 - Highest total score wins.
+- **Resigning does not share that guarantee.** `resignGame` calls
+  `finishGame` directly, outside `advanceTurn` entirely -- there is no last
+  round, no "everyone else gets one more." A game quit mid-round ends
+  mid-round, exactly where it was, and whoever is left simply has more
+  turns played than whoever left.
 
 Two of those are new as of 2026-09-05, and the first two bullets used to
 describe a game nobody played. The rule was written here as "end triggers at

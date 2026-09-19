@@ -86,7 +86,7 @@ describe("engine against the real tier-50 dictionary", () => {
     expect(validateTurn(after1, turn2, dict, bounds)).toEqual({ ok: true });
 
     // The last corner completes EMU across and down (6 letters) and the 3x3
-    // itself (33, SQUARE_BONUS_STEP * 3) -- the final 2x2 it also completes
+    // itself (the flat SQUARE_BONUS, 33) -- the final 2x2 it also completes
     // pays nothing.
     const second = scoreTurn(applyPlacements(after1, turn2), turn2);
     expect(second.total).toBe(6 + 33);

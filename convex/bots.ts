@@ -437,8 +437,9 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
      *
      * Two things that cap does *not* do. It does not stop 4x4s being built:
      * the span and chain searches can still complete one incidentally, and
-     * `newSquareBlocks` still pays 44 (SQUARE_BONUS_STEP * 4) when they do.
-     * And it changes
+     * when they do, `newSquareBlocks` pays for its four nested 3x3s (132)
+     * and nothing for the 4x4 itself -- there is no separate size to pay any
+     * more (RULES_VERSION 9). And it changes
      * nothing for `blankMoves`, whose own default was already 3; what
      * `maxBlocks: 40` does there is widen its single-gap shortlist from twelve
      * to forty, which is in the numbers above but is not part of the story

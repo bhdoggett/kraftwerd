@@ -42,6 +42,17 @@ export const RACK: RackConfig = {
 export const BLANKS_PER_GAME = 3;
 
 /**
+ * How many tiles are in the bag altogether -- the sum of every letter's
+ * weight in `RACK.weights` (design.md §5.1). Derived rather than
+ * hand-written a second time, so a rebalance of the weights table can't
+ * quietly leave this describing a bag that no longer exists.
+ */
+export const BAG_SIZE = Object.values(weights).reduce(
+  (sum: number, w) => sum + w,
+  0,
+);
+
+/**
  * Which rules a game was played under.
  *
  * Bump this whenever a change makes scores incomparable with older ones — the
@@ -78,15 +89,21 @@ export const BLANKS_PER_GAME = 3;
  *    not competing with these.
  * 8: squares, long words and the rack bonus retuned together (design.md §4)
  *    — a 2x2 no longer pays anything, at any size it's nested inside; a
- *    k x k square of k >= 3 pays `SQUARE_BONUS_STEP * k` rather than k^2, so
- *    3x3 is 33 and 4x4 is 44 instead of 9 and 16; any word of
+ *    k x k square of k >= 3 paid `SQUARE_BONUS_STEP * k` rather than k^2, so
+ *    3x3 was 33 and 4x4 was 44 instead of 9 and 16; any word of
  *    `LONG_WORD_MIN` letters or more pays a flat `LONG_WORD_BONUS` on top,
  *    whether or not it used the whole rack; and `RACK_CLEAR_BONUS` drops
  *    from 15 to 5, so the tempo of clearing your rack every turn no longer
  *    outweighs holding tiles back for a square or a long word. A score set
  *    under any of the old numbers is not competing with these.
+ * 9: squares stop scaling (design.md §4.2) — 4x4 and bigger are dropped
+ *    entirely rather than paid for at a formula's word: a 4x4 essentially
+ *    never happens, so `SQUARE_BONUS_STEP * k` becomes a flat
+ *    `SQUARE_BONUS` at the one size, `SCORING_SQUARE_SIZE`, that is. A
+ *    completed 3x3 still pays the same 33 it did under version 8; a score
+ *    that leaned on a 4x4 under version 8 is not competing with these.
  */
-export const RULES_VERSION = 8;
+export const RULES_VERSION = 9;
 
 /**
  * How many words the shipped dictionary holds.
@@ -119,30 +136,36 @@ export const FRIEND_LINK_DAYS = 7;
 export const STACK_CAP = 2;
 
 /**
- * The smallest square that pays a bonus at all (design.md §4.2).
+ * The one size of block that pays a bonus (design.md §4.2). Not a floor on a
+ * scaling formula any more -- the only size the search even looks for.
  *
  * A 2x2 used to be worth k^2 = 4, and it was too easy to be worth chasing:
  * completing one asked almost nothing of a placement, so it paid out on
- * turns that were not really about the square at all. Raising the floor to
- * 3 does not shrink the bonus, it removes the bottom rung entirely -- a 2x2
- * inside a bigger completed block no longer contributes to its total either,
- * the same as a bare one pays nothing on its own.
+ * turns that were not really about the square at all. A 4x4 sat at the other
+ * extreme -- sixteen cells against a rack of seven, which the bot's own
+ * search already treated as effectively unreachable (`maxK: 3` in
+ * shared/sim/blocks.ts, on grounds unrelated to scoring: a 4x4 essentially
+ * never solves, so nothing is lost capping the search there too). Between an
+ * achievement nobody had to earn and one nobody would ever reach, 3x3 is the
+ * one size worth having a rule about at all.
  */
-export const MIN_SQUARE_SIZE = 3;
+export const SCORING_SQUARE_SIZE = 3;
 
 /**
- * What a side of `k` pays for finishing a k x k block, for k >= MIN_SQUARE_SIZE
- * (design.md §4.2). A k x k square is worth `SQUARE_BONUS_STEP * k`.
+ * What completing a `SCORING_SQUARE_SIZE` x `SCORING_SQUARE_SIZE` block pays
+ * (design.md §4.2) -- flat, not k^2 and not scaled by size, since there is
+ * now only the one size to scale. Nested completions still each pay their
+ * own share: a bigger block built in one turn happens to complete more than
+ * one 3x3 inside it, and each one is a real, separately-finished square.
  *
- * Was k^2 -- 9 for a 3x3, 16 for a 4x4 -- until the 2x2 floor moved to 3: a
- * 3x3 used to lean on four nested 2x2 bonuses (16 more) it can no longer
- * collect, so its own number had to stand on its own rather than just being
- * restored to where it used to net out. 11 was picked because it lands on
- * two clean, rememberable numbers where the game is actually played: 33 for
- * a 3x3, 44 for a 4x4 -- and the same rule then carries on unremarkably for
- * anything bigger, rather than needing a new special case at every size.
+ * Was k^2 = 9 until the 2x2 floor moved up to 3x3: a 3x3 used to lean on
+ * four nested 2x2 bonuses (16 more) it can no longer collect, so its own
+ * number had to stand on its own rather than just being restored to where
+ * it used to net out. 33 was picked as a clean, rememberable number at the
+ * one size that is actually reachable, rather than a formula whose only
+ * other data point was a size that will essentially never come up.
  */
-export const SQUARE_BONUS_STEP = 11;
+export const SQUARE_BONUS = 33;
 
 /**
  * Shortest word that earns the flat length bonus below (design.md §4.1).

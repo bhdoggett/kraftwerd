@@ -54,6 +54,28 @@
   color: var(--text);
 }
 
+/* Each bonus its own line, with room to breathe between them -- these read
+   as a short reference list to scan, not as flowing prose. */
+.bonusList li {
+  margin-bottom: var(--space-2);
+}
+
+/*
+ * The number leads every line, so it is the number that gets found on a
+ * second look, not just read once in passing. Accent green ties it to the
+ * same "a bonus happened" color the board and the live score use.
+ *
+ * Scoped under .body rather than left as .bonusAmount alone: `.body strong`
+ * above already sets every <strong>'s color, and a bare single class loses
+ * to a class-plus-tag selector regardless of which is written last. Two
+ * classes outranks it outright instead of relying on source order.
+ */
+.body .bonusAmount {
+  color: var(--accent);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
 
 /*
  * Diagrams sit side by side where there is room and stack where there is not.
