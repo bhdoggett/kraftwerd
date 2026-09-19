@@ -38,29 +38,45 @@ describe("the bot", () => {
      * and the tile play has something real to lose to, so the only thing
      * deciding between them is `blankPrice`.
      *
-     * Three corners of a 2x2, gap at (8,8). The blank closes it as TO/TO: two
-     * words and a 2x2, eight points. The E instead plays ATE along row 7 for
-     * three, and leaves nothing one tile short.
+     * A dictionary of its own, rather than the shared one above: EAT and ATE
+     * would let the solver also rewrite the block's own C into an E for a
+     * second word and a stack bonus on the side, which is a real thing the
+     * search can do but not what this test is isolating.
+     *
+     * Eight of nine cells of a 3x3, gap at (9,9): CAT/ACE/TEN across and down
+     * both. The blank closes it as N, completing TEN twice (6 word points)
+     * and the 3x3 itself (33) -- 2x2s no longer pay, so this is the smallest
+     * square worth the search's attention at all. The E instead extends row 7
+     * to CATE, on the same connected cluster, for four.
      */
+    const localWords = ["CAT", "ACE", "TEN", "CATE"];
+    const localDictionary = makeDictionary(localWords);
+    const localIndex = indexWords(localWords, 7);
+
     const near = makeBoard([
-      { x: 7, y: 7, letter: "A", isBlank: false },
-      { x: 8, y: 7, letter: "T", isBlank: false },
-      { x: 7, y: 8, letter: "T", isBlank: false },
+      { x: 7, y: 7, letter: "C", isBlank: false },
+      { x: 8, y: 7, letter: "A", isBlank: false },
+      { x: 9, y: 7, letter: "T", isBlank: false },
+      { x: 7, y: 8, letter: "A", isBlank: false },
+      { x: 8, y: 8, letter: "C", isBlank: false },
+      { x: 9, y: 8, letter: "E", isBlank: false },
+      { x: 7, y: 9, letter: "T", isBlank: false },
+      { x: 8, y: 9, letter: "E", isBlank: false },
     ]);
     const hand = { letters: ["E"], blanks: 1 };
     const play = (reserve: number) =>
-      bestMove(near, hand, dictionary, words, shape, 15, { blanks: { reserve } })!;
+      bestMove(near, hand, localDictionary, localIndex, shape, 15, { blanks: { reserve } })!;
 
-    // Cheap blank: eight points for the square is worth more than holding it.
+    // Cheap blank: 39 points for the square is worth far more than holding it.
     const cheap = play(2);
     expect(cheap.placements.some((p) => p.isBlank)).toBe(true);
-    expect(cheap.placements).toEqual([{ x: 8, y: 8, letter: "O", isBlank: true }]);
+    expect(cheap.placements).toEqual([{ x: 9, y: 9, letter: "N", isBlank: true }]);
 
     // Dear blank: the same square is no longer worth it, so the tile wins --
     // and it is declining an offer, not failing to find one.
-    const dear = play(8);
+    const dear = play(50);
     expect(dear.placements.some((p) => p.isBlank)).toBe(false);
-    expect(dear.placements).toEqual([{ x: 9, y: 7, letter: "E", isBlank: false }]);
+    expect(dear.placements).toEqual([{ x: 10, y: 7, letter: "E", isBlank: false }]);
     expect(dear.score).toBeLessThan(cheap.score);
   });
 

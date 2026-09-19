@@ -1,3 +1,4 @@
+import { SCORING_SQUARE_SIZE } from "../config.js";
 import { cellKey, type Board, type Coord } from "./board.js";
 
 function isFilled(board: Board, ox: number, oy: number, k: number): boolean {
@@ -10,8 +11,11 @@ function isFilled(board: Board, ox: number, oy: number, k: number): boolean {
 }
 
 /**
- * Sizes of every filled k x k block (k >= 2) that this turn brought into
- * existence.
+ * Every filled SCORING_SQUARE_SIZE x SCORING_SQUARE_SIZE block that this
+ * turn brought into existence. That is the only size the search looks for
+ * (design.md §4.2) — a bigger completed region still yields one of these
+ * per 3x3 anchor inside it, so a 4x4 built in one turn is found as its four
+ * nested 3x3s, never as a block in its own right.
  *
  * A block counts as new iff it is filled now and was not filled before. That
  * used to be the same question as "does it contain a placed cell", because
@@ -20,7 +24,7 @@ function isFilled(board: Board, ox: number, oy: number, k: number): boolean {
  * along. Those pay nothing: the square was already somebody's.
  */
 interface SquareBlock {
-  /** Side length. */
+  /** Side length — always SCORING_SQUARE_SIZE. */
   k: number;
   /** Top-left corner. */
   x: number;
@@ -34,24 +38,21 @@ export function newSquareBlocks(
   after: Board,
   placements: readonly Coord[],
 ): SquareBlock[] {
-  // A k x k block needs k^2 tiles, so nothing larger than this can be filled.
-  const maxSize = Math.floor(Math.sqrt(after.size));
+  const k = SCORING_SQUARE_SIZE;
   const found: SquareBlock[] = [];
   const seen = new Set<string>();
 
   for (const p of placements) {
-    for (let k = 2; k <= maxSize; k++) {
-      // Blocks of size k containing p are anchored at (p.x - i, p.y - j).
-      for (let j = 0; j < k; j++) {
-        for (let i = 0; i < k; i++) {
-          const ox = p.x - i;
-          const oy = p.y - j;
-          const id = `${ox},${oy},${k}`;
-          if (seen.has(id)) continue;
-          seen.add(id);
-          if (isFilled(after, ox, oy, k) && !isFilled(before, ox, oy, k)) {
-            found.push({ k, x: ox, y: oy });
-          }
+    // Blocks containing p are anchored at (p.x - i, p.y - j).
+    for (let j = 0; j < k; j++) {
+      for (let i = 0; i < k; i++) {
+        const ox = p.x - i;
+        const oy = p.y - j;
+        const id = `${ox},${oy}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        if (isFilled(after, ox, oy, k) && !isFilled(before, ox, oy, k)) {
+          found.push({ k, x: ox, y: oy });
         }
       }
     }

@@ -91,14 +91,6 @@
   /* The hatch alone was too close in value to an empty square at a glance --
      the ring is what makes "blocked" readable before the pattern is. */
   --blocked-ring: inset 0 0 0 1px #6090a9;
-  /* The centre is a plain start now, not a bonus square (shared/boards.ts)
-     -- doubling it gave whoever went first a bigger, more reliable bonus
-     than reaching any other one honestly requires. No fill, ring only,
-     same ledger ink the ruled lines and the blocked hatch already use:
-     a mark on the paper rather than a wash over it. */
-  --centre-fill: var(--cell-empty);
-  --centre-ring: #6090a9;
-
   /*
    * Tiles are lit signs: a saturated face with the letter cut out of it in
    * black. Every face clears 6.5:1 against that ink, on either theme, which is
@@ -176,7 +168,7 @@
    * tile is simply the tube itself. Lower this to soften every face at once —
    * each still clears the black letter by 6.5:1 or better at full strength.
    */
-  --tile-tint: 100%;
+  --tile-tint: 97%;
   --seat-0: color-mix(in srgb, var(--full-tomato) var(--tile-tint), #ffffff);
   --seat-1: color-mix(in srgb, var(--full-pacific) var(--tile-tint), #ffffff);
   --seat-2: color-mix(in srgb, var(--full-gold) var(--tile-tint), #ffffff);
@@ -260,10 +252,6 @@
        --cell-empty darkened to match the board; this ring is what still
        tells them apart. */
     --blocked-ring: inset 0 0 0 1px #2a2a35;
-    /* An outline instead of a wash: this board doesn't tint its squares,
-       so the centre marker says its piece in line rather than in fill. */
-    --centre-fill: var(--cell-empty);
-    --centre-ring: var(--full-pacific);
     --board-frame: var(--border-strong);
 
     /* The faces do not change: that is the point of choosing them this way. */
@@ -345,8 +333,6 @@
   --cell-line: color-mix(in srgb, var(--full-pacific) 30%, #000);
   --cell-blocked: #000000;
   --blocked-ring: inset 0 0 0 1px #2a2a35;
-  --centre-fill: var(--cell-empty);
-  --centre-ring: var(--full-pacific);
   --board-frame: var(--border-strong);
 
   /* The faces do not change: that is the point of choosing them this way. */

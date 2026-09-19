@@ -1,10 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { boardShapeNamed, OPEN_BOARD } from "../boards";
-import { makeBoard, type Board } from "../engine/board";
+import { cellKey, makeBoard, type Board } from "../engine/board";
 import { makeDictionary } from "../engine/dictionary";
 import { applyPlacements, validateTurn } from "../engine/legality";
 import { scoreTurn, type Placement } from "../engine/score";
-import { newSquares } from "../engine/squares";
 import { indexWords } from "./words";
 import { chain } from "./chain";
 import { moveKey } from "./components";
@@ -109,17 +108,18 @@ function* properSubsets(placements: readonly Placement[]): Generator<Placement[]
 }
 
 /**
- * The point of the whole exercise: square bonuses compound.
+ * The point of the whole exercise: a turn can be legal, and worth playing,
+ * only as a whole -- no piece of it stands on its own.
  *
- * Two plays that separately complete nothing can together complete a k x k,
- * and it is only worth chaining them if that k^2 is actually collected. That
- * turns on scoring the accumulated turn once against the board it began on --
- * score each link against the link before it and the square falls between the
- * two, belonging to neither.
+ * A 2x2 used to be the smallest example of this (see git history for the
+ * version that scored one), and stays the smallest example of the geometry
+ * even now that finishing one pays nothing on its own: an L that no straight
+ * line holds and no single play lays is exactly what the chain search exists
+ * to find, whatever it happens to be worth once found.
  */
 describe("chaining into a square", () => {
   /*
-   * ON already down along the bottom. Three tiles finish the 2x2 at columns
+   * ON already down along the bottom. Three tiles fill the 2x2 at columns
    * 7-8, rows 7-8 -- but they make an L, so no straight line holds them and no
    * single play lays them. AN across row 7 leaves the square a corner short;
    * TON along row 8 leaves it two corners short.
@@ -133,9 +133,17 @@ describe("chaining into a square", () => {
     { x: 9, y: 8, letter: "N", isBlank: false, stacked: 1 },
   ]);
 
-  test("collects a square no part of the turn could have closed", () => {
+  /** Whether this set of placements leaves the 2x2 at (7,7)-(8,8) filled. */
+  const fillsTheBlock = (placements: readonly Placement[]) => {
+    const after = applyPlacements(board, placements);
+    return [[7, 7], [8, 7], [7, 8], [8, 8]].every(([x, y]) =>
+      after.has(cellKey(x, y)),
+    );
+  };
+
+  test("finds a play no part of it could make on its own", () => {
     const closing = chained(board, ["A", "N", "T"]).filter((move) =>
-      newSquares(board, applyPlacements(board, move.placements), move.placements).includes(2),
+      fillsTheBlock(move.placements),
     );
 
     expect(closing.length).toBeGreaterThan(0);
@@ -145,19 +153,21 @@ describe("chaining into a square", () => {
       expect(new Set(move.placements.map((p) => p.x)).size).toBeGreaterThan(1);
       expect(new Set(move.placements.map((p) => p.y)).size).toBeGreaterThan(1);
 
-      // Nor as a play that happened to close it and a play that tidied up:
-      // no part of the turn closes anything on its own.
+      // Nor as a play that happened to finish it and a play that tidied up:
+      // no proper part of the turn fills the block on its own.
       for (const part of properSubsets(move.placements)) {
-        expect(newSquares(board, applyPlacements(board, part), part)).toEqual([]);
+        expect(fillsTheBlock(part)).toBe(false);
       }
 
-      // And the four points are in the score, not merely in the geometry.
+      // The turn's words -- AN, AT, NO, TON -- come from tiles crossing each
+      // other, not from any one of them alone; a 2x2 no longer adds anything
+      // on top, but the words themselves are still only there as a whole.
       const scored = scoreTurn(applyPlacements(board, move.placements), move.placements, {
         before: board,
       });
-      expect(scored.squarePoints).toBe(4);
+      expect(scored.squarePoints).toBe(0);
       expect(move.score).toBe(scored.total);
-      expect(move.score).toBeGreaterThan(scored.wordPoints);
+      expect(scored.wordPoints).toBeGreaterThan(0);
     }
   });
 });

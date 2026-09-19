@@ -172,7 +172,16 @@ export function exposure(
   return penalty;
 }
 
-/** What a blank is worth keeping, so spending one has to beat it. */
+/**
+ * What a blank is worth keeping, so spending one has to beat it.
+ *
+ * Calibrated to what closing a 2x2 used to pay, back when a 2x2 paid
+ * anything at all (design.md §4.2, RULES_VERSION 8): a 3x3 is the smallest
+ * square that scores now, at 33, a different order of size entirely. This
+ * number has not been re-measured against that -- it is still the pre-8
+ * value, carried over undisturbed rather than guessed at. Whoever tunes bot
+ * economics next should treat it as unverified, not as settled.
+ */
 const DEFAULT_BLANK_RESERVE = 8;
 
 /**
@@ -180,8 +189,9 @@ const DEFAULT_BLANK_RESERVE = 8;
  *
  * The old rule spent a blank only when nothing else could be played at all,
  * which is not restraint but paralysis: a blank that closes a 3x3 is worth
- * nine points and was never once spent on one. A price says the same thing
- * properly -- hold it while something better is still likely to come along.
+ * thirty-three points on the block alone and was never once spent on one. A
+ * price says the same thing properly -- hold it while something better is
+ * still likely to come along.
  *
  * The price falls as the board fills, because the chance of that something
  * falls with it. This is not a taste for tidy arithmetic: a blank is a
@@ -192,9 +202,6 @@ const DEFAULT_BLANK_RESERVE = 8;
  * tiles on the board -- or the bot ends games holding tiles it was charged to
  * keep. Straight-line decay in tiles placed, which is the only measure of
  * how far through a game the board is that does not need the bag.
- *
- * The default reserve is about what closing a 2x2 pays, so early on a blank is
- * spent for something square-shaped or not at all.
  */
 export function blankPrice(
   board: Board,

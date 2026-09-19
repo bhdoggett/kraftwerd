@@ -13,7 +13,13 @@ import {
 } from "../../../shared/engine/legality";
 import { boardShapeNamed } from "../../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../../shared/engine/score";
-import { STACK_CAP, RACK, GAME } from "../../../shared/config";
+import {
+  STACK_CAP,
+  RACK,
+  GAME,
+  LONG_WORD_MIN,
+  LONG_WORD_BONUS,
+} from "../../../shared/config";
 import { newBag, tilesLeft as countTiles } from "../../../shared/engine/bag";
 
 /** How many tiles a game starts with, for the progress bar's sake. */
@@ -1521,6 +1527,19 @@ export function Game({
                     {scored.bonus !== undefined && valid === true && !unplayable && (
                       <span className={styles.doubleMark}>×{scored.bonus}</span>
                     )}
+                    {/* The long-word bonus is flat and turn-wide (see the
+                        summary line below), not baked into this word's own
+                        points -- so it gets the same kind of said-not-inferred
+                        badge the multiplier does, just with a plus instead of
+                        a times, on whichever word actually reached the length
+                        that earned it. */}
+                    {scored.word.length >= LONG_WORD_MIN &&
+                      valid === true &&
+                      !unplayable && (
+                        <span className={styles.longMark}>
+                          +{LONG_WORD_BONUS}
+                        </span>
+                      )}
                     {/* While the verdict is out the points hold their space, so
                         the chip does not resize when it lands. Once the answer
                         is in and the word scores nothing, the space goes: it
@@ -1590,6 +1609,13 @@ export function Game({
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {preview && preview.longWordBonus > 0 && (
+              <p className={styles.scoreLine}>
+                Long words:{" "}
+                <span className={styles.previewScore}>+{preview.longWordBonus}</span>
+              </p>
             )}
 
             {preview && preview.stackBonus > 0 && (

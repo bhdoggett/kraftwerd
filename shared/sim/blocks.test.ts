@@ -183,13 +183,14 @@ describe("turns that are legal only as a whole", () => {
     expect(legalParts).toBe(0);
   });
 
-  test("and it pays for the 3x3 and all four 2x2s", () => {
+  test("and it pays for the 3x3, none of the four 2x2s", () => {
     const full = corners()!;
     const scored = scoreTurn(applyPlacements(board, full.placements), full.placements,
       { before: board });
 
-    // Every corner is the last tile of a different 2x2: 4 x 4, plus the 3x3.
-    expect(scored.squarePoints).toBe(4 * 4 + 9);
+    // Every corner is the last tile of a different 2x2, but 2x2s do not pay
+    // any more -- only the 3x3 itself does, at the flat SQUARE_BONUS (33).
+    expect(scored.squarePoints).toBe(33);
     expect(full.score).toBe(scored.total);
   });
 });

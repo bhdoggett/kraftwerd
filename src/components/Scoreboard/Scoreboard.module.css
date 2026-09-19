@@ -57,14 +57,14 @@
  * text, the same min-width-plus-padding trick .tiles below uses.
  */
 .dot {
-  min-width: 24px;
-  height: 24px;
-  padding: 0 6px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 7px;
   border-radius: 999px;
   display: grid;
   place-items: center;
   flex: none;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   /* Dark ink on a bright seat colour, same pairing a tile itself uses. */

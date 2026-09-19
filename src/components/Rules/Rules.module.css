@@ -26,11 +26,11 @@
 
 .section {
   margin: 0 0 var(--space-2);
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text-muted);
+  color: var(--text);
 }
 
 .body p {
@@ -54,6 +54,40 @@
   color: var(--text);
 }
 
+/* Each bonus its own line, with room to breathe between them -- these read
+   as a short reference list to scan, not as flowing prose. */
+.bonusList li {
+  margin-bottom: var(--space-2);
+}
+
+/*
+ * The number leads every line, so it is the number that gets found on a
+ * second look, not just read once in passing. Accent green ties it to the
+ * same "a bonus happened" color the board and the live score use.
+ *
+ * Scoped under .body rather than left as .bonusAmount alone: `.body strong`
+ * above already sets every <strong>'s color, and a bare single class loses
+ * to a class-plus-tag selector regardless of which is written last. Two
+ * classes outranks it outright instead of relying on source order.
+ */
+.body .bonusAmount {
+  color: var(--accent);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* An inline link into a sub-panel of this same dialog, styled like prose
+   rather than a button -- it reads as part of the sentence it sits in. */
+.textLink {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 
 /*
  * Diagrams sit side by side where there is room and stack where there is not.
@@ -63,6 +97,7 @@
 .diagrams {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   /* --space-6: the scale skips 5, and a missing token dropped the gap to 0. */
   gap: var(--space-6);
   margin: var(--space-3) 0 var(--space-4);

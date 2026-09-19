@@ -26,16 +26,17 @@ describe("what a turn is worth", () => {
     const after = applyPlacements(board, placements);
 
     /*
-     * COATS, five letters, five points.
+     * COATS, five letters, five points -- plus the flat bonus a word of five
+     * letters or more earns on top (design.md §4.1), for 10.
      *
      * The C goes in front deliberately. Handed the *pre-move* board instead of
      * the after-board, the run through the new tile is walked on a board the
      * new tile is not on -- so it stops dead at the C's own square, finds no
      * run at all, and the turn falls back to scoring one lone letter. One
-     * point where five are owed, which is roughly what the simulator reported
+     * point where ten are owed, which is roughly what the simulator reported
      * for every turn it played until this argument was put right.
      */
-    expect(turnValue(after, placements, PLAIN, new Set(), board).score).toBe(5);
+    expect(turnValue(after, placements, PLAIN, new Set(), board).score).toBe(10);
   });
 
   test("a tile laid on a tile collects its stack bonus, and pays no square twice", () => {
@@ -74,11 +75,12 @@ describe("what a turn is worth", () => {
     const placements: Placement[] = [{ x: 5, y: 7, letter: "C", isBlank: false }];
     const after = applyPlacements(board, placements);
 
-    // COATS is five points either way. Only the caller holds the rack, so only
+    // COATS is 10 points either way (5 word points, plus the flat bonus for a
+    // word of five letters or more). Only the caller holds the rack, so only
     // the caller can say this C was the last of a full one -- and the simulator
     // never did, which left every game it played short of the rule that ships.
     expect(turnValue(after, placements, PLAIN, new Set(), board, true).score)
-      .toBe(5 + RACK_CLEAR_BONUS);
-    expect(turnValue(after, placements, PLAIN, new Set(), board, false).score).toBe(5);
+      .toBe(10 + RACK_CLEAR_BONUS);
+    expect(turnValue(after, placements, PLAIN, new Set(), board, false).score).toBe(10);
   });
 });
