@@ -76,8 +76,17 @@ export const BLANKS_PER_GAME = 3;
  *    crossing two of them in one play quadruples, so the ceiling on a turn
  *    moves as well as the average: a score set on a board without them is
  *    not competing with these.
+ * 8: squares, long words and the rack bonus retuned together (design.md §4)
+ *    — a 2x2 no longer pays anything, at any size it's nested inside; a
+ *    k x k square of k >= 3 pays `SQUARE_BONUS_STEP * k` rather than k^2, so
+ *    3x3 is 33 and 4x4 is 44 instead of 9 and 16; any word of
+ *    `LONG_WORD_MIN` letters or more pays a flat `LONG_WORD_BONUS` on top,
+ *    whether or not it used the whole rack; and `RACK_CLEAR_BONUS` drops
+ *    from 15 to 5, so the tempo of clearing your rack every turn no longer
+ *    outweighs holding tiles back for a square or a long word. A score set
+ *    under any of the old numbers is not competing with these.
  */
-export const RULES_VERSION = 7;
+export const RULES_VERSION = 8;
 
 /**
  * How many words the shipped dictionary holds.
@@ -110,19 +119,74 @@ export const FRIEND_LINK_DAYS = 7;
 export const STACK_CAP = 2;
 
 /**
+ * The smallest square that pays a bonus at all (design.md §4.2).
+ *
+ * A 2x2 used to be worth k^2 = 4, and it was too easy to be worth chasing:
+ * completing one asked almost nothing of a placement, so it paid out on
+ * turns that were not really about the square at all. Raising the floor to
+ * 3 does not shrink the bonus, it removes the bottom rung entirely -- a 2x2
+ * inside a bigger completed block no longer contributes to its total either,
+ * the same as a bare one pays nothing on its own.
+ */
+export const MIN_SQUARE_SIZE = 3;
+
+/**
+ * What a side of `k` pays for finishing a k x k block, for k >= MIN_SQUARE_SIZE
+ * (design.md §4.2). A k x k square is worth `SQUARE_BONUS_STEP * k`.
+ *
+ * Was k^2 -- 9 for a 3x3, 16 for a 4x4 -- until the 2x2 floor moved to 3: a
+ * 3x3 used to lean on four nested 2x2 bonuses (16 more) it can no longer
+ * collect, so its own number had to stand on its own rather than just being
+ * restored to where it used to net out. 11 was picked because it lands on
+ * two clean, rememberable numbers where the game is actually played: 33 for
+ * a 3x3, 44 for a 4x4 -- and the same rule then carries on unremarkably for
+ * anything bigger, rather than needing a new special case at every size.
+ */
+export const SQUARE_BONUS_STEP = 11;
+
+/**
+ * Shortest word that earns the flat length bonus below (design.md §4.1).
+ *
+ * Chosen to fill the gap the 2x2 floor moving to 3 left behind: a bare
+ * 5-letter word previously scored 5 points and nothing else, the same flat
+ * 1 point a tile as any other word, with no achievable bonus between that
+ * and a hard-to-reach 3x3. Five is a genuine step up from the four-and
+ * -under words most turns are made of, without being as rare as a square.
+ */
+export const LONG_WORD_MIN = 5;
+
+/**
+ * Flat bonus for a word of `LONG_WORD_MIN` letters or more (design.md §4.1),
+ * on top of its own word points -- the way `stackBonus` flatly rewards
+ * landing on a stack, without reshaping the per-letter formula everything
+ * else is built on. Applies once per qualifying word a turn forms, and is
+ * never doubled by a bonus square: it rewards the word being long, not the
+ * square it happens to cross.
+ *
+ * Set so a bare 5-letter word (5 word points) lands at 10, exactly the
+ * 2.0-a-tile rate a bare 2x2 used to pay -- taking over that tier honestly
+ * rather than by coincidence, now that a 2x2 pays nothing at all.
+ */
+export const LONG_WORD_BONUS = 5;
+
+/**
  * Bonus for playing every letter in your rack in a single turn (design.md
  * §4.7). Word points alone are flat, 1 per letter, so a lone long word pays
- * far less per tile than a compact square does — a 7-letter word nets 1.0
- * point a tile against a 3x3's 3.8. This adds a flat reward for the big,
- * single-turn play, the way `stackBonus` flatly rewards landing on a stack,
- * without reshaping the per-letter formula everything else is built on.
+ * far less per tile than a compact square does. This adds a flat reward for
+ * the big, single-turn play, the way `stackBonus` flatly rewards landing on
+ * a stack, without reshaping the per-letter formula everything else is
+ * built on.
  *
- * Set so a full rack played as one plain 7-letter word (7 word points, no
- * squares) lands between a 2x2's rate and a 3x3's: 7 + 15 = 22, 3.1 a tile.
- * A word that also crosses existing tiles or completes a square pays more
- * on top, same as any other turn.
+ * Deliberately a tempo nudge rather than a second jackpot. At 15 this was
+ * worth more, repeated every turn a rack happened to empty, than the rarer
+ * squares and long words were meant to be the real ceiling -- which is
+ * exactly backwards from what should be worth chasing, and left holding
+ * tiles back for something bigger a losing move against just dumping the
+ * rack every turn. At 5, a full rack played as one plain 7-letter word
+ * scores 7 + 5 (LONG_WORD_BONUS, since 7 >= LONG_WORD_MIN) + 5 = 17: still
+ * worth doing, never worth doing *instead of* building something bigger.
  */
-export const RACK_CLEAR_BONUS = 15;
+export const RACK_CLEAR_BONUS = 5;
 
 /**
  * How well a computer player plays.

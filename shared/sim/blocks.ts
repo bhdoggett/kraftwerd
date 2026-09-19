@@ -120,11 +120,13 @@ export interface BlockOptions {
 /**
  * Blocks worth trying to finish this turn, best payoff first.
  *
- * Squares pay k^2 and nest -- a finished 3x3 also closes four 2x2s -- so the
- * biggest block goes first, and among blocks of a size the one asking for
- * fewest tiles, since that is both the likeliest to close and the cheapest to
- * search. The list is then cut by the caller, and the cut bites: a mid-game
- * board yields around a hundred of these, of which `maxBlocks` sees forty.
+ * Squares pay SQUARE_BONUS_STEP * k and nest from 3x3 up -- a finished 4x4
+ * also closes four 3x3s, though a 2x2 no longer counts toward anything, bare
+ * or nested (RULES_VERSION 8) -- so the biggest block goes first, and among
+ * blocks of a size the one asking for fewest tiles, since that is both the
+ * likeliest to close and the cheapest to search. The list is then cut by the
+ * caller, and the cut bites: a mid-game board yields around a hundred of
+ * these, of which `maxBlocks` sees forty.
  *
  * Forty, and `maxK` 3, because the cut is what decides whether the pass is
  * worth having and an earlier cap of twelve was measured as the thing binding
@@ -145,11 +147,17 @@ export interface BlockOptions {
  * why it is *cheaper* as well (512ms against 631ms a turn, live, over seven
  * hundred turns apiece). It bounds this solver's targets, not the board: the
  * span and chain searches can still complete a 4x4 incidentally, and
- * `newSquareBlocks` still pays k^2 = 16 when they do.
+ * `newSquareBlocks` still pays 44 (SQUARE_BONUS_STEP * 4) when they do.
  *
  * Ordering by fewest gaps *across* sizes was measured too, and is worse: it
  * fills the shortlist with 2x2s, which re-letters happily and closes fewer
  * 3x3s than before. k first is right; the cap was what had to move.
+ *
+ * All the measurements in this comment predate RULES_VERSION 8, which moved
+ * the smallest paying square from 2x2 to 3x3 and changed what every size
+ * pays. The search logic they justify is unchanged and still applies; the
+ * specific rates and times are from a different scoring table and are owed a
+ * re-measurement before anyone tunes against them again.
  */
 export function candidateBlocks(
   board: Board,
@@ -494,7 +502,8 @@ function solveBlock(
      * On a gap this is the one place in the search where a blank does its real
      * work. Elsewhere it substitutes for a letter in a word the rack nearly
      * spells, which is worth a few points. Here it closes a square the rack
-     * could not close at all, which is worth k^2.
+     * could not close at all, which for k >= MIN_SQUARE_SIZE is worth
+     * SQUARE_BONUS_STEP * k.
      */
     const priorStack = standing?.stacked ?? 0;
     const barred = priorStack + 1 >= STACK_CAP && priorStack > 0;

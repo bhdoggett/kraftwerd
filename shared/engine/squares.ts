@@ -1,3 +1,4 @@
+import { MIN_SQUARE_SIZE } from "../config.js";
 import { cellKey, type Board, type Coord } from "./board.js";
 
 function isFilled(board: Board, ox: number, oy: number, k: number): boolean {
@@ -10,14 +11,19 @@ function isFilled(board: Board, ox: number, oy: number, k: number): boolean {
 }
 
 /**
- * Sizes of every filled k x k block (k >= 2) that this turn brought into
- * existence.
+ * Sizes of every filled k x k block (k >= MIN_SQUARE_SIZE) that this turn
+ * brought into existence.
  *
  * A block counts as new iff it is filled now and was not filled before. That
  * used to be the same question as "does it contain a placed cell", because
  * placements only ever added tiles — but a tile can now land on top of one,
  * so a block can contain this turn's work and still have been complete all
  * along. Those pay nothing: the square was already somebody's.
+ *
+ * Starting the search at MIN_SQUARE_SIZE rather than 2 means a 2x2 is never
+ * found at all, nested or bare -- it does not just pay nothing on its own,
+ * it also stops contributing to the nested count of anything bigger built
+ * around it (design.md §4.2).
  */
 interface SquareBlock {
   /** Side length. */
@@ -40,7 +46,7 @@ export function newSquareBlocks(
   const seen = new Set<string>();
 
   for (const p of placements) {
-    for (let k = 2; k <= maxSize; k++) {
+    for (let k = MIN_SQUARE_SIZE; k <= maxSize; k++) {
       // Blocks of size k containing p are anchored at (p.x - i, p.y - j).
       for (let j = 0; j < k; j++) {
         for (let i = 0; i < k; i++) {

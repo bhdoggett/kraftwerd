@@ -1,4 +1,9 @@
-import { RACK_CLEAR_BONUS } from "../config.js";
+import {
+  LONG_WORD_BONUS,
+  LONG_WORD_MIN,
+  RACK_CLEAR_BONUS,
+  SQUARE_BONUS_STEP,
+} from "../config.js";
 import { cellKey, type Board, type Coord } from "./board.js";
 import { runsAndLoners } from "./runs.js";
 import { newSquareBlocks } from "./squares.js";
@@ -31,6 +36,8 @@ export interface TurnScore {
   squares: number[];
   /** Bonus for landing on an already-occupied square (design.md §4, STACK_CAP). */
   stackBonus: number;
+  /** Flat bonus for each word of LONG_WORD_MIN letters or more (design.md §4.1). */
+  longWordBonus: number;
   /** Bonus for playing every letter in your rack this turn (design.md §4.7). */
   rackBonus: number;
   total: number;
@@ -44,7 +51,10 @@ export interface TurnScore {
  * extendable is a liability: the next player collects its whole length for one
  * tile, the same way an open corner hands away a square.
  *
- * Squares pay k^2 on top, counting nested sub-squares.
+ * Squares of MIN_SQUARE_SIZE or bigger pay SQUARE_BONUS_STEP * k on top,
+ * counting nested sub-squares; a word of LONG_WORD_MIN letters or more pays
+ * a flat LONG_WORD_BONUS on top of its own points, whether or not it used
+ * the whole rack.
  */
 interface ScoreOptions {
   /**
@@ -117,7 +127,10 @@ export function scoreTurn(
   const blocks = newSquareBlocks(before, board, placements);
   const squares = blocks.map((block) => block.k);
 
-  const squarePoints = blocks.reduce((sum, block) => sum + block.k * block.k, 0);
+  const squarePoints = blocks.reduce(
+    (sum, block) => sum + SQUARE_BONUS_STEP * block.k,
+    0,
+  );
 
   // Landing on an already-occupied square pays extra, equal to how deep the
   // stack now runs: 2 for the first tile on top, 3 for the second (the most
@@ -127,6 +140,12 @@ export function scoreTurn(
     return sum + (depth >= 2 ? depth : 0);
   }, 0);
 
+  // Flat, once per qualifying word, and never touched by a bonus square's
+  // multiplier -- it rewards the word's own length, not the ground it
+  // happens to stand on.
+  const longWordBonus =
+    words.filter((w) => w.word.length >= LONG_WORD_MIN).length * LONG_WORD_BONUS;
+
   const rackBonus = options.rackCleared ? RACK_CLEAR_BONUS : 0;
 
   return {
@@ -135,7 +154,8 @@ export function scoreTurn(
     squarePoints,
     squares,
     stackBonus,
+    longWordBonus,
     rackBonus,
-    total: wordPoints + squarePoints + stackBonus + rackBonus,
+    total: wordPoints + squarePoints + stackBonus + longWordBonus + rackBonus,
   };
 }

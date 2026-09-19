@@ -97,8 +97,8 @@ describe("placeTiles", () => {
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
     });
 
-    // Four 2-letter words (8) plus the square (4).
-    expect(result).toEqual({ score: 12, squares: [2] });
+    // Four 2-letter words (8); a 2x2 no longer pays a square bonus.
+    expect(result).toEqual({ score: 8, squares: [] });
 
     const player = await t.run(async (ctx) =>
       ctx.db
@@ -108,7 +108,7 @@ describe("placeTiles", () => {
         )
         .unique(),
     );
-    expect(player?.score).toBe(12);
+    expect(player?.score).toBe(8);
   });
 
   test("refills the rack back to full after a play", async () => {
@@ -216,7 +216,7 @@ describe("placeTiles", () => {
     ).rejects.toThrow("connect to the tiles already on the board");
   });
 
-  test("lets the opponent complete a square and take the whole thing", async () => {
+  test("lets the opponent complete a square, which now pays nothing extra", async () => {
     const { gameId, asAlice, asBob, bob, t } = await twoPlayerGame([
       "A",
       "D",
@@ -230,13 +230,12 @@ describe("placeTiles", () => {
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D")],
     });
 
-    // Bob closes it with one tile and scores 1 + 4.
+    // Bob closes it with one tile and takes only the two 2-letter words.
     const result = await asBob.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(1, 1, "O")],
     });
-    // The closing tile takes both 2-letter words and the square.
-    expect(result).toEqual({ score: 8, squares: [2] });
+    expect(result).toEqual({ score: 4, squares: [] });
 
     const player = await t.run(async (ctx) =>
       ctx.db
@@ -246,7 +245,7 @@ describe("placeTiles", () => {
         )
         .unique(),
     );
-    expect(player?.score).toBe(8);
+    expect(player?.score).toBe(4);
   });
 
   test("rotates the turn to the next seat", async () => {
@@ -376,8 +375,9 @@ describe("placeTiles", () => {
       ],
     });
 
-    // Four 2-letter words and 4 for the square: the blank pays its way.
-    expect(result).toEqual({ score: 12, squares: [2] });
+    // Four 2-letter words: the blank pays its way. The square it completes
+    // pays nothing.
+    expect(result).toEqual({ score: 8, squares: [] });
   });
 });
 
@@ -691,7 +691,7 @@ describe("resigning and stats", () => {
       "O",
     ]);
 
-    // Alice scores 12, then quits anyway.
+    // Alice scores 8, then quits anyway.
     await asAlice.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(0, 0, "A"), at(1, 0, "D"), at(0, 1, "D"), at(1, 1, "O")],
@@ -708,7 +708,7 @@ describe("resigning and stats", () => {
     expect(users.alice?.wins ?? 0).toBe(0);
     expect(users.bob?.wins).toBe(1);
     // The score still counts toward personal bests.
-    expect(users.alice?.bestGameScore).toBe(12);
+    expect(users.alice?.bestGameScore).toBe(8);
   });
 
   test("records the best single turn as it happens", async () => {
@@ -725,7 +725,7 @@ describe("resigning and stats", () => {
     });
 
     const user = await t.run(async (ctx) => ctx.db.get("users", alice));
-    expect(user?.bestTurnScore).toBe(12);
+    expect(user?.bestTurnScore).toBe(8);
   });
 
   test("counts a game for everyone who played, won or not", async () => {
@@ -1753,9 +1753,18 @@ describe("computer players", () => {
         const { t, asAlice } = await table();
 
         const pool = new Set("TOADEMUCS");
+        // At most one letter outside the pool, not zero: the search is
+        // allowed to spend a blank on a turn (BLANKS_PER_TURN in bots.ts),
+        // and a blank can stand for any letter. A pool with no slack for
+        // that meant a crossing word built with the blank -- MID, AGO, ARE,
+        // all one letter over -- could out-rank every pool-safe candidate
+        // and then fail the dictionary every single time, which reads as
+        // "the bot found nothing" rather than what it actually is.
+        const outsidePool = (word: string) =>
+          [...word].filter((c) => !pool.has(c)).length;
         await t.run(async (ctx) => {
           for (const word of ALL_WORDS) {
-            if ([...word].every((c) => pool.has(c)) && !WORDS.includes(word)) {
+            if (outsidePool(word) <= 1 && !WORDS.includes(word)) {
               await ctx.db.insert("words", { word });
             }
           }

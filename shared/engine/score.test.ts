@@ -35,8 +35,8 @@ describe("scoreTurn", () => {
     ];
 
     // Four words of 2 letters, the blank paying its way in both it sits in:
-    // 8, plus 4 for the 2x2.
-    expect(scoreTurn(makeBoard(tiles), place(tiles)).total).toBe(12);
+    // 8. The 2x2 it completes pays nothing.
+    expect(scoreTurn(makeBoard(tiles), place(tiles)).total).toBe(8);
   });
 
   describe("spec payouts (design.md §4.2)", () => {
@@ -52,23 +52,25 @@ describe("scoreTurn", () => {
     };
 
     // An n x n block is 2n words of n letters, so n^2 * 2 word points.
-    test("2x2 scores 12", () => {
+    // Square bonuses start at 3x3 and pay SQUARE_BONUS_STEP * k, nested.
+    test("2x2 scores nothing beyond its words", () => {
       const s = totalFor(2);
-      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([8, 4, 12]);
+      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([8, 0, 8]);
     });
 
-    test("3x3 scores 43", () => {
+    test("3x3 scores 51", () => {
       const s = totalFor(3);
-      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([18, 25, 43]);
+      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([18, 33, 51]);
     });
 
-    test("4x4 scores 120", () => {
+    test("4x4 scores 208", () => {
       const s = totalFor(4);
-      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([32, 88, 120]);
+      // Four nested 3x3s at 33 each, plus the 4x4 itself at 44.
+      expect([s.wordPoints, s.squarePoints, s.total]).toEqual([32, 176, 208]);
     });
   });
 
-  test("completing an opponent's 2x2 with one tile takes the lot (design.md §4.4)", () => {
+  test("completing a 2x2 with one tile scores only the words (design.md §4.4)", () => {
     const board = makeBoard([
       { x: 0, y: 0, letter: "A" },
       { x: 1, y: 0, letter: "T" },
@@ -76,9 +78,10 @@ describe("scoreTurn", () => {
       { x: 1, y: 1, letter: "O" },
     ]);
 
-    // The one tile closes two 2-letter words and the square with them.
+    // The one tile closes two 2-letter words; the square they complete pays
+    // nothing.
     const s = scoreTurn(board, place([{ x: 1, y: 1, letter: "O" }]));
-    expect([s.wordPoints, s.squarePoints, s.total]).toEqual([4, 4, 8]);
+    expect([s.wordPoints, s.squarePoints, s.total]).toEqual([4, 0, 4]);
   });
 });
 
@@ -93,8 +96,10 @@ describe("words pay for letters already on the board", () => {
     ]);
 
     const s = scoreTurn(board, place([{ x: 4, y: 0, letter: "N" }]));
-    expect(s.total).toBe(5);
+    // 5 word points, plus the flat long-word bonus RISEN's five letters earn.
+    expect(s.total).toBe(10);
     expect(s.words).toEqual([{ word: "RISEN", points: 5 }]);
+    expect(s.longWordBonus).toBe(5);
   });
 
   test("so leaving a word extendable hands the next player its length", () => {
@@ -149,7 +154,7 @@ describe("laying a tile on top of another", () => {
 });
 
 describe("rack bonus", () => {
-  test("clearing the whole rack pays 15 on top (design.md §4.7)", () => {
+  test("clearing the whole rack pays 5 on top (design.md §4.7)", () => {
     const tiles: TileSpec[] = [
       { x: 0, y: 0, letter: "C" },
       { x: 1, y: 0, letter: "A" },
@@ -157,8 +162,8 @@ describe("rack bonus", () => {
     ];
 
     const s = scoreTurn(makeBoard(tiles), place(tiles), { rackCleared: true });
-    expect(s.rackBonus).toBe(15);
-    expect(s.total).toBe(3 + 15);
+    expect(s.rackBonus).toBe(5);
+    expect(s.total).toBe(3 + 5);
   });
 
   test("not clearing the rack pays no bonus", () => {
@@ -170,6 +175,78 @@ describe("rack bonus", () => {
 
     expect(scoreTurn(makeBoard(tiles), place(tiles)).rackBonus).toBe(0);
     expect(scoreTurn(makeBoard(tiles), place(tiles), { rackCleared: false }).rackBonus).toBe(0);
+  });
+});
+
+describe("long word bonus", () => {
+  test("a word under five letters pays no long-word bonus", () => {
+    const tiles: TileSpec[] = [
+      { x: 0, y: 0, letter: "C" },
+      { x: 1, y: 0, letter: "A" },
+      { x: 2, y: 0, letter: "N" },
+      { x: 3, y: 0, letter: "E" },
+    ];
+
+    const s = scoreTurn(makeBoard(tiles), place(tiles));
+    expect(s.longWordBonus).toBe(0);
+    expect(s.total).toBe(4);
+  });
+
+  test("a word of five letters or more pays a flat bonus on top (design.md §4.1)", () => {
+    const tiles: TileSpec[] = [
+      { x: 0, y: 0, letter: "C" },
+      { x: 1, y: 0, letter: "R" },
+      { x: 2, y: 0, letter: "A" },
+      { x: 3, y: 0, letter: "N" },
+      { x: 4, y: 0, letter: "E" },
+    ];
+
+    const s = scoreTurn(makeBoard(tiles), place(tiles));
+    expect(s.longWordBonus).toBe(5);
+    expect(s.total).toBe(5 + 5);
+  });
+
+  test("two qualifying words in the same turn each pay the bonus", () => {
+    const tiles: TileSpec[] = [
+      // PLANE, five letters
+      { x: 0, y: 0, letter: "P" },
+      { x: 1, y: 0, letter: "L" },
+      { x: 2, y: 0, letter: "A" },
+      { x: 3, y: 0, letter: "N" },
+      { x: 4, y: 0, letter: "E" },
+      // GRAPES, six letters, unconnected -- scoreTurn does not police
+      // connectivity, only validateTurn does
+      { x: 0, y: 5, letter: "G" },
+      { x: 1, y: 5, letter: "R" },
+      { x: 2, y: 5, letter: "A" },
+      { x: 3, y: 5, letter: "P" },
+      { x: 4, y: 5, letter: "E" },
+      { x: 5, y: 5, letter: "S" },
+    ];
+
+    const s = scoreTurn(makeBoard(tiles), place(tiles));
+    expect(s.longWordBonus).toBe(10);
+  });
+
+  test("the long-word bonus is flat, never doubled by a bonus square", () => {
+    const tiles: TileSpec[] = [
+      { x: 0, y: 0, letter: "C" },
+      { x: 1, y: 0, letter: "R" },
+      { x: 2, y: 0, letter: "A" },
+      { x: 3, y: 0, letter: "N" },
+      { x: 4, y: 0, letter: "E" },
+    ];
+    const bonusSquares = new Set(["2,0"]);
+
+    const s = scoreTurn(makeBoard(tiles), place(tiles), {
+      before: makeBoard([]),
+      bonusSquares,
+    });
+
+    // Word points double (5 * 2 = 10); the long-word bonus stays flat.
+    expect(s.words).toEqual([{ word: "CRANE", points: 10, bonus: 2 }]);
+    expect(s.longWordBonus).toBe(5);
+    expect(s.total).toBe(10 + 5);
   });
 });
 

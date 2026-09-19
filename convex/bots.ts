@@ -409,6 +409,13 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
      *   blocks 40, maxK 3      512ms  1920ms      5/772       3.50        392
      *   blocks 64, maxK 3      621ms  1882ms      7/738       3.32        380
      *
+     * This table predates RULES_VERSION 8, which moved the smallest paying
+     * square from 2x2 to 3x3 and changed what every size pays. The timings
+     * and square counts are unaffected -- the search does the same work
+     * regardless of what a square is worth -- but every pts/game figure here
+     * is from the old scoring table and is owed a re-measurement before it
+     * is trusted for anything.
+     *
      * **Read the ends of that table, not the steps.** A per-game square count
      * is noisy: the same configuration (`reletter 2, blocks 12`) came out at
      * 1.89 over twenty-eight games and 2.71 over fourteen, 0.82 apart, which
@@ -430,7 +437,8 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
      *
      * Two things that cap does *not* do. It does not stop 4x4s being built:
      * the span and chain searches can still complete one incidentally, and
-     * `newSquareBlocks` still pays k^2 = 16 when they do. And it changes
+     * `newSquareBlocks` still pays 44 (SQUARE_BONUS_STEP * 4) when they do.
+     * And it changes
      * nothing for `blankMoves`, whose own default was already 3; what
      * `maxBlocks: 40` does there is widen its single-gap shortlist from twelve
      * to forty, which is in the numbers above but is not part of the story

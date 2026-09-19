@@ -179,8 +179,9 @@ export function bestMove(
   /*
    * One search. There used to be two — tiles first, blanks only if the rack
    * alone could not play at all — which is not restraint but paralysis: a
-   * blank that closes a 3x3 is worth nine points and was never once spent on
-   * one. `blankPrice` says the same thing properly, so the ranking decides.
+   * blank that closes a 3x3 is worth thirty-three points on the block alone
+   * and was never once spent on one. `blankPrice` says the same thing
+   * properly, so the ranking decides.
    */
   const scoreOf: ValueFn =
     options.value ?? ((after, p, before) => scoreTurn(after, p, { before }).total);

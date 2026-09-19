@@ -27,7 +27,7 @@ describe("the shipped dictionary", () => {
     // is that list under double-word squares (design.md §4.8). The pair moves
     // together whenever either half does -- this test going red is the point
     // of it, not a failure.
-    expect(RULES_VERSION).toBe(7);
+    expect(RULES_VERSION).toBe(8);
     expect(DICTIONARY_WORDS).toBe(175800);
   });
 });

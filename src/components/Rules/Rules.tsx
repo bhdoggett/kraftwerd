@@ -1,4 +1,13 @@
-import { BLANKS_PER_GAME, RACK, RACK_CLEAR_BONUS, STACK_CAP } from "../../../shared/config";
+import {
+  BLANKS_PER_GAME,
+  LONG_WORD_BONUS,
+  LONG_WORD_MIN,
+  MIN_SQUARE_SIZE,
+  RACK,
+  RACK_CLEAR_BONUS,
+  SQUARE_BONUS_STEP,
+  STACK_CAP,
+} from "../../../shared/config";
 import { MiniBoard } from "../MiniBoard/MiniBoard";
 import { Modal } from "../Modal/Modal";
 import styles from "./Rules.module.css";
@@ -27,8 +36,9 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         </div>
 
         <p>
-          Words score a point a letter, in both directions. Fill a 2×2 block
-          of tiles and take 4 more — a 3×3 takes 9.
+          Words score a point a letter, in both directions. A long word pays
+          extra, and completing a {MIN_SQUARE_SIZE}×{MIN_SQUARE_SIZE} block of
+          tiles or bigger pays more still.
         </p>
 
         <h3 className={styles.section}>Placing tiles</h3>
@@ -78,8 +88,9 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         </p>
         <p>
           So adding one tile to <strong>RISE</strong> scores{" "}
-          <strong>RISEN</strong> in full — five points for one tile. An
-          extendable word is a gift to whoever plays next.
+          <strong>RISEN</strong> in full — five points for one tile, plus the
+          bonus below for reaching five letters. An extendable word is a gift
+          to whoever plays next.
         </p>
         <div className={styles.diagrams}>
           <MiniBoard
@@ -92,9 +103,14 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             seat={1}
             played={["4,0"]}
             ring={["4,0"]}
-            caption="One tile makes RISEN and scores all five letters."
+            caption="One tile makes RISEN: five letters, plus the long-word bonus."
           />
         </div>
+        <p>
+          A word of <strong>{LONG_WORD_MIN} letters or more</strong> pays a
+          flat <strong>+{LONG_WORD_BONUS}</strong> on top, however it gets
+          there — RISEN above scores {5 + LONG_WORD_BONUS} in all.
+        </p>
         <p>
           Landing on a tile that's already there pays <strong>+2</strong> on
           top of the word, and fills the square for good — it goes bare
@@ -119,24 +135,26 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
 
         <h3 className={styles.section}>Scoring: squares</h3>
         <p>
-          A gapless block of tiles scores again the turn it's completed:{" "}
-          <strong>a k×k block is worth k²</strong> — 4 for a 2×2, 9 for a
-          3×3 — and bigger blocks count their smaller ones too.
+          A gapless block of tiles, {MIN_SQUARE_SIZE}×{MIN_SQUARE_SIZE} or
+          bigger, scores again the turn it's completed:{" "}
+          <strong>a k×k block is worth {SQUARE_BONUS_STEP} × k</strong> — 33
+          for a 3×3, 44 for a 4×4 — and bigger blocks count their smaller
+          ones too. A 2×2 doesn't pay a block bonus at all, on its own or
+          inside a bigger one.
         </p>
         <div className={styles.diagrams}>
           <MiniBoard
             rows={["AT", "TO"]}
             seat={1}
             played={["1,1"]}
-            ring={["0,0", "1,0", "0,1", "1,1"]}
-            caption="A 2×2: four two-letter words plus 4 for the block — 12 in all."
+            caption="A 2×2: four two-letter words (8) — the block itself pays nothing."
           />
           <MiniBoard
             rows={["CAT", "ARE", "TEN"]}
             seat={1}
             played={["2,2"]}
             ring={["0,0", "1,0", "2,0", "0,1", "1,1", "2,1", "0,2", "1,2", "2,2"]}
-            caption="A 3×3 holds four 2×2s as well as itself: 6 words + 16 + 9 = 43."
+            caption="A 3×3: six three-letter words (18) plus 33 for the block — 51 in all."
           />
         </div>
         <p>
