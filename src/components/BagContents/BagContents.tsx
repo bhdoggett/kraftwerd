@@ -6,9 +6,9 @@ import styles from "./BagContents.module.css";
 /**
  * What is still out there, letter by letter, against the full starting count
  * -- each letter a small gauge filled in proportion to how much of it is
- * unaccounted for, rather than a fraction to do arithmetic on. The exact
- * numbers are on hover and for a screen reader; the tile itself is meant to
- * be read at a glance, the way an emptying tank is.
+ * unaccounted for, rather than a fraction to do arithmetic on. The tile is
+ * meant to be read at a glance, the way an emptying tank is; the exact number
+ * is a tap away for whoever wants to check.
  *
  * "Still out there" is not "still in the bag", and the wording matters. What
  * is drawn here is the bag *and* the other players' hands together, which is
@@ -31,6 +31,11 @@ export function BagContents({
   unseen: Record<string, number>;
 }) {
   const [open, setOpen] = useState(false);
+  /**
+   * Which letter is showing its number. One at a time: this sits in a narrow
+   * panel, and 26 popovers at once is the wall of text the gauges replaced.
+   */
+  const [asked, setAsked] = useState<string | null>(null);
   const full = newBag(RACK);
   const total = tilesLeft(full);
 
@@ -61,16 +66,32 @@ export function BagContents({
             {letters.map(([letter, startingCount]) => {
               const outThere = unseen[letter] ?? 0;
               const fill = startingCount === 0 ? 0 : outThere / startingCount;
+              const says = `${outThere} of ${startingCount} still out there`;
               return (
-                <span
+                /*
+                 * A button because it is tapped, not because it looks like
+                 * one: the count lived in `title` alone, which is a tooltip,
+                 * and a tooltip needs a pointer to hover. On a phone the
+                 * gauges could say "some" and "hardly any" and nothing else.
+                 * The styling deliberately keeps it a tile -- see .letter in
+                 * the stylesheet, which strips every button affordance.
+                 */
+                <button
+                  type="button"
                   key={letter}
                   className={styles.letter}
                   style={{ "--fill": fill } as React.CSSProperties}
-                  title={`${outThere} of ${startingCount} still out there`}
-                  aria-label={`${letter}: ${outThere} of ${startingCount} still out there`}
+                  title={says}
+                  aria-label={`${letter}: ${says}`}
+                  onClick={() => setAsked(asked === letter ? null : letter)}
                 >
                   {letter}
-                </span>
+                  {asked === letter && (
+                    <span className={styles.popover} role="status">
+                      {says}
+                    </span>
+                  )}
+                </button>
               );
             })}
           </div>
