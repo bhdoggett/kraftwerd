@@ -226,19 +226,20 @@
 }
 
 /*
- * Where the first word has to start: the one lit square on an empty board.
- * On the blueprint board (dark theme) it's an unfilled ring in the seat-1
- * colour, since that board doesn't tint any of its squares -- see
- * index.css. On the Ledger board (light theme) `--centre-ring` draws the
- * same kind of ring in that board's own ink -- the centre isn't a bonus
- * square any more (shared/boards.ts), so it needs a marker of its own
- * again rather than borrowing the diamond's.
+ * Where the first word has to start: the one marked square on an empty
+ * board. A plain circle outline, same ink and weight as the bonus-square
+ * hatch below (--cell-line, 1px) rather than a marker of its own -- a mark
+ * on the paper, not a wash over the square, and not the seat colours that
+ * mean "someone played here."
  */
-.centre {
-  background: var(--centre-fill);
-  box-shadow:
-    inset 0 0 0 2px var(--centre-ring),
-    var(--cell-inset);
+.centre::before {
+  content: "";
+  grid-area: cell;
+  place-self: center;
+  width: calc(var(--cell-size) * 0.55);
+  height: calc(var(--cell-size) * 0.55);
+  border: 1px solid var(--cell-line);
+  border-radius: 50%;
 }
 
 /*
