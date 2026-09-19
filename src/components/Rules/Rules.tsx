@@ -3,7 +3,6 @@ import {
   BAG_SIZE,
   BLANKS_PER_GAME,
   DICTIONARY_WORDS,
-  GAME,
   LONG_WORD_BONUS,
   LONG_WORD_MIN,
   RACK,
@@ -109,10 +108,6 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
 
         <h3 className={styles.section}>Board</h3>
         <ul>
-          <li>
-            {GAME.boardSize}×{GAME.boardSize} —{" "}
-            {GAME.boardSize * GAME.boardSize} squares.
-          </li>
           <li>
             The <strong>first word must cover the center square</strong>,
             marked in green.
