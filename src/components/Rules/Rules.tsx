@@ -1,6 +1,8 @@
+import { useState } from "react";
 import {
   BAG_SIZE,
   BLANKS_PER_GAME,
+  DICTIONARY_WORDS,
   GAME,
   LONG_WORD_BONUS,
   LONG_WORD_MIN,
@@ -8,8 +10,8 @@ import {
   RACK_CLEAR_BONUS,
   SCORING_SQUARE_SIZE,
   SQUARE_BONUS,
-  STACK_CAP,
 } from "../../../shared/config";
+import TWO_LETTER_WORDS from "../../../shared/data/two-letter-words.json";
 import { MiniBoard } from "../MiniBoard/MiniBoard";
 import { Modal } from "../Modal/Modal";
 import styles from "./Rules.module.css";
@@ -27,6 +29,59 @@ interface RulesDialogProps {
  * Opening is the menu's business; this is only the dialog.
  */
 export function RulesDialog({ onClose }: RulesDialogProps) {
+  const [showWordList, setShowWordList] = useState(false);
+
+  if (showWordList) {
+    return (
+      <Modal wide onDismiss={() => setShowWordList(false)}>
+        <div className={styles.body}>
+          <div className={styles.head}>
+            <h2 className={styles.title}>Word list</h2>
+            <button type="button" className={styles.close} onClick={onClose}>
+              Close
+            </button>
+          </div>
+
+          <p>
+            <button
+              type="button"
+              className={styles.textLink}
+              onClick={() => setShowWordList(false)}
+            >
+              ← Back to rules
+            </button>
+          </p>
+
+          <p>
+            Kraftwerd checks plays against a word-game dictionary, not a
+            general-purpose one — built from two public-domain sources made
+            for word games, ENABLE and 12dicts' <em>3of6game</em>.{" "}
+            <strong>{DICTIONARY_WORDS.toLocaleString()} words</strong> in
+            all.
+          </p>
+          <ul>
+            <li>
+              <strong>Two-letter words are their own hand-picked list</strong>{" "}
+              — {TWO_LETTER_WORDS.length} of them, chosen for what a word-game
+              player expects (QI, ZA, XI) rather than what a general
+              dictionary happens to offer instead.
+            </li>
+            <li>
+              Loanwords play by the plain-letter spelling a tile can actually
+              make — <strong>CAFE</strong>, <strong>CLICHE</strong>,{" "}
+              <strong>ENTREE</strong> — since accents aren't filtered, they're
+              just stripped.
+            </li>
+            <li>
+              Ordinary profanity plays — it's not filtered. Slurs are, no
+              matter how the word is being used.
+            </li>
+          </ul>
+        </div>
+      </Modal>
+    );
+  }
+
   return (
     <Modal wide onDismiss={onClose}>
       <div className={styles.body}>
@@ -71,27 +126,27 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         <h3 className={styles.section}>Moves</h3>
         <ul>
           <li>
-            Play as many words as your rack allows. Every run of two or more
-            tiles, across or down, has to be a real word.
+            Play as many words as your rack allows. Real words only (see{" "}
+            <button
+              type="button"
+              className={styles.textLink}
+              onClick={() => setShowWordList(true)}
+            >
+              word list details
+            </button>
+            ).
+          </li>
+          <li>Every play must touch what's already on the board.</li>
+          <li>
+            <strong>Stack tiles to build new words</strong> — CAT becomes
+            COT. Once a square's been stacked, its letter is locked in for
+            good. Blanks can't stack, and you can't place the same letter
+            that's already there.
           </li>
           <li>
-            Everything after the first word must{" "}
-            <strong>touch what's already on the board</strong>, edge to
-            edge.
-          </li>
-          <li>
-            <strong>Land on a tile that's already there</strong> to build a
-            new word — CAT becomes COT, never CZT, never the same letter
-            twice — as long as what's underneath keeps at least one of its
-            own letters. Blanks can't do this.
-          </li>
-          <li>
-            Once <strong>{STACK_CAP} tiles</strong> have landed on a square,
-            it's full and closed to further play.
-          </li>
-          <li>
-            No play? <strong>Trade tiles</strong> for new ones, or — once the
-            bag runs dry — <strong>pass</strong>.
+            <strong>Trade your tiles</strong> if you don't like your letters
+            — but you lose a turn. Once the bag's empty, <strong>pass</strong>{" "}
+            instead.
           </li>
         </ul>
 
