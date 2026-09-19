@@ -26,11 +26,11 @@
 
 .section {
   margin: 0 0 var(--space-2);
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text-muted);
+  color: var(--text);
 }
 
 .body p {
@@ -97,6 +97,7 @@
 .diagrams {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   /* --space-6: the scale skips 5, and a missing token dropped the gap to 0. */
   gap: var(--space-6);
   margin: var(--space-3) 0 var(--space-4);

@@ -231,8 +231,7 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         <h3 className={styles.section}>Ending</h3>
         <p>
           The game runs until the bag is empty. The moment it is,{" "}
-          <strong>everyone still playing gets one more turn</strong> — a
-          final turn can be a pass.
+          <strong>everyone gets one more turn</strong>.
         </p>
         <p>
           <strong>Tiles left in hand settle for nothing</strong> — your
