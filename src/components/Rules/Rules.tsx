@@ -144,6 +144,10 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             that's already there.
           </li>
           <li>
+            <strong>You can't stack completely over another word</strong> —
+            at least one original letter must remain.
+          </li>
+          <li>
             <strong>Trade your tiles</strong> if you don't like your letters
             — but you lose a turn. Once the bag's empty, <strong>pass</strong>{" "}
             instead.
