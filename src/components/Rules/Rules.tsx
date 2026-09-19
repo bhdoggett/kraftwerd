@@ -140,12 +140,13 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
           <li>
             <strong>Stack tiles to build new words</strong> — CAT becomes
             COT. Once a square's been stacked, its letter is locked in for
-            good. Blanks can't stack, and you can't place the same letter
-            that's already there.
+            good.
           </li>
           <li>
-            <strong>You can't stack completely over another word</strong> —
-            at least one original letter must remain.
+            <strong>Stacking has limits</strong> — blanks can't stack, you
+            can't place the same letter that's already there, and you can't
+            stack completely over another word (at least one original
+            letter must remain).
           </li>
           <li>
             <strong>Trade your tiles</strong> if you don't like your letters
