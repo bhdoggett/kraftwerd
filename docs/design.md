@@ -278,9 +278,12 @@ to 4 for it — see that constant's own comment.
 
 **Twelve squares on the four corner diagonals double a word that covers one**
 — §2 says where they sit. The doubling applies to **word points only** (§4.1),
-not to the square bonus (§4.2), the stack bonus (§4.6) or the rack clear
-(§4.7): those are paid for building, and a square you complete is worth `k²`
-wherever on the board you complete it.
+not to the square bonus (§4.2), the stack bonus (§4.6), the long-word bonus
+(§4.1) or the rack clear (§4.7): those are paid for building or for length,
+and a square you complete is worth `SQUARE_BONUS` wherever on the board you
+complete it. The long-word bonus is the newest of them and the easiest to
+get wrong, since it is earned by a word rather than by a build: it rewards
+the word's own length, not the ground it happens to stand on.
 
 **A square pays once, to whoever first covers it.** A square already under a
 tile before the turn began has been spent — extending that word later collects
