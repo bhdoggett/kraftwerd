@@ -6,6 +6,7 @@ import { components, internal } from "./_generated/api";
 import { env } from "./_generated/server";
 import type { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
+import { RULES_VERSION } from "../shared/config.js";
 import { claimInvites } from "./friends";
 
 // Declared in convex.config.ts, so these are typed rather than read as bare
@@ -60,6 +61,9 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
           email: doc.email,
           name: doc.name ?? undefined,
           image: doc.image ?? undefined,
+          // A new player learns the rules as they are, so there is nothing
+          // for them to be told has changed.
+          rulesSeen: RULES_VERSION,
           ...(guest ? { isGuest: true } : {}),
         });
         // Anyone who asked to be their friend before they had an account.

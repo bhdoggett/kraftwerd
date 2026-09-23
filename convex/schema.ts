@@ -48,6 +48,12 @@ export default defineSchema({
      * next time a game finishes.
      */
     statsVersion: v.optional(v.number()),
+    /**
+     * The newest rules version this player has been told about. Behind
+     * RULES_VERSION, they get a note saying what changed. Absent on rows from
+     * before it was tracked, which read as having seen version 9.
+     */
+    rulesSeen: v.optional(v.number()),
   })
     .index("by_authId", ["authId"])
     .index("by_email", ["email"]),

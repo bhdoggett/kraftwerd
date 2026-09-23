@@ -9,6 +9,7 @@ import { Swatches } from "./components/Swatches/Swatches";
 import { Lobby } from "./components/Lobby/Lobby";
 import { Menu } from "./components/Menu/Menu";
 import { MiniBoard } from "./components/MiniBoard/MiniBoard";
+import { RuleChangesNotice } from "./components/RuleChanges/RuleChanges";
 import { RulesDialog } from "./components/Rules/Rules";
 import { authClient } from "./lib/auth-client";
 import { promiseAGame, type PromisedGame } from "./lib/useStartGame";
@@ -87,6 +88,7 @@ export default function App() {
 
       <main className={styles.main}>
         <Authenticated>
+          <RuleChangesNotice />
           {route.name === "game" ? (
             <Game
               gameId={route.gameId as Id<"games">}
