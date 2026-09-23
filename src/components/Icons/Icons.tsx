@@ -105,11 +105,11 @@ export function SystemIcon({ size = 16 }: IconProps) {
 }
 
 /**
- * Board word-multiplier marks: a circle, a triangle and a square in a
- * square, for x2, x3 and x4 (design.md §4.8, RULES_VERSION 10). Outline
- * only, and a flat non-scaling stroke rather than `base`'s button weight —
- * these sit on the board itself, in the same thin, un-zooming ink as the
- * grid lines and the blocked hatch (--cell-line), not in a toolbar.
+ * Board word-multiplier marks: a circle, a triangle and a square, for x2,
+ * x3 and x4 (design.md §4.8, RULES_VERSION 10). Outline only, and a flat
+ * non-scaling stroke rather than `base`'s button weight — these sit on the
+ * board itself, in the same thin, un-zooming ink as the grid lines and the
+ * blocked hatch (--cell-line), not in a toolbar.
  */
 const boardMark = (size: number) => ({
   width: size,
@@ -117,7 +117,7 @@ const boardMark = (size: number) => ({
   viewBox: "0 0 24 24",
   fill: "none",
   stroke: "currentColor",
-  strokeWidth: 1,
+  strokeWidth: 1.5,
   vectorEffect: "non-scaling-stroke" as const,
   "aria-hidden": true,
   style: { display: "block" },
@@ -139,11 +139,11 @@ export function TripleWordIcon({ size = 16 }: IconProps) {
   );
 }
 
+/** One square, not nested -- the plainest of the three, for the rarest tier. */
 export function QuadWordIcon({ size = 16 }: IconProps) {
   return (
     <svg {...boardMark(size)}>
       <rect x="4.5" y="4.5" width="15" height="15" />
-      <rect x="9" y="9" width="6" height="6" />
     </svg>
   );
 }

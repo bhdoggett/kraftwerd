@@ -405,11 +405,11 @@
 
 /*
  * A word a word-multiplier square paid for (design.md §4.8). The board says
- * which square by its shape (a circle, a triangle, or a square in a square
- * -- Board.module.css); a chip can't borrow that mark the way it once
- * borrowed the board's hatch, since a x4 word might mean one square or two
- * stacked (see .doubleMark below for the number that disambiguates it), so
- * this stays a plain accent ring rather than guessing at a shape.
+ * which square by its shape (a circle, a triangle, or a square --
+ * Board.module.css); a chip can't borrow that mark the way it once borrowed
+ * the board's hatch, since a x4 word might mean one square or two stacked
+ * (see .doubleMark below for the number that disambiguates it), so this
+ * stays a plain accent ring rather than guessing at a shape.
  *
  * The border is drawn rather than widening `.valid`'s: a wider border would
  * move the chip and shuffle the row it sits in every time a play crosses a

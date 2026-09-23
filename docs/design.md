@@ -39,7 +39,7 @@ here to anybody else's.
   corner, then every other square on the way back in, stopping short of the
   centre. Three rings, each worth more than the last: x2 nearest the centre,
   x3 in the middle, x4 nearest the corner (RULES_VERSION 10) — marked on the
-  board by a circle, a triangle, and a square in a square in turn. §4.8 says
+  board by a circle, a triangle, and a square in turn. §4.8 says
   what they pay. They are placed by geometry rather than drawn into a layout,
   so a drawn layout whose blocked bars land on one simply goes without it
   (Bars does, at all four of its innermost waypoints): a blocked square
@@ -299,7 +299,7 @@ readable at a glance before a word ever crosses it:
 |------|--------------------|-------|------|
 | inner | 2 | x2 | circle |
 | middle | 4 | x3 | triangle |
-| outer | 6 | x4 | square in a square |
+| outer | 6 | x4 | square |
 
 **A square pays once, to whoever first covers it.** A square already under a
 tile before the turn began has been spent — extending that word later collects

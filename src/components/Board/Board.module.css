@@ -245,7 +245,7 @@
 /*
  * Word-multiplier squares, one in from each corner along the diagonal
  * (design.md §4.8, RULES_VERSION 10): a circle for x2, a triangle for x3, a
- * square in a square for x4 (Icons.tsx) -- outline icons in the same ink
+ * square for x4 (Icons.tsx) -- outline icons in the same ink
  * the grid lines and the blocked hatch already use (--cell-line), a mark
  * inside the square rather than a wash over it. Single-use by construction:
  * `showBonusMark` in Board.tsx is gated on `empty`, so the mark is gone for
