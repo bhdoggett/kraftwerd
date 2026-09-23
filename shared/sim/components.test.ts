@@ -65,8 +65,7 @@ describe("the component search", () => {
     })));
 
     // CATS: four letters, three of them already down. One tile, four points.
-    // The S on the end, not the S laid over the C -- that one is SAT, and it
-    // collects a stacking bonus on top of its three letters.
+    // The S on the end, not the S laid over the C -- that one is SAT, three.
     const cats = find(board, ["S"]).find((m) =>
       m.placements.length === 1 && m.placements[0]?.x === 9);
     expect(cats!.score).toBe(4);
@@ -104,8 +103,9 @@ describe("the component search", () => {
     /*
      * Chaining hands the search a board that already carries the earlier links
      * of the turn, but wants each candidate scored against the board the turn
-     * began on. Nothing else tells `scoreOf` what was already there, so a
-     * stacking bonus turns on this argument arriving intact.
+     * began on. Nothing else tells `scoreOf` what was already there, so
+     * whether a square or a long word is new turns on this argument arriving
+     * intact.
      */
     const started = makeBoard([{ x: 6, y: 7, letter: "C", isBlank: false }]);
     const seen: Board[] = [];

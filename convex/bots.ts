@@ -390,7 +390,8 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
      * `before` comes from the search rather than being closed over. A turn may
      * now be several plays long, and each play is scored against the board it
      * actually lands on; the search pins `before` to the board the whole turn
-     * started from, which is what stacking bonuses are measured against.
+     * started from, which is what new squares and grown words are measured
+     * against.
      */
     (after, placements, before) => scoreTurn(after, placements, { before }).total,
     /*

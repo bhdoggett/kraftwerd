@@ -6,7 +6,6 @@ import {
   LONG_WORD_BONUS,
   LONG_WORD_MIN,
   RACK,
-  RACK_CLEAR_BONUS,
   SCORING_SQUARE_SIZE,
   SQUARE_BONUS,
 } from "../../../shared/config";
@@ -157,25 +156,11 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         </p>
         <ul className={styles.bonusList}>
           <li>
-            <strong className={styles.bonusAmount}>+2:</strong> Landing on a
-            tile that's already there.
-            <div className={styles.diagrams}>
-              <MiniBoard rows={["CAT"]} seat={1} caption="CAT." />
-              <MiniBoard
-                rows={["COT"]}
-                seat={1}
-                played={["1,0"]}
-                full={["1,0"]}
-                ring={["1,0"]}
-                caption="An O on the A makes COT: 3 for the word, +2 for the tile on top."
-              />
-            </div>
-          </li>
-          <li>
             <strong className={styles.bonusAmount}>
               +{LONG_WORD_BONUS}:
             </strong>{" "}
-            Playing a word of {LONG_WORD_MIN} letters or more.
+            Playing a word of {LONG_WORD_MIN} letters or more that's new or
+            longer — not one you only restacked letters inside.
             <div className={styles.diagrams}>
               <MiniBoard
                 rows={["RISE."]}
@@ -192,12 +177,6 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
                 }.`}
               />
             </div>
-          </li>
-          <li>
-            <strong className={styles.bonusAmount}>
-              +{RACK_CLEAR_BONUS}:
-            </strong>{" "}
-            Playing every tile in your rack in one turn.
           </li>
           <li>
             <strong className={styles.bonusAmount}>+{SQUARE_BONUS}:</strong>{" "}

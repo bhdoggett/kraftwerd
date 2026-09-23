@@ -61,10 +61,9 @@ interface TurnValue {
  * extended word scores in full. `before` is the board the turn started from,
  * and only a caller that has one need pass it. Leaving it out makes `scoreTurn`
  * derive a stand-in by deleting the placed cells, which erases the tile
- * *underneath* a stacked placement: the stack bonus goes unpaid, and a block
- * that was already complete looks newly closed and pays a second time. Every
- * stacking and square figure the simulator reported before this argument
- * existed was wrong for exactly that reason.
+ * *underneath* a stacked placement, and a block that was already complete looks
+ * newly closed and pays a second time. Every square figure the simulator
+ * reported before this argument existed was wrong for exactly that reason.
  */
 export function turnValue(
   board: Board,
@@ -72,13 +71,8 @@ export function turnValue(
   variant: Variant,
   claimed: ReadonlySet<string>,
   before?: Board,
-  /**
-   * Whether the turn emptied a full rack, which pays `RACK_CLEAR_BONUS`. Only
-   * the caller holds the rack, the same split `scoreTurn` makes.
-   */
-  rackCleared = false,
 ): TurnValue {
-  const base = scoreTurn(board, placements, { before, rackCleared }).total;
+  const base = scoreTurn(board, placements, { before }).total;
 
 
   if (variant.multiplier === "none") return { score: base, doubled: [] };

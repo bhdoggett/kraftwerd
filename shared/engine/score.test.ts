@@ -98,7 +98,7 @@ describe("words pay for letters already on the board", () => {
     const s = scoreTurn(board, place([{ x: 4, y: 0, letter: "N" }]));
     // 5 word points, plus the flat long-word bonus RISEN's five letters earn.
     expect(s.total).toBe(10);
-    expect(s.words).toEqual([{ word: "RISEN", points: 5 }]);
+    expect(s.words).toEqual([{ word: "RISEN", points: 5, long: true }]);
     expect(s.longWordBonus).toBe(5);
   });
 
@@ -134,9 +134,8 @@ describe("laying a tile on top of another", () => {
     const score = scoreTurn(after, [at(8, 7, "O")], { before });
 
     expect(score.words).toEqual([{ word: "COT", points: 3 }]);
-    // Landing on the occupied square also pays the stack bonus (2).
-    expect(score.stackBonus).toBe(2);
-    expect(score.total).toBe(5);
+    // Landing on the occupied square pays nothing extra: just the word.
+    expect(score.total).toBe(3);
   });
 
   test("but the square it sits in pays nothing if it was already complete", () => {
@@ -153,30 +152,18 @@ describe("laying a tile on top of another", () => {
   });
 });
 
-describe("rack bonus", () => {
-  test("clearing the whole rack pays 5 on top (design.md §4.7)", () => {
+describe("no rack-clear bonus (rules version 10)", () => {
+  test("a full rack pays only its words", () => {
     const tiles: TileSpec[] = [
       { x: 0, y: 0, letter: "C" },
       { x: 1, y: 0, letter: "A" },
       { x: 2, y: 0, letter: "T" },
     ];
 
-    const s = scoreTurn(makeBoard(tiles), place(tiles), { rackCleared: true });
-    expect(s.rackBonus).toBe(5);
-    expect(s.total).toBe(3 + 5);
-  });
-
-  test("not clearing the rack pays no bonus", () => {
-    const tiles: TileSpec[] = [
-      { x: 0, y: 0, letter: "C" },
-      { x: 1, y: 0, letter: "A" },
-      { x: 2, y: 0, letter: "T" },
-    ];
-
-    expect(scoreTurn(makeBoard(tiles), place(tiles)).rackBonus).toBe(0);
-    expect(scoreTurn(makeBoard(tiles), place(tiles), { rackCleared: false }).rackBonus).toBe(0);
+    expect(scoreTurn(makeBoard(tiles), place(tiles)).total).toBe(3);
   });
 });
+
 
 describe("long word bonus", () => {
   test("a word under five letters pays no long-word bonus", () => {
@@ -244,36 +231,45 @@ describe("long word bonus", () => {
     });
 
     // Word points double (5 * 2 = 10); the long-word bonus stays flat.
-    expect(s.words).toEqual([{ word: "CRANE", points: 10, bonus: 2 }]);
+    expect(s.words).toEqual([{ word: "CRANE", points: 10, bonus: 2, long: true }]);
     expect(s.longWordBonus).toBe(5);
     expect(s.total).toBe(10 + 5);
   });
+
+  test("stacking inside a long word already there pays no long-word bonus", () => {
+    // CRANE stands; an O on the A makes CRONE -- same five squares, no longer.
+    const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
+    const before = makeBoard([..."CRANE"].map((l, i) => at(i, 0, l)));
+    const after = makeBoard([..."CRONE"].map((l, i) => at(i, 0, l)));
+
+    const s = scoreTurn(after, [at(2, 0, "O")], { before });
+    expect(s.longWordBonus).toBe(0);
+    expect(s.total).toBe(5);
+  });
+
+  test("extending a word to five letters pays it", () => {
+    // RISE stands; an N on the end makes RISEN.
+    const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
+    const before = makeBoard([..."RISE"].map((l, i) => at(i, 0, l)));
+    const after = makeBoard([..."RISEN"].map((l, i) => at(i, 0, l)));
+
+    const s = scoreTurn(after, [at(4, 0, "N")], { before });
+    expect(s.longWordBonus).toBe(5);
+    expect(s.total).toBe(5 + 5);
+  });
 });
 
-describe("stack bonus", () => {
+describe("no stack bonus (rules version 10)", () => {
   const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
 
-  test("a tile on an empty square pays no stack bonus", () => {
-    const before = makeBoard([]);
-    const after = makeBoard([at(0, 0, "A")]);
-
-    expect(scoreTurn(after, [at(0, 0, "A")], { before }).stackBonus).toBe(0);
-  });
-
-  test("the first tile stacked on a square pays 2", () => {
-    const before = makeBoard([at(0, 0, "A")]);
-    const after = makeBoard([at(0, 0, "I")]);
-
-    expect(scoreTurn(after, [at(0, 0, "I")], { before }).stackBonus).toBe(2);
-  });
-
-  test("the second tile stacked on a square pays 3", () => {
+  test("the second tile on a square pays only its words", () => {
     const before = makeBoard([{ x: 0, y: 0, letter: "I", stacked: 2 }]);
     const after = makeBoard([at(0, 0, "A")]);
 
-    expect(scoreTurn(after, [at(0, 0, "A")], { before }).stackBonus).toBe(3);
+    expect(scoreTurn(after, [at(0, 0, "A")], { before }).total).toBe(1);
   });
 });
+
 
 describe("bonus squares", () => {
   const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });

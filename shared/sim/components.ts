@@ -28,7 +28,7 @@ export interface Move {
  * Scores a candidate turn. Called with the board *after* the placements have
  * landed (so a crossing or extended word scores in full), the placements
  * themselves, and the board *before* them (so a caller can tell what was
- * already there, e.g. for stacking bonuses).
+ * already there, e.g. whether a long word grew or a square is new).
  */
 export type ValueFn = (
   after: Board,
@@ -126,8 +126,8 @@ function fit(
        * Otherwise the square can be played over, at the price of a tile.
        *
        * This used to give up instead, which meant the bot never once laid a
-       * tile on another — so it never took a square from anyone, never earned
-       * a stacking bonus, and never covered a letter to make a block
+       * tile on another — so it never took a square from anyone, never turned
+       * one word into another, and never covered a letter to make a block
        * reachable. Everything measured about stacking was measuring a game
        * nobody was playing.
        */
