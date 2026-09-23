@@ -40,7 +40,7 @@ describe("the bot", () => {
      *
      * A dictionary of its own, rather than the shared one above: EAT and ATE
      * would let the solver also rewrite the block's own C into an E for a
-     * second word and a stack bonus on the side, which is a real thing the
+     * second word on the side, which is a real thing the
      * search can do but not what this test is isolating.
      *
      * Eight of nine cells of a 3x3, gap at (9,9): CAT/ACE/TEN across and down
@@ -335,7 +335,7 @@ describe("playing over what is already there", () => {
 
     // CATS becomes COTS: one tile, laid on the A. Without this the bot can
     // only ever play into empty squares, so it never takes a square, never
-    // earns a stacking bonus, and never covers a letter to open a block up.
+    // turns one word into another, and never covers a letter to open a block up.
     const covering = moves.filter((m) =>
       m.placements.some((p) => p.x === 7 && p.y === 7),
     );

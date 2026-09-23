@@ -1,6 +1,13 @@
 import { RULES_VERSION } from "../shared/config.js";
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { googleConfigured } from "./auth";
+import { currentUser } from "./auth_helpers";
+
+/**
+ * What a row from before `rulesSeen` existed has seen: the rules that were
+ * live when it was added.
+ */
+const RULES_SEEN_UNTRACKED = 9;
 
 export const viewer = query({
   args: {},
@@ -30,6 +37,8 @@ export const viewer = query({
           image: user.image ?? null,
           /** An account made to try the game, with no way back into it. */
           isGuest: user.isGuest === true,
+          /** The newest rules version this player has been told about. */
+          rulesSeen: user.rulesSeen ?? RULES_SEEN_UNTRACKED,
           stats: {
             wins: current ? (user.wins ?? 0) : 0,
             gamesPlayed: current ? (user.gamesPlayed ?? 0) : 0,
@@ -44,4 +53,15 @@ export const viewer = query({
 export const authStatus = query({
   args: {},
   handler: async () => ({ googleConfigured }),
+});
+
+/** The player has read what changed in the rules, up to the current version. */
+export const acknowledgeRules = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await currentUser(ctx);
+    if (user.rulesSeen === RULES_VERSION) return null;
+    await ctx.db.patch("users", user._id, { rulesSeen: RULES_VERSION });
+    return null;
+  },
 });

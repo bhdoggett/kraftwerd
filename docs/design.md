@@ -144,6 +144,14 @@ So a word left extendable is a liability, exactly like an open corner in a 2×2.
 About 77% of two-letter words in our list can be extended by appending a single
 letter, so this is most of the board rather than an edge case.
 
+**Long words.** A word of `LONG_WORD_MIN` (5) letters or more pays a flat
+`LONG_WORD_BONUS` (+5) on top, once per word, never doubled (§4.8). Since
+rules version 10 it pays only for a word that covers at least one square that
+was empty before the turn — a word that is new, or that the turn made longer.
+Stacking a letter inside a long word already standing (`CRANE` → `CRONE`)
+makes a different word of the same length, and collecting +5 for it every
+time rewarded restacking rather than building.
+
 ### 4.2 Square bonus — nested
 
 Every axis-aligned, fully-filled `SCORING_SQUARE_SIZE × SCORING_SQUARE_SIZE`
@@ -238,53 +246,27 @@ even a closed-off one, because you can always rebuild through it.
 maxed-out square is refused outright, before word or connectivity checks
 even run.
 
-**Stack bonus.** Landing on an already-occupied square pays extra, equal to
-how deep the stack now runs: **+2** for the tile stacked on top, which at a
-cap of two is also the last tile that square will ever take. A tile landing
-on an empty square earns none of this. The bonus scales with `STACK_CAP` by
-construction — raise the cap and the top bonus follows it.
+**No stack bonus.** Landing on an already-occupied square pays only the words
+it makes. Until rules version 10 it paid +2 on top; that was dropped because
+stacking already pays for itself by making words playable that otherwise
+would not be, and the words it makes score in full (§4.1).
 
-```
-fresh square      : 0
-1st tile stacked  : +2   (the square is now full)
-```
+The cap lives in `shared/config.ts` (`STACK_CAP`).
 
-Both live in `shared/config.ts` (`STACK_CAP`) and `shared/engine/score.ts`
-(`scoreTurn`'s `stackBonus`).
+### 4.7 Rack clear bonus (removed)
 
-### 4.7 Rack clear bonus
-
-**Word points do not reward length.** §4.1 pays 1 point a letter, flat, so a
-lone 7-letter word nets 7 — 1.0 a tile — against a 2x2's 2.0 and a 3x3's 3.8
-(§4.2). Squares were worth chasing; a long single word, on its own, was not.
-
-**Playing every letter in your rack in one turn now pays `RACK_CLEAR_BONUS`
-extra — 15.** A plain 7-letter word (no crosses, no squares) becomes
-7 + 15 = 22, 3.1 a tile: better than a 2x2, still short of a 3x3, which is a
-deliberate ordering — a 3x3 is six simultaneously-valid words (§3) and stays
-the harder, better-paying build. A word that also crosses existing tiles or
-completes a square on the way pays that on top, same as any other turn.
-
-**Flat, not scaled to rack size**, matching `stackBonus`: both are a fixed
-reward for a specific event rather than a formula layered onto word points.
-Computed by the caller, not the engine — `scoreTurn` never sees a rack, only
-a board and placements, so `convex/games.ts` passes `rackCleared` in once it
-knows whether the play emptied the hand it came from. A rack that started
-the turn short of `RACK.size` (the bag running low near the end of a game)
-cannot earn it, the same way Scrabble's bingo requires a full rack.
-
-Lives in `shared/config.ts` (`RACK_CLEAR_BONUS`) and
-`shared/engine/score.ts` (`scoreTurn`'s `rackBonus`). `RULES_VERSION` bumped
-to 4 for it — see that constant's own comment.
+Rules versions 4 through 9 paid a flat `RACK_CLEAR_BONUS` for playing every
+letter in the rack in one turn — 15, then 5. Version 10 removed it: a
+full-rack play scores what its words, squares and long words score, the same
+as any other turn.
 
 ### 4.8 Word-multiplier squares
 
 **Twelve squares on the four corner diagonals multiply a word that covers
 one** — §2 says where they sit, in three rings of four. The multiplier
-applies to **word points only** (§4.1), not to the square bonus (§4.2), the
-stack bonus (§4.6), the long-word bonus (§4.1) or the rack clear (§4.7):
-those are paid for building or for length, and a square you complete is
-worth `SQUARE_BONUS` wherever on the board you complete it. The long-word
+applies to **word points only** (§4.1), not to the square bonus (§4.2) or
+the long-word bonus (§4.1): those are paid for building or for length, and
+a square you complete is worth `SQUARE_BONUS` wherever on the board you complete it. The long-word
 bonus is the easiest of them to get wrong, since it is earned by a word
 rather than by a build: it rewards the word's own length, not the ground it
 happens to stand on.

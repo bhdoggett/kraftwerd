@@ -109,8 +109,11 @@ export const BAG_SIZE = Object.values(weights).reduce(
  *    square) rather than a uniform hatch. A word can still cross
  *    two waypoints of the same ring and multiply in twice, same as before;
  *    it can never cross two of different rings, since each sits on its own
- *    rows and columns. A score that leaned on the old flat x2 everywhere is
- *    not competing with these.
+ *    rows and columns. The same version drops the stack and rack-clear
+ *    bonuses and pays the long-word bonus only for a word the turn made
+ *    longer or new: a turn pays for its words, its squares, its multiplier
+ *    squares and its long words, and nothing else. Scores under 9 do not
+ *    compete with these.
  */
 export const RULES_VERSION = 10;
 
@@ -136,11 +139,6 @@ export const FRIEND_LINK_DAYS = 7;
  * included -- so at most STACK_CAP - 1 tiles may ever land on top of one.
  * Without a limit a single square could be fought over forever; two lets it
  * change hands once and then settles.
- *
- * The bonus for landing on an already-occupied square equals how deep the
- * stack now runs -- 2 for the tile stacked on top, which is also the cap --
- * so it scales with STACK_CAP by construction: change the cap and the top
- * bonus follows it. See scoreTurn in shared/engine/score.ts.
  */
 export const STACK_CAP = 2;
 
@@ -189,36 +187,20 @@ export const LONG_WORD_MIN = 5;
 
 /**
  * Flat bonus for a word of `LONG_WORD_MIN` letters or more (design.md §4.1),
- * on top of its own word points -- the way `stackBonus` flatly rewards
- * landing on a stack, without reshaping the per-letter formula everything
- * else is built on. Applies once per qualifying word a turn forms, and is
- * never doubled by a bonus square: it rewards the word being long, not the
- * square it happens to cross.
+ * on top of its own word points, without reshaping the per-letter formula
+ * everything else is built on. Applies once per qualifying word a turn
+ * forms, and is never doubled by a bonus square: it rewards the word being
+ * long, not the square it happens to cross.
+ *
+ * Only a word that covers at least one square that was empty before the
+ * turn (rules version 10). Stacking a letter inside a long word already on
+ * the board makes a different word of the same length, and pays no bonus.
  *
  * Set so a bare 5-letter word (5 word points) lands at 10, exactly the
  * 2.0-a-tile rate a bare 2x2 used to pay -- taking over that tier honestly
  * rather than by coincidence, now that a 2x2 pays nothing at all.
  */
 export const LONG_WORD_BONUS = 5;
-
-/**
- * Bonus for playing every letter in your rack in a single turn (design.md
- * §4.7). Word points alone are flat, 1 per letter, so a lone long word pays
- * far less per tile than a compact square does. This adds a flat reward for
- * the big, single-turn play, the way `stackBonus` flatly rewards landing on
- * a stack, without reshaping the per-letter formula everything else is
- * built on.
- *
- * Deliberately a tempo nudge rather than a second jackpot. At 15 this was
- * worth more, repeated every turn a rack happened to empty, than the rarer
- * squares and long words were meant to be the real ceiling -- which is
- * exactly backwards from what should be worth chasing, and left holding
- * tiles back for something bigger a losing move against just dumping the
- * rack every turn. At 5, a full rack played as one plain 7-letter word
- * scores 7 + 5 (LONG_WORD_BONUS, since 7 >= LONG_WORD_MIN) + 5 = 17: still
- * worth doing, never worth doing *instead of* building something bigger.
- */
-export const RACK_CLEAR_BONUS = 5;
 
 /**
  * How well a computer player plays.

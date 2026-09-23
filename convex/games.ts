@@ -979,14 +979,8 @@ async function playTurn(
     const legality = validateTurn(before, placements, dictionary, shape);
     if (!legality.ok) throw new ConvexError(describe(legality.faults));
 
-    // A bingo: every letter that was in the rack went down this turn. Only
-    // `letters` counts toward it — blanks are a separate whole-game
-    // allowance (§5) and were never part of the rack size.
-    const rackCleared =
-      player.letters.length === RACK.size && remaining.length === 0;
     const score = scoreTurn(after, placements, {
       before,
-      rackCleared,
       bonusSquares: shape.bonusSquares,
     });
 

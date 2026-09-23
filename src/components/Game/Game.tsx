@@ -15,10 +15,8 @@ import { boardShapeNamed } from "../../../shared/boards";
 import { scoreTurn, type Placement, type TurnScore } from "../../../shared/engine/score";
 import {
   STACK_CAP,
-  RACK,
   GAME,
   BAG_SIZE,
-  LONG_WORD_MIN,
   LONG_WORD_BONUS,
 } from "../../../shared/config";
 import { Board } from "../Board/Board";
@@ -249,12 +247,6 @@ export function Game({
     return { before, after: applyPlacements(before, placements) };
   }, [view, placements]);
 
-  // Mirrors the server's rackCleared check in convex/games.ts: a full rack,
-  // every slot of it staged.
-  const rackCleared =
-    me?.letters?.length === RACK.size &&
-    pending.filter((p) => p.from.kind === "letter").length === RACK.size;
-
   const preview = useMemo(() => {
     if (!boards || placements.length === 0 || !view) return null;
     // Mirrors the server's own boardShape(game): bonus squares are the same
@@ -262,10 +254,9 @@ export function Game({
     const shape = boardShapeNamed(view.layout, view.game.boardSize);
     return scoreTurn(boards.after, placements, {
       before: boards.before,
-      rackCleared,
       bonusSquares: shape.bonusSquares,
     });
-  }, [boards, placements, rackCleared, view]);
+  }, [boards, placements, view]);
 
   // The words this play would put on the board. Computed locally by the same
   // engine the server uses, so only these few words need checking.
@@ -1543,7 +1534,7 @@ export function Game({
                         badge the multiplier does, just with a plus instead of
                         a times, on whichever word actually reached the length
                         that earned it. */}
-                    {scored.word.length >= LONG_WORD_MIN &&
+                    {scored.long &&
                       valid === true &&
                       !unplayable && (
                         <span className={styles.longMark}>
@@ -1625,20 +1616,6 @@ export function Game({
               <p className={styles.scoreLine}>
                 Long words:{" "}
                 <span className={styles.previewScore}>+{preview.longWordBonus}</span>
-              </p>
-            )}
-
-            {preview && preview.stackBonus > 0 && (
-              <p className={styles.scoreLine}>
-                Landing on a stacked square:{" "}
-                <span className={styles.previewScore}>+{preview.stackBonus}</span>
-              </p>
-            )}
-
-            {preview && preview.rackBonus > 0 && (
-              <p className={styles.scoreLine}>
-                Clearing your whole rack:{" "}
-                <span className={styles.previewScore}>+{preview.rackBonus}</span>
               </p>
             )}
 

@@ -1,7 +1,6 @@
 import {
   LONG_WORD_BONUS,
   LONG_WORD_MIN,
-  RACK_CLEAR_BONUS,
   SQUARE_BONUS,
 } from "../config.js";
 import { cellKey, type Board, type Coord } from "./board.js";
@@ -26,6 +25,8 @@ interface ScoredWord {
    * wrong in the one place that explains where the points came from.
    */
   bonus?: number;
+  /** Earns LONG_WORD_BONUS: long enough, and new or made longer this turn. */
+  long?: true;
 }
 
 export interface TurnScore {
@@ -34,12 +35,8 @@ export interface TurnScore {
   words: ScoredWord[];
   squarePoints: number;
   squares: number[];
-  /** Bonus for landing on an already-occupied square (design.md §4, STACK_CAP). */
-  stackBonus: number;
   /** Flat bonus for each word of LONG_WORD_MIN letters or more (design.md §4.1). */
   longWordBonus: number;
-  /** Bonus for playing every letter in your rack this turn (design.md §4.7). */
-  rackBonus: number;
   total: number;
 }
 
@@ -53,8 +50,13 @@ export interface TurnScore {
  *
  * Each completed SCORING_SQUARE_SIZE x SCORING_SQUARE_SIZE block pays a flat
  * SQUARE_BONUS on top, counting nested sub-squares; a word of LONG_WORD_MIN
- * letters or more pays a flat LONG_WORD_BONUS on top of its own points,
- * whether or not it used the whole rack.
+ * letters or more pays a flat LONG_WORD_BONUS on top of its own points, so
+ * long as the turn made it longer or new -- not for letters stacked into a
+ * long word already standing.
+ *
+ * Nothing else pays. Landing on a stack and emptying the rack each carried a
+ * bonus of their own until rules version 10. Stacking already earns its keep
+ * by making words playable, and the words it makes score in full.
  */
 interface ScoreOptions {
   /**
@@ -65,12 +67,6 @@ interface ScoreOptions {
    * square.
    */
   before?: Board;
-  /**
-   * Whether this turn played every letter that was in the rack. Computed by
-   * the caller, which is the only side that knows the rack — the engine
-   * itself only ever sees the board and the placements.
-   */
-  rackCleared?: boolean;
   /**
    * Word-multiplier squares, one in from each corner (shared/boards.ts),
    * mapped to what each is worth -- 2, 3 or 4. A square pays out exactly
@@ -118,10 +114,21 @@ export function scoreTurn(
       return product * (bonusSquares.get(key) ?? 1);
     }, 1);
 
+  // A long word pays only if it covers at least one square empty before the
+  // turn: restacking letters inside a long word already on the board changes
+  // it without making anything longer.
+  const grew = (cells: readonly Coord[]) => cells.some((c) => !before.has(cellKey(c.x, c.y)));
+
   const scoredWord = (word: string, cells: readonly Coord[]): ScoredWord => {
     const multiplier = freshBonusMultiplier(cells);
     const points = scoreCells(cells) * multiplier;
-    return multiplier > 1 ? { word, points, bonus: multiplier } : { word, points };
+    const long = word.length >= LONG_WORD_MIN && grew(cells);
+    return {
+      word,
+      points,
+      ...(multiplier > 1 ? { bonus: multiplier } : {}),
+      ...(long ? { long: true as const } : {}),
+    };
   };
 
   const words: ScoredWord[] = runs.map((run) => scoredWord(run.word, run.cells));
@@ -136,30 +143,17 @@ export function scoreTurn(
 
   const squarePoints = blocks.length * SQUARE_BONUS;
 
-  // Landing on an already-occupied square pays extra, equal to how deep the
-  // stack now runs: 2 for the first tile on top, 3 for the second (the most
-  // STACK_CAP allows). A tile landing on an empty square scores none of this.
-  const stackBonus = placements.reduce((sum, p) => {
-    const depth = (before.get(cellKey(p.x, p.y))?.stacked ?? 0) + 1;
-    return sum + (depth >= 2 ? depth : 0);
-  }, 0);
-
   // Flat, once per qualifying word, and never touched by a bonus square's
   // multiplier -- it rewards the word's own length, not the ground it
   // happens to stand on.
-  const longWordBonus =
-    words.filter((w) => w.word.length >= LONG_WORD_MIN).length * LONG_WORD_BONUS;
-
-  const rackBonus = options.rackCleared ? RACK_CLEAR_BONUS : 0;
+  const longWordBonus = words.filter((w) => w.long).length * LONG_WORD_BONUS;
 
   return {
     wordPoints,
     words,
     squarePoints,
     squares,
-    stackBonus,
     longWordBonus,
-    rackBonus,
-    total: wordPoints + squarePoints + stackBonus + longWordBonus + rackBonus,
+    total: wordPoints + squarePoints + longWordBonus,
   };
 }

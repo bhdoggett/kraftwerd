@@ -1,5 +1,4 @@
 import { describe, expect, test } from "vitest";
-import { RACK_CLEAR_BONUS } from "../config";
 import { makeBoard } from "../engine/board";
 import { applyPlacements } from "../engine/legality";
 import type { Placement } from "../engine/score";
@@ -39,7 +38,7 @@ describe("what a turn is worth", () => {
     expect(turnValue(after, placements, PLAIN, new Set(), board).score).toBe(10);
   });
 
-  test("a tile laid on a tile collects its stack bonus, and pays no square twice", () => {
+  test("a tile laid on a tile pays its words, and nothing for the stack", () => {
     /*
      * A finished 2x2, all four words good:
      *
@@ -60,27 +59,10 @@ describe("what a turn is worth", () => {
     const after = applyPlacements(board, placements);
 
     /*
-     * IT across and IT down is 4, and the second tile on the square is 2:
-     * 6 in total. Without the before-board the tile underneath is invisible,
-     * and both halves go wrong at once -- the stack pays nothing, and a block
-     * that was already somebody's looks newly closed and pays 4 again.
+     * IT across and IT down is 4, and nothing else: a tile on a tile pays no
+     * bonus of its own, and a 2x2 is no scoring square.
      */
-    expect(turnValue(after, placements, PLAIN, new Set(), board).score).toBe(6);
+    expect(turnValue(after, placements, PLAIN, new Set(), board).score).toBe(4);
   });
 
-  test("a turn that empties a full rack collects the bonus on top", () => {
-    const board = makeBoard([..."OATS"].map((letter, i) => ({
-      x: 6 + i, y: 7, letter, isBlank: false, stacked: 1,
-    })));
-    const placements: Placement[] = [{ x: 5, y: 7, letter: "C", isBlank: false }];
-    const after = applyPlacements(board, placements);
-
-    // COATS is 10 points either way (5 word points, plus the flat bonus for a
-    // word of five letters or more). Only the caller holds the rack, so only
-    // the caller can say this C was the last of a full one -- and the simulator
-    // never did, which left every game it played short of the rule that ships.
-    expect(turnValue(after, placements, PLAIN, new Set(), board, true).score)
-      .toBe(10 + RACK_CLEAR_BONUS);
-    expect(turnValue(after, placements, PLAIN, new Set(), board, false).score).toBe(10);
-  });
 });

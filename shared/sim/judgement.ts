@@ -163,7 +163,7 @@ export function exposure(
     }
   }
 
-  // Tiles this move leaves able to be built on, for a stacking bonus.
+  // Tiles this move leaves able to be built on by the next player.
   for (const p of placements) {
     const depth = (before.get(cellKey(p.x, p.y))?.stacked ?? 0) + 1;
     if (depth < STACK_CAP) penalty += w.stackable;

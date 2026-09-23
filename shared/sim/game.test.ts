@@ -64,10 +64,14 @@ const playChained = (seed: number, chains: readonly Chain[]) =>
  */
 describe("the simulator seats a chain shape per player", () => {
   test("a second shape changes the seat it is given to", () => {
-    const shallow = playChained(3, [{ depth: 1, breadth: 6 }]);
-    const deep = playChained(3, [{ depth: 1, breadth: 6 }, { depth: 3, breadth: 6 }]);
+    const shallow = playChained(1, [{ depth: 1, breadth: 6 }]);
+    const deep = playChained(1, [{ depth: 1, breadth: 6 }, { depth: 3, breadth: 6 }]);
 
-    expect(deep.scores[1]).not.toEqual(shallow.scores[1]);
+    // Seat 1's turns, not its total, which two different games can share by
+    // coincidence. Seed 3 used to be the one here; without the stack bonus it
+    // deals a four-turn game where depth has nothing to choose between.
+    const seatOne = (turnScores: number[]) => turnScores.filter((_, i) => i % 2 === 1);
+    expect(seatOne(deep.turnScores)).not.toEqual(seatOne(shallow.turnScores));
   }, 60_000);
 
   /*
