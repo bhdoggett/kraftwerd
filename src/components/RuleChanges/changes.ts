@@ -16,11 +16,12 @@ export const RULE_CHANGES: readonly RuleChange[] = [
   {
     version: 10,
     changes: [
+      "The double-word squares now come in three tiers: ×2 nearest the centre (circle), ×3 further out (triangle) and ×4 nearest the corners (square in a square).",
       "No more bonus for stacking. A tile laid on top of another scores the words it makes, and nothing extra.",
       "No more bonus for clearing your rack. Playing every letter scores what its words and squares score.",
       "The +5 for a word of five letters or more now needs the word to be new or longer. Swapping a letter inside a long word already on the board doesn't earn it.",
-      "Still paying: a point a letter, +33 for a 3×3, +5 for a long word, and double-word squares.",
-      "Records start over, since old scores were set with the bonuses.",
+      "Still paying: a point a letter, +33 for a 3×3, +5 for a long word, and the ×2, ×3 and ×4 squares.",
+      "Records start over, since old scores were set under the old bonuses.",
     ],
   },
 ];

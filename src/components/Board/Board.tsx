@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { boardShapeNamed } from "../../../shared/boards";
 import type { Placement } from "../../../shared/engine/score";
 import { followPointer } from "../../lib/followPointer";
+import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import styles from "./Board.module.css";
 
 interface BoardTile {
@@ -269,7 +270,7 @@ export function Board({
       const tile = committed.get(k);
       const stage = staged.get(k);
       const isCentre = x === shape.centre.x && y === shape.centre.y;
-      const isBonus = shape.bonusSquares.has(k);
+      const bonusMultiplier = shape.bonusSquares.get(k);
       const awaiting = awaitingBlankAt?.x === x && awaitingBlankAt?.y === y;
       const empty = !blocked && tile === undefined && stage === undefined;
       /* Not empty, but still somewhere a tile may go. */
@@ -303,11 +304,11 @@ export function Board({
       if (empty && !awaiting) {
         classes.push(styles.open);
         if (isCentre) classes.push(styles.centre);
-        // Single-use: gated on `empty` like the centre marker above, so the
-        // diamond is simply gone for good once any tile -- this play's or a
-        // later one -- ever lands here. No separate "spent" state to track.
-        if (isBonus) classes.push(styles.bonus);
       }
+      // Single-use: gated on `empty`, so the mark is simply gone for good
+      // once any tile -- this play's or a later one -- ever lands here. No
+      // separate "spent" state to track.
+      const showBonusMark = empty && !awaiting && bonusMultiplier !== undefined;
       if (playable && canPlace && !awaiting) {
         classes.push(styles.playable);
         if (empty) classes.push(styles.armed);
@@ -352,6 +353,13 @@ export function Board({
           {/* A tile staged this turn shows over whatever it landed on: the
               letter under it is still there, and comes back if it is recalled. */}
           <span className={styles.glyph}>{(stage ?? tile)?.letter ?? ""}</span>
+          {showBonusMark && (
+            <span className={styles.bonusMark}>
+              {bonusMultiplier === 2 && <DoubleWordIcon />}
+              {bonusMultiplier === 3 && <TripleWordIcon />}
+              {bonusMultiplier === 4 && <QuadWordIcon />}
+            </span>
+          )}
         </button>,
       );
     }

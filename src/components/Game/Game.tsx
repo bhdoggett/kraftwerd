@@ -21,6 +21,7 @@ import {
 } from "../../../shared/config";
 import { Board } from "../Board/Board";
 import { DevTools } from "../DevTools/DevTools";
+import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import styles from "./Game.module.css";
 import { Rack, type Selection } from "../Rack/Rack";
 import { userMessage } from "../../lib/errors";
@@ -1434,13 +1435,29 @@ export function Game({
           </>
         )}
 
-        {/* What the board's hatching means, said once rather than left for
-            a dozen shaded squares to explain themselves. Above the other
-            help on offer here, not a caption under the board where it
-            would be easy to scroll past. */}
+        {/* What the board's three marks mean, said once rather than left
+            for a dozen shaded squares to explain themselves. Above the
+            other help on offer here, not a caption under the board where
+            it would be easy to scroll past. */}
         <div className={styles.legend}>
-          <span className={styles.legendSwatch} aria-hidden="true" />
-          <span>Double Word</span>
+          <div className={styles.legendRow}>
+            <span className={styles.legendMark}>
+              <DoubleWordIcon />
+            </span>
+            <span>×2 Double word</span>
+          </div>
+          <div className={styles.legendRow}>
+            <span className={styles.legendMark}>
+              <TripleWordIcon />
+            </span>
+            <span>×3 Triple word</span>
+          </div>
+          <div className={styles.legendRow}>
+            <span className={styles.legendMark}>
+              <QuadWordIcon />
+            </span>
+            <span>×4 Quadruple word</span>
+          </div>
         </div>
 
         {/*

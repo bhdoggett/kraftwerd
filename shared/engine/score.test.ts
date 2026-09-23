@@ -223,7 +223,7 @@ describe("long word bonus", () => {
       { x: 3, y: 0, letter: "N" },
       { x: 4, y: 0, letter: "E" },
     ];
-    const bonusSquares = new Set(["2,0"]);
+    const bonusSquares = new Map([["2,0", 2]]);
 
     const s = scoreTurn(makeBoard(tiles), place(tiles), {
       before: makeBoard([]),
@@ -274,9 +274,9 @@ describe("no stack bonus (rules version 10)", () => {
 describe("bonus squares", () => {
   const at = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
 
-  test("a word crossing a fresh bonus square doubles", () => {
+  test("a word crossing a fresh bonus square multiplies", () => {
     const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
-    const bonusSquares = new Set(["1,0"]);
+    const bonusSquares = new Map([["1,0", 2]]);
 
     const score = scoreTurn(makeBoard(tiles), place(tiles), {
       before: makeBoard([]),
@@ -287,9 +287,25 @@ describe("bonus squares", () => {
     expect(score.total).toBe(6);
   });
 
+  test("a triple- or quadruple-word square multiplies by its own value", () => {
+    const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
+
+    const triple = scoreTurn(makeBoard(tiles), place(tiles), {
+      before: makeBoard([]),
+      bonusSquares: new Map([["1,0", 3]]),
+    });
+    expect(triple.words).toEqual([{ word: "CAT", points: 9, bonus: 3 }]);
+
+    const quad = scoreTurn(makeBoard(tiles), place(tiles), {
+      before: makeBoard([]),
+      bonusSquares: new Map([["1,0", 4]]),
+    });
+    expect(quad.words).toEqual([{ word: "CAT", points: 12, bonus: 4 }]);
+  });
+
   test("a word nowhere near a bonus square scores normally", () => {
     const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
-    const bonusSquares = new Set(["7,7"]);
+    const bonusSquares = new Map([["7,7", 2]]);
 
     const score = scoreTurn(makeBoard(tiles), place(tiles), {
       before: makeBoard([]),
@@ -304,14 +320,14 @@ describe("bonus squares", () => {
     // word now must not pay it out a second time.
     const before = makeBoard([at(0, 0, "C"), at(1, 0, "A")]);
     const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
-    const bonusSquares = new Set(["1,0"]);
+    const bonusSquares = new Map([["1,0", 2]]);
 
     const score = scoreTurn(makeBoard(tiles), [at(2, 0, "T")], { before, bonusSquares });
 
     expect(score.words).toEqual([{ word: "CAT", points: 3 }]);
   });
 
-  test("two words crossing the same fresh square in one play both double", () => {
+  test("two words crossing the same fresh square in one play both multiply", () => {
     // CAT across, ARC down, sharing the A at (1,0) -- a bonus square there
     // pays out on both words this play forms.
     const tiles = [
@@ -321,7 +337,7 @@ describe("bonus squares", () => {
       at(1, 1, "R"),
       at(1, 2, "C"),
     ];
-    const bonusSquares = new Set(["1,0"]);
+    const bonusSquares = new Map([["1,0", 2]]);
 
     const score = scoreTurn(makeBoard(tiles), place(tiles), {
       before: makeBoard([]),
@@ -336,9 +352,9 @@ describe("bonus squares", () => {
     );
   });
 
-  test("a word crossing two fresh bonus squares in one play quadruples", () => {
+  test("a word crossing two fresh bonus squares in one play compounds", () => {
     const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
-    const bonusSquares = new Set(["0,0", "2,0"]);
+    const bonusSquares = new Map([["0,0", 2], ["2,0", 2]]);
 
     const score = scoreTurn(makeBoard(tiles), place(tiles), {
       before: makeBoard([]),
@@ -346,6 +362,18 @@ describe("bonus squares", () => {
     });
 
     expect(score.words).toEqual([{ word: "CAT", points: 12, bonus: 4 }]);
+  });
+
+  test("two fresh quadruple-word squares compound to x16, not just x4", () => {
+    const tiles = [at(0, 0, "C"), at(1, 0, "A"), at(2, 0, "T")];
+    const bonusSquares = new Map([["0,0", 4], ["2,0", 4]]);
+
+    const score = scoreTurn(makeBoard(tiles), place(tiles), {
+      before: makeBoard([]),
+      bonusSquares,
+    });
+
+    expect(score.words).toEqual([{ word: "CAT", points: 48, bonus: 16 }]);
   });
 
   test("with no bonus squares configured, nothing doubles", () => {

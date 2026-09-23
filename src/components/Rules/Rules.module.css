@@ -102,3 +102,28 @@
   gap: var(--space-6);
   margin: var(--space-3) 0 var(--space-4);
 }
+
+/* The three word-multiplier marks, the real icons the board itself draws
+   (Icons.tsx) rather than a description of them -- same ink as the board's
+   own marks (--cell-line), so a player recognises them on sight. */
+.markLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.markLegendRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Only the icon borrows the board's own (deliberately faint) ink -- the
+   text stays the dialog's ordinary reading colour, which --cell-line was
+   never tuned for. */
+.markLegendRow svg {
+  color: var(--cell-line);
+}

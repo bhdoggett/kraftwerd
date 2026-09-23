@@ -14,15 +14,15 @@ export interface Placement extends Coord {
 
 interface ScoredWord {
   word: string;
-  /** One point a letter, blanks included once they are on the board, doubled
-   * for each fresh bonus square (see ScoreOptions.bonusSquares) it crosses. */
+  /** One point a letter, blanks included once they are on the board, scaled
+   * by every fresh bonus square (see ScoreOptions.bonusSquares) it crosses. */
   points: number;
   /**
-   * What a bonus square multiplied this word by -- 2 for one fresh square, 4
-   * for two -- or absent when none applied. A number rather than a flag
-   * because a word crossing two doubles twice, and a chip that said "x2"
-   * about a quadrupled word would be wrong in the one place that explains
-   * where the points came from.
+   * What a bonus square multiplied this word by -- that square's own value
+   * for one fresh hit, the product of both for two -- or absent when none
+   * applied. A number rather than a flag because a word crossing two
+   * multiplies twice, and a chip that said "x2" about a x9 word would be
+   * wrong in the one place that explains where the points came from.
    */
   bonus?: number;
   /** Earns LONG_WORD_BONUS: long enough, and new or made longer this turn. */
@@ -68,13 +68,16 @@ interface ScoreOptions {
    */
   before?: Board;
   /**
-   * Double-word squares, one in from each corner (shared/boards.ts). A
-   * square pays out exactly once, to whichever play first covers it -- a
-   * square already in `before` has already been paid, tile stacked on top
-   * of it or not. A word that crosses two still doubles twice, the same way
-   * two premium squares under one word always have in this kind of game.
+   * Word-multiplier squares, one in from each corner (shared/boards.ts),
+   * mapped to what each is worth -- 2, 3 or 4. A square pays out exactly
+   * once, to whichever play first covers it -- a square already in `before`
+   * has already been paid, tile stacked on top of it or not. A word that
+   * crosses two still multiplies in twice, the same way two premium squares
+   * under one word always have in this kind of game -- though the two can
+   * never be different values, since each ring sits on its own rows and
+   * columns (shared/boards.ts).
    */
-  bonusSquares?: ReadonlySet<string>;
+  bonusSquares?: ReadonlyMap<string, number>;
 }
 
 export function scoreTurn(
@@ -100,11 +103,16 @@ export function scoreTurn(
 
   // A bonus square pays out on whichever play first covers it -- one that was
   // already sitting under a tile in `before` has already been spent, so only
-  // a cell bonusSquares names *and* before doesn't have counts here.
-  const bonusSquares = options.bonusSquares ?? new Set<string>();
-  const freshBonusHits = (cells: readonly Coord[]) =>
-    cells.filter((c) => bonusSquares.has(cellKey(c.x, c.y)) && !before.has(cellKey(c.x, c.y)))
-      .length;
+  // a cell bonusSquares names *and* before doesn't have counts here. Each
+  // fresh hit multiplies in its own square's value, so two fresh squares
+  // compound (a pair of x3s makes x9) rather than just adding up.
+  const bonusSquares = options.bonusSquares ?? new Map<string, number>();
+  const freshBonusMultiplier = (cells: readonly Coord[]) =>
+    cells.reduce((product, c) => {
+      const key = cellKey(c.x, c.y);
+      if (before.has(key)) return product;
+      return product * (bonusSquares.get(key) ?? 1);
+    }, 1);
 
   // A long word pays only if it covers at least one square empty before the
   // turn: restacking letters inside a long word already on the board changes
@@ -112,14 +120,13 @@ export function scoreTurn(
   const grew = (cells: readonly Coord[]) => cells.some((c) => !before.has(cellKey(c.x, c.y)));
 
   const scoredWord = (word: string, cells: readonly Coord[]): ScoredWord => {
-    const hits = freshBonusHits(cells);
-    const multiplier = 2 ** hits;
+    const multiplier = freshBonusMultiplier(cells);
     const points = scoreCells(cells) * multiplier;
     const long = word.length >= LONG_WORD_MIN && grew(cells);
     return {
       word,
       points,
-      ...(hits > 0 ? { bonus: multiplier } : {}),
+      ...(multiplier > 1 ? { bonus: multiplier } : {}),
       ...(long ? { long: true as const } : {}),
     };
   };

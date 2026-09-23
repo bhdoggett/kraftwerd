@@ -102,12 +102,18 @@ export const BAG_SIZE = Object.values(weights).reduce(
  *    `SQUARE_BONUS` at the one size, `SCORING_SQUARE_SIZE`, that is. A
  *    completed 3x3 still pays the same 33 it did under version 8; a score
  *    that leaned on a 4x4 under version 8 is not competing with these.
- * 10: no stack bonus and no rack-clear bonus, and the long-word bonus only
- *    for a word the turn made longer or new. A turn pays for its words, its
- *    squares, double-word squares and long words, and nothing else:
- *    stacking earns its keep by making words playable, and restacking a
- *    letter inside a long word already on the board no longer collects +5
- *    for a word nobody lengthened. Scores under 9 do not compete with these.
+ * 10: double-word squares become three tiers, not one (design.md §4.8) — the
+ *    same twelve waypoints from version 7, but the ring nearest the centre
+ *    now pays x2, the middle ring x3, and the ring nearest each corner x4,
+ *    each marked on the board by its own shape (a circle, a triangle, a
+ *    square in a square) rather than a uniform hatch. A word can still cross
+ *    two waypoints of the same ring and multiply in twice, same as before;
+ *    it can never cross two of different rings, since each sits on its own
+ *    rows and columns. The same version drops the stack and rack-clear
+ *    bonuses and pays the long-word bonus only for a word the turn made
+ *    longer or new: a turn pays for its words, its squares, its multiplier
+ *    squares and its long words, and nothing else. Scores under 9 do not
+ *    compete with these.
  */
 export const RULES_VERSION = 10;
 

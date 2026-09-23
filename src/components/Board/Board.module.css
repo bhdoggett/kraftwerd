@@ -227,53 +227,45 @@
 
 /*
  * Where the first word has to start: the one marked square on an empty
- * board. A plain circle outline, same ink and weight as the bonus-square
- * hatch below (--cell-line, 1px) rather than a marker of its own -- a mark
- * on the paper, not a wash over the square, and not the seat colours that
- * mean "someone played here."
+ * board. A small filled dot rather than an outline now that a hollow circle
+ * means something else (below) -- same ink as the rest of these marks
+ * (--cell-line), just solid instead of a ring, so it can't be mistaken for
+ * a x2 square.
  */
 .centre::before {
   content: "";
   grid-area: cell;
   place-self: center;
-  width: calc(var(--cell-size) * 0.55);
-  height: calc(var(--cell-size) * 0.55);
-  border: 1px solid var(--cell-line);
+  width: calc(var(--cell-size) * 0.22);
+  height: calc(var(--cell-size) * 0.22);
+  background: var(--cell-line);
   border-radius: 50%;
 }
 
 /*
- * A double-word square, one in from each corner along the diagonal:
- * reaching one pays for stretching a word out toward the edge rather than
- * clustering near the middle. Hatched rather than outlined now, the same
- * technique --blocked uses (see --cell-blocked in index.css) and the same
- * line colour, but on the other diagonal: a blocked square is crossed out
- * and unplayable, a bonus square is very much playable, and the opposite
- * slash keeps the two from reading as the same mark at a glance. Single-use
- * by construction: this class only ever lands on an `empty` cell (see
- * Board.tsx), so the hatch is gone for good the moment any tile -- this
- * turn's or a much later one -- covers it, with no separate "spent" flag
- * to track.
+ * Word-multiplier squares, one in from each corner along the diagonal
+ * (design.md §4.8, RULES_VERSION 10): a circle for x2, a triangle for x3, a
+ * square in a square for x4 (Icons.tsx) -- outline icons in the same ink
+ * the grid lines and the blocked hatch already use (--cell-line), a mark
+ * inside the square rather than a wash over it. Single-use by construction:
+ * `showBonusMark` in Board.tsx is gated on `empty`, so the mark is gone for
+ * good the moment any tile -- this turn's or a later one -- covers it, with
+ * no separate "spent" flag to track.
  *
  * `grid-area: cell` matters the same way it does on .glyph below: with no
- * explicit area, a pseudo-element that isn't the cell's only content falls
+ * explicit area, an element that isn't the cell's only content falls
  * through to grid auto-placement and lands in a fresh implicit row of its
- * own rather than centred in the cell. Sized to the full cell rather than
- * a fraction of it, since this layer IS the shading, not an icon floating
- * inside it -- but it stays a separate layer over the cell's own
- * background rather than replacing it, so an armed or hovered bonus
- * square still shows that tint through the gaps between slashes.
+ * own rather than centred in the cell.
  */
-.bonus::before {
-  content: "";
+.bonusMark {
   grid-area: cell;
-  width: var(--cell-size);
-  height: var(--cell-size);
-  background: repeating-linear-gradient(
-    135deg,
-    var(--cell-line) 0 1px,
-    transparent 1px 7px
-  );
+  place-self: center;
+  color: var(--cell-line);
+}
+
+.bonusMark svg {
+  width: calc(var(--cell-size) * 0.6);
+  height: calc(var(--cell-size) * 0.6);
 }
 
 
