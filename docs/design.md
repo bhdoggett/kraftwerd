@@ -282,9 +282,12 @@ to 4 for it — see that constant's own comment.
 **Twelve squares on the four corner diagonals multiply a word that covers
 one** — §2 says where they sit, in three rings of four. The multiplier
 applies to **word points only** (§4.1), not to the square bonus (§4.2), the
-stack bonus (§4.6) or the rack clear (§4.7): those are paid for building, and
-a square you complete is worth `SQUARE_BONUS` wherever on the board you
-complete it.
+stack bonus (§4.6), the long-word bonus (§4.1) or the rack clear (§4.7):
+those are paid for building or for length, and a square you complete is
+worth `SQUARE_BONUS` wherever on the board you complete it. The long-word
+bonus is the easiest of them to get wrong, since it is earned by a word
+rather than by a build: it rewards the word's own length, not the ground it
+happens to stand on.
 
 **Which ring decides the value** (RULES_VERSION 10): x2 nearest the centre, x3
 in the middle, x4 nearest the corner — the biggest multiplier is the hardest

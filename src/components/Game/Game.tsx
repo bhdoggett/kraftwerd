@@ -17,13 +17,10 @@ import {
   STACK_CAP,
   RACK,
   GAME,
+  BAG_SIZE,
   LONG_WORD_MIN,
   LONG_WORD_BONUS,
 } from "../../../shared/config";
-import { newBag, tilesLeft as countTiles } from "../../../shared/engine/bag";
-
-/** How many tiles a game starts with, for the progress bar's sake. */
-const BAG_SIZE = countTiles(newBag(RACK));
 import { Board } from "../Board/Board";
 import { DevTools } from "../DevTools/DevTools";
 import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
@@ -32,6 +29,7 @@ import { Rack, type Selection } from "../Rack/Rack";
 import { userMessage } from "../../lib/errors";
 import { markCells } from "../../lib/boardFeedback";
 import { boardAfter, scoresAfter } from "../../lib/replay";
+import { squareBreakdown } from "../../lib/breakdown";
 import { moveToPosition, rackSlotUnder, shuffled } from "../../lib/rackGeometry";
 import { readDraft, writeDraft } from "../../lib/draft";
 import { moveStagedTo, stageAt } from "../../lib/staging";
@@ -66,18 +64,13 @@ const RECAP_LEAD_MS = 700;
  * scoring rule is legible from the table.
  */
 /** Squares only: the words carry their own points beside each word. */
-function breakdownOf(score: TurnScore) {
-  const bySize = new Map<number, number>();
-  for (const size of score.squares) bySize.set(size, (bySize.get(size) ?? 0) + 1);
-
-  return [...bySize.keys()]
-    .sort((a, b) => a - b)
-    .map((size) => ({
-      size: `${size}×${size}`,
-      count: bySize.get(size)!,
-      total: bySize.get(size)! * size * size,
-    }));
-}
+/**
+ * The square bonus, split by size. The arithmetic lives in
+ * `src/lib/breakdown.ts`, where it can be tested: it was computing a block's
+ * worth as `size * size` long after squares went flat, so this table showed
+ * 9 for a 3x3 the turn's own total had paid 33 for.
+ */
+const breakdownOf = (score: TurnScore) => squareBreakdown(score.squares);
 
 /** One thing wrong with a staged play, in words a player can act on. */
 function describeFault(legality: Fault): string {
