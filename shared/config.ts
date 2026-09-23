@@ -102,8 +102,17 @@ export const BAG_SIZE = Object.values(weights).reduce(
  *    `SQUARE_BONUS` at the one size, `SCORING_SQUARE_SIZE`, that is. A
  *    completed 3x3 still pays the same 33 it did under version 8; a score
  *    that leaned on a 4x4 under version 8 is not competing with these.
+ * 10: double-word squares become three tiers, not one (design.md §4.8) — the
+ *    same twelve waypoints from version 7, but the ring nearest the centre
+ *    now pays x2, the middle ring x3, and the ring nearest each corner x4,
+ *    each marked on the board by its own shape (a circle, a triangle, a
+ *    square in a square) rather than a uniform hatch. A word can still cross
+ *    two waypoints of the same ring and multiply in twice, same as before;
+ *    it can never cross two of different rings, since each sits on its own
+ *    rows and columns. A score that leaned on the old flat x2 everywhere is
+ *    not competing with these.
  */
-export const RULES_VERSION = 9;
+export const RULES_VERSION = 10;
 
 /**
  * How many words the shipped dictionary holds.

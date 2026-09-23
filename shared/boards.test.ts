@@ -85,9 +85,27 @@ describe.each(BOARD_LAYOUTS)("$name", (layout) => {
       expect(shape.bonusSquares.has(key)).toBe(!blocked(x, y));
     }
     expect(shape.bonusSquares.has("7,7")).toBe(false);
-    for (const key of shape.bonusSquares) {
+    for (const key of shape.bonusSquares.keys()) {
       const [x, y] = key.split(",").map(Number);
       expect(blocked(x, y)).toBe(false);
+    }
+  });
+
+  test("values a waypoint by how far it sits from the corner", () => {
+    // Nearest the centre (5 steps in from the corner) is worth x2, the
+    // middle ring x3, and nearest the corner itself (1 step in) x4 -- unless
+    // a layout's own blocked bars removed it (see the test above).
+    const tiers: Array<[string[], number]> = [
+      [["5,5", "5,9", "9,5", "9,9"], 2],
+      [["3,3", "3,11", "11,3", "11,11"], 3],
+      [["1,1", "1,13", "13,1", "13,13"], 4],
+    ];
+    for (const [keys, multiplier] of tiers) {
+      for (const key of keys) {
+        const [x, y] = key.split(",").map(Number);
+        if (blocked(x, y)) continue;
+        expect(shape.bonusSquares.get(key)).toBe(multiplier);
+      }
     }
   });
 });

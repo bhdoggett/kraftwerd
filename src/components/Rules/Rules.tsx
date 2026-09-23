@@ -11,6 +11,7 @@ import {
   SQUARE_BONUS,
 } from "../../../shared/config";
 import TWO_LETTER_WORDS from "../../../shared/data/two-letter-words.json";
+import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import { MiniBoard } from "../MiniBoard/MiniBoard";
 import { Modal } from "../Modal/Modal";
 import styles from "./Rules.module.css";
@@ -110,13 +111,28 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         <ul>
           <li>
             The <strong>first word must cover the center square</strong>,
-            marked in green.
+            marked with a small dot.
           </li>
           <li>
-            <strong>Shaded squares double</strong> a word played across them,
-            in either direction — once each, first come first served.
+            <strong>Marked squares multiply a word</strong> played across
+            them — once each, first come first served, worth more the
+            closer to a corner:
           </li>
         </ul>
+        <div className={styles.markLegend}>
+          <span className={styles.markLegendRow}>
+            <DoubleWordIcon />
+            ×2
+          </span>
+          <span className={styles.markLegendRow}>
+            <TripleWordIcon />
+            ×3
+          </span>
+          <span className={styles.markLegendRow}>
+            <QuadWordIcon />
+            ×4
+          </span>
+        </div>
 
         <h3 className={styles.section}>Moves</h3>
         <ul>

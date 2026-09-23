@@ -19,10 +19,10 @@ including squares built mostly from your opponent's tiles.
 
 The game is not Scrabble. There are no letter values, no fixed board, no
 connectivity requirement, and the central mechanic (square construction) does
-not exist in Scrabble. It does have double-word squares (§2, §4.8) — the one
-idea taken wholesale, and a common one: Words With Friends and Crossplay each
-have premium squares of their own. The name remains the closest thing here to
-anybody else's.
+not exist in Scrabble. It does have word-multiplier squares (§2, §4.8) — the
+one idea taken wholesale, and a common one: Words With Friends and Crossplay
+each have premium squares of their own. The name remains the closest thing
+here to anybody else's.
 
 ## 2. Board
 
@@ -34,13 +34,16 @@ anybody else's.
 - **The opening word must cover the centre square.** Everything after it is
   anchored by connectivity (§3) back to that first word. The centre pays
   nothing: it is where the game starts, not a bonus for whoever goes first.
-- **Twelve double-word squares, on the four corner diagonals.** Two, four and
-  six steps out from the centre along each diagonal — one in from each corner,
-  then every other square on the way back in, stopping short of the centre.
-  §4.8 says what they pay. They are placed by geometry rather than drawn into
-  a layout, so a drawn layout whose blocked bars land on one simply goes
-  without it (Bars does, at all four of its innermost waypoints): a blocked
-  square cannot score a word at all, let alone a doubled one.
+- **Twelve word-multiplier squares, on the four corner diagonals.** Two, four
+  and six steps out from the centre along each diagonal — one in from each
+  corner, then every other square on the way back in, stopping short of the
+  centre. Three rings, each worth more than the last: x2 nearest the centre,
+  x3 in the middle, x4 nearest the corner (RULES_VERSION 10) — marked on the
+  board by a circle, a triangle, and a square in a square in turn. §4.8 says
+  what they pay. They are placed by geometry rather than drawn into a layout,
+  so a drawn layout whose blocked bars land on one simply goes without it
+  (Bars does, at all four of its innermost waypoints): a blocked square
+  cannot score a word at all, let alone a multiplied one.
 - **Layouts live in `shared/boards.ts`, written as pictures** — `#` blocked,
   `.` open — so a new one is drawn by editing the art rather than listing
   coordinates. Each game is dealt one at random.
@@ -274,13 +277,26 @@ Lives in `shared/config.ts` (`RACK_CLEAR_BONUS`) and
 `shared/engine/score.ts` (`scoreTurn`'s `rackBonus`). `RULES_VERSION` bumped
 to 4 for it — see that constant's own comment.
 
-### 4.8 Double-word squares
+### 4.8 Word-multiplier squares
 
-**Twelve squares on the four corner diagonals double a word that covers one**
-— §2 says where they sit. The doubling applies to **word points only** (§4.1),
-not to the square bonus (§4.2), the stack bonus (§4.6) or the rack clear
-(§4.7): those are paid for building, and a square you complete is worth `k²`
-wherever on the board you complete it.
+**Twelve squares on the four corner diagonals multiply a word that covers
+one** — §2 says where they sit, in three rings of four. The multiplier
+applies to **word points only** (§4.1), not to the square bonus (§4.2), the
+stack bonus (§4.6) or the rack clear (§4.7): those are paid for building, and
+a square you complete is worth `SQUARE_BONUS` wherever on the board you
+complete it.
+
+**Which ring decides the value** (RULES_VERSION 10): x2 nearest the centre, x3
+in the middle, x4 nearest the corner — the biggest multiplier is the hardest
+one to reach, since a board builds outward from the centre first. Each ring
+is marked by its own shape rather than a uniform hatch, so the value is
+readable at a glance before a word ever crosses it:
+
+| ring | steps from centre | value | mark |
+|------|--------------------|-------|------|
+| inner | 2 | x2 | circle |
+| middle | 4 | x3 | triangle |
+| outer | 6 | x4 | square in a square |
 
 **A square pays once, to whoever first covers it.** A square already under a
 tile before the turn began has been spent — extending that word later collects
@@ -291,32 +307,40 @@ players reach them.
 | play | word points | paid |
 |------|-------------|------|
 | `CAT`, no bonus square | 3 | **3** |
-| `CAT` covering one fresh square | 3 | **6** |
-| `CAT` covering two fresh squares | 3 | **12** |
+| `CAT` covering one fresh x2 square | 3 | **6** |
+| `CAT` covering two fresh x2 squares | 3 | **12** |
+| `CAT` covering one fresh x4 square | 3 | **12** |
 | `CAT` over a square spent last turn | 3 | **3** |
 
-**Each fresh square doubles independently**, so a word crossing two quadruples
-— the reason the squares are spaced every other cell rather than run
-continuously, since a solid diagonal would make the run a single line to walk
-rather than a series of waypoints to reach for. And **a fresh square pays every
-word the play forms through it**: a cross where both words run over the same
-new square doubles both, the way two premium squares under one word have always
+**Each fresh square multiplies in independently**, so a word crossing two
+compounds — two x2s make x4, two x4s make x16 — the reason the squares are
+spaced every other cell rather than run continuously, since a solid diagonal
+would make the run a single line to walk rather than a series of waypoints to
+reach for. A word can only ever cross two squares of the *same* ring this way:
+the three rings sit on entirely different rows and columns, so a single word
+can never mix an x2 and an x3. And **a fresh square pays every word the play
+forms through it**: a cross where both words run over the same new square
+multiplies both, the way two premium squares under one word have always
 compounded in this kind of game.
 
-The squares are visible from the first turn — hatched on the board, with a
+The squares are visible from the first turn — a shape on the board, with a
 legend beside it — so reaching one is a plan rather than a surprise. That also
 makes them snipeable: a square you are one turn away from is a square your
 opponent can see you approaching.
 
-Lives in `shared/boards.ts` (`bonusSquaresFor`, and `BoardShape.bonusSquares`)
-and `shared/engine/score.ts` (`scoreTurn`'s `bonusSquares` option).
-`RULES_VERSION` bumped to 7 for it — see that constant's own comment.
+Lives in `shared/boards.ts` (`bonusSquaresFor`, and `BoardShape.bonusSquares`,
+now a square-to-multiplier map rather than a flat set) and
+`shared/engine/score.ts` (`scoreTurn`'s `bonusSquares` option). `RULES_VERSION`
+bumped to 7 when there was only the one value, and again to 10 for the three
+rings — see that constant's own comment.
 
 **The machines do not know about them yet.** `convex/bots.ts` values candidate
 moves with `scoreTurn` and does not pass `bonusSquares`, so a bot's play is
-paid correctly but never *chosen* for a double; the simulations in
-`shared/sim` score the same way. Both are deliberate follow-up work, held
-until the rule has been played enough to know it is worth keeping.
+paid correctly but never *chosen* for a multiplier -- now a bigger blind spot
+than it was at a flat x2, since an x4 square is a bigger miss than a x2 one
+was. The simulations in `shared/sim` score the same way. Both are deliberate
+follow-up work, held until the rule has been played enough to know it is
+worth keeping.
 
 ## 5. Rack and letter generation
 

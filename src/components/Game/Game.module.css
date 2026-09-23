@@ -404,43 +404,19 @@
 }
 
 /*
- * A word a double-word square paid for (design.md §4.8).
+ * A word a word-multiplier square paid for (design.md §4.8). The board says
+ * which square by its shape (a circle, a triangle, or a square in a square
+ * -- Board.module.css); a chip can't borrow that mark the way it once
+ * borrowed the board's hatch, since a x4 word might mean one square or two
+ * stacked (see .doubleMark below for the number that disambiguates it), so
+ * this stays a plain accent ring rather than guessing at a shape.
  *
- * Wearing the board's own hatch, at the board's own angle, so the chip and
- * the square that caused it are recognisably the same mark -- a legend saying
- * "Double Word" could only say that the rule exists, never which of these
- * words it landed on. The hatch sits under the chip's own background rather
- * than over it, so the green of a valid word still reads first and the
- * doubling is the texture behind it.
- *
- * The second border is drawn rather than widened: growing `border-width`
- * would move the chip and shuffle the row it sits in every time a play
- * crosses a square.
+ * The border is drawn rather than widening `.valid`'s: a wider border would
+ * move the chip and shuffle the row it sits in every time a play crosses a
+ * square.
  */
 .doubled {
-  /*
-   * The hatch is the accent mixed half out, not the accent itself. At full
-   * strength it was the very ink the word is written in --
-   * `.valid` colours the text `--play` -- so the stripes ran through the
-   * letters at identical weight and the word stopped being readable. It is
-   * a texture under the word, not a second mark competing with it.
-   *
-   * The geometry is the board's exactly (135deg, 1px on, 7px off, see
-   * .bonus in Board.module.css), so the chip and the square that caused it
-   * stay recognisably the same mark. Only the ink is softer: on the chip it
-   * lies under text, and on the board it does not.
-   *
-   * `--play-soft` stays the bottom layer, so the ground a valid word
-   * already had is unchanged and the hatch sits on top of it -- both below
-   * the letters either way.
-   */
-  background:
-    repeating-linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--play) 50%, transparent) 0 1px,
-      transparent 1px 7px
-    ),
-    var(--play-soft);
+  background: var(--play-soft);
   box-shadow: 0 0 0 1px var(--play);
 }
 
@@ -718,15 +694,15 @@
 }
 
 /*
- * Says what the board's own hatching means, in the side panel above the
- * other help on offer there -- worth seeing before the two-letter words,
- * not a caption easy to scroll past under the board. Same weight as
- * .reviewOpen beside it, so it reads as part of that same row of things
- * worth knowing rather than fine print.
+ * Says what the board's three marks mean, in the side panel above the other
+ * help on offer there -- worth seeing before the two-letter words, not a
+ * caption easy to scroll past under the board. Same weight as .reviewOpen
+ * beside it, so it reads as part of that same row of things worth knowing
+ * rather than fine print.
  */
 .legend {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-strong);
@@ -736,17 +712,20 @@
   color: var(--text);
 }
 
-/* The exact hatch Board.module.css draws a bonus square with -- a swatch
-   of the real thing, not a description of it. */
-.legendSwatch {
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The exact mark Board.module.css draws that square with (Icons.tsx) -- the
+   real icon, not a description of it, coloured the same as the board's. */
+.legendMark {
+  display: flex;
+  flex-shrink: 0;
   width: 22px;
   height: 22px;
-  flex-shrink: 0;
-  border: 1px solid var(--cell-line);
-  background: repeating-linear-gradient(
-      135deg,
-      var(--cell-line) 0 1px,
-      transparent 1px 7px
-    ),
-    var(--cell-empty);
+  align-items: center;
+  justify-content: center;
+  color: var(--cell-line);
 }

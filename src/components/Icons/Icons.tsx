@@ -105,6 +105,50 @@ export function SystemIcon({ size = 16 }: IconProps) {
 }
 
 /**
+ * Board word-multiplier marks: a circle, a triangle and a square in a
+ * square, for x2, x3 and x4 (design.md §4.8, RULES_VERSION 10). Outline
+ * only, and a flat non-scaling stroke rather than `base`'s button weight —
+ * these sit on the board itself, in the same thin, un-zooming ink as the
+ * grid lines and the blocked hatch (--cell-line), not in a toolbar.
+ */
+const boardMark = (size: number) => ({
+  width: size,
+  height: size,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1,
+  vectorEffect: "non-scaling-stroke" as const,
+  "aria-hidden": true,
+  style: { display: "block" },
+});
+
+export function DoubleWordIcon({ size = 16 }: IconProps) {
+  return (
+    <svg {...boardMark(size)}>
+      <circle cx="12" cy="12" r="8" />
+    </svg>
+  );
+}
+
+export function TripleWordIcon({ size = 16 }: IconProps) {
+  return (
+    <svg {...boardMark(size)}>
+      <path d="M12 4.5 20 19H4Z" />
+    </svg>
+  );
+}
+
+export function QuadWordIcon({ size = 16 }: IconProps) {
+  return (
+    <svg {...boardMark(size)}>
+      <rect x="4.5" y="4.5" width="15" height="15" />
+      <rect x="9" y="9" width="6" height="6" />
+    </svg>
+  );
+}
+
+/**
  * The menu: three tiles, drawn the way the board draws one — a coloured face
  * inside an ink edge, square like every tile in the game.
  */

@@ -84,32 +84,44 @@ export interface BoardShape {
   size: number;
   blocked: ReadonlySet<string>;
   centre: Coord;
-  /** Double-word squares, one in from each corner -- see bonusSquaresFor. */
-  bonusSquares: ReadonlySet<string>;
+  /** Word-multiplier squares, one in from each corner -- see bonusSquaresFor. */
+  bonusSquares: ReadonlyMap<string, number>;
 }
 
 /**
- * Double-word squares on the four diagonals running from each corner toward
- * the centre, one in from the corner and then every other square in from
- * there -- stopping short of the centre itself, which stays a plain (if
+ * Word-multiplier squares on the four diagonals running from each corner
+ * toward the centre, one in from the corner and then every other square in
+ * from there -- stopping short of the centre itself, which stays a plain (if
  * mandatory) start rather than a guaranteed bonus for whoever happens to go
- * first. Skipping a square each time is what makes the run a series of
- * waypoints to reach for rather than a solid line: a word can cross two on
- * its way past, since each fresh one it crosses doubles independently (see
+ * first.
+ *
+ * Three waypoints per corner, each worth more than the last the closer it
+ * sits to that corner: x2 nearest the centre, x3 in the middle, x4 nearest
+ * the corner itself (RULES_VERSION 10) -- the biggest multiplier is the
+ * hardest one to reach, since a board builds outward from the centre first.
+ * Skipping a square each time is what makes each ring a series of waypoints
+ * to reach for rather than a solid line: a word can cross two waypoints of
+ * the *same* ring on its way past (they sit two apart on one row or column),
+ * and each fresh one it crosses multiplies in independently (see
  * ScoreOptions.bonusSquares in shared/engine/score.ts) -- a real, if
- * telegraphed and snipeable, jackpot.
+ * telegraphed and snipeable, jackpot. The three rings sit on entirely
+ * different rows and columns, so a single word can never cross two of
+ * different value.
  *
  * A board would need to be at least 6x6 for these not to collide with each
  * other or the centre; every real layout is 15x15, so this is more a
  * documented assumption than a runtime concern.
  */
-function bonusSquaresFor(size: number): ReadonlySet<string> {
+function bonusSquaresFor(size: number): ReadonlyMap<string, number> {
   const middle = (size - 1) / 2;
-  const squares = new Set<string>();
+  const squares = new Map<string, number>();
   for (let k = 2; k <= middle - 1; k += 2) {
+    // k=2 (nearest the centre) is worth x2, k=4 is x3, k=6 (nearest the
+    // corner) is x4 -- one step up the multiplier for every step out.
+    const multiplier = k / 2 + 1;
     for (const sx of [-1, 1]) {
       for (const sy of [-1, 1]) {
-        squares.add(`${middle + sx * k},${middle + sy * k}`);
+        squares.set(`${middle + sx * k},${middle + sy * k}`, multiplier);
       }
     }
   }
@@ -130,10 +142,10 @@ export function shapeOf(layout: BoardLayout): BoardShape {
   // The diagonal waypoints are placed by pure geometry, but a hand-drawn
   // layout's own blocked bars can happen to land on the same cell (Bars
   // does, at all four of its innermost waypoints) -- a blocked square
-  // can't score a word at all, let alone a doubled one, so it just goes
+  // can't score a word at all, let alone a multiplied one, so it just goes
   // without a bonus there rather than the two disagreeing.
-  const bonusSquares = new Set(
-    [...bonusSquaresFor(size)].filter((key) => !blocked.has(key)),
+  const bonusSquares = new Map(
+    [...bonusSquaresFor(size)].filter(([key]) => !blocked.has(key)),
   );
   return {
     name: layout.name,
