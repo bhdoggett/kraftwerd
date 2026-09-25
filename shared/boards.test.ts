@@ -84,7 +84,8 @@ describe.each(BOARD_LAYOUTS)("$name", (layout) => {
       const [x, y] = key.split(",").map(Number);
       expect(shape.bonusSquares.has(key)).toBe(!blocked(x, y));
     }
-    expect(shape.bonusSquares.has("7,7")).toBe(false);
+    // The centre is a x2 as well (RULES_VERSION 11).
+    expect(shape.bonusSquares.get("7,7")).toBe(2);
     for (const key of shape.bonusSquares.keys()) {
       const [x, y] = key.split(",").map(Number);
       expect(blocked(x, y)).toBe(false);
@@ -126,7 +127,7 @@ describe("boardShapeNamed", () => {
 
   test("the open board gets bonus squares too, not just drawn layouts", () => {
     const shape = boardShapeNamed("Open", 15);
-    expect(shape.bonusSquares.size).toBe(12);
-    expect(shape.bonusSquares.has("7,7")).toBe(false);
+    expect(shape.bonusSquares.size).toBe(13);
+    expect(shape.bonusSquares.get("7,7")).toBe(2);
   });
 });

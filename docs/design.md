@@ -32,8 +32,11 @@ here to anybody else's.
   dealt one still plays — but new games get an open board while the simpler
   shape is tried out.
 - **The opening word must cover the centre square.** Everything after it is
-  anchored by connectivity (§3) back to that first word. The centre pays
-  nothing: it is where the game starts, not a bonus for whoever goes first.
+  anchored by connectivity (§3) back to that first word. Since rules version
+  11 the centre is also a x2, so the opening word is doubled, as it is in
+  Scrabble. Before that it paid nothing, on the grounds that it should not be
+  a bonus for whoever goes first; next to what the rest of the board pays, a
+  doubled opening word is small.
 - **Twelve word-multiplier squares, on the four corner diagonals.** Two, four
   and six steps out from the centre along each diagonal — one in from each
   corner, then every other square on the way back in, stopping short of the
@@ -263,11 +266,12 @@ as any other turn.
 ### 4.8 Word-multiplier squares
 
 **Twelve squares on the four corner diagonals multiply a word that covers
-one** — §2 says where they sit, in three rings of four. The multiplier
+one**, and so does the centre — §2 says where they sit, in three rings of
+four plus the centre's x2. The multiplier
 applies to **word points only** (§4.1), not to the square bonus (§4.2) or
 the long-word bonus (§4.1): those are paid for building or for length, and
-a square you complete is worth `SQUARE_BONUS` wherever on the board you complete it. The long-word
-bonus is the easiest of them to get wrong, since it is earned by a word
+a square you complete is worth `SQUARE_BONUS` wherever on the board you
+complete it. The long-word bonus is the easiest of them to get wrong, since it is earned by a word
 rather than by a build: it rewards the word's own length, not the ground it
 happens to stand on.
 
@@ -282,11 +286,12 @@ readable at a glance before a word ever crosses it:
 | inner | 2 | x2 | circle |
 | middle | 4 | x3 | triangle |
 | outer | 6 | x4 | square |
+| centre | 0 | x2 | circle around the start dot (RULES_VERSION 11) |
 
 **A square pays once, to whoever first covers it.** A square already under a
 tile before the turn began has been spent — extending that word later collects
 nothing, and neither does stacking on top of it (§4.6). A board therefore has
-twelve of these to give out in a whole game, and they are gone in the order
+thirteen of these to give out in a whole game, and they are gone in the order
 players reach them.
 
 | play | word points | paid |
@@ -553,12 +558,12 @@ to 52% in one step, without ever rejecting a real word.
 
 ## 6. Game end
 
-- The bag decides it, not a hand: the last round starts the moment a refill
-  takes the final tile from the bag, whatever that player is still holding.
-- That turn is the drawer's own last one. **Everyone else still to move gets
-  one more**, so a game that runs its course always ends on a full round,
-  with every player having had the same number of turns. A final turn is
-  allowed to be a pass.
+- A player is **out** when the bag is empty and they have nothing left in hand.
+  Blanks count: a hand holding one is not empty.
+- Going out does **not** end the game where it happens. It fixes the last turn,
+  and **everyone still to move gets one more**, so a game that runs its course
+  always ends on a full round, with every player having had the same number of
+  turns. A final turn is allowed to be a pass.
 - **Nothing is settled for tiles left in hand.** A score is what you scored.
 - Highest total score wins.
 - **Resigning does not share that guarantee.** `resignGame` calls
@@ -596,20 +601,15 @@ That last change also closes a live/simulator divergence nobody had catalogued:
 `shared/sim/game.ts` never modelled the swing, so every score in this section
 was already measured under the rule that now ships.
 
-**Termination moved from the hand to the bag — 2026-09-18.** The bullets
-above used to define "going out" as the bag empty *and* the player's hand,
-blanks included, also empty. That left a gap: the bag could sit at zero for
-several ordinary turns while nobody happened to empty a rack, with the
-passes-in-a-row stall guard (`consecutivePasses`, feeding `stalled` in
-`advanceTurn`) as the only other way out. `out` — `rack.left === 0 &&
-rack.letters.length === 0 && blanksHeld === 0` — became `drainedBag`, just
-`rack.left === 0`: the last round now starts exactly when the bag does, and
-a player who draws the final tile mid-refill does not get those remaining
-letters back on a later turn. The stall guard steps back to its original
-job, a board nobody can play at all, rather than also covering "the bag is
-dry but nobody has managed to go out yet." Nothing else about §6 moves —
-`endsAfterTurn` is still `playerCount - 1` turns out, a final turn was
-always allowed to be a pass, and there is still no leftover-tile swing.
+**Termination moved to the bag and back — 2026-09-18 and rules version 11.**
+For a while the last round started the moment a refill took the final tile
+from the bag, whatever the drawer still held. The worry it answered was real:
+the bag can sit at zero for several turns while nobody manages to empty a
+rack. But it cut the endgame short at exactly the point it gets interesting --
+playing out a hand with nothing left to draw -- and handed the last round to
+whoever happened to draw the last tile. Version 11 puts going out back. The
+stall guard (`consecutivePasses`, feeding `stalled` in `advanceTurn`) is what
+ends a game where nobody can.
 
 **These numbers were re-measured in September 2026**, four times. First after the bot
 learned to chain plays and build squares deliberately — everything measured

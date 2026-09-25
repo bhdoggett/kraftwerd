@@ -110,7 +110,8 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
         <ul>
           <li>
             The <strong>first word must cover the center square</strong>,
-            marked with a small dot.
+            marked with a small dot. It's a ×2, so the opening word is
+            doubled.
           </li>
           <li>
             <strong>Marked squares multiply a word</strong> played across
@@ -225,8 +226,9 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
 
         <h3 className={styles.section}>Ending</h3>
         <p>
-          The game runs until the bag is empty. The moment it is,{" "}
-          <strong>everyone gets one more turn</strong>.
+          The game runs until someone <strong>goes out</strong>: the bag is
+          empty and they've played every tile they hold, blanks included.
+          The moment they do, <strong>everyone else gets one more turn</strong>.
         </p>
         <p>
           <strong>Tiles left in hand settle for nothing</strong> — your

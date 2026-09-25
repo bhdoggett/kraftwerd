@@ -14,6 +14,14 @@ export interface RuleChange {
 
 export const RULE_CHANGES: readonly RuleChange[] = [
   {
+    version: 11,
+    changes: [
+      "The center square is now a ×2, so the opening word scores double.",
+      "The last round starts when someone goes out — the bag is empty and they've played every tile, blanks included. Everyone else then gets one more turn. It used to start the moment the bag emptied.",
+      "Records start over.",
+    ],
+  },
+  {
     version: 10,
     changes: [
       "The double-word squares now come in three tiers: ×2 nearest the centre (circle), ×3 further out (triangle) and ×4 nearest the corners (square).",

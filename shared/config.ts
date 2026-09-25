@@ -114,8 +114,12 @@ export const BAG_SIZE = Object.values(weights).reduce(
  *    longer or new: a turn pays for its words, its squares, its multiplier
  *    squares and its long words, and nothing else. Scores under 9 do not
  *    compete with these.
+ * 11: the centre square is a x2, so the opening word is doubled; and the
+ *    last round starts when someone goes out -- the bag empty and every tile
+ *    played, blanks included -- rather than the moment the bag empties.
+ *    Emptying the bag no longer ends a hand that still has letters to play.
  */
-export const RULES_VERSION = 10;
+export const RULES_VERSION = 11;
 
 /**
  * How many words the shipped dictionary holds.

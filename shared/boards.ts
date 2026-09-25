@@ -91,9 +91,10 @@ export interface BoardShape {
 /**
  * Word-multiplier squares on the four diagonals running from each corner
  * toward the centre, one in from the corner and then every other square in
- * from there -- stopping short of the centre itself, which stays a plain (if
- * mandatory) start rather than a guaranteed bonus for whoever happens to go
- * first.
+ * from there -- and the centre itself, a x2 (RULES_VERSION 11). It used to be
+ * left plain so the first player was not handed a bonus just for going
+ * first; the doubled opening word is the classic start, and it is small next
+ * to what the rest of the board pays.
  *
  * Three waypoints per corner, each worth more than the last the closer it
  * sits to that corner: x2 nearest the centre, x3 in the middle, x4 nearest
@@ -109,12 +110,12 @@ export interface BoardShape {
  * different value.
  *
  * A board would need to be at least 6x6 for these not to collide with each
- * other or the centre; every real layout is 15x15, so this is more a
+ * other; every real layout is 15x15, so this is more a
  * documented assumption than a runtime concern.
  */
 function bonusSquaresFor(size: number): ReadonlyMap<string, number> {
   const middle = (size - 1) / 2;
-  const squares = new Map<string, number>();
+  const squares = new Map<string, number>([[`${middle},${middle}`, 2]]);
   for (let k = 2; k <= middle - 1; k += 2) {
     // k=2 (nearest the centre) is worth x2, k=4 is x3, k=6 (nearest the
     // corner) is x4 -- one step up the multiplier for every step out.

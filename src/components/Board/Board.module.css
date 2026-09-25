@@ -226,11 +226,10 @@
 }
 
 /*
- * Where the first word has to start: the one marked square on an empty
- * board. A small filled dot rather than an outline now that a hollow circle
- * means something else (below) -- same ink as the rest of these marks
- * (--cell-line), just solid instead of a ring, so it can't be mistaken for
- * a x2 square.
+ * Where the first word has to start. A small filled dot, same ink as the
+ * rest of these marks (--cell-line). The centre is also a x2 square
+ * (RULES_VERSION 11), so the x2 ring is drawn around the dot: a target that
+ * says both things at once.
  */
 .centre::before {
   content: "";
