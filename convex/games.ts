@@ -609,38 +609,59 @@ export const inviteToGame = mutation({
 });
 
 /**
- * Swap chosen letters for new ones and forfeit the turn.
+ * Swap the whole rack for a fresh one, once a game, without losing the turn.
  *
- * What you give up goes back into the bag before what you take comes out, so
- * a trade cannot draw the tiles it just returned — and an empty bag has
- * nothing to swap with, which is when trading stops being possible.
+ * Trading used to cost the turn, and nobody ever did it: a turn is worth far
+ * more than a bad rack costs, so a trade put you further behind than the
+ * letters it fixed. The swap is free instead, and scarce -- one a game -- and
+ * all or nothing, so it is a reset rather than a way to fish for one letter.
+ *
+ * The rack goes back into the bag before the new one comes out, so some of
+ * the same letters can come straight back. An empty bag has nothing to swap
+ * with; the swap is gone for good once the bag runs out.
+ *
+ * No turn is recorded. The turn has not been taken -- the player still plays
+ * or passes after this -- and the history is one row a turn.
  */
-export const tradeTiles = mutation({
-  args: { gameId: v.id("games"), indices: v.array(v.number()) },
+async function swapRack(
+  ctx: MutationCtx,
+  gameId: Id<"games">,
+  userId: Id<"users">,
+) {
+  const { player } = await requireTurn(ctx, gameId, userId);
+
+  if (player.swapped === true) {
+    throw new ConvexError("You have already used your swap this game");
+  }
+  if (player.letters.length === 0) {
+    throw new ConvexError("You have no letters to swap");
+  }
+  const bag = await bagFor(ctx, gameId);
+  if (tilesLeft(bag.letters) === 0) {
+    throw new ConvexError("The bag is empty — there is nothing to swap for");
+  }
+
+  const rack = await drawInto(ctx, gameId, [], player.letters);
+  await ctx.db.patch("players", player._id, {
+    letters: rack.letters,
+    swapped: true,
+  });
+}
+
+export const swapTiles = mutation({
+  args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
     const userId = await requireUser(ctx);
-    const { game, player } = await requireTurn(ctx, args.gameId, userId);
+    await swapRack(ctx, args.gameId, userId);
+    return null;
+  },
+});
 
-    const chosen = [...new Set(args.indices)];
-    if (chosen.length === 0) throw new ConvexError("Choose at least one tile");
-    if (chosen.some((i) => i < 0 || i >= player.letters.length)) {
-      throw new ConvexError("You do not hold that tile");
-    }
-
-    const kept = player.letters.filter((_, i) => !chosen.includes(i));
-    const given = player.letters.filter((_, i) => chosen.includes(i));
-
-    const bag = await bagFor(ctx, args.gameId);
-    if (tilesLeft(bag.letters) === 0) {
-      throw new ConvexError("The bag is empty — there is nothing to trade for");
-    }
-
-    const rack = await drawInto(ctx, args.gameId, kept, given);
-    await ctx.db.patch("players", player._id, { letters: rack.letters });
-
-    await noteSkippedTurn(ctx, game, userId, "trade");
-    await advanceTurn(ctx, game, 0);
-    await wakeBot(ctx, args.gameId);
+/** A bot's swap: the same rule, for a seat the caller already knows. */
+export const swapForBot = internalMutation({
+  args: { gameId: v.id("games"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await swapRack(ctx, args.gameId, args.userId);
     return null;
   },
 });
@@ -648,15 +669,16 @@ export const tradeTiles = mutation({
 /**
  * Record a turn where nothing was placed.
  *
- * A trade and a pass both hand the turn on without touching the board, and
- * both used to leave nothing behind — so the history skipped from one player
- * to the same player again with no account of why.
+ * A pass hands the turn on without touching the board, and used to leave
+ * nothing behind -- so the history skipped from one player to the same
+ * player again with no account of why. Old games also carry "trade" rows,
+ * from when trading cost a turn.
  */
 async function noteSkippedTurn(
   ctx: MutationCtx,
   game: Doc<"games">,
   userId: Id<"users">,
-  kind: "pass" | "trade",
+  kind: "pass",
 ) {
   await ctx.db.insert("turns", {
     gameId: game._id,
@@ -673,13 +695,11 @@ async function noteSkippedTurn(
 /**
  * Give up a turn outright.
  *
- * Only once the bag is empty. While there is anything left to draw, trading
- * is how you skip a turn, and it costs you the tiles you could not use —
- * passing freely instead would make that cost optional. But when the bag runs
- * dry trading stops being possible, and a rack that will not play anywhere
- * leaves nothing to do at all: without this the only button left is Resign,
- * which ends everyone's game and records it as abandoned when really the
- * tiles just ran out.
+ * Allowed at any time. It used to be allowed only once the bag was empty,
+ * because until then trading was how you skipped a turn. The swap no longer
+ * costs a turn (`swapTiles`), so a rack that will not play -- swap spent or
+ * not -- needs this instead. A full round of passes ends the game
+ * (`advanceTurn`).
  */
 export const passTurn = mutation({
   args: { gameId: v.id("games") },
@@ -687,13 +707,6 @@ export const passTurn = mutation({
     const userId = await requireUser(ctx);
     const { game } = await requireTurn(ctx, args.gameId, userId);
 
-    const bag = await bagFor(ctx, args.gameId);
-    if (tilesLeft(bag.letters) > 0) {
-      throw new ConvexError("There are still tiles in the bag — trade instead");
-    }
-
-    // Enough of these in a row and advanceTurn ends the game: nobody can
-    // play and nobody can draw, so it is going nowhere.
     await noteSkippedTurn(ctx, game, userId, "pass");
     await advanceTurn(ctx, game, 0);
     await wakeBot(ctx, args.gameId);
@@ -1048,18 +1061,7 @@ async function playTurn(
       }
     }
 
-    /*
-     * Nothing left in the bag and nothing left to play with: the last round
-     * starts here.
-     *
-     * Blanks count. They used to be left out of this, so a player could go
-     * out -- and end everyone's game -- while still holding three of them,
-     * which are the most valuable tiles on the table (§5). A hand is empty
-     * when there is nothing in it, and a blank is something in it.
-     */
-    const out =
-      rack.left === 0 && rack.letters.length === 0 && blanksHeld === 0;
-    await advanceTurn(ctx, game, placements.length, out);
+    await advanceTurn(ctx, game, placements.length);
     await wakeBot(ctx, args.gameId);
 
     return { score: score.total, squares: score.squares };
@@ -1256,31 +1258,43 @@ export const resignGame = mutation({
 });
 
 /**
- * Rotate the seat and apply the end condition. Crossing the tile threshold
- * schedules the finish for the end of the current round rather than ending
- * immediately, so every player gets the same number of turns (§6).
+ * Rotate the seat and apply the end condition (§6).
  */
 async function advanceTurn(
   ctx: MutationCtx,
   game: Doc<"games">,
   /** Tiles played, replacements included. */
   played: number,
-  /** Whether the bag is empty and the player who just moved has played out. */
-  playedOut = false,
 ) {
   const tileCount = game.tileCount + played;
   const turnNumber = game.turnNumber + 1;
 
+  const seated = await seatedAt(ctx, game._id);
+  const bag = await bagFor(ctx, game._id);
+
   /*
-   * The next occupied seat after this one, wrapping around -- not
+   * Out: nothing left in the bag and nothing left in hand. Blanks count. They
+   * used to be left out of this, so a player could go out while still holding
+   * three of them, which are the most valuable tiles on the table (§5). A
+   * hand is empty when there is nothing in it, and a blank is something in it.
+   *
+   * A player who is out has nothing to do, so the rotation skips them.
+   */
+  const bagEmpty = tilesLeft(bag.letters) === 0;
+  const isOut = (p: Doc<"players">) =>
+    bagEmpty && p.letters.length === 0 && blanksLeft(p) === 0;
+  const inPlay = seated.filter((p) => !isOut(p));
+
+  /*
+   * The next seat after this one, wrapping around -- not
    * `(currentSeat + 1) % playerCount`. Seats are colours now, chosen freely
    * from GAME.maxPlayers regardless of how many are actually at the table,
    * so a two-player game's seats need not be {0, 1}; they could just as
    * easily be {0, 2}, and modular arithmetic against the headcount would
    * advance play to a seat nobody sits in.
    */
-  const seated = await seatedAt(ctx, game._id);
   const occupiedSeats = seated.map((p) => p.seat).sort((a, b) => a - b);
+  const playingSeats = inPlay.map((p) => p.seat).sort((a, b) => a - b);
   /*
    * Nobody to pass to yet: a game among friends is playable before its seats
    * are all spoken for, so the rotation can come round to a seat that has no
@@ -1292,50 +1306,35 @@ async function advanceTurn(
   const nobodyAfterThem =
     occupiedSeats.find((s) => s > game.currentSeat) === undefined;
   const turnHeld = waitingForSomebody && nobodyAfterThem;
-  const nextSeat =
-    occupiedSeats.find((s) => s > game.currentSeat) ??
-    (turnHeld ? game.currentSeat : occupiedSeats[0]);
+  const nextSeat = turnHeld
+    ? game.currentSeat
+    : (playingSeats.find((s) => s > game.currentSeat) ??
+      playingSeats[0] ??
+      game.currentSeat);
 
-  // A turn that only replaced letters grew the board by nothing, but it was
-  // not a pass — the board changed, and so did the words on it. Counting it
-  // as one ended a solo game the moment two such turns ran together.
   const consecutivePasses =
     played === 0 ? (game.consecutivePasses ?? 0) + 1 : 0;
 
   /*
-   * The game runs until the tiles run out.
+   * The game ends when everyone has gone out, or when a full round of the
+   * players still holding tiles goes by with nobody placing anything. Going
+   * out does not end it for anyone else: they play on until they go out too,
+   * or until they pass a whole round in a row between them. A lone player
+   * left holding tiles who passes ends it at once -- a round of one.
    *
-   * The bag empties, everyone plays out what is left in their hands, and
-   * somebody gets rid of theirs first. There used to be a count of fifty
-   * tiles instead, which was a stand-in for a supply back when the draw was
-   * endless and nothing could ever run out.
-   *
-   * Going out does not end the game where it happens. It sets the last turn,
-   * and everyone still to move gets one -- so a game ends on a full round and
-   * every player has had the same number of turns. That is what §6 has always
-   * said and what `endsAfterTurn` was added for; nothing ever set it, so the
-   * game really ended mid-round on whoever went out, and the players seated
-   * after them simply lost their last turn. This is the line that was missing.
-   *
-   * `playerCount - 1` because the player who went out has just had theirs.
-   * Once set it is never moved: a second player going out during the final
-   * round does not restart it.
-   */
-  const endsAfterTurn =
-    game.endsAfterTurn ??
-    (playedOut ? game.turnNumber + game.playerCount - 1 : undefined);
-
-  /*
-   * Two full rounds where nobody places anything: the game is going nowhere.
+   * A pass is only final that way. Passing one turn and playing the next is
+   * fine, since somebody else's play may have opened up a spot.
    *
    * Never while the turn is held, though. A game waiting for somebody to take
    * a seat is not a table refusing to play; counting those would end a game
    * before its second player ever arrived.
+   *
+   * This used to fix a last turn when the first player went out, and give
+   * everyone else exactly one more (`games.endsAfterTurn`, no longer set).
    */
-  const stalled = !turnHeld && consecutivePasses >= game.playerCount * 2;
-  const finished =
-    stalled ||
-    (endsAfterTurn !== undefined && game.turnNumber >= endsAfterTurn);
+  const everyoneOut = !waitingForSomebody && inPlay.length === 0;
+  const roundOfPasses = !turnHeld && consecutivePasses >= inPlay.length;
+  const finished = everyoneOut || roundOfPasses;
 
   await ctx.db.patch("games", game._id, {
     tileCount,
@@ -1343,11 +1342,10 @@ async function advanceTurn(
     consecutivePasses,
     currentSeat: nextSeat,
     turnHeld,
-    ...(endsAfterTurn === undefined ? {} : { endsAfterTurn }),
   });
 
   if (finished) {
-    await finishGame(ctx, { ...game, tileCount, endsAfterTurn });
+    await finishGame(ctx, { ...game, tileCount });
   }
 }
 
@@ -1611,6 +1609,8 @@ export const getGame = query({
         letters: p.userId === userId ? p.letters : null,
         letterCount: p.letters.length,
         blanks: blanksLeft(p),
+        /** Whether this game's one free swap is spent. */
+        swapped: p.swapped === true,
         /** Asked, but not yet sitting down. */
         invited: p.status === "invited",
       })),

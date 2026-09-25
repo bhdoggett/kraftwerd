@@ -559,11 +559,21 @@ to 52% in one step, without ever rejecting a real word.
 ## 6. Game end
 
 - A player is **out** when the bag is empty and they have nothing left in hand.
-  Blanks count: a hand holding one is not empty.
-- Going out does **not** end the game where it happens. It fixes the last turn,
-  and **everyone still to move gets one more**, so a game that runs its course
-  always ends on a full round, with every player having had the same number of
-  turns. A final turn is allowed to be a pass.
+  Blanks count: a hand holding one is not empty. A player who is out is
+  skipped from then on.
+- Going out does **not** end the game for anyone else. The others play on.
+  The game ends when **everyone is out**, or when **a full round of the
+  players still holding tiles goes by with nobody placing one**. A lone
+  player left holding tiles who passes ends it: a round of one. A pass is
+  otherwise not final -- another player's play may open a spot for the next
+  turn. (Rules version 11; before it, going out fixed a last turn with one
+  more for everyone else.)
+- **Passing is allowed at any time**, and **each player gets one free swap
+  of the whole rack a game**. The swap costs no turn: the rack goes back into
+  the bag, a fresh one is drawn, and the player still plays or passes. It is
+  all or nothing, so it resets a rack rather than fishing for one letter. It
+  replaced trading, which cost the turn and so was never worth doing: a turn
+  is worth more than a bad rack costs. (Rules version 11.)
 - **Nothing is settled for tiles left in hand.** A score is what you scored.
 - Highest total score wins.
 - **Resigning does not share that guarantee.** `resignGame` calls
@@ -610,6 +620,12 @@ playing out a hand with nothing left to draw -- and handed the last round to
 whoever happened to draw the last tile. Version 11 puts going out back. The
 stall guard (`consecutivePasses`, feeding `stalled` in `advanceTurn`) is what
 ends a game where nobody can.
+
+Version 11 also drops the fixed last round. Going out used to set a final
+turn for everyone else; now the others simply play on until they are out
+too, or until a full round passes with nobody placing a tile. The stall guard
+went from two rounds to one to make that the ending rather than a backstop.
+`games.endsAfterTurn` is no longer written.
 
 **These numbers were re-measured in September 2026**, four times. First after the bot
 learned to chain plays and build squares deliberately — everything measured

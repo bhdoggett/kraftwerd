@@ -141,7 +141,7 @@ export function Game({
   const viewer = useQuery(api.users.viewer);
   const placeTiles = useMutation(api.games.placeTiles);
   const resignGame = useMutation(api.games.resignGame);
-  const tradeTiles = useMutation(api.games.tradeTiles);
+  const swapTiles = useMutation(api.games.swapTiles);
   const passTurn = useMutation(api.games.passTurn);
   const joinGame = useMutation(api.games.joinGame);
   const rematch = useMutation(api.games.rematch);
@@ -207,8 +207,8 @@ export function Game({
   const [rackOrder, setRackOrder] = useState<number[]>([]);
   /** Letter index the pointer is over while dragging a rack tile. */
   const [rackHover, setRackHover] = useState<number | null>(null);
-  /** Tiles picked for trading. Null when not trading at all. */
-  const [trading, setTrading] = useState<number[] | null>(null);
+  /** Whether the swap confirmation is showing. */
+  const [swapping, setSwapping] = useState(false);
   /** Whether the pass confirmation is showing. */
   const [passing, setPassing] = useState(false);
   /**
@@ -642,16 +642,13 @@ export function Game({
     me !== undefined && game.status === "active" && me.seat === game.currentSeat;
 
   /*
-   * The last round, once somebody has gone out (§6).
-   *
-   * `endsAfterTurn` is the number of the final turn, so counting the one on
-   * the move makes the remaining count inclusive: on the turn that ends the
-   * game this is 1, not 0. Nothing else in the UI marks this round, and
-   * without it a player spends their last turn believing another is coming.
+   * Play-out, once the bag is empty (§6): everyone plays out what they hold,
+   * and the game ends when all are out or a full round goes by with nobody
+   * placing a tile. Nothing else in the UI says the ending has begun.
    */
-  const finalTurn = game.endsAfterTurn;
-  const finalRound = game.status === "active" && finalTurn !== undefined;
-  const turnsLeft = finalTurn === undefined ? 0 : finalTurn - game.turnNumber + 1;
+  const playingOut = game.status === "active" && view.tilesLeft === 0;
+  const meOut =
+    me !== undefined && (me.letters?.length ?? 0) === 0 && me.blanks === 0;
 
   /** Whoever the game is waiting on, so a press on Play can name them. */
   const playerOnTurn =
@@ -822,17 +819,10 @@ export function Game({
     setError(null);
   }
 
-  /** The rack's swap button toggles: press again to back out. */
-  function toggleTrade() {
-    if (trading !== null) {
-      setTrading(null);
-      return;
-    }
-    // Trading forfeits the turn, so anything staged has to come back first.
-    setPending([]);
-    setSelected(null);
-    setBlankAt(null);
-    setTrading([]);
+  /** The rack's swap button asks first: the swap is once a game. */
+  function toggleSwap() {
+    setSwapping((current) => !current);
+    setPassing(false);
   }
 
   /** Pressing Pass asks first: one tap should not cost a turn by accident. */
@@ -842,7 +832,7 @@ export function Game({
       setPending([]);
       setSelected(null);
       setBlankAt(null);
-      setTrading(null);
+      setSwapping(false);
     }
   }
 
@@ -856,12 +846,16 @@ export function Game({
     }
   }
 
-  async function confirmTrade() {
-    if (trading === null || trading.length === 0) return;
+  async function confirmSwap() {
     setError(null);
     try {
-      await tradeTiles({ gameId, indices: trading });
-      setTrading(null);
+      // The whole rack goes, so anything staged comes back first: its letters
+      // are about to be somebody else's draw.
+      setPending([]);
+      setSelected(null);
+      setBlankAt(null);
+      await swapTiles({ gameId });
+      setSwapping(false);
     } catch (e) {
       setError(userMessage(e));
     }
@@ -1013,17 +1007,15 @@ export function Game({
         {/* Above the board rather than floating over it: this one stands for
             the whole round, so it must not cover a square somebody is aiming
             at, and it must not disappear the way the refusal does. */}
-        {finalRound && !reviewing && (
+        {playingOut && !reviewing && (
           <div className={styles.finalRound} role="status" aria-live="polite">
             <strong className={styles.finalRoundTitle}>
-              {myTurn ? "Your last turn" : "Final round"}
+              {meOut ? "You're out" : "The bag is empty"}
             </strong>
             <span>
-              {myTurn
-                ? "The bag is empty and someone has gone out. Play what you can — nothing is deducted for tiles left in hand."
-                : `The bag is empty and someone has gone out. ${
-                    turnsLeft === 1 ? "One turn left" : `${turnsLeft} turns left`
-                  } in the game.`}
+              {meOut
+                ? "Nothing left to play. The game ends when everyone is out, or a full round passes with nobody playing."
+                : "Play out your tiles. The game ends when everyone is out, or a full round passes with nobody playing."}
             </span>
           </div>
         )}
@@ -1162,22 +1154,12 @@ export function Game({
             onShuffle={shuffleRack}
             onRecall={clear}
             canRecall={pending.length > 0}
-            trading={trading}
-            onToggleTrade={(index) =>
-              setTrading((current) =>
-                current === null
-                  ? current
-                  : current.includes(index)
-                    ? current.filter((i) => i !== index)
-                    : [...current, index],
-              )
-            }
-            onStartTrade={toggleTrade}
-            /* Trading needs tiles to trade for; once the bag is dry the same
-               button becomes the only way out of a rack that will not play. */
-            canTrade={myTurn && view.tilesLeft > 0}
+            onSwap={toggleSwap}
+            // Once a game, and only while the bag has something to swap with.
+            canSwap={myTurn && !me.swapped && view.tilesLeft > 0}
+            swapping={swapping}
             onPass={togglePass}
-            canPass={myTurn && view.tilesLeft === 0}
+            canPass={myTurn}
             passing={passing}
             onPlay={() => {
               // Pressing Play while somebody else is thinking is a fair
@@ -1302,8 +1284,7 @@ export function Game({
         {passing && myTurn && (
           <div className={styles.tradeBar}>
             <span>
-              Pass your turn? The bag is empty, so there is nothing to trade
-              for.
+              Pass your turn? A full round of passes ends the game.
             </span>
             <button
               type="button"
@@ -1322,32 +1303,28 @@ export function Game({
           </div>
         )}
 
-        {trading !== null && (
+        {swapping && myTurn && (
           <div className={styles.tradeBar}>
             <span>
-              {trading.length === 0
-                ? "Pick the tiles to trade in."
-                : `Trading ${trading.length} ${trading.length === 1 ? "tile" : "tiles"}. This forfeits your turn.`}
+              Swap all your letters for new ones? You get one swap a game, and
+              you still play this turn.
             </span>
             <button
               type="button"
               className={styles.secondary}
-              onClick={() => setTrading((me?.letters ?? []).map((_, i) => i))}
+              onClick={() => setSwapping(false)}
             >
-              All
+              Cancel
             </button>
             <button
               type="button"
               className={styles.button}
-              disabled={trading.length === 0}
-              onClick={() => void confirmTrade()}
+              onClick={() => void confirmSwap()}
             >
-              Trade
+              Swap
             </button>
           </div>
         )}
-
-
 
         {error && <div className={styles.error}>{error}</div>}
 

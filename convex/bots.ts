@@ -6,6 +6,7 @@ import { makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
 import { applyPlacements, wordsFormed, type Dictionary } from "../shared/engine/legality.js";
 import { chooseRanked, indexWords, rank, type Move, type WordIndex } from "../shared/sim/bot.js";
+import { tilesLeft } from "../shared/engine/bag.js";
 import { scoreTurn } from "../shared/engine/score.js";
 import { blanksLeft, hasWord, loadTiles, seatOnTurn } from "./games.js";
 import { internal } from "./_generated/api";
@@ -153,7 +154,7 @@ async function untilThoughtThrough(since: number, first: boolean) {
  *
  * That pass is not free, and it is the reason to keep the number small rather
  * than large. A bot that had a legal move and passed anyway adds one to
- * `consecutivePasses`, and `playerCount * 2` of those in a row ends the game.
+ * `consecutivePasses`, and a full round of those in a row ends the game.
  * Three exhausted attempts is a bad turn; thirty would be a lost game.
  *
  * No overtaker is currently constructible. A bot's turn is only scheduled when
@@ -213,9 +214,24 @@ export const takeTurn = internalAction({
         if (state === null) return null;
         userId = state.userId;
 
-        // Nothing playable. Trading is the only other move, and an empty bag
-        // leaves passing — which advancing with no tiles amounts to.
-        const placements = (await chooseMove(ctx, state)) ?? [];
+        let placements = await chooseMove(ctx, state);
+
+        // Nothing playable: spend the free swap if it is still there, then
+        // think again with the new rack. The swap costs no turn, so this is
+        // the same turn.
+        if (placements === null && state.canSwap) {
+          await ctx.runMutation(internal.games.swapForBot, {
+            gameId: args.gameId,
+            userId: state.userId,
+          });
+          const swapped = await ctx.runQuery(internal.bots.turnState, {
+            gameId: args.gameId,
+          });
+          if (swapped === null) return null;
+          placements = await chooseMove(ctx, swapped);
+        }
+
+        // Still nothing: pass, which advancing with no tiles amounts to.
 
         // The move is ready; the pause is not necessarily over. Waiting here
         // rather than before thinking is what keeps a slow turn from being a
@@ -227,7 +243,7 @@ export const takeTurn = internalAction({
         await ctx.runMutation(internal.games.playForBot, {
           gameId: args.gameId,
           userId,
-          placements,
+          placements: placements ?? [],
         });
         return null;
       } catch (error) {
@@ -300,12 +316,22 @@ export const turnState = internalQuery({
     if (player === null || player.bot === undefined) return null;
 
     const tiles = await loadTiles(ctx, args.gameId);
+    const bag = await ctx.db
+      .query("bags")
+      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
+      .unique();
 
     return {
       userId: player.userId,
       level: player.bot,
       letters: player.letters,
       blanks: blanksLeft(player),
+      /** The free swap is unspent and there is something to swap with. */
+      canSwap:
+        player.swapped !== true &&
+        player.letters.length > 0 &&
+        bag !== null &&
+        tilesLeft(bag.letters) > 0,
       boardSize: game.boardSize,
       tiles: tiles.map((t) => ({
         x: t.x,
@@ -320,6 +346,7 @@ export const turnState = internalQuery({
 
 type TurnState = {
   userId: Id<"users">;
+  canSwap: boolean;
   level: Difficulty;
   letters: string[];
   blanks: number;

@@ -116,6 +116,9 @@ export default defineSchema({
     /** Denormalised: Convex has no count operator, and §6 reads this often. */
     tileCount: v.number(),
     /**
+     * @deprecated No longer written (rules version 11): going out no longer
+     * fixes a last turn (§6). Kept so rows that carry it still validate.
+     *
      * The last turn of the game, set when a player goes out -- their turn plus
      * one more for everyone else. The game finishes after it, so the round
      * completes and every player has had an equal number of turns (§6).
@@ -126,9 +129,8 @@ export default defineSchema({
      */
     endsAfterTurn: v.optional(v.number()),
     /**
-     * Turns in a row where nobody placed a tile. Letters never run out, so
-     * without this a table that keeps trading would never reach the threshold
-     * that ends a game.
+     * Turns in a row where nobody placed a tile. A full round of them, among
+     * the players not yet out, ends the game (§6).
      */
     consecutivePasses: v.optional(v.number()),
     /**
@@ -210,6 +212,8 @@ export default defineSchema({
     blanks: v.optional(v.number()),
     /** @deprecated the per-turn blank slot, kept so old rows still validate. */
     blank: v.boolean(),
+    /** Whether this game's one free swap of the whole rack is spent. */
+    swapped: v.optional(v.boolean()),
     /**
      * Set when a machine holds this seat, and how well it plays.
      *

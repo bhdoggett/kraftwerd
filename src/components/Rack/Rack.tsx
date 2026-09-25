@@ -31,15 +31,13 @@ interface RackProps {
   /** Take every staged tile back off the board. */
   onRecall: () => void;
   canRecall: boolean;
-  /** Tiles picked for trading; null when not trading. */
-  trading: readonly number[] | null;
-  onToggleTrade: (index: number) => void;
-  onStartTrade: () => void;
-  canTrade: boolean;
   /**
-   * Passing replaces trading once the bag is empty — the one moment trading
-   * is impossible and a rack that will not play needs some way out.
+   * The one free swap of the whole rack a game. It costs no turn, so it sits
+   * beside Pass rather than replacing it.
    */
+  onSwap: () => void;
+  canSwap: boolean;
+  swapping: boolean;
   onPass: () => void;
   canPass: boolean;
   passing: boolean;
@@ -69,10 +67,9 @@ export function Rack({
   onShuffle,
   onRecall,
   canRecall,
-  trading,
-  onToggleTrade,
-  onStartTrade,
-  canTrade,
+  onSwap,
+  canSwap,
+  swapping,
   onPass,
   canPass,
   passing,
@@ -98,20 +95,11 @@ export function Rack({
   const tileProps = (sel: Selection) => ({
     "aria-pressed": isSelected(sel),
     onPointerDown: (e: ReactPointerEvent) => {
-      // While trading, a tile is a choice rather than something to play.
-      if (trading !== null) {
-        if (sel.kind === "letter") onToggleTrade(sel.index);
-        return;
-      }
       onSelect(sel);
       onGrab(sel, e);
     },
     onClick: (e: { detail: number }) => {
       if (e.detail !== 0) return;
-      if (trading !== null) {
-        if (sel.kind === "letter") onToggleTrade(sel.index);
-        return;
-      }
       onSelect(isSelected(sel) ? null : sel);
     },
   });
@@ -146,7 +134,6 @@ export function Rack({
                   styles.tile,
                   isSelected({ kind: "letter", index }) ? styles.selected : "",
                   draggedIndex === index ? styles.lifted : "",
-                  trading?.includes(index) ? styles.trading : "",
                 ].join(" ")}
                 // The letter's own index, not its position: staged tiles leave
                 // the rack, so positions shift but indices do not.
@@ -198,30 +185,28 @@ export function Rack({
         >
           <RecallIcon />
         </button>
-        {canPass ? (
-          <button
-            type="button"
-            onClick={onPass}
-            aria-pressed={passing}
-            className={[styles.action, passing ? styles.actionOn : ""].join(" ")}
-            aria-label="Pass your turn"
-            title="Pass"
-          >
-            <PassIcon />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onStartTrade}
-            disabled={!canTrade}
-            aria-pressed={trading !== null}
-            className={[styles.action, trading !== null ? styles.actionOn : ""].join(" ")}
-            aria-label="Trade tiles in for new ones"
-            title="Trade tiles"
-          >
-            <TradeIcon />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onSwap}
+          disabled={!canSwap}
+          aria-pressed={swapping}
+          className={[styles.action, swapping ? styles.actionOn : ""].join(" ")}
+          aria-label="Swap your whole rack, once a game"
+          title="Swap rack (once a game)"
+        >
+          <TradeIcon />
+        </button>
+        <button
+          type="button"
+          onClick={onPass}
+          disabled={!canPass}
+          aria-pressed={passing}
+          className={[styles.action, passing ? styles.actionOn : ""].join(" ")}
+          aria-label="Pass your turn"
+          title="Pass"
+        >
+          <PassIcon />
+        </button>
         <button
           type="button"
           className={styles.action}

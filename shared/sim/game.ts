@@ -25,12 +25,19 @@ export interface GameResult {
   bestTurn: number;
   /*
    * What every turn scored, in the order they were taken -- turn i belongs to
-   * seat `i % players`, and a pass is a zero. Kept per turn rather than summed
+   * seat `turnSeats[i]`, and a pass is a zero. Kept per turn rather than summed
    * per seat because a seat's average cannot say whether its deficit is the
    * opening turn into an empty board or a shortfall that runs all game, and
    * those want different fixes.
    */
   turnScores: number[];
+  /**
+   * Whose turn each of `turnScores` was. Not `i % players`: a player who has
+   * gone out is skipped, so the rotation stops being regular near the end.
+   */
+  turnSeats: number[];
+  /** Whole-rack swaps taken, each player's one free one (§6). */
+  swaps: number;
   /** Ended because the bag ran dry rather than on the tile threshold. */
   ranDry: boolean;
   /** Squares completed, by size. */
@@ -41,6 +48,8 @@ interface Player {
   letters: string[];
   blanks: number;
   score: number;
+  /** The one free swap of the whole rack is spent. */
+  swapped?: boolean;
 }
 
 function makeBag(variant: Variant): Bag | null {
@@ -148,13 +157,26 @@ export function playGame(
   let passes = 0;
   let bestTurn = 0;
   const turnScores: number[] = [];
+  const turnSeats: number[] = [];
+  let swaps = 0;
   let consecutivePasses = 0;
+
   /*
-   * The last turn, once somebody has gone out: their turn plus one more for
-   * everyone else, exactly as `advanceTurn` sets it in convex/games.ts. Turn
-   * `turns - 1` is the one just played, since `turns` is incremented above.
+   * Out, as `advanceTurn` has it in convex/games.ts: the bag empty and
+   * nothing in hand, blanks included. An endless bag never runs out, so
+   * nobody is ever out of one.
    */
-  let endsAfterTurn: number | null = null;
+  const isOut = (p: Player) =>
+    bag !== null && tilesLeft(bag) === 0 && p.letters.length === 0 && p.blanks === 0;
+  /** The next seat round from `from` that still holds tiles. */
+  const nextSeat = (from: number) => {
+    for (let k = 1; k <= players; k++) {
+      const s = (from + k) % players;
+      if (!isOut(hands[s])) return s;
+    }
+    return from;
+  };
+  let seat = 0;
 
   /*
    * Reads `claimed` as it stands when a move is scored, not as it stood when
@@ -165,7 +187,6 @@ export function playGame(
     turnValue(after, p, variant, claimed, before).score;
 
   while (turns < 200) {
-    const seat = turns % players;
     const player = hands[seat];
 
     /*
@@ -175,19 +196,34 @@ export function playGame(
      * perfect over its own ranking: stronger than `hard` and not a difficulty
      * anyone can be dealt, so the table it produced described nobody.
      */
-    const moves = rank(
-      board,
-      { letters: player.letters, blanks: player.blanks },
-      dictionary,
-      words,
-      shape,
-      size,
-      scoreOf,
-      // Empty is not "every seat at index zero": it is nothing to seat, and
-      // `rank` reads undefined as "pick your own default".
-      { chain: chains !== undefined && chains.length > 0 ? chains[seat % chains.length] : undefined },
-    );
-    const move = chooseRanked(moves, difficulties[seat % difficulties.length], rng);
+    const rankFor = () =>
+      rank(
+        board,
+        { letters: player.letters, blanks: player.blanks },
+        dictionary,
+        words,
+        shape,
+        size,
+        scoreOf,
+        // Empty is not "every seat at index zero": it is nothing to seat, and
+        // `rank` reads undefined as "pick your own default".
+        { chain: chains !== undefined && chains.length > 0 ? chains[seat % chains.length] : undefined },
+      );
+    let move = chooseRanked(rankFor(), difficulties[seat % difficulties.length], rng);
+
+    /*
+     * Nothing playable: spend the free swap, if it is still there and the bag
+     * has something to swap with, then look again. The rack goes back in the
+     * bag first, so some of it can come straight back. It costs no turn.
+     */
+    if (move === null && player.swapped !== true && bag !== null && tilesLeft(bag) > 0) {
+      for (const letter of player.letters) bag.set(letter, (bag.get(letter) ?? 0) + 1);
+      player.letters = [];
+      topUp(player, bag, rng);
+      player.swapped = true;
+      swaps++;
+      move = chooseRanked(rankFor(), difficulties[seat % difficulties.length], rng);
+    }
 
     turns++;
 
@@ -195,12 +231,13 @@ export function playGame(
       // Pushed before any of the breaks below, so there is one entry a turn
       // however the game ends.
       turnScores.push(0);
+      turnSeats.push(seat);
       passes++;
       consecutivePasses++;
-      // Everyone stuck in a row: the game is going nowhere, as in the app.
-      if (consecutivePasses >= players * 2) break;
-      // A pass still spends a turn of the final round, as it does live.
-      if (endsAfterTurn !== null && turns - 1 >= endsAfterTurn) break;
+      // A full round of passes among those still holding tiles ends it, as
+      // in the app -- a round of one, if everyone else is out.
+      if (consecutivePasses >= hands.filter((h) => !isOut(h)).length) break;
+      seat = nextSeat(seat);
       continue;
     }
     consecutivePasses = 0;
@@ -225,6 +262,7 @@ export function playGame(
 
     player.score += score;
     turnScores.push(score);
+    turnSeats.push(seat);
     bestTurn = Math.max(bestTurn, score);
 
     // Spend the tiles the move used, then draw back up.
@@ -240,25 +278,17 @@ export function playGame(
 
     /*
      * The game runs until the tiles run out: the bag empties, hands play out,
-     * and it ends the moment somebody has nothing left. Measuring bag sizes
-     * against a fixed tile count instead — which is what this did — made a
+     * and it ends when everyone is out (or on a round of passes, above).
+     * Going out does not end it for anyone else. Measuring bag sizes against
+     * a fixed tile count instead -- which is what this once did -- made a
      * bigger bag look like it never emptied, when what really happened was
      * that the count stopped the game first.
      */
     if (bag === null) {
       if (board.size >= GAME.endThreshold) break;
-    } else if (
-      endsAfterTurn === null &&
-      tilesLeft(bag) === 0 &&
-      player.letters.length === 0 &&
-      player.blanks === 0
-    ) {
-      // Out: the last round starts, and everyone still to move gets a turn.
-      // Blanks count as tiles in hand -- see the note in convex/games.ts.
-      endsAfterTurn = turns - 1 + players - 1;
-    }
+    } else if (hands.every(isOut)) break;
 
-    if (endsAfterTurn !== null && turns - 1 >= endsAfterTurn) break;
+    seat = nextSeat(seat);
   }
 
   let margin = size;
@@ -278,6 +308,8 @@ export function playGame(
     rarePlayed,
     bestTurn,
     turnScores,
+    turnSeats,
+    swaps,
     ranDry: bag !== null && tilesLeft(bag) === 0,
     squares,
   };

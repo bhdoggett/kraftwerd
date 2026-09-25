@@ -160,9 +160,13 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             letter must remain).
           </li>
           <li>
-            <strong>Trade your tiles</strong> if you don't like your letters
-            — but you lose a turn. Once the bag's empty, <strong>pass</strong>{" "}
-            instead.
+            <strong>One free swap a game</strong> — trade in your whole rack
+            for new letters and still play that turn. It's all or nothing,
+            and your old letters go back in the bag first, so some may come
+            back.
+          </li>
+          <li>
+            <strong>Pass</strong> if you can't play.
           </li>
         </ul>
 
@@ -226,9 +230,12 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
 
         <h3 className={styles.section}>Ending</h3>
         <p>
-          The game runs until someone <strong>goes out</strong>: the bag is
-          empty and they've played every tile they hold, blanks included.
-          The moment they do, <strong>everyone else gets one more turn</strong>.
+          Once the bag is empty, everyone plays out their tiles. You're{" "}
+          <strong>out</strong> when you've played every tile you hold,
+          blanks included, and your turns are skipped from then on.
+          The game ends when <strong>everyone is out</strong>, or when a{" "}
+          <strong>full round goes by with nobody playing</strong> — so if
+          you're the last one holding tiles and you pass, that's the end.
         </p>
         <p>
           <strong>Tiles left in hand settle for nothing</strong> — your

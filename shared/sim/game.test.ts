@@ -70,8 +70,8 @@ describe("the simulator seats a chain shape per player", () => {
     // Seat 1's turns, not its total, which two different games can share by
     // coincidence. Seed 3 used to be the one here; without the stack bonus it
     // deals a four-turn game where depth has nothing to choose between.
-    const seatOne = (turnScores: number[]) => turnScores.filter((_, i) => i % 2 === 1);
-    expect(seatOne(deep.turnScores)).not.toEqual(seatOne(shallow.turnScores));
+    const seatOne = (g: typeof deep) => g.turnScores.filter((_, i) => g.turnSeats[i] === 1);
+    expect(seatOne(deep)).not.toEqual(seatOne(shallow));
   }, 60_000);
 
   /*

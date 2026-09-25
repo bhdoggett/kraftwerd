@@ -478,7 +478,7 @@ describe("end of game", () => {
     });
   }
 
-  test("going out gives everyone else one more turn", async () => {
+  test("going out leaves the others playing until they are out or pass", async () => {
     const { t, gameId, asAlice, asBob, bob } = await twoPlayerGame(["A", "D"]);
     await readyToGoOut(t, gameId);
 
@@ -488,17 +488,24 @@ describe("end of game", () => {
     });
 
     // Alice played her last two tiles, but the game does not stop on her:
-    // Bob is still to move this round and gets his turn.
+    // Bob still holds tiles and plays on.
     const midway = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(midway?.status).toBe("active");
-    expect(midway?.endsAfterTurn).toBe(1);
+    expect(midway?.currentSeat).toBe(1);
 
     await asBob.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(0, 1, "D")],
     });
 
-    // And now it ends, on a full round.
+    // Alice is out, so the turn skips her and comes straight back to Bob,
+    // who still has his A.
+    const again = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(again?.status).toBe("active");
+    expect(again?.currentSeat).toBe(1);
+
+    // The only player left holding tiles passes: a round of one, and over.
+    await asBob.mutation(api.games.passTurn, { gameId });
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("finished");
 
@@ -511,12 +518,39 @@ describe("end of game", () => {
     const bobRow = players.find((p) => p.userId === bob);
     const aliceRow = players.find((p) => p.userId !== bob);
 
-    // Each scored a two-letter word (Alice's doubled on the centre) and
-    // neither was charged for what was left in hand: going out settles
-    // nothing, it only sets the last turn.
+    // Alice's AD doubled on the centre; Bob's DA. Nobody was charged for
+    // what was left in hand: going out settles nothing.
     expect(aliceRow?.score).toBe(4);
     expect(bobRow?.score).toBe(2);
   });
+
+  test("the game ends when everyone has gone out", async () => {
+    const { t, gameId, asAlice, asBob, bob } = await twoPlayerGame(["A", "D"]);
+    await readyToGoOut(t, gameId);
+
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+    // Bob down to a single D, which he can play out.
+    await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", bob),
+        )
+        .unique();
+      await ctx.db.patch("players", row!._id, { letters: ["D"] });
+    });
+    await asBob.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 1, "D")],
+    });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.status).toBe("finished");
+  });
+
 
   test("a hand still holding a blank is not out", async () => {
     const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D"]);
@@ -891,7 +925,7 @@ describe("game invitations", () => {
 
     // Ana does not wait for the answer -- the game is playable the moment it
     // is made -- and then the answer is no.
-    await asAna.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+    await asAna.mutation(api.games.passTurn, { gameId });
     await asBo.mutation(api.games.respondToInvite, { gameId, accept: false });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
@@ -946,9 +980,9 @@ describe("joining by link", () => {
   test("the turn waits at a seat nobody has taken yet", async () => {
     const { t, gameId, asHost, asGuest } = await lobbyGame(3);
 
-    // A trade rather than a play: this is about who the turn goes to, and a
+    // A pass rather than a play: this is about who the turn goes to, and a
     // play would need a dictionary and a known rack to say anything at all.
-    await asHost.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+    await asHost.mutation(api.games.passTurn, { gameId });
 
     // Nobody to pass to, so the turn stays put rather than wrapping back
     // round to the one player as though this were a solo game.
@@ -1273,77 +1307,114 @@ describe("the lobby's game lists", () => {
   });
 });
 
-describe("trading tiles", () => {
-  test("swaps the chosen letters and passes the turn", async () => {
+describe("swapping the rack", () => {
+  async function rackOf(
+    t: Awaited<ReturnType<typeof twoPlayerGame>>["t"],
+    gameId: Id<"games">,
+    userId: Id<"users">,
+  ) {
+    return await t.run(async (ctx) =>
+      ctx.db
+        .query("players")
+        .withIndex("by_game_and_user", (q) =>
+          q.eq("gameId", gameId).eq("userId", userId),
+        )
+        .unique(),
+    );
+  }
+
+  test("replaces the whole rack and keeps the turn", async () => {
     const { t, gameId, asAlice, alice } = await twoPlayerGame([
       "A",
       "B",
       "C",
       "D",
     ]);
+    const before = await rackOf(t, gameId, alice);
 
-    await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0, 1] });
+    await asAlice.mutation(api.games.swapTiles, { gameId });
 
-    const [player, game] = await t.run(async (ctx) => [
-      await ctx.db
-        .query("players")
-        .withIndex("by_game_and_user", (q) =>
-          q.eq("gameId", gameId).eq("userId", alice),
-        )
-        .unique(),
-      await ctx.db.get("games", gameId),
-    ]);
-
-    // The kept letters are still there; the traded ones were replaced.
-    expect(player?.letters).toContain("C");
-    expect(player?.letters).toContain("D");
+    const player = await rackOf(t, gameId, alice);
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(before?.letters).toHaveLength(4);
     expect(player?.letters).toHaveLength(RACK.size);
-    // Turn moved on, and nothing was placed.
-    expect(game?.currentSeat).toBe(1);
-    expect(game?.tileCount).toBe(0);
+    expect(player?.swapped).toBe(true);
+    // Still Alice's turn: the swap costs nothing but itself.
+    expect(game?.currentSeat).toBe(0);
+    expect(game?.turnNumber).toBe(0);
+    expect(game?.consecutivePasses ?? 0).toBe(0);
   });
 
-  test("trading everything is allowed", async () => {
-    const { gameId, asAlice } = await twoPlayerGame([
-      "A",
-      "B",
-      "C",
-      "D",
-      "E",
-      "F",
-    ]);
+  test("returns the rack to the bag before drawing, so letters can come back", async () => {
+    const { t, gameId, asAlice, alice } = await twoPlayerGame(["A", "B"]);
 
+    // An empty bag, then Alice's own rack goes into it: the only letters the
+    // draw can give her are the ones she just put back.
+    await t.run(async (ctx) => {
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      await ctx.db.patch("bags", bag!._id, { letters: { Q: 1 } });
+    });
+    const before = await rackOf(t, gameId, alice);
+
+    await asAlice.mutation(api.games.swapTiles, { gameId });
+
+    const after = await rackOf(t, gameId, alice);
+    // The Q and both of her own letters: the refill took everything there was.
+    expect([...after!.letters].sort()).toEqual([...before!.letters, "Q"].sort());
+  });
+
+  test("once a game", async () => {
+    const { gameId, asAlice } = await twoPlayerGame(["A", "B"]);
+
+    await asAlice.mutation(api.games.swapTiles, { gameId });
     await expect(
-      asAlice.mutation(api.games.tradeTiles, {
-        gameId,
-        indices: [0, 1, 2, 3, 4, 5],
-      }),
-    ).resolves.toBeNull();
+      asAlice.mutation(api.games.swapTiles, { gameId }),
+    ).rejects.toThrow("already used your swap");
   });
 
-  test("cannot trade out of turn", async () => {
+  test("cannot swap out of turn", async () => {
     const { gameId, asBob } = await twoPlayerGame(["A", "B"]);
 
     await expect(
-      asBob.mutation(api.games.tradeTiles, { gameId, indices: [0] }),
+      asBob.mutation(api.games.swapTiles, { gameId }),
     ).rejects.toThrow("Not your turn");
   });
 
-  test("cannot trade nothing", async () => {
-    const { gameId, asAlice } = await twoPlayerGame(["A", "B"]);
+  test("cannot swap with an empty bag", async () => {
+    const { t, gameId, asAlice } = await twoPlayerGame(["A", "B"]);
+    await t.run(async (ctx) => {
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .unique();
+      await ctx.db.patch("bags", bag!._id, { letters: {} });
+    });
 
     await expect(
-      asAlice.mutation(api.games.tradeTiles, { gameId, indices: [] }),
-    ).rejects.toThrow("at least one");
+      asAlice.mutation(api.games.swapTiles, { gameId }),
+    ).rejects.toThrow("bag is empty");
+  });
+});
+
+describe("passing", () => {
+  test("is allowed while the bag still has tiles", async () => {
+    const { t, gameId, asAlice } = await twoPlayerGame(["A", "B"]);
+
+    await asAlice.mutation(api.games.passTurn, { gameId });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.currentSeat).toBe(1);
+    expect(game?.status).toBe("active");
   });
 
-  test("a table that only trades ends rather than running forever", async () => {
+  test("a full round of passes ends the game", async () => {
     const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "B"]);
 
-    // Two full rounds of nobody placing anything.
-    for (const who of [asAlice, asBob, asAlice, asBob]) {
-      await who.mutation(api.games.tradeTiles, { gameId, indices: [0] });
-    }
+    await asAlice.mutation(api.games.passTurn, { gameId });
+    await asBob.mutation(api.games.passTurn, { gameId });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("finished");
@@ -1357,7 +1428,7 @@ describe("trading tiles", () => {
       "O",
     ]);
 
-    await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+    await asAlice.mutation(api.games.passTurn, { gameId });
     await asBob.mutation(api.games.placeTiles, {
       gameId,
       placements: [at(0, 0, "A"), at(1, 0, "D")],
@@ -1616,10 +1687,10 @@ describe("computer players", () => {
       });
 
       // Drain the nudge createGame left behind, so what wakes the machine
-      // below can only be the trade itself.
+      // below can only be the pass itself.
       await t.finishAllScheduledFunctions(vi.runAllTimers);
 
-      await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+      await asAlice.mutation(api.games.passTurn, { gameId });
       const traded = await t.run(async (ctx) => ctx.db.get("games", gameId));
       expect(traded?.currentSeat).toBe(1);
 
@@ -1797,10 +1868,10 @@ describe("computer players", () => {
           return bot!.score;
         });
 
-        // Alice trades rather than plays, so this test does not depend on
+        // Alice passes rather than plays, so this test does not depend on
         // where the machine put its first word — only on the board having
         // something to cross, which it now does.
-        await asAlice.mutation(api.games.tradeTiles, { gameId, indices: [0] });
+        await asAlice.mutation(api.games.passTurn, { gameId });
         await stock(1);
         await t.finishAllScheduledFunctions(vi.runAllTimers);
 
@@ -1966,15 +2037,7 @@ describe("passing a turn", () => {
       await ctx.db.patch("bags", bag!._id, { letters: {} });
     });
 
-  test("is refused while there are still tiles to trade for", async () => {
-    const { gameId, asAlice } = await twoPlayerGame(["A", "D"]);
 
-    // Trading is the way to skip a turn while the bag has anything in it:
-    // giving up a turn should cost you the tiles you could not use.
-    await expect(
-      asAlice.mutation(api.games.passTurn, { gameId }),
-    ).rejects.toThrow(/trade/i);
-  });
 
   test("hands the turn on once the bag is empty", async () => {
     const { t, gameId, asAlice } = await twoPlayerGame(["A", "D"]);
@@ -1996,16 +2059,14 @@ describe("passing a turn", () => {
     ).rejects.toThrow(/not your turn/i);
   });
 
-  test("two rounds of it end a game that is going nowhere", async () => {
+  test("a round of it ends a game that is going nowhere", async () => {
     const { t, gameId, asAlice, asBob } = await twoPlayerGame(["A", "D"]);
     await emptyBag(t, gameId);
 
-    // Nobody can play and nobody can trade: the game is over, rather than
+    // Nobody can play and nobody can draw: the game is over, rather than
     // being handed round for ever.
-    for (let i = 0; i < 2; i++) {
-      await asAlice.mutation(api.games.passTurn, { gameId });
-      await asBob.mutation(api.games.passTurn, { gameId });
-    }
+    await asAlice.mutation(api.games.passTurn, { gameId });
+    await asBob.mutation(api.games.passTurn, { gameId });
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("finished");
@@ -2071,8 +2132,8 @@ describe("the order past games come back in", () => {
 });
 
 describe("turn history", () => {
-  test("records a trade and a pass, not just plays", async () => {
-    const { t, gameId, asAlice, asBob } = await twoPlayerGame([
+  test("records a pass, not just plays, and leaves a swap out", async () => {
+    const { gameId, asAlice, asBob } = await twoPlayerGame([
       "A",
       "D",
       "T",
@@ -2083,21 +2144,14 @@ describe("turn history", () => {
       gameId,
       placements: [at(0, 0, "A"), at(1, 0, "D")],
     });
-    await asBob.mutation(api.games.tradeTiles, { gameId, indices: [0] });
-
-    await t.run(async (ctx) => {
-      const bag = await ctx.db
-        .query("bags")
-        .withIndex("by_game", (q) => q.eq("gameId", gameId))
-        .unique();
-      await ctx.db.patch("bags", bag!._id, { letters: {} });
-    });
-    await asAlice.mutation(api.games.passTurn, { gameId });
+    // A swap is not a turn -- Bob still has his to take -- so it is no row.
+    await asBob.mutation(api.games.swapTiles, { gameId });
+    await asBob.mutation(api.games.passTurn, { gameId });
 
     // A turn nobody can see is a turn that looks like it never happened --
     // which is exactly how a skipped turn reads to the player waiting on it.
     const history = await asAlice.query(api.games.listTurns, { gameId });
-    expect(history.map((h) => h.kind)).toEqual(["play", "trade", "pass"]);
+    expect(history.map((h) => h.kind)).toEqual(["play", "pass"]);
     // AD across the centre, doubled.
     expect(history[0]).toMatchObject({ score: 4, seat: 0 });
     expect(history[1]).toMatchObject({ score: 0, seat: 1 });

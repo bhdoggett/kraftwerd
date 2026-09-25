@@ -17,7 +17,9 @@ export const RULE_CHANGES: readonly RuleChange[] = [
     version: 11,
     changes: [
       "The center square is now a ×2, so the opening word scores double.",
-      "The last round starts when someone goes out — the bag is empty and they've played every tile, blanks included. Everyone else then gets one more turn. It used to start the moment the bag emptied.",
+      "Trading is now a free swap, once a game: trade in your whole rack and still play that turn. Your old letters go back in the bag first, so some may come back.",
+      "You can pass at any time.",
+      "Once the bag is empty, everyone plays out their tiles. You're out when you've played every tile, blanks included. The game ends when everyone is out, or when a full round goes by with nobody playing.",
       "Records start over.",
     ],
   },

@@ -178,14 +178,7 @@
   cursor: default;
 }
 
-/* Picked for trading: dimmed and outlined, so the choice reads as removal. */
-.trading {
-  outline: 2px solid var(--danger);
-  outline-offset: 2px;
-  opacity: 0.6;
-}
-
-/* The swap button stays live while trading, so pressing it again backs out. */
+/* Swap and Pass stay lit while their confirmation shows; pressing again backs out. */
 .actionOn {
   background: var(--danger-soft);
   border-color: var(--danger);

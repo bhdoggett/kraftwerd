@@ -114,10 +114,12 @@ export const BAG_SIZE = Object.values(weights).reduce(
  *    longer or new: a turn pays for its words, its squares, its multiplier
  *    squares and its long words, and nothing else. Scores under 9 do not
  *    compete with these.
- * 11: the centre square is a x2, so the opening word is doubled; and the
- *    last round starts when someone goes out -- the bag empty and every tile
- *    played, blanks included -- rather than the moment the bag empties.
- *    Emptying the bag no longer ends a hand that still has letters to play.
+ * 11: the centre square is a x2, so the opening word is doubled. Trading
+ *    becomes one free swap of the whole rack a game, costing no turn, and
+ *    passing is allowed at any time. The ending is played out: a player who
+ *    has gone out -- bag empty, every tile played, blanks included -- is
+ *    skipped, and the game ends when everyone is out or a full round goes by
+ *    with nobody placing a tile. There is no fixed last round any more.
  */
 export const RULES_VERSION = 11;
 
