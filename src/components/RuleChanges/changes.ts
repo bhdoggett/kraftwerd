@@ -14,6 +14,15 @@ export interface RuleChange {
 
 export const RULE_CHANGES: readonly RuleChange[] = [
   {
+    version: 12,
+    changes: [
+      "Four new ×3 squares, at the middle of each edge between the ×4s.",
+      "Blanks can stack now, like any other tile.",
+      "J, Q, X and Z are gone from the bag, and there are fewer U's. More T, N, S, H, A and E instead. Still 99 tiles, and blanks can still play any letter.",
+      "Records start over.",
+    ],
+  },
+  {
     version: 11,
     changes: [
       "The center square is now a ×2, so the opening word scores double.",

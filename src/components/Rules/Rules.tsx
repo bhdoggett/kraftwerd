@@ -154,10 +154,10 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
             good.
           </li>
           <li>
-            <strong>Stacking has limits</strong> — blanks can't stack, you
-            can't place the same letter that's already there, and you can't
-            stack completely over another word (at least one original
-            letter must remain).
+            <strong>Stacking has limits</strong> — you can't place the same
+            letter that's already there, and you can't stack completely over
+            another word (at least one original letter must remain). Blanks
+            stack like any other tile.
           </li>
           <li>
             <strong>One free swap a game</strong> — trade in your whole rack

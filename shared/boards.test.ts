@@ -127,7 +127,11 @@ describe("boardShapeNamed", () => {
 
   test("the open board gets bonus squares too, not just drawn layouts", () => {
     const shape = boardShapeNamed("Open", 15);
-    expect(shape.bonusSquares.size).toBe(13);
+    expect(shape.bonusSquares.size).toBe(17);
     expect(shape.bonusSquares.get("7,7")).toBe(2);
+    // x3 at the middle of each edge, between the x4s (RULES_VERSION 12).
+    for (const key of ["7,1", "7,13", "1,7", "13,7"]) {
+      expect(shape.bonusSquares.get(key)).toBe(3);
+    }
   });
 });

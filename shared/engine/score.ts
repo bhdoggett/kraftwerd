@@ -73,9 +73,9 @@ interface ScoreOptions {
    * once, to whichever play first covers it -- a square already in `before`
    * has already been paid, tile stacked on top of it or not. A word that
    * crosses two still multiplies in twice, the same way two premium squares
-   * under one word always have in this kind of game -- though the two can
-   * never be different values, since each ring sits on its own rows and
-   * columns (shared/boards.ts).
+   * under one word always have in this kind of game. Two of different
+   * values multiply together: an x4 and an edge x3 on one row make x12
+   * (shared/boards.ts).
    */
   bonusSquares?: ReadonlyMap<string, number>;
 }

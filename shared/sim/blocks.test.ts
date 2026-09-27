@@ -351,21 +351,6 @@ describe("re-lettering a standing tile", () => {
       .some((m) => m.placements.length === 4)).toBe(false);
   });
 
-  test("a blank is never the tile that lands on a standing one", () => {
-    // The rule as written, not as it reads today: a blank may not fill a
-    // stack. At STACK_CAP 2 that bars every rewrite; at 3 it would not.
-    const board = spoiled();
-    const moves = solveWith(board, ["E", "M", "U"], 1, { reletter: 2 });
-
-    for (const move of moves) {
-      for (const p of move.placements) {
-        if (board.has(cellKey(p.x, p.y))) expect(p.isBlank).toBe(false);
-      }
-    }
-    // The blank still does its old work in the gaps.
-    expect(moves.some((m) => m.placements.some((p) => p.isBlank))).toBe(true);
-  });
-
   test("never re-lays a letter as itself, and never claims a cell twice", () => {
     const board = spoiled();
     const moves = solveWith(board, ["E", "M", "U", "E", "A"], 0, { reletter: 2 });

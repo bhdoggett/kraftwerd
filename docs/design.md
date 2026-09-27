@@ -47,6 +47,10 @@ here to anybody else's.
   so a drawn layout whose blocked bars land on one simply goes without it
   (Bars does, at all four of its innermost waypoints): a blocked square
   cannot score a word at all, let alone a multiplied one.
+- **Four x3s at the middle of each edge**, one in from it, halfway between
+  the x4s on that row or column (RULES_VERSION 12), also triangles. A long
+  word along the second row can cross an x4 and one of these, and the two
+  multiply: x12.
 - **Layouts live in `shared/boards.ts`, written as pictures** — `#` blocked,
   `.` open — so a new one is drawn by editing the art rather than listing
   coordinates. Each game is dealt one at random.
@@ -249,6 +253,11 @@ even a closed-off one, because you can always rebuild through it.
 maxed-out square is refused outright, before word or connectivity checks
 even run.
 
+**Blanks stack like any tile** (rules version 12). A blank could not be the
+tile that filled a stack, which at a cap of two barred it from every
+standing tile. Blanks are a whole-game allowance of three, so spending one
+to rewrite a word is a real cost, not a free edit.
+
 **No stack bonus.** Landing on an already-occupied square pays only the words
 it makes. Until rules version 10 it paid +2 on top; that was dropped because
 stacking already pays for itself by making words playable that otherwise
@@ -266,14 +275,13 @@ as any other turn.
 ### 4.8 Word-multiplier squares
 
 **Twelve squares on the four corner diagonals multiply a word that covers
-one**, and so does the centre — §2 says where they sit, in three rings of
-four plus the centre's x2. The multiplier
-applies to **word points only** (§4.1), not to the square bonus (§4.2) or
-the long-word bonus (§4.1): those are paid for building or for length, and
-a square you complete is worth `SQUARE_BONUS` wherever on the board you
-complete it. The long-word bonus is the easiest of them to get wrong, since it is earned by a word
-rather than by a build: it rewards the word's own length, not the ground it
-happens to stand on.
+one**, and so do the centre and the four edge x3s — §2 says where they sit.
+The multiplier applies to **word points only** (§4.1), not to the square
+bonus (§4.2) or the long-word bonus (§4.1): those are paid for building or
+for length, and a square you complete is worth the same wherever on the
+board you complete it. The long-word bonus is the easiest of them to get
+wrong, since it is earned by a word rather than by a build: it rewards the
+word's own length, not the ground it happens to stand on.
 
 **Which ring decides the value** (RULES_VERSION 10): x2 nearest the centre, x3
 in the middle, x4 nearest the corner — the biggest multiplier is the hardest
@@ -287,11 +295,12 @@ readable at a glance before a word ever crosses it:
 | middle | 4 | x3 | triangle |
 | outer | 6 | x4 | square |
 | centre | 0 | x2 | circle around the start dot (RULES_VERSION 11) |
+| edge | 6 along a row or column | x3 | triangle (RULES_VERSION 12) |
 
 **A square pays once, to whoever first covers it.** A square already under a
 tile before the turn began has been spent — extending that word later collects
 nothing, and neither does stacking on top of it (§4.6). A board therefore has
-thirteen of these to give out in a whole game, and they are gone in the order
+seventeen of these to give out in a whole game, and they are gone in the order
 players reach them.
 
 | play | word points | paid |
@@ -346,6 +355,13 @@ worth keeping.
   scores do not compete with these.
 
 ### 5.1 Distribution
+
+**Rules version 12: J, Q, X and Z are out of the bag.** They stalled more
+racks than they made plays, and words that need them are still playable with
+a blank. U drops from 6 to 3, since it was padded to go with the Q. The seven
+freed tiles went where the bag ran short of the 2–5 letter dictionary: T 3→5,
+N 4→5, S 4→5, H 2→3, A 8→9, E 10→11. Still 99 tiles. The rest of this
+section is how the distribution got here.
 
 *This replaced an earlier corpus-derived distribution* (letter frequency
 across 2–5 letter dictionary words, with a floor lifting J/Q/X/Z out of

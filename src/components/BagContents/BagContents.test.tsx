@@ -24,16 +24,16 @@ describe("reading a letter's count", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^E:/ }));
 
-    expect(screen.getByText(/4 of 10 still out there/)).toBeDefined();
+    expect(screen.getByText(/4 of 11 still out there/)).toBeDefined();
   });
 
   test("tapping another letter moves the readout to it", () => {
-    open({ E: 4, Z: 1 });
+    open({ E: 4, K: 1 });
 
     fireEvent.click(screen.getByRole("button", { name: /^E:/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Z:/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^K:/ }));
 
-    expect(screen.queryByText(/4 of 10 still out there/)).toBeNull();
+    expect(screen.queryByText(/4 of 11 still out there/)).toBeNull();
     expect(screen.getByText(/1 of 1 still out there/)).toBeDefined();
   });
 
@@ -44,7 +44,7 @@ describe("reading a letter's count", () => {
     fireEvent.click(e);
     fireEvent.click(e);
 
-    expect(screen.queryByText(/4 of 10 still out there/)).toBeNull();
+    expect(screen.queryByText(/4 of 11 still out there/)).toBeNull();
   });
 
   test("a letter with none left still answers", () => {
@@ -52,8 +52,18 @@ describe("reading a letter's count", () => {
     // a bug -- so tapping it has to say so rather than go quiet.
     open({});
 
-    fireEvent.click(screen.getByRole("button", { name: /^Z:/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^K:/ }));
 
     expect(screen.getByText(/0 of 1 still out there/)).toBeDefined();
+  });
+
+  test("lists the letters A to Z", () => {
+    open({});
+
+    const letters = screen
+      .getAllByRole("button", { name: /still out there/ })
+      .map((b) => b.textContent);
+    expect(letters).toEqual([...letters].sort());
+    expect(letters[0]).toBe("A");
   });
 });

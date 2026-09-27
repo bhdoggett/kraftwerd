@@ -72,8 +72,7 @@ export type Fault =
   | { reason: "disconnected" }
   | { reason: "invalid-words"; words: string[] }
   | { reason: "erased"; words: string[] }
-  | { reason: "unchanged"; at: { x: number; y: number } }
-  | { reason: "blank-on-stack"; at: { x: number; y: number } };
+  | { reason: "unchanged"; at: { x: number; y: number } };
 
 type Legality ={ ok: true } | { ok: false; faults: Fault[] };
 
@@ -231,19 +230,6 @@ export function validateTurn(
     const priorStack = before.get(key)?.stacked ?? 0;
     if (priorStack >= STACK_CAP) {
       misplaced.push({ reason: "stack-full", at });
-      continue;
-    }
-
-    /*
-     * A blank may not be the tile that closes a square.
-     *
-     * Blanks score like letters now, and a square that is full cannot be
-     * answered — so closing one with a tile that can be any letter would let
-     * a player end an argument they could not otherwise win. Starting a
-     * square with a blank is fine: the next player can still build on it.
-     */
-    if (p.isBlank && priorStack + 1 >= STACK_CAP && priorStack > 0) {
-      misplaced.push({ reason: "blank-on-stack", at });
       continue;
     }
   }

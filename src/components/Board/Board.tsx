@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { boardShapeNamed } from "../../../shared/boards";
 import type { Placement } from "../../../shared/engine/score";
 import { followPointer } from "../../lib/followPointer";
-import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
+import { CentreIcon, DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import styles from "./Board.module.css";
 
 interface BoardTile {
@@ -114,6 +114,45 @@ export function Board({
    */
   const focus = useRef<{ x: number; y: number } | null>(null);
   const zoomWas = useRef(1);
+
+  /**
+   * How far the board has to shrink to fit its box, 1 when it already fits.
+   *
+   * The base cell size is picked by screen width alone, so a short or narrow
+   * window -- a laptop with the browser's bars open, a split screen -- cut
+   * the board off on load and left it to be found by panning. This measures
+   * the box instead and scales the cells down until every square shows.
+   * Applied under the pinch and wheel zoom rather than instead of it, so
+   * zooming in from a fitted board still works, and never above 1: a roomy
+   * box keeps the full-size squares rather than blowing them up.
+   */
+  const [fit, setFit] = useState(1);
+
+  useLayoutEffect(() => {
+    const el = viewport.current;
+    if (el === null) return;
+
+    const measure = () => {
+      const box = getComputedStyle(el);
+      const base = parseFloat(box.getPropertyValue("--cell-base")) || 36;
+      const width =
+        el.clientWidth - parseFloat(box.paddingLeft) - parseFloat(box.paddingRight);
+      const height =
+        el.clientHeight - parseFloat(box.paddingTop) - parseFloat(box.paddingBottom);
+      // The grid's own chrome, which does not scale: a 1px gap between every
+      // pair of squares, 1px of padding and 1px of border on each side.
+      const chrome = boardSize - 1 + 4;
+      const scale = Math.min(width - chrome, height - chrome) / (boardSize * base);
+      // Hundredths, as the zoom is, so a resize of a pixel does not re-lay out
+      // every square.
+      setFit(Math.min(1, Math.floor(scale * 100) / 100));
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [boardSize]);
 
   /*
    * Mostly for looking closer, but it has to go the other way too: the base
@@ -301,14 +340,13 @@ export function Board({
       if (badCells?.has(k)) classes.push(styles.inBadWord);
       if (recentCells?.has(k)) classes.push(styles.recent);
       if (awaiting) classes.push(styles.tile, styles.awaiting);
-      if (empty && !awaiting) {
-        classes.push(styles.open);
-        if (isCentre) classes.push(styles.centre);
-      }
+      if (empty && !awaiting) classes.push(styles.open);
       // Single-use: gated on `empty`, so the mark is simply gone for good
       // once any tile -- this play's or a later one -- ever lands here. No
       // separate "spent" state to track.
-      const showBonusMark = empty && !awaiting && bonusMultiplier !== undefined;
+      // The centre always shows its mark while empty, bonus or not: it is
+      // also where the first word has to go.
+      const showBonusMark = empty && !awaiting && (bonusMultiplier !== undefined || isCentre);
       if (playable && canPlace && !awaiting) {
         classes.push(styles.playable);
         if (empty) classes.push(styles.armed);
@@ -355,7 +393,7 @@ export function Board({
           <span className={styles.glyph}>{(stage ?? tile)?.letter ?? ""}</span>
           {showBonusMark && (
             <span className={styles.bonusMark}>
-              {bonusMultiplier === 2 && <DoubleWordIcon />}
+              {isCentre ? <CentreIcon /> : bonusMultiplier === 2 && <DoubleWordIcon />}
               {bonusMultiplier === 3 && <TripleWordIcon />}
               {bonusMultiplier === 4 && <QuadWordIcon />}
             </span>
@@ -369,7 +407,7 @@ export function Board({
     <div
       ref={viewport}
       className={styles.viewport}
-      style={{ "--cell-scale": zoom } as React.CSSProperties}
+      style={{ "--cell-scale": zoom * fit } as React.CSSProperties}
       onPointerDown={(e) => {
         pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
         // Cleared for every press, not only for one starting on a staged

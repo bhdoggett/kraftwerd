@@ -131,6 +131,21 @@ export function DoubleWordIcon({ size = 16 }: IconProps) {
   );
 }
 
+/**
+ * The centre: the x2 ring with the start dot inside it, in one drawing. They
+ * used to be two elements, the dot a CSS box and the ring an SVG, each
+ * sized as a share of the cell and rounded to whole pixels on its own -- so
+ * at some zooms the ring sat a pixel off the dot.
+ */
+export function CentreIcon({ size = 16 }: IconProps) {
+  return (
+    <svg {...boardMark(size)}>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function TripleWordIcon({ size = 16 }: IconProps) {
   return (
     <svg {...boardMark(size)}>

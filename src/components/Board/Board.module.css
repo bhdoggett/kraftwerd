@@ -39,10 +39,11 @@
    * still has to scroll -- it just does not need bars to say so.
    */
   scrollbar-width: none;
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.06);
+  /*
+   * No box of its own: no background, border, shadow or padding. The grid's
+   * own frame is the board's edge, and with the board fitted to this space
+   * (`fit` in Board.tsx) padding only made the squares smaller.
+   */
   /*
    * A fixed box, not one that grows to fit. Zooming has to change what is
    * inside the board, never the space the board takes: a container that grew
@@ -52,7 +53,6 @@
   height: min(72vh, 620px);
   display: grid;
   place-items: center;
-  padding: var(--space-3);
 }
 
 /* 15 columns at full size overflow a phone, so the squares shrink instead. */
@@ -61,7 +61,6 @@
     --cell-base: 22px;
     /* Leaves room for the rack and the play panel without scrolling. */
     height: 46vh;
-    padding: var(--space-2);
   }
 }
 
@@ -223,22 +222,6 @@
   background: var(--cell-blocked);
   box-shadow: var(--blocked-ring);
   cursor: default;
-}
-
-/*
- * Where the first word has to start. A small filled dot, same ink as the
- * rest of these marks (--cell-line). The centre is also a x2 square
- * (RULES_VERSION 11), so the x2 ring is drawn around the dot: a target that
- * says both things at once.
- */
-.centre::before {
-  content: "";
-  grid-area: cell;
-  place-self: center;
-  width: calc(var(--cell-size) * 0.22);
-  height: calc(var(--cell-size) * 0.22);
-  background: var(--cell-line);
-  border-radius: 50%;
 }
 
 /*

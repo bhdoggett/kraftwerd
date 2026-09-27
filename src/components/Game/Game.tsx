@@ -87,8 +87,6 @@ function describeFault(legality: Fault): string {
       return "The first word has to cover the centre square.";
     case "disconnected":
       return "Every tile must connect to the tiles already on the board.";
-    case "blank-on-stack":
-      return "A blank cannot be the tile that closes a square.";
     case "unchanged":
       return "A tile laid on another has to change the letter underneath it.";
     case "erased":
@@ -716,10 +714,6 @@ export function Game({
         refuse(`That square is full — ${STACK_CAP} tiles is the limit.`);
         return;
       }
-      if (moving.isBlank && blankBlocked(x, y)) {
-        refuse("A blank can only go on an empty square.");
-        return;
-      }
     }
 
     setPending((current) => moveStagedTo(current, origin, x, y));
@@ -755,25 +749,14 @@ export function Game({
     refusalTimer.current = setTimeout(() => setRefusal(null), 2600);
   }
 
-  /** A blank may start a square but not close one, so it bounces off a stack. */
-  function blankBlocked(x: number, y: number) {
-    const deep = boards?.before.get(cellKey(x, y))?.stacked ?? 0;
-    return deep > 0 && deep + 1 >= STACK_CAP;
-  }
-
   function place(x: number, y: number) {
     if (selected === null || me === undefined) return;
 
     if (selected.kind === "blank") {
-      // A full square takes nothing, and a blank cannot be the tile that
-      // closes one: no point asking what it stands for when it cannot land.
+      // A full square takes nothing: no point asking what the blank stands
+      // for when it cannot land.
       if (isFull(x, y)) {
         refuse(`That square is full — ${STACK_CAP} tiles is the limit.`);
-        setSelected(null);
-        return;
-      }
-      if (blankBlocked(x, y)) {
-        refuse("A blank can only go on an empty square.");
         setSelected(null);
         return;
       }

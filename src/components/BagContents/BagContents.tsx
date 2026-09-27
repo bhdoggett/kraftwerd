@@ -39,9 +39,9 @@ export function BagContents({
   const full = newBag(RACK);
   const total = tilesLeft(full);
 
-  const letters = Object.entries(full).sort(
-    ([a, na], [b, nb]) => nb - na || a.localeCompare(b),
-  );
+  // A to Z, so a letter is found where you look for it. This was commonest
+  // first, which put every letter somewhere you had to hunt for.
+  const letters = Object.entries(full).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <div className={styles.bag}>

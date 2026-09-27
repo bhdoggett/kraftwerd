@@ -158,15 +158,10 @@ describe("racks drawn from the real bag", () => {
     expect(dry / racks.length).toBeLessThan(0.06);
   });
 
-  test("the awkward letters turn up often enough to notice, without crowding", () => {
-    const letters = racks.flat();
-    const hostile = letters.filter((l) => "JQXZ".includes(l)).length;
-    const share = hostile / letters.length;
-
-    // One of each in a bag of sixty-two: rare enough to stay interesting,
-    // common enough that a player meets them.
-    expect(share).toBeGreaterThan(0.03);
-    expect(share).toBeLessThan(0.12);
+  test("the awkward letters are never dealt (rules version 12)", () => {
+    // J, Q, X and Z left the bag: they stalled more racks than they made
+    // plays. Words that need them are still playable with a blank.
+    expect(racks.flat().filter((l) => "JQXZ".includes(l))).toEqual([]);
   });
 
   test("a rack can still spell something despite the awkward letters", () => {

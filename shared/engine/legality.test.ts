@@ -353,7 +353,7 @@ describe("laying a tile on top of another", () => {
 describe("blanks on a stack", () => {
   const bounds: Bounds = { width: 15, height: 15, centre: { x: 7, y: 7 } };
 
-  test("a blank cannot be the tile that closes a square", () => {
+  test("a blank may land on a tile (rules version 12)", () => {
     const board = makeBoard([
       { x: 7, y: 7, letter: "A", stacked: 1 },
       { x: 8, y: 7, letter: "T", stacked: 1 },
@@ -366,8 +366,9 @@ describe("blanks on a stack", () => {
       bounds,
     );
 
-    expect(result).toEqual({ ok: false, faults: [{ reason: "blank-on-stack", at: { x: 7, y: 7 } }] });
+    expect(result).toEqual({ ok: true });
   });
+
 
   test("a real letter may close it, and a blank may start one", () => {
     const board = makeBoard([

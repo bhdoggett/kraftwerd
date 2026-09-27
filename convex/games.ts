@@ -1375,8 +1375,6 @@ function describeFault(legality: Fault): string {
       return "The first word has to cover the centre square";
     case "disconnected":
       return "Every tile must connect to the tiles already on the board";
-    case "blank-on-stack":
-      return `A blank cannot be the tile that closes a square (${legality.at.x}, ${legality.at.y})`;
     case "unchanged":
       return `The tile at (${legality.at.x}, ${legality.at.y}) is the same letter that is already there — a tile has to change the letter it covers`;
     case "erased":

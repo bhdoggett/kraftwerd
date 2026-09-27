@@ -105,9 +105,12 @@ export interface BoardShape {
  * the *same* ring on its way past (they sit two apart on one row or column),
  * and each fresh one it crosses multiplies in independently (see
  * ScoreOptions.bonusSquares in shared/engine/score.ts) -- a real, if
- * telegraphed and snipeable, jackpot. The three rings sit on entirely
- * different rows and columns, so a single word can never cross two of
- * different value.
+ * telegraphed and snipeable, jackpot.
+ *
+ * Four more x3s sit at the middle of each edge, one in from it, between the
+ * x4s on that row or column (RULES_VERSION 12). They share a line with the
+ * x4s, so a long word along the second row can cross an x4 and an x3 and
+ * multiply by twelve.
  *
  * A board would need to be at least 6x6 for these not to collide with each
  * other; every real layout is 15x15, so this is more a
@@ -125,6 +128,16 @@ function bonusSquaresFor(size: number): ReadonlyMap<string, number> {
         squares.set(`${middle + sx * k},${middle + sy * k}`, multiplier);
       }
     }
+  }
+  // x3 at the middle of each edge, one in from it (RULES_VERSION 12): the
+  // same row or column as the x4s, halfway between them.
+  for (const [x, y] of [
+    [middle, 1],
+    [middle, size - 2],
+    [1, middle],
+    [size - 2, middle],
+  ]) {
+    squares.set(`${x},${y}`, 3);
   }
   return squares;
 }

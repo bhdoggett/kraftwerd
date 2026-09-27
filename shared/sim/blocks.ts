@@ -496,20 +496,15 @@ function solveBlock(
     }
 
     /*
-     * A blank may stand for anything -- subject to the rule as written, not as
-     * it happens to read today. A blank may not be the tile that fills a stack,
-     * which at STACK_CAP 2 bars it from every standing tile and from none of
-     * the gaps. Raise the cap and the same line lets a blank land on a tile
-     * that is not yet the last one.
+     * A blank may stand for anything, on a gap or on a standing tile (rules
+     * version 12 let blanks stack).
      *
      * On a gap this is the one place in the search where a blank does its real
      * work. Elsewhere it substitutes for a letter in a word the rack nearly
      * spells, which is worth a few points. Here it closes a square the rack
      * could not close at all, which is worth the flat SQUARE_BONUS.
      */
-    const priorStack = standing?.stacked ?? 0;
-    const barred = priorStack + 1 >= STACK_CAP && priorStack > 0;
-    if (blanks > 0 && !barred) {
+    if (blanks > 0) {
       for (const letter of ALPHABET) {
         if (tried.has(letter) || letter === standing?.letter) continue;
         tryLetter(letter, true, letters, blanks - 1, spent);

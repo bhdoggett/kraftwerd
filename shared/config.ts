@@ -120,8 +120,12 @@ export const BAG_SIZE = Object.values(weights).reduce(
  *    has gone out -- bag empty, every tile played, blanks included -- is
  *    skipped, and the game ends when everyone is out or a full round goes by
  *    with nobody placing a tile. There is no fixed last round any more.
+ * 12: four x3 squares join the board, at the middle of each edge between
+ *    the x4s (design.md §4.8). Blanks may stack. The bag drops J, Q, X and
+ *    Z, and U from 6 to 3, for more T, N, S, H, A and E (design.md §5.1);
+ *    still 99 tiles.
  */
-export const RULES_VERSION = 11;
+export const RULES_VERSION = 12;
 
 /**
  * How many words the shipped dictionary holds.
