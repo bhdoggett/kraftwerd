@@ -1,8 +1,11 @@
 <!--
+  No double hyphens anywhere in these comments: XML forbids them, and a
+  favicon that fails to parse simply does not show.
+
   The K as the header's mark shows it: a Royal Gold tile sitting in its
   square on the dark board, with the squares around it cut off by the edge
-  of the picture. The board's own proportions -- a hairline of grid at 1/36
-  of a square, an edge drawn inside the tile at 3/34 of one -- so this is
+  of the picture. The board's own proportions: a hairline of grid at 1/36
+  of a square, an edge drawn inside the tile at 3/34 of one. So this is
   the game zoomed in, not a drawing of it.
 
   The letter is Readex Pro Bold's K as an outline, not text: an SVG favicon
@@ -16,10 +19,10 @@
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
   <!-- The grid lines are this showing through the gaps between squares:
-       dark theme's --cell-line, Pacific at 30% on black. -->
+       dark theme's cell-line token, Pacific at 30% on black. -->
   <rect width="180" height="180" fill="#0d373d"/>
 
-  <!-- The eight squares around it, cropped: dark theme's --cell-empty. -->
+  <!-- The eight squares around it, cropped: dark theme's cell-empty token. -->
   <g fill="#060608">
     <rect x="-124" y="-124" width="140" height="140"/>
     <rect x="20" y="-124" width="140" height="140"/>
