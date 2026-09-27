@@ -1,0 +1,58 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.scores {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.scores li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.you {
+  font-weight: 700;
+}
+
+.score {
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.button,
+.secondary {
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-4);
+  font-weight: 600;
+}
+
+.button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.secondary {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+}

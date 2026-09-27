@@ -239,11 +239,19 @@ export default defineSchema({
      * invitations existed are all seated players; absent reads as "joined".
      */
     status: v.optional(v.union(v.literal("invited"), v.literal("joined"))),
+    /**
+     * The game has finished and this player has not been told yet. Set on
+     * every person at the table when it ends, cleared when they dismiss the
+     * game-over notice. Absent on games that ended before the notice existed,
+     * which is what keeps it from announcing a player's whole history at once.
+     */
+    resultPending: v.optional(v.boolean()),
   })
     .index("by_game", ["gameId"])
     .index("by_game_and_user", ["gameId", "userId"])
     .index("by_game_and_seat", ["gameId", "seat"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_user_and_resultPending", ["userId", "resultPending"]),
 
   /**
    * A friendship, stored as a single row rather than one per direction.

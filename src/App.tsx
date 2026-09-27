@@ -9,6 +9,8 @@ import { Swatches } from "./components/Swatches/Swatches";
 import { Lobby } from "./components/Lobby/Lobby";
 import { Menu } from "./components/Menu/Menu";
 import { MiniBoard } from "./components/MiniBoard/MiniBoard";
+import { FriendRequestsNotice } from "./components/FriendRequests/FriendRequests";
+import { GameOverNotice } from "./components/GameOver/GameOver";
 import { RuleChangesNotice } from "./components/RuleChanges/RuleChanges";
 import { RulesDialog } from "./components/Rules/Rules";
 import { authClient } from "./lib/auth-client";
@@ -89,6 +91,11 @@ export default function App() {
       <main className={styles.main}>
         <Authenticated>
           <RuleChangesNotice />
+          <GameOverNotice
+            currentGameId={route.name === "game" ? route.gameId : null}
+            onOpen={(gameId) => navigate({ name: "game", gameId })}
+          />
+          <FriendRequestsNotice />
           {route.name === "game" ? (
             <Game
               gameId={route.gameId as Id<"games">}

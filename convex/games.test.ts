@@ -2765,3 +2765,37 @@ describe("playing the same people again", () => {
     ).rejects.toThrow("never got going");
   });
 });
+
+describe("the game-over notice", () => {
+  test("tells everyone at the table once, until they have seen it", async () => {
+    const { gameId, asAlice, asBob } = await twoPlayerGame(["A", "B"]);
+
+    // A round of passes ends it.
+    await asAlice.mutation(api.games.passTurn, { gameId });
+    await asBob.mutation(api.games.passTurn, { gameId });
+
+    const forAlice = await asAlice.query(api.games.pendingResults, {});
+    expect(forAlice).toHaveLength(1);
+    expect(forAlice[0]).toMatchObject({ gameId, winners: ["Alice", "Bob"] });
+    expect(forAlice[0]?.scores).toHaveLength(2);
+
+    await asAlice.mutation(api.games.seeResult, { gameId });
+    expect(await asAlice.query(api.games.pendingResults, {})).toHaveLength(0);
+    // Bob has not looked yet.
+    expect(await asBob.query(api.games.pendingResults, {})).toHaveLength(1);
+  });
+
+  test("is not sent to whoever quit", async () => {
+    const { gameId, asAlice, asBob } = await twoPlayerGame(["A", "D"]);
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+    await asBob.mutation(api.games.resignGame, { gameId });
+
+    expect(await asBob.query(api.games.pendingResults, {})).toHaveLength(0);
+    const forAlice = await asAlice.query(api.games.pendingResults, {});
+    expect(forAlice[0]).toMatchObject({ youWon: true });
+  });
+});
+

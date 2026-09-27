@@ -1172,6 +1172,14 @@ async function finishGame(
     finishedAt: Date.now(),
   });
 
+  // Tell everyone still at the table how it came out (`pendingResults`).
+  // Not whoever quit -- they know -- and not the machines.
+  for (const player of eligible) {
+    if (player.bot === undefined && player.status !== "invited") {
+      await ctx.db.patch("players", player._id, { resultPending: true });
+    }
+  }
+
   /*
    * Only games played under the rules in force count toward a record.
    *
@@ -1807,5 +1815,70 @@ export const listOpenGames = query({
     );
 
     return { games: rows.filter((r) => r !== null) };
+  },
+});
+
+/**
+ * Finished games the viewer has not been told the result of, newest last.
+ *
+ * A game used to end and go straight into the lobby's past games, so a result
+ * you were not watching for arrived as a row you had to notice. This is what
+ * the game-over notice reads instead.
+ */
+export const pendingResults = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUser(ctx);
+
+    const rows = await ctx.db
+      .query("players")
+      .withIndex("by_user_and_resultPending", (q) =>
+        q.eq("userId", userId).eq("resultPending", true),
+      )
+      .take(10);
+
+    const results = [];
+    for (const row of rows) {
+      const game = await ctx.db.get("games", row.gameId);
+      if (game === null || game.status !== "finished") continue;
+
+      const seated = (await seatedAt(ctx, game._id)).filter(
+        (p) => p.status !== "invited",
+      );
+      const friends =
+        game.isPublic === true
+          ? await friendIdsOf(ctx, userId)
+          : new Set<Id<"users">>();
+      const names = await namesFor(ctx, userId, game, seated, friends);
+      const winners = game.winnerIds ?? [];
+
+      results.push({
+        gameId: game._id,
+        finishedAt: game.finishedAt ?? 0,
+        youWon: winners.includes(userId),
+        winners: winners.map((id) => names.get(id) ?? "Player"),
+        scores: seated
+          .map((p) => ({
+            name: names.get(p.userId) ?? "Player",
+            score: p.score,
+            you: p.userId === userId,
+          }))
+          .sort((a, b) => b.score - a.score),
+      });
+    }
+    return results.sort((a, b) => a.finishedAt - b.finishedAt);
+  },
+});
+
+/** The viewer has seen how this game came out; stop announcing it. */
+export const seeResult = mutation({
+  args: { gameId: v.id("games") },
+  handler: async (ctx, args) => {
+    const userId = await requireUser(ctx);
+    const row = await seatOf(ctx, args.gameId, userId);
+    if (row !== null && row.resultPending === true) {
+      await ctx.db.patch("players", row._id, { resultPending: undefined });
+    }
+    return null;
   },
 });
