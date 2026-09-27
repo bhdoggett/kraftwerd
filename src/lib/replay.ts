@@ -35,10 +35,25 @@ interface ReplayTile {
 export function boardAfter(
   turns: readonly ReplayTurn[],
   upTo: number,
+  /**
+   * Part of the next turn as well: only its placements on these squares. A
+   * turn made in separate spots is replayed a spot at a time, and this is the
+   * board partway through one.
+   */
+  partly?: ReadonlySet<string>,
 ): ReplayTile[] {
   const board = new Map<string, ReplayTile>();
+  const whole = turns.slice(0, Math.max(0, upTo));
+  const next = partly === undefined ? undefined : turns[Math.max(0, upTo)];
+  const counted: ReplayTurn[] =
+    next === undefined
+      ? whole
+      : [
+          ...whole,
+          { ...next, placements: next.placements.filter((p) => partly!.has(`${p.x},${p.y}`)) },
+        ];
 
-  for (const turn of turns.slice(0, Math.max(0, upTo))) {
+  for (const turn of counted) {
     for (const p of turn.placements) {
       const key = `${p.x},${p.y}`;
       const sitting = board.get(key);

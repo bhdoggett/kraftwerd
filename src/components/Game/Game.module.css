@@ -191,6 +191,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The words a spot made, between the name and the points. */
+.recapWords {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 @keyframes refusal-in {
   from {
     opacity: 0;

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   latestPlayByOthers,
+  playSpots,
   playsInHistorySinceYourTurn,
   playsSinceYourTurn,
 } from "./recap";
@@ -141,5 +142,48 @@ describe("what changed while you were gone, read off the history", () => {
     const turns = [turn(1, "ann", [[0, 0]]), turn(2, "bob", [[1, 0]])];
 
     expect(playsInHistorySinceYourTurn(turns, "you")).toEqual([play(2, ["1,0"])]);
+  });
+});
+
+describe("a turn split into the places it was played", () => {
+  const tile = (x: number, y: number, letter: string) => ({ x, y, letter, isBlank: false });
+
+  test("tiles side by side are one spot", () => {
+    const after = [tile(0, 0, "C"), tile(1, 0, "A"), tile(2, 0, "T")];
+    const spots = playSpots(after, after);
+    expect(spots).toHaveLength(1);
+    expect(spots[0]?.words).toEqual(["CAT"]);
+  });
+
+  test("two places on the board are two spots, top to bottom", () => {
+    // AT already down the middle; this turn lays S under it and C far above.
+    const after = [
+      tile(5, 0, "C"), tile(6, 0, "A"), tile(7, 0, "T"),
+      tile(5, 5, "A"), tile(5, 6, "T"), tile(5, 7, "S"),
+    ];
+    const placed = [tile(5, 7, "S"), tile(5, 0, "C"), tile(6, 0, "A"), tile(7, 0, "T")];
+    const spots = playSpots(after, placed);
+
+    expect(spots.map((s) => [...s.cells].sort())).toEqual([
+      ["5,0", "6,0", "7,0"],
+      ["5,7"],
+    ]);
+    expect(spots[1]?.words).toEqual(["ATS"]);
+  });
+
+  test("tiles bridged by a letter already down are one spot", () => {
+    // C . T with an A already between them: one word, so one spot.
+    const after = [tile(0, 0, "C"), tile(1, 0, "A"), tile(2, 0, "T")];
+    const spots = playSpots(after, [tile(0, 0, "C"), tile(2, 0, "T")]);
+    expect(spots).toHaveLength(1);
+  });
+
+  test("a word laid along another keeps its cross words, and stays one spot", () => {
+    //  A T        AT already down; ON laid under it makes AO and TN
+    //  O N        down as well (the letters need not be real words here).
+    const after = [tile(0, 0, "A"), tile(1, 0, "T"), tile(0, 1, "O"), tile(1, 1, "N")];
+    const spots = playSpots(after, [tile(0, 1, "O"), tile(1, 1, "N")]);
+    expect(spots).toHaveLength(1);
+    expect(spots[0]?.words.sort()).toEqual(["AO", "ON", "TN"].sort());
   });
 });

@@ -1,4 +1,6 @@
-import { cellKey } from "../../shared/engine/board";
+import { cellKey, makeBoard, type TileSpec } from "../../shared/engine/board";
+import { runsThrough } from "../../shared/engine/runs";
+import { boardAfter } from "./replay";
 
 /** A tile on the board, as the game view reports it. */
 interface PlacedTile {
@@ -111,3 +113,106 @@ export function playsInHistorySinceYourTurn(
     cells: new Set(t.placements.map((p) => cellKey(p.x, p.y))),
   }));
 }
+
+/** One place a turn played, and the words it made there. */
+export interface PlaySpot {
+  cells: Set<string>;
+  words: string[];
+}
+
+/**
+ * A turn split into the separate places it was played, in reading order: top
+ * to bottom, then left to right.
+ *
+ * A turn can lay words in more than one part of the board, and replaying them
+ * all at once says where but not what went with what. Tiles belong to one
+ * spot when they share a word this turn made -- so tiles side by side stay
+ * together, as do tiles bridged by a letter already on the board, and a play
+ * that only works as a whole, like an L closing a square, is never pulled
+ * apart. Two spots share no word, so each reads as a play of its own.
+ *
+ * `after` is the board with the whole turn on it.
+ */
+export function playSpots(
+  after: readonly TileSpec[],
+  placements: readonly { x: number; y: number }[],
+): PlaySpot[] {
+  const board = makeBoard([...after]);
+  const keys = placements.map((p) => cellKey(p.x, p.y));
+  const parent = new Map(keys.map((k) => [k, k]));
+  const find = (k: string): string => {
+    const up = parent.get(k)!;
+    if (up === k) return k;
+    const root = find(up);
+    parent.set(k, root);
+    return root;
+  };
+
+  const runs = runsThrough(board, placements);
+  for (const run of runs) {
+    const mine = run.cells.map((c) => cellKey(c.x, c.y)).filter((k) => parent.has(k));
+    for (const k of mine.slice(1)) parent.set(find(k), find(mine[0]));
+  }
+
+  const groups = new Map<string, Set<string>>();
+  for (const k of keys) {
+    const root = find(k);
+    const cells = groups.get(root) ?? new Set<string>();
+    cells.add(k);
+    groups.set(root, cells);
+  }
+
+  const topLeft = (cells: Set<string>) =>
+    [...cells]
+      .map((k) => k.split(",").map(Number) as [number, number])
+      .reduce((best, [x, y]) => (y < best[1] || (y === best[1] && x < best[0]) ? [x, y] : best));
+
+  return [...groups.values()]
+    .map((cells) => ({
+      cells,
+      words: runs
+        .filter((r) => r.cells.some((c) => cells.has(cellKey(c.x, c.y))))
+        .map((r) => r.word),
+    }))
+    .sort((a, b) => {
+      const [ax, ay] = topLeft(a.cells);
+      const [bx, by] = topLeft(b.cells);
+      return ay - by || ax - bx;
+    });
+}
+
+/** One step of a replay: a spot of a turn, with where it sits in the history. */
+export interface SpotStep extends PlaySpot {
+  turnNumber: number;
+  /** The turn's index in the history. */
+  at: number;
+  /** Every square of this turn shown so far, this spot's included. */
+  upTo: Set<string>;
+  /** The turn's last spot, which is where its points are said. */
+  last: boolean;
+}
+
+/** The plays as replay steps, a spot at a time (`playSpots`). */
+export function spotSteps(
+  history: readonly (Parameters<typeof boardAfter>[0][number] & { turnNumber: number })[],
+  plays: readonly { turnNumber: number }[],
+): SpotStep[] {
+  return plays.flatMap((play) => {
+    const at = history.findIndex((t) => t.turnNumber === play.turnNumber);
+    const turn = history[at];
+    if (turn === undefined) return [];
+    const spots = playSpots(boardAfter(history, at + 1), turn.placements);
+    const upTo = new Set<string>();
+    return spots.map((spot, i) => {
+      for (const k of spot.cells) upTo.add(k);
+      return {
+        ...spot,
+        turnNumber: play.turnNumber,
+        at,
+        upTo: new Set(upTo),
+        last: i === spots.length - 1,
+      };
+    });
+  });
+}
+

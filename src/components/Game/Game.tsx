@@ -38,6 +38,7 @@ import {
   latestPlayByOthers,
   playsInHistorySinceYourTurn,
   playsSinceYourTurn,
+  spotSteps,
 } from "../../lib/recap";
 import { TwoLetterWordsDialog } from "../TwoLetterWords/TwoLetterWords";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
@@ -429,13 +430,6 @@ export function Game({
       : null;
   const liveTurn = livePlay?.turnNumber;
 
-  // Its moment is a play's length; a newer play landing sooner replaces it.
-  useEffect(() => {
-    if (liveTurn === undefined) return;
-    const done = setTimeout(() => setLiveShown(liveTurn), RECAP_PLAY_MS);
-    return () => clearTimeout(done);
-  }, [liveTurn]);
-
   const yourTurn =
     view?.game.status === "active" &&
     view.yourSeat !== null &&
@@ -506,7 +500,18 @@ export function Game({
           ),
     [history, viewerId, openedAtTurn],
   );
-  const replayCount = replayPlays?.length ?? 0;
+
+  /*
+   * The same plays, a spot at a time: a turn laid in two parts of the board is
+   * replayed as two steps, top to bottom and left to right, each naming the
+   * words it made (`playSpots`). The card's points go with a turn's last spot,
+   * since the history scores the turn as a whole.
+   */
+  const replaySteps = useMemo(
+    () => (history === undefined || replayPlays === null ? null : spotSteps(history, replayPlays)),
+    [history, replayPlays],
+  );
+  const replayCount = replaySteps?.length ?? 0;
 
   /*
    * The replay runs off the history, because rewinding a stacked square means
@@ -519,15 +524,46 @@ export function Game({
   /** Whether the board on screen is anything but the live one. */
   const recapActive = recapLoading || recapping;
 
-  /** The play being added right now: none before the first, none after the last. */
+  /** The spot being added right now: none before the first, none after the last. */
   const recapPlay =
-    recapping && recapPhase > 0 ? replayPlays?.[recapPhase - 1] : undefined;
+    recapping && recapPhase > 0 ? replaySteps?.[recapPhase - 1] : undefined;
 
   /** That play in words: who made it, what it spelled and what it scored. */
   const recapTurn =
     recapPlay === undefined
       ? undefined
       : history?.find((t) => t.turnNumber === recapPlay.turnNumber);
+
+  /*
+   * A play landing while you watch goes a spot at a time as well, off the
+   * history once it arrives. Until then it lights up whole, as it always did.
+   */
+  const liveSteps = useMemo(
+    () =>
+      history === undefined || livePlay === null
+        ? null
+        : spotSteps(history, [livePlay]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the turn, not the object
+    [history, liveTurn],
+  );
+  const [liveStep, setLiveStep] = useState<{ turn: number; index: number } | null>(null);
+  const liveIndex = liveStep !== null && liveStep.turn === liveTurn ? liveStep.index : 0;
+  const liveSpot = liveSteps?.[liveIndex];
+  const liveSpotCount = liveSteps?.length ?? 0;
+
+  // Each spot gets a play's length; after the last, the play has had its moment.
+  // A newer play landing sooner replaces it.
+  useEffect(() => {
+    if (liveTurn === undefined) return;
+    const next = setTimeout(() => {
+      if (liveIndex + 1 < liveSpotCount) setLiveStep({ turn: liveTurn, index: liveIndex + 1 });
+      else setLiveShown(liveTurn);
+    }, RECAP_PLAY_MS);
+    return () => clearTimeout(next);
+  }, [liveTurn, liveIndex, liveSpotCount]);
+
+  /** The spot the card over the board speaks for: replayed, or just watched. */
+  const noteSpot = recapPlay ?? liveSpot;
 
   /** What the card over the board speaks for: the play being replayed, or the one just watched. */
   const noteTurn =
@@ -937,13 +973,18 @@ export function Game({
    * the way a review is, which is what gives a stacked square back the tile
    * it had before.
    */
-  const recapFrom = recapPlay ?? replayPlays?.[0];
-  const recapAt =
-    recapping && recapFrom !== undefined
-      ? turns.findIndex((t) => t.turnNumber === recapFrom.turnNumber)
-      : -1;
+  const recapFrom = recapPlay ?? replaySteps?.[0];
   const recapBoard =
-    recapAt < 0 ? null : boardAfter(turns, recapPlay === undefined ? recapAt : recapAt + 1);
+    !recapping || recapFrom === undefined
+      ? null
+      : recapPlay === undefined
+        ? boardAfter(turns, recapFrom.at)
+        : boardAfter(turns, recapPlay.at, recapPlay.upTo);
+  // A live play shows a spot at a time too, once its history is here.
+  const liveBoard =
+    liveSpot === undefined || reviewing || recapActive
+      ? null
+      : boardAfter(turns, liveSpot.at, liveSpot.upTo);
 
   /*
    * Until the history arrives, the replay's opening board is the live one with
@@ -959,7 +1000,7 @@ export function Game({
       ? view.tiles
       : view.tiles.filter((t) => !recapCells.has(cellKey(t.x, t.y)));
 
-  const shown = ready ? boardAfter(turns, step) : (recapBoard ?? liveTiles);
+  const shown = ready ? boardAfter(turns, step) : (recapBoard ?? liveBoard ?? liveTiles);
 
   /*
    * Your draft belongs to the live board, not to one being replayed or
@@ -1043,7 +1084,7 @@ export function Game({
             awaitingBlankAt={showDraft ? blankAt : null}
             goodCells={showDraft ? wordCells.good : undefined}
             badCells={showDraft ? wordCells.bad : undefined}
-            recentCells={recapPlay?.cells ?? livePlay?.cells}
+            recentCells={noteSpot?.cells ?? livePlay?.cells}
             onGrabStaged={!reviewing ? grabStaged : undefined}
           />
 
@@ -1061,14 +1102,21 @@ export function Game({
               the turn, so each play in the sequence pops in as its own. */}
           {noteTurn !== undefined && (
             <div
-              key={noteTurn.turnNumber}
+              // Per spot, so each part of a turn pops in as its own.
+              key={`${noteTurn.turnNumber}:${noteSpot ? [...noteSpot.cells][0] : ""}`}
               className={styles.recapNote}
               data-seat={seatOf.get(noteTurn.userId)}
               role="status"
               aria-live="polite"
             >
               <span>{noteTurn.name}</span>
-              <span className={styles.recapPoints}>+{noteTurn.score}</span>
+              {noteSpot !== undefined && noteSpot.words.length > 0 && (
+                <span className={styles.recapWords}>{noteSpot.words.join(", ")}</span>
+              )}
+              {/* The history scores a turn whole, so its points go with its last spot. */}
+              {(noteSpot === undefined || noteSpot.last) && (
+                <span className={styles.recapPoints}>+{noteTurn.score}</span>
+              )}
             </div>
           )}
 
