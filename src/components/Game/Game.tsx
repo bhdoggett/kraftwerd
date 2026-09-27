@@ -441,9 +441,23 @@ export function Game({
     view.yourSeat !== null &&
     view.yourSeat === view.game.currentSeat;
 
+  /*
+   * Out: the bag empty and nothing left in hand. Your turn never comes round
+   * again, so the replay below cannot wait for it -- it runs as the page
+   * opens instead, and is keyed by that moment rather than by the turn, which
+   * now moves on without you and would otherwise re-arm it every play.
+   */
+  const youAreOut =
+    view?.game.status === "active" &&
+    view.tilesLeft === 0 &&
+    me !== undefined &&
+    (me.letters?.length ?? 0) === 0 &&
+    me.blanks === 0;
+
   const turnNow = view?.game.turnNumber;
+  const recapKey = yourTurn ? turnNow : openedAtTurn;
   const recapState =
-    recapStep !== null && recapStep.turn === turnNow ? recapStep : null;
+    recapStep !== null && recapStep.turn === recapKey ? recapStep : null;
   const recapPhase = recapState?.step ?? 0;
 
   /*
@@ -453,7 +467,10 @@ export function Game({
    * one just before yours -- the board re-read in the order it was built.
    */
   const recapWanted =
-    yourTurn && !reviewing && playsSinceYou.length > 0 && recapState?.done !== true;
+    (yourTurn || youAreOut) &&
+    !reviewing &&
+    playsSinceYou.length > 0 &&
+    recapState?.done !== true;
 
   /*
    * The turn history, fetched while it is being reviewed and while a recap is
@@ -521,22 +538,22 @@ export function Game({
 
   // All the timer does is move the replay on a phase, and past the last, end it.
   useEffect(() => {
-    if (!recapping || turnNow === undefined) return;
+    if (!recapping || recapKey === undefined) return;
     const next = setTimeout(
       () =>
         setRecapStep({
-          turn: turnNow,
+          turn: recapKey,
           step: recapPhase + 1,
           done: recapPhase >= replayCount,
         }),
       recapPhase === 0 ? RECAP_LEAD_MS : RECAP_PLAY_MS,
     );
     return () => clearTimeout(next);
-  }, [recapping, turnNow, recapPhase, replayCount]);
+  }, [recapping, recapKey, recapPhase, replayCount]);
 
   /** Any press on the board ends the replay: it must never stand between you and your turn. */
   const skipRecap = () => {
-    if (turnNow !== undefined) setRecapStep({ turn: turnNow, step: 0, done: true });
+    if (recapKey !== undefined) setRecapStep({ turn: recapKey, step: 0, done: true });
   };
 
   // A turn is mostly thinking, so the screen should not dim mid-thought.
