@@ -238,3 +238,32 @@
     justify-self: center;
   }
 }
+
+/*
+ * A tile just drawn from the bag rises into its slot from below, the new
+ * tiles one after another, left to right (--draw-order, set in Rack.tsx).
+ * `translate` rather than `transform`, which the rack already uses to slide
+ * tiles while they are reordered. Backwards fill keeps a waiting tile hidden
+ * until its turn.
+ */
+.drawn {
+  animation: rack-draw 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--draw-order, 0) * 110ms);
+}
+
+@keyframes rack-draw {
+  from {
+    translate: 0 110%;
+    opacity: 0;
+  }
+  to {
+    translate: 0 0;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawn {
+    animation: none;
+  }
+}

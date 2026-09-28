@@ -1,5 +1,6 @@
-import type { PointerEvent as ReactPointerEvent } from "react";
+import { useState, type PointerEvent as ReactPointerEvent } from "react";
 import { PassIcon, RecallIcon, ShuffleIcon, TradeIcon } from "../Icons/Icons";
+import { drawnFrom } from "../../lib/drawn";
 import styles from "./Rack.module.css";
 
 export type Selection = { kind: "letter"; index: number } | { kind: "blank" };
@@ -78,6 +79,24 @@ export function Rack({
   playAnswers = false,
   playing,
 }: RackProps) {
+  /*
+   * The tiles just drawn from the bag, which rise into the rack one after
+   * another, left to right. Worked out while rendering, against the rack as it
+   * last stood, so the first frame with the new letters already knows; `gen`
+   * remounts those tiles, so a second draw into the same slots animates again.
+   * Nothing on the first render: opening a game is not a draw.
+   */
+  const [seen, setSeen] = useState(letters);
+  const [drawn, setDrawn] = useState<{ from: number; gen: number } | null>(null);
+  if (letters !== seen && letters.join("") !== seen.join("")) {
+    setSeen(letters);
+    const from = drawnFrom(seen, letters);
+    setDrawn(from < letters.length ? { from, gen: (drawn?.gen ?? 0) + 1 } : null);
+  }
+  const isDrawn = (index: number) => drawn !== null && index >= drawn.from;
+  /** Left-to-right rank of each drawn tile, for its turn to rise. */
+  const drawOrder = order.filter(isDrawn);
+
   const isSelected = (s: Selection) =>
     selected !== null &&
     selected.kind === s.kind &&
@@ -126,23 +145,28 @@ export function Rack({
                 .filter((i) => !spent.includes(i) || (i === draggedIndex && dragOverRack))
                 .indexOf(index) - slot;
 
+            const rising = isDrawn(index);
             return (
               <button
-                key={index}
+                key={rising ? `${index}:${drawn!.gen}` : index}
                 type="button"
                 className={[
                   styles.tile,
                   isSelected({ kind: "letter", index }) ? styles.selected : "",
                   draggedIndex === index ? styles.lifted : "",
+                  rising ? styles.drawn : "",
                 ].join(" ")}
                 // The letter's own index, not its position: staged tiles leave
                 // the rack, so positions shift but indices do not.
                 data-rack-slot={index}
-                style={
-                  shift === 0
-                    ? undefined
-                    : { transform: `translateX(calc(var(--rack-step) * ${shift}))` }
-                }
+                style={{
+                  ...(shift === 0
+                    ? {}
+                    : { transform: `translateX(calc(var(--rack-step) * ${shift}))` }),
+                  ...(rising
+                    ? ({ "--draw-order": drawOrder.indexOf(index) } as React.CSSProperties)
+                    : {}),
+                }}
                 {...tileProps({ kind: "letter", index })}
               >
                 {letter}

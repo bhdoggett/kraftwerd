@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { drawnFrom } from "../../lib/drawn";
 import { Rack } from "./Rack";
 
 afterEach(cleanup);
@@ -67,5 +68,20 @@ describe("the Play button when it cannot be played", () => {
 
     expect(onPlay).toHaveBeenCalled();
     expect(play.getAttribute("aria-disabled")).toBe("false");
+  });
+});
+
+describe("working out the fresh draw", () => {
+  test("is whatever follows the letters kept", () => {
+    // Played A and T out of CATS; kept C and S; drew E, R.
+    expect(drawnFrom(["C", "A", "T", "S"], ["C", "S", "E", "R"])).toBe(2);
+  });
+
+  test("a rack that did not change drew nothing", () => {
+    expect(drawnFrom(["C", "A"], ["C", "A"])).toBe(2);
+  });
+
+  test("a whole new rack is all drawn", () => {
+    expect(drawnFrom(["C", "A"], ["X", "Y"])).toBe(0);
   });
 });
