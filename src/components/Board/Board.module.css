@@ -314,6 +314,24 @@
 }
 
 /*
+ * A stacked square's face is bare board, so the ring runs the other way:
+ * seat colour out to board. Ending on the seat colour, as a fresh tile's
+ * ring does, left it to snap back to black the moment the ring came off.
+ */
+.recent[data-stack="2"]::after {
+  animation-name: recent-play-stacked;
+}
+
+@keyframes recent-play-stacked {
+  from {
+    border-color: var(--seat-full);
+  }
+  to {
+    border-color: var(--cell-empty);
+  }
+}
+
+/*
  * No fading where that is unwelcome: the ring simply sits there in the seat
  * colour instead, and is taken away on the same timer.
  */
