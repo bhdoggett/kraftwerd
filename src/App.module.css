@@ -82,6 +82,14 @@
   flex: 1;
 }
 
+/* A phone gives the board every pixel of width it can: the full padding took
+   48px off a 425px screen, and the board is what that width is for. */
+@media (max-width: 640px) {
+  .main {
+    padding: var(--space-3);
+  }
+}
+
 .link {
   background: none;
   border: none;

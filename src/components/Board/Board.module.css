@@ -65,8 +65,9 @@
 @media (max-width: 640px) {
   .viewport {
     --cell-base: 22px;
-    /* Leaves room for the rack and the play panel without scrolling. */
-    width: min(100%, 46vh);
+    /* Full width on a phone held upright; the height cap only binds on a
+       short screen, and still leaves room for the rack below. */
+    width: min(100%, 60vh);
   }
 }
 
