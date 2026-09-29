@@ -133,8 +133,10 @@ export function DoubleWordIcon({ size = 16 }: IconProps) {
 }
 
 /**
- * The centre: the x2 disc with the start point punched out of it, so it still
- * reads as a x2 and is still unmistakably where the first word goes. One
+ * The centre: a doughnut, the x2 disc with a wide hole through the middle,
+ * so it still reads as a x2 and is still unmistakably where the first word
+ * goes. The hole is over half the width: any smaller and the edge stroke
+ * closed it up on a phone-sized square. One
  * path, even-odd, so the hole is part of the same drawing -- the dot and ring
  * used to be two elements sized and rounded apart, and sat a pixel off at some
  * zooms.
@@ -144,7 +146,7 @@ export function CentreIcon({ size = 16 }: IconProps) {
     <svg {...boardMark(size)}>
       <path
         fillRule="evenodd"
-        d="M12 4a8 8 0 1 1 0 16 8 8 0 0 1 0-16Zm0 4.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z"
+        d="M12 4a8 8 0 1 1 0 16 8 8 0 0 1 0-16Zm0 3.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z"
       />
     </svg>
   );
