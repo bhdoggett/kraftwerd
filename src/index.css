@@ -245,8 +245,10 @@
      */
     --cell-empty: #060608;
     /* A hairline tinted with the seat-1 colour instead of neutral grey, so
-       the grid itself reads as faintly lit rather than just ruled. */
-    --cell-line: color-mix(in srgb, var(--full-pacific) 30%, #000);
+       the grid itself reads as lit rather than just ruled. 60% of the tube:
+       at 30% the lines and the multiplier marks, drawn in the same ink,
+       barely stood off the near-black squares. */
+    --cell-line: color-mix(in srgb, var(--full-pacific) 60%, #000);
     --cell-blocked: #000000;
     /* A blocked square and an empty one are both near-black now that
        --cell-empty darkened to match the board; this ring is what still
@@ -330,7 +332,7 @@
   /* See the media-query block above: same blueprint read either way a dark
      theme gets chosen. */
   --cell-empty: #060608;
-  --cell-line: color-mix(in srgb, var(--full-pacific) 30%, #000);
+  --cell-line: color-mix(in srgb, var(--full-pacific) 60%, #000);
   --cell-blocked: #000000;
   --blocked-ring: inset 0 0 0 1px #2a2a35;
   --board-frame: var(--border-strong);
