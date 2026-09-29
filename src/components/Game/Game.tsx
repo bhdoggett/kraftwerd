@@ -23,6 +23,7 @@ import { Board } from "../Board/Board";
 import { DevTools } from "../DevTools/DevTools";
 import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import styles from "./Game.module.css";
+import { useTurnReplay } from "./useTurnReplay";
 import { Rack, type Selection } from "../Rack/Rack";
 import { userMessage } from "../../lib/errors";
 import { markCells } from "../../lib/boardFeedback";
@@ -34,28 +35,11 @@ import { moveStagedTo, stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
 import { followPointer } from "../../lib/followPointer";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
-import {
-  latestPlayByOthers,
-  playsInHistorySinceYourTurn,
-  playsSinceYourTurn,
-  spotSteps,
-} from "../../lib/recap";
 import { TwoLetterWordsDialog } from "../TwoLetterWords/TwoLetterWords";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-/**
- * How long each play in the recap is pointed out: the three pulses of
- * `recent-play` in Board.module.css, and a beat after them.
- */
-const RECAP_PLAY_MS = 2200;
-
-/**
- * How long the replay holds the board as you left it before the first play
- * lands: long enough to register as the position you remember.
- */
-const RECAP_LEAD_MS = 700;
 
 /**
  * The score split by what earned it: the tiles themselves, then each size of
@@ -165,36 +149,8 @@ export function Game({
    */
   const [refusal, setRefusal] = useState<string | null>(null);
   const refusalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /**
-   * How far this turn's replay has got. Phase 0 is the board as you left it,
-   * phase i is the board with the i-th play since then added, and past the
-   * last play it is `done`. Kept rather than the boards themselves -- those are
-   * worked out while rendering -- and keyed by the turn, so a new turn starts
-   * again from phase 0 without anything having to reset it.
-   */
-  const [recapStep, setRecapStep] = useState<{
-    turn: number;
-    step: number;
-    done: boolean;
-  } | null>(null);
 
-  /**
-   * The turn the game was on when this page opened it. Plays from then on were
-   * watched as they landed, so they are shown as they happen and never
-   * replayed; only what came before is news to catch up on. Keyed by game,
-   * since the page can move to another game without being made again, and set
-   * while rendering so the first frame with a game already knows it.
-   */
-  const [openedAt, setOpenedAt] = useState<{ gameId: Id<"games">; turn: number } | null>(
-    null,
-  );
-  if (view && openedAt?.gameId !== gameId) {
-    setOpenedAt({ gameId, turn: view.game.turnNumber });
-  }
-  const openedAtTurn = openedAt?.gameId === gameId ? openedAt.turn : undefined;
 
-  /** The newest play watched live that has had its moment. */
-  const [liveShown, setLiveShown] = useState(-1);
   const [submitting, setSubmitting] = useState(false);
 
   /**
@@ -398,101 +354,9 @@ export function Game({
     return moveToPosition(rackOrder, stillHidden, dragged, rackHover);
   }, [draggedLetterIndex, rackHover, rackOrder, spentIndices]);
 
-
-
-  /** What was played while you were away, a play at a time, oldest first. */
-  const playsSinceYou = useMemo(
-    () =>
-      view === undefined || view === null || openedAtTurn === undefined
-        ? []
-        : playsSinceYourTurn(view.tiles, view.viewerUserId).filter(
-            (p) => p.turnNumber < openedAtTurn,
-          ),
-    [view, openedAtTurn],
-  );
-
-  /*
-   * A play landing while you watch is shown as it lands -- the ring and the
-   * card on the live board, no rewind -- rather than saved up for a replay.
-   * Not your own: you know what you just played.
-   */
-  const latestTheirs = useMemo(
-    () => (view ? latestPlayByOthers(view.tiles, view.viewerUserId) : null),
-    [view],
-  );
-  const livePlay =
-    !reviewing &&
-    latestTheirs !== null &&
-    openedAtTurn !== undefined &&
-    latestTheirs.turnNumber >= openedAtTurn &&
-    latestTheirs.turnNumber > liveShown
-      ? latestTheirs
-      : null;
-  const liveTurn = livePlay?.turnNumber;
-
-  /*
-   * The board as it last stood with nothing landing on it. A play arriving
-   * while you watch is held off until its first spot is ready, and this is
-   * what is shown meanwhile: the board exactly as it was, stacked squares
-   * still showing the letter underneath. Taking the play's squares off the
-   * live board instead lost that letter, so a word blinked one short.
-   */
-  type ViewTiles = NonNullable<typeof view>["tiles"];
-  const [settledTiles, setSettledTiles] = useState<ViewTiles | null>(null);
-  if (view && livePlay === null && settledTiles !== view.tiles) {
-    setSettledTiles(view.tiles);
-  }
-
-  const yourTurn =
-    view?.game.status === "active" &&
-    view.yourSeat !== null &&
-    view.yourSeat === view.game.currentSeat;
-
-  /*
-   * Out: the bag empty and nothing left in hand. Your turn never comes round
-   * again, so the replay below cannot wait for it -- it runs as the page
-   * opens instead, and is keyed by that moment rather than by the turn, which
-   * now moves on without you and would otherwise re-arm it every play.
-   */
-  const youAreOut =
-    view?.game.status === "active" &&
-    view.tilesLeft === 0 &&
-    me !== undefined &&
-    (me.letters?.length ?? 0) === 0 &&
-    me.blanks === 0;
-
-  const turnNow = view?.game.turnNumber;
-  const recapKey = yourTurn ? turnNow : openedAtTurn;
-  const recapState =
-    recapStep !== null && recapStep.turn === recapKey ? recapStep : null;
-  const recapPhase = recapState?.step ?? 0;
-
-  /*
-   * Whether there is a replay to give. Shown once, as the turn opens: a
-   * reminder of what you missed belongs at the moment you arrive and nowhere
-   * after. At a table of three that is the play two turns back and then the
-   * one just before yours -- the board re-read in the order it was built.
-   */
-  const recapWanted =
-    (yourTurn || youAreOut) &&
-    !reviewing &&
-    playsSinceYou.length > 0 &&
-    recapState?.done !== true;
-
-  /*
-   * The turn history, fetched while it is being reviewed and while a recap is
-   * replaying what was played. Most visits need neither, so it is not fetched
-   * the rest of the time.
-   */
-  const history = useQuery(
-    api.games.listTurns,
-    // Kept while the game is on, too: a play landing while you watch is
-    // stepped through off the history, and waiting to fetch it then is what
-    // let the whole play flash onto the board first.
-    reviewing || recapWanted || livePlay !== null || view?.game.status === "active"
-      ? { gameId }
-      : "skip",
-  );
+  // Other players' plays: the catch-up replay and plays landing as you watch.
+  const { history, board: replayBoard, recapActive, skipRecap, noteSpot, noteTurn } =
+    useTurnReplay({ gameId, view, reviewing });
 
   /*
    * Where you stand with the other people at this table, for the invite under
@@ -503,113 +367,6 @@ export function Game({
   const friendStates = useQuery(api.friends.statesAt, { gameId });
   const inviteFriend = useMutation(api.friends.inviteFromGame);
 
-  /*
-   * The plays to replay, read off the history rather than the board: the board
-   * only says who owns each square now, so a tile the next play built on would
-   * count as that play's, and the play that laid it would land with no ring.
-   */
-  const viewerId = view?.viewerUserId;
-  const replayPlays = useMemo(
-    () =>
-      history === undefined || viewerId === undefined || openedAtTurn === undefined
-        ? null
-        : playsInHistorySinceYourTurn(history, viewerId).filter(
-            (p) => p.turnNumber < openedAtTurn,
-          ),
-    [history, viewerId, openedAtTurn],
-  );
-
-  /*
-   * The same plays, a spot at a time: a turn laid in two parts of the board is
-   * replayed as two steps, top to bottom and left to right, each naming the
-   * words it made (`playSpots`). The card's points go with a turn's last spot,
-   * since the history scores the turn as a whole.
-   */
-  const replaySteps = useMemo(
-    () => (history === undefined || replayPlays === null ? null : spotSteps(history, replayPlays)),
-    [history, replayPlays],
-  );
-  const replayCount = replaySteps?.length ?? 0;
-
-  /*
-   * The replay runs off the history, because rewinding a stacked square means
-   * knowing the tile that was under it -- so it starts once the history is
-   * here, rather than on a board it cannot rebuild. Until then the board holds
-   * at the rewound position it can work out without it.
-   */
-  const recapLoading = recapWanted && history === undefined;
-  const recapping = recapWanted && replayCount > 0;
-  /** Whether the board on screen is anything but the live one. */
-  const recapActive = recapLoading || recapping;
-
-  /** The spot being added right now: none before the first, none after the last. */
-  const recapPlay =
-    recapping && recapPhase > 0 ? replaySteps?.[recapPhase - 1] : undefined;
-
-  /** That play in words: who made it, what it spelled and what it scored. */
-  const recapTurn =
-    recapPlay === undefined
-      ? undefined
-      : history?.find((t) => t.turnNumber === recapPlay.turnNumber);
-
-  /*
-   * A play landing while you watch goes a spot at a time as well, off the
-   * history once it arrives. Until then it lights up whole, as it always did.
-   */
-  const liveSteps = useMemo(
-    () =>
-      history === undefined || livePlay === null
-        ? null
-        : spotSteps(history, [livePlay]),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the turn, not the object
-    [history, liveTurn],
-  );
-  const [liveStep, setLiveStep] = useState<{ turn: number; index: number } | null>(null);
-  const liveIndex = liveStep !== null && liveStep.turn === liveTurn ? liveStep.index : 0;
-  const liveSpot = liveSteps?.[liveIndex];
-  const liveSpotCount = liveSteps?.length ?? 0;
-
-  // Each spot gets a play's length; after the last, the play has had its moment.
-  // A newer play landing sooner replaces it.
-  useEffect(() => {
-    // The clock starts with the first spot on screen, not before it.
-    if (liveTurn === undefined || liveSpotCount === 0) return;
-    const next = setTimeout(() => {
-      if (liveIndex + 1 < liveSpotCount) setLiveStep({ turn: liveTurn, index: liveIndex + 1 });
-      else setLiveShown(liveTurn);
-    }, RECAP_PLAY_MS);
-    return () => clearTimeout(next);
-  }, [liveTurn, liveIndex, liveSpotCount]);
-
-  /** The spot the card over the board speaks for: replayed, or just watched. */
-  const noteSpot = recapPlay ?? liveSpot;
-
-  /** What the card over the board speaks for: the play being replayed, or the one just watched. */
-  const noteTurn =
-    recapTurn ??
-    (livePlay === null
-      ? undefined
-      : history?.find((t) => t.turnNumber === livePlay.turnNumber));
-
-  // All the timer does is move the replay on a phase, and past the last, end it.
-  useEffect(() => {
-    if (!recapping || recapKey === undefined) return;
-    const next = setTimeout(
-      () =>
-        setRecapStep({
-          turn: recapKey,
-          step: recapPhase + 1,
-          done: recapPhase >= replayCount,
-        }),
-      recapPhase === 0 ? RECAP_LEAD_MS : RECAP_PLAY_MS,
-    );
-    return () => clearTimeout(next);
-  }, [recapping, recapKey, recapPhase, replayCount]);
-
-  /** Any press on the board ends the replay: it must never stand between you and your turn. */
-  const skipRecap = () => {
-    if (recapKey !== undefined) setRecapStep({ turn: recapKey, step: 0, done: true });
-  };
 
   // A turn is mostly thinking, so the screen should not dim mid-thought.
   useWakeLock(view?.game.status === "active");
@@ -986,49 +743,8 @@ export function Game({
   // Live tiles until the history has actually arrived: swapping in an empty
   // board while it loads reads as the game having been wiped, which is the
   // one thing a review must never look like.
-  /*
-   * The board the replay is showing: as it stood before the first play since
-   * your turn, then with each play added in order. Rebuilt from the history
-   * the way a review is, which is what gives a stacked square back the tile
-   * it had before.
-   */
-  const recapFrom = recapPlay ?? replaySteps?.[0];
-  const recapBoard =
-    !recapping || recapFrom === undefined
-      ? null
-      : recapPlay === undefined
-        ? boardAfter(turns, recapFrom.at)
-        : boardAfter(turns, recapPlay.at, recapPlay.upTo);
-  /*
-   * A live play shows a spot at a time too. Until its first spot is ready the
-   * board stays as it was before the play, rather than showing the whole play
-   * and then taking it away again: off the history when that is here but has
-   * not caught up with the play, and otherwise the live board without the
-   * play's squares.
-   */
-  const liveBoard =
-    livePlay === null || reviewing || recapActive
-      ? null
-      : liveSpot !== undefined
-        ? boardAfter(turns, liveSpot.at, liveSpot.upTo)
-        : (settledTiles ??
-          view.tiles.filter((t) => !livePlay.cells.has(cellKey(t.x, t.y))));
 
-  /*
-   * Until the history arrives, the replay's opening board is the live one with
-   * the plays since your turn taken off. It cannot give a stacked square back
-   * the tile it had -- only the history knows that -- but it means a refresh
-   * never shows the finished board first and then takes the plays away.
-   */
-  const recapCells = recapLoading
-      ? new Set(playsSinceYou.flatMap((p) => [...p.cells]))
-      : null;
-  const liveTiles =
-    recapCells === null
-      ? view.tiles
-      : view.tiles.filter((t) => !recapCells.has(cellKey(t.x, t.y)));
-
-  const shown = ready ? boardAfter(turns, step) : (recapBoard ?? liveBoard ?? liveTiles);
+  const shown = ready ? boardAfter(turns, step) : (replayBoard ?? view.tiles);
 
   /*
    * Your draft belongs to the live board, not to one being replayed or
