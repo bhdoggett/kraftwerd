@@ -116,15 +116,15 @@ export function Board({
   const zoomWas = useRef(1);
 
   /**
-   * How far the board has to shrink to fit its box, 1 when it already fits.
+   * How far the board has to scale to fill its box exactly.
    *
    * The base cell size is picked by screen width alone, so a short or narrow
    * window -- a laptop with the browser's bars open, a split screen -- cut
    * the board off on load and left it to be found by panning. This measures
    * the box instead and scales the cells down until every square shows.
    * Applied under the pinch and wheel zoom rather than instead of it, so
-   * zooming in from a fitted board still works, and never above 1: a roomy
-   * box keeps the full-size squares rather than blowing them up.
+   * zooming in from a fitted board still works. It scales up as well as down,
+   * so the board fills its box edge to edge rather than sitting in a margin.
    */
   const [fit, setFit] = useState(1);
 
@@ -145,7 +145,7 @@ export function Board({
       const scale = Math.min(width - chrome, height - chrome) / (boardSize * base);
       // Hundredths, as the zoom is, so a resize of a pixel does not re-lay out
       // every square.
-      setFit(Math.min(1, Math.floor(scale * 100) / 100));
+      setFit(Math.floor(scale * 100) / 100);
     };
 
     measure();

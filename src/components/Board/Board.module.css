@@ -49,8 +49,14 @@
    * inside the board, never the space the board takes: a container that grew
    * with the zoom pushed the rack down the page and left you scrolling the
    * document to get back to it.
+   *
+   * Square, as big as the column and the screen's height allow, and the board
+   * scales to fill it (`fit` in Board.tsx). A box of fixed height and full
+   * width left the board centred in empty space on every side.
    */
-  height: min(72vh, 620px);
+  width: min(100%, 72vh);
+  aspect-ratio: 1;
+  margin-inline: auto;
   display: grid;
   place-items: center;
 }
@@ -60,7 +66,7 @@
   .viewport {
     --cell-base: 22px;
     /* Leaves room for the rack and the play panel without scrolling. */
-    height: 46vh;
+    width: min(100%, 46vh);
   }
 }
 
