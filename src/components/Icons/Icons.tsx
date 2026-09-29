@@ -14,7 +14,7 @@ const base = (size: number) => ({
   width: size,
   height: size,
   viewBox: "0 0 24 24",
-  fill: "currentColor",
+  fill: "none",
   stroke: "currentColor",
   strokeWidth: 2,
   strokeLinecap: "round" as const,
@@ -106,19 +106,18 @@ export function SystemIcon({ size = 16 }: IconProps) {
 
 /**
  * Board word-multiplier marks: a circle, a triangle and a square, for x2,
- * x3 and x4 (design.md §4.8, RULES_VERSION 10). Filled, in the same ink as
- * the grid lines and the blocked hatch (--cell-line), so a bonus square reads
- * at a glance; they were outlines until it was clear a thin ring on a dark
- * board said less than a shape. The stroke stays, flat and non-scaling, so a
- * filled shape keeps the same edge at every zoom.
+ * x3 and x4 (design.md §4.8, RULES_VERSION 10). Outlines in the same ink as
+ * the grid lines and the blocked hatch (--cell-line), with a flat,
+ * non-scaling 2.5px stroke -- heavier than the 1.5 they started at so they
+ * read on a dark board, and kept as outlines after filled shapes were tried.
  */
 const boardMark = (size: number) => ({
   width: size,
   height: size,
   viewBox: "0 0 24 24",
-  fill: "currentColor",
+  fill: "none",
   stroke: "currentColor",
-  strokeWidth: 1.5,
+  strokeWidth: 2.5,
   vectorEffect: "non-scaling-stroke" as const,
   "aria-hidden": true,
   style: { display: "block" },
@@ -133,21 +132,16 @@ export function DoubleWordIcon({ size = 16 }: IconProps) {
 }
 
 /**
- * The centre: a doughnut, the x2 disc with a wide hole through the middle,
- * so it still reads as a x2 and is still unmistakably where the first word
- * goes. The hole is over half the width: any smaller and the edge stroke
- * closed it up on a phone-sized square. One
- * path, even-odd, so the hole is part of the same drawing -- the dot and ring
- * used to be two elements sized and rounded apart, and sat a pixel off at some
- * zooms.
+ * The centre: the x2 ring with the start dot inside it, in one drawing. They
+ * used to be two elements, the dot a CSS box and the ring an SVG, each
+ * sized as a share of the cell and rounded to whole pixels on its own -- so
+ * at some zooms the ring sat a pixel off the dot.
  */
 export function CentreIcon({ size = 16 }: IconProps) {
   return (
     <svg {...boardMark(size)}>
-      <path
-        fillRule="evenodd"
-        d="M12 4a8 8 0 1 1 0 16 8 8 0 0 1 0-16Zm0 3.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z"
-      />
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4.4" fill="currentColor" stroke="none" />
     </svg>
   );
 }
