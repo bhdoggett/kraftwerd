@@ -14,7 +14,7 @@ const base = (size: number) => ({
   width: size,
   height: size,
   viewBox: "0 0 24 24",
-  fill: "none",
+  fill: "currentColor",
   stroke: "currentColor",
   strokeWidth: 2,
   strokeLinecap: "round" as const,
@@ -106,16 +106,17 @@ export function SystemIcon({ size = 16 }: IconProps) {
 
 /**
  * Board word-multiplier marks: a circle, a triangle and a square, for x2,
- * x3 and x4 (design.md §4.8, RULES_VERSION 10). Outline only, and a flat
- * non-scaling stroke rather than `base`'s button weight — these sit on the
- * board itself, in the same thin, un-zooming ink as the grid lines and the
- * blocked hatch (--cell-line), not in a toolbar.
+ * x3 and x4 (design.md §4.8, RULES_VERSION 10). Filled, in the same ink as
+ * the grid lines and the blocked hatch (--cell-line), so a bonus square reads
+ * at a glance; they were outlines until it was clear a thin ring on a dark
+ * board said less than a shape. The stroke stays, flat and non-scaling, so a
+ * filled shape keeps the same edge at every zoom.
  */
 const boardMark = (size: number) => ({
   width: size,
   height: size,
   viewBox: "0 0 24 24",
-  fill: "none",
+  fill: "currentColor",
   stroke: "currentColor",
   strokeWidth: 1.5,
   vectorEffect: "non-scaling-stroke" as const,
@@ -132,16 +133,19 @@ export function DoubleWordIcon({ size = 16 }: IconProps) {
 }
 
 /**
- * The centre: the x2 ring with the start dot inside it, in one drawing. They
- * used to be two elements, the dot a CSS box and the ring an SVG, each
- * sized as a share of the cell and rounded to whole pixels on its own -- so
- * at some zooms the ring sat a pixel off the dot.
+ * The centre: the x2 disc with the start point punched out of it, so it still
+ * reads as a x2 and is still unmistakably where the first word goes. One
+ * path, even-odd, so the hole is part of the same drawing -- the dot and ring
+ * used to be two elements sized and rounded apart, and sat a pixel off at some
+ * zooms.
  */
 export function CentreIcon({ size = 16 }: IconProps) {
   return (
     <svg {...boardMark(size)}>
-      <circle cx="12" cy="12" r="8" />
-      <circle cx="12" cy="12" r="4.4" fill="currentColor" stroke="none" />
+      <path
+        fillRule="evenodd"
+        d="M12 4a8 8 0 1 1 0 16 8 8 0 0 1 0-16Zm0 4.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z"
+      />
     </svg>
   );
 }
