@@ -473,7 +473,12 @@ export function Game({
    */
   const history = useQuery(
     api.games.listTurns,
-    reviewing || recapWanted || livePlay !== null ? { gameId } : "skip",
+    // Kept while the game is on, too: a play landing while you watch is
+    // stepped through off the history, and waiting to fetch it then is what
+    // let the whole play flash onto the board first.
+    reviewing || recapWanted || livePlay !== null || view?.game.status === "active"
+      ? { gameId }
+      : "skip",
   );
 
   /*
@@ -554,7 +559,8 @@ export function Game({
   // Each spot gets a play's length; after the last, the play has had its moment.
   // A newer play landing sooner replaces it.
   useEffect(() => {
-    if (liveTurn === undefined) return;
+    // The clock starts with the first spot on screen, not before it.
+    if (liveTurn === undefined || liveSpotCount === 0) return;
     const next = setTimeout(() => {
       if (liveIndex + 1 < liveSpotCount) setLiveStep({ turn: liveTurn, index: liveIndex + 1 });
       else setLiveShown(liveTurn);
@@ -980,11 +986,21 @@ export function Game({
       : recapPlay === undefined
         ? boardAfter(turns, recapFrom.at)
         : boardAfter(turns, recapPlay.at, recapPlay.upTo);
-  // A live play shows a spot at a time too, once its history is here.
+  /*
+   * A live play shows a spot at a time too. Until its first spot is ready the
+   * board stays as it was before the play, rather than showing the whole play
+   * and then taking it away again: off the history when that is here but has
+   * not caught up with the play, and otherwise the live board without the
+   * play's squares.
+   */
   const liveBoard =
-    liveSpot === undefined || reviewing || recapActive
+    livePlay === null || reviewing || recapActive
       ? null
-      : boardAfter(turns, liveSpot.at, liveSpot.upTo);
+      : liveSpot !== undefined
+        ? boardAfter(turns, liveSpot.at, liveSpot.upTo)
+        : history !== undefined
+          ? boardAfter(turns, turns.length)
+          : view.tiles.filter((t) => !livePlay.cells.has(cellKey(t.x, t.y)));
 
   /*
    * Until the history arrives, the replay's opening board is the live one with
@@ -1084,7 +1100,7 @@ export function Game({
             awaitingBlankAt={showDraft ? blankAt : null}
             goodCells={showDraft ? wordCells.good : undefined}
             badCells={showDraft ? wordCells.bad : undefined}
-            recentCells={noteSpot?.cells ?? livePlay?.cells}
+            recentCells={noteSpot?.cells}
             onGrabStaged={!reviewing ? grabStaged : undefined}
           />
 
