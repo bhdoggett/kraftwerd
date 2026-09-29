@@ -430,6 +430,19 @@ export function Game({
       : null;
   const liveTurn = livePlay?.turnNumber;
 
+  /*
+   * The board as it last stood with nothing landing on it. A play arriving
+   * while you watch is held off until its first spot is ready, and this is
+   * what is shown meanwhile: the board exactly as it was, stacked squares
+   * still showing the letter underneath. Taking the play's squares off the
+   * live board instead lost that letter, so a word blinked one short.
+   */
+  type ViewTiles = NonNullable<typeof view>["tiles"];
+  const [settledTiles, setSettledTiles] = useState<ViewTiles | null>(null);
+  if (view && livePlay === null && settledTiles !== view.tiles) {
+    setSettledTiles(view.tiles);
+  }
+
   const yourTurn =
     view?.game.status === "active" &&
     view.yourSeat !== null &&
@@ -998,9 +1011,8 @@ export function Game({
       ? null
       : liveSpot !== undefined
         ? boardAfter(turns, liveSpot.at, liveSpot.upTo)
-        : history !== undefined
-          ? boardAfter(turns, turns.length)
-          : view.tiles.filter((t) => !livePlay.cells.has(cellKey(t.x, t.y)));
+        : (settledTiles ??
+          view.tiles.filter((t) => !livePlay.cells.has(cellKey(t.x, t.y))));
 
   /*
    * Until the history arrives, the replay's opening board is the live one with
