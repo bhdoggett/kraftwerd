@@ -129,3 +129,25 @@ export async function namesFor(
 
   return names;
 }
+
+/**
+ * The names one game's table goes by for this viewer: `namesFor`, with the
+ * friend set read only when it can change an answer.
+ *
+ * On a private game nothing is masked, so the friendships would be two index
+ * scans whose answer cannot change a single name -- and reading them puts the
+ * friendship index in the query's read set, so accepting a friend request
+ * would re-run and re-push every open board. A caller spanning many games
+ * (the lobby) reads the set once itself and calls `namesFor` directly.
+ */
+export async function namesAt(
+  ctx: QueryCtx,
+  viewerId: Id<"users">,
+  game: Doc<"games">,
+  players: Doc<"players">[],
+): Promise<Map<Id<"users">, string>> {
+  const friends =
+    game.isPublic === true ? await friendIdsOf(ctx, viewerId) : new Set<Id<"users">>();
+  return namesFor(ctx, viewerId, game, players, friends);
+}
+

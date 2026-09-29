@@ -33,7 +33,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { currentUser, displayName, refuseGuest, requireUser } from "./auth_helpers";
-import { friendIdsOf, namesFor, seatOf } from "./seats";
+import { friendIdsOf, namesAt, namesFor, seatOf } from "./seats";
 import { askToBeFriends, rowsBetween } from "./friends";
 import { placement } from "./schema";
 
@@ -1434,11 +1434,7 @@ export const listTurns = query({
      * could open the history panel and read every stranger's real name, which
      * is the leak the aliases exist to stop. Four callers, one rule.
      */
-    const friends =
-      game.isPublic === true
-        ? await friendIdsOf(ctx, userId)
-        : new Set<Id<"users">>();
-    const names = await namesFor(ctx, userId, game, seated, friends);
+    const names = await namesAt(ctx, userId, game, seated);
 
     return rows
       .sort((a, b) => a.turnNumber - b.turnNumber)
@@ -1519,27 +1515,10 @@ export const getGame = query({
     const you = players.find((p) => p.userId === userId);
     const seated = players.filter((p) => p.status !== "invited");
 
-    /*
-     * The friend set is read once for the whole table, not once per seat, and
-     * on a private game not at all.
-     *
-     * This is the hottest query in the app -- every player, every turn, live --
-     * and on a private game nothing is masked, so the friendships are two
-     * index scans whose answer cannot change a single name. The subscription
-     * cost is the worse half: reading the friendship index puts it in this
-     * query's read set, so accepting a friend request would re-run and re-push
-     * every open board in the app.
-     *
-     * `listMyGames` reads it unconditionally on purpose, and that is not an
-     * oversight: it spans many games of mixed visibility and hoists one set
-     * across all of them, so skipping it would need every game to be private
-     * and buys nothing when one is not.
-     */
-    const friends =
-      game.isPublic === true
-        ? await friendIdsOf(ctx, userId)
-        : new Set<Id<"users">>();
-    const names = await namesFor(ctx, userId, game, players, friends);
+    // The friend set is read once for the whole table, and on a private game
+    // not at all (`namesAt`). This is the hottest query in the app -- every
+    // player, every turn, live.
+    const names = await namesAt(ctx, userId, game, players);
 
     return {
       layout: OPEN_BOARD,
@@ -1845,11 +1824,7 @@ export const pendingResults = query({
       const seated = (await seatedAt(ctx, game._id)).filter(
         (p) => p.status !== "invited",
       );
-      const friends =
-        game.isPublic === true
-          ? await friendIdsOf(ctx, userId)
-          : new Set<Id<"users">>();
-      const names = await namesFor(ctx, userId, game, seated, friends);
+      const names = await namesAt(ctx, userId, game, seated);
       const winners = game.winnerIds ?? [];
 
       results.push({
