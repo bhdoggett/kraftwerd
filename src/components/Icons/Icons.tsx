@@ -108,7 +108,7 @@ export function SystemIcon({ size = 16 }: IconProps) {
  * Board word-multiplier marks: a circle, a triangle and a square, for x2,
  * x3 and x4 (design.md §4.8, RULES_VERSION 10). Outlines in the same ink as
  * the grid lines and the blocked hatch (--cell-line), with a flat,
- * non-scaling 2.5px stroke -- heavier than the 1.5 they started at so they
+ * non-scaling 2px stroke -- heavier than the 1.5 they started at so they
  * read on a dark board, and kept as outlines after filled shapes were tried.
  */
 const boardMark = (size: number) => ({
@@ -117,7 +117,7 @@ const boardMark = (size: number) => ({
   viewBox: "0 0 24 24",
   fill: "none",
   stroke: "currentColor",
-  strokeWidth: 2.5,
+  strokeWidth: 2,
   vectorEffect: "non-scaling-stroke" as const,
   "aria-hidden": true,
   style: { display: "block" },
