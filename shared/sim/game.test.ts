@@ -26,6 +26,9 @@ const all: string[] = JSON.parse(
 const short = all.filter((w) => w.length <= 4);
 const dictionary = makeDictionary(short);
 const words = indexWords(short, 4);
+// One list for both: these tests are about the search and the bands, and a
+// second, smaller list would change what every level can play at once.
+const lexicons = { full: { dictionary, words }, common: { dictionary, words } };
 
 function seeded(seed: number) {
   let s = seed >>> 0;
@@ -48,12 +51,12 @@ const VARIANT = {
 };
 
 const play = (seed: number, difficulties?: readonly Difficulty[]) =>
-  playGame(VARIANT, 2, dictionary, words, seeded(seed), difficulties);
+  playGame(VARIANT, 2, lexicons, seeded(seed), difficulties);
 
 type Chain = { depth: number; breadth: number; enablement?: number };
 
 const playChained = (seed: number, chains: readonly Chain[]) =>
-  playGame(VARIANT, 2, dictionary, words, seeded(seed), ["hard"], chains);
+  playGame(VARIANT, 2, lexicons, seeded(seed), ["hard"], chains);
 
 /*
  * The chain shape is seated the way the difficulty is, so a deep search can be
@@ -118,22 +121,25 @@ describe("a seeded board", () => {
     expect(tiles.every((t) => t.stacked === 1)).toBe(true);
   });
 
-  test("an opening turn on a seeded board is worth several times a bare one", () => {
-    // One game each way, so the seed matters: 9 stopped holding when rules
-    // version 12 changed the bag, and 6 does.
-    const bare = playGame(VARIANT, 2, dictionary, words, seeded(6), ["hard"]);
+  test("an opening turn on a seeded board is worth more than a bare one", () => {
+    // One game each way, so the seed matters. This used to ask for twice the
+    // bare opening, which held only while the simulator scored no multiplier
+    // squares: the centre is a x2 (rules version 11), so a bare opening word
+    // is doubled, and across seeds 1-10 the seeded opener now leads by 1.1x
+    // to 1.8x rather than several times over. Seed 6 is the widest of them.
+    const bare = playGame(VARIANT, 2, lexicons, seeded(6), ["hard"]);
     const seededBoard = playGame(
       { ...VARIANT, seed: { word: "FUZZ", stacked: true } },
-      2, dictionary, words, seeded(6), ["hard"],
+      2, lexicons, seeded(6), ["hard"],
     );
 
-    expect(seededBoard.turnScores[0]).toBeGreaterThan(bare.turnScores[0] * 2);
+    expect(seededBoard.turnScores[0]).toBeGreaterThan(bare.turnScores[0] * 1.5);
   }, 60_000);
 });
 
 describe("the simulator reports what each turn scored", () => {
   test("one entry a turn, adding up to what the players scored", () => {
-    const game = playGame(VARIANT, 2, dictionary, words, seeded(7), ["hard"]);
+    const game = playGame(VARIANT, 2, lexicons, seeded(7), ["hard"]);
 
     expect(game.turnScores.length).toBe(game.turns);
     expect(game.turnScores.reduce((a, b) => a + b, 0)).toBe(

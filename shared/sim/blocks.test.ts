@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 import { boardShapeNamed, OPEN_BOARD } from "../boards";
 import { cellKey, makeBoard, type Board } from "../engine/board";
@@ -9,6 +6,7 @@ import { applyPlacements, validateTurn } from "../engine/legality";
 import { scoreTurn } from "../engine/score";
 import { indexWords } from "./words";
 import { BLOCK_DEFAULTS, blockMoves, candidateBlocks } from "./blocks";
+import { LEVELS } from "./levels";
 
 const WORDS = ["ACE", "CAM", "EMU", "AC", "CA", "EM", "ME", "AE", "MU", "UM",
   "AT", "CAT", "CATS", "AS", "SO", "ON", "NO", "OAT"];
@@ -437,33 +435,9 @@ describe("re-lettering a standing tile", () => {
  * server runtime, which this project's test environment does not load.
  */
 describe("the deployed bot and this module agree about the block shortlist", () => {
-  test("convex/bots.ts passes exactly the defaults blockMoves would have used", () => {
-    const source = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "..", "..", "convex", "bots.ts"),
-      "utf8",
-    );
-
-    // Every `squares: { ... }` that names both fields. The file's prose quotes
-    // a `squares: { maxBlocks: 0 }` to make a point, so matching the first
-    // occurrence would read a comment; requiring both fields picks the call
-    // out, and requiring exactly one of them means a second call site cannot
-    // appear unnoticed.
-    const bodies = [...source.matchAll(/squares:\s*\{([^}]*)\}/g)]
-      .map((m) => m[1])
-      .filter((body) => /maxBlocks\s*:/.test(body) && /maxK\s*:/.test(body));
-
-    // A rename, or a move that drops the option, has to fail loudly: finding
-    // nothing and passing would let the two drift with the test green.
-    expect(bodies, "expected exactly one `squares: { maxBlocks, maxK }` call in convex/bots.ts")
-      .toHaveLength(1);
-
-    const number = (field: string) => {
-      const found = new RegExp(`${field}\\s*:\\s*(\\d+)`).exec(bodies[0] ?? "");
-      expect(found, `no numeric ${field} in the squares option`).not.toBeNull();
-      return Number(found?.[1]);
-    };
-
-    expect({ maxK: number("maxK"), maxBlocks: number("maxBlocks") })
-      .toEqual({ maxK: BLOCK_DEFAULTS.maxK, maxBlocks: BLOCK_DEFAULTS.maxBlocks });
+  test("the hard bot searches squares with exactly the defaults blockMoves uses", () => {
+    // Levels below hard search less on purpose; hard is the bot the
+    // simulator's unconfigured `rank` is meant to measure, so the two agree.
+    expect(LEVELS.hard.squares).toEqual(BLOCK_DEFAULTS);
   });
 });

@@ -39,8 +39,15 @@ for (const line of readFileSync(join(VENDOR, "enable1.txt"), "utf8").split(/\r?\
 // trailing \r on every line, which fails the plain-word test below and
 // silently dropped every single word this source exists to add (1,948 of
 // them, MEME included) since the day it was vendored in.
+// Everyday vocabulary, as 3of6game has it: every entry not marked `$`
+// (rare). Not a rule -- the game plays the whole list -- but what an easy or
+// medium bot is allowed to know (design.md section 6), written out below as
+// common-words.json once the full list is settled.
+const everyday = new Set();
 for (const line of readFileSync(join(VENDOR, "3of6game.txt"), "utf8").split(/\r?\n/)) {
-  if (line) admit(line.replace(/[$+^&!]$/, ""));
+  if (!line) continue;
+  admit(line.replace(/[$+^&!]$/, ""));
+  if (!line.endsWith("$")) everyday.add(line.replace(/[+^&!]$/, "").toUpperCase());
 }
 
 // Both sources list occasional one-letter entries (I, O, a bare "x"), which
@@ -211,6 +218,22 @@ writeFileSync(
   sorted.map((word) => JSON.stringify({ word })).join("\n") + "\n",
 );
 
+/*
+ * A bot's vocabulary below hard (shared/sim/levels.ts): the everyday words
+ * that also made it into the game's list, plus the whole two-letter list and
+ * every letter name. Those last two are curated, short, and there to be
+ * learned; a bot that could not play them would be missing the words a
+ * person is handed on the rules page rather than the ones nobody knows.
+ */
+const common = sorted.filter(
+  (word) =>
+    everyday.has(word) ||
+    word.length <= 2 ||
+    LETTER_NAMES.includes(word) ||
+    EXTRAS.includes(word),
+);
+writeFileSync(join(outDir, "common-words.json"), JSON.stringify(common));
+
 // Both sources ask for credit, though neither requires it as a licence
 // condition. Travels with the generated data, same spot SCOWL's notice used
 // to live.
@@ -233,3 +256,6 @@ console.log(
 console.log(`  2-letter: ${byLength(2)}`);
 console.log(`  3-letter: ${byLength(3)}`);
 console.log(`  4-letter: ${byLength(4)}`);
+const commonOf = (n) => common.filter((w) => w.length === n).length;
+console.log(`${common.length} common (bot vocabulary below hard)`);
+console.log(`  3-letter: ${commonOf(3)}`);

@@ -1,7 +1,7 @@
 /**
  * One game, played off the main thread.
  *
- * The dictionary and its index are built once per worker and reused for every
+ * The dictionaries and their indexes, one pair per vocabulary, are built once per worker and reused for every
  * game that worker is given -- building them per game would cost more than
  * the games do.
  */
@@ -14,13 +14,20 @@ import type { Difficulty } from "../shared/config.ts";
 import { indexWords } from "../shared/sim/bot.ts";
 import { playGame } from "../shared/sim/game.ts";
 import type { Variant } from "../shared/sim/variants.ts";
+import type { Lexicon } from "../shared/sim/levels.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const words: string[] = JSON.parse(
   readFileSync(join(ROOT, "shared", "data", "words.json"), "utf8"),
 );
-const dictionary = makeDictionary(words);
-const index = indexWords(words, 7);
+const common: string[] = JSON.parse(
+  readFileSync(join(ROOT, "shared", "data", "common-words.json"), "utf8"),
+);
+const lexicon = (list: string[]): Lexicon => ({
+  dictionary: makeDictionary(list),
+  words: indexWords(list, 7),
+});
+const lexicons = { full: lexicon(words), common: lexicon(common) };
 
 /** Deterministic, so two variants meet the same draws. */
 function seeded(seed: number) {
@@ -52,8 +59,7 @@ parentPort!.on(
     const result = playGame(
       task.variant,
       task.players,
-      dictionary,
-      index,
+      lexicons,
       seeded(task.index + 1),
       task.difficulties,
       task.chains,

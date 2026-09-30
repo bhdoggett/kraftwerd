@@ -1,11 +1,13 @@
 import { v } from "convex/values";
 import ALL_WORDS from "../shared/data/words.json" with { type: "json" };
+import COMMON_WORDS from "../shared/data/common-words.json" with { type: "json" };
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
 import { type Difficulty } from "../shared/config.js";
 import { makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { makeDictionary } from "../shared/engine/dictionary.js";
-import { applyPlacements, wordsFormed, type Dictionary } from "../shared/engine/legality.js";
-import { chooseRanked, indexWords, rank, type Move, type WordIndex } from "../shared/sim/bot.js";
+import { applyPlacements, wordsFormed } from "../shared/engine/legality.js";
+import { chooseRanked, indexWords, rank, type Move } from "../shared/sim/bot.js";
+import { LEVELS, type Lexicon, type Vocabulary } from "../shared/sim/levels.js";
 import { tilesLeft } from "../shared/engine/bag.js";
 import { scoreTurn } from "../shared/engine/score.js";
 import { blanksLeft, hasWord, loadTiles, seatOnTurn } from "./games.js";
@@ -44,8 +46,7 @@ import type { Id } from "./_generated/dataModel";
  * authority — what the bot finally plays is checked against it like anybody
  * else's move — but the bundle is what lets it tell a move from a mess.
  */
-let dictionary: Dictionary | undefined;
-let words: WordIndex | undefined;
+const lexicons: Partial<Record<Vocabulary, Lexicon>> = {};
 
 /**
  * Built on the first bot turn, not when the module loads.
@@ -55,23 +56,28 @@ let words: WordIndex | undefined;
  * isolate, in a game with no machines in it at all. Indexing the dictionary
  * is a bot's cost and should be charged to bots.
  */
-function thinking() {
-  dictionary ??= makeDictionary(ALL_WORDS);
+function thinking(vocabulary: Vocabulary): Lexicon {
+  const list = vocabulary === "full" ? ALL_WORDS : COMMON_WORDS;
   /*
    * Only words up to seven letters are indexed, seven being the most tiles a
    * turn can lay: a rack holds seven. A longer word is not out of reach in
    * principle -- it would run through letters already standing -- but those
    * lengths were cut when a turn had a second to finish in, and that reason has
    * gone with the rest. It is another thing to measure rather than another
-   * thing to keep. Crossing words are checked against the whole dictionary
-   * above, so nothing the bot plays is limited to seven letters; only what it
-   * looks for is.
+   * thing to keep. Crossing words are checked against the whole of the
+   * level's list, so nothing the bot plays is limited to seven letters; only
+   * what it looks for is.
+   *
+   * One pair per vocabulary (shared/sim/levels.ts), and the dictionary is the
+   * level's list too, not the game's: an easy bot checking its crossing words
+   * against every word in the game would still build squares out of words it
+   * was never meant to know.
    */
-  words ??= indexWords(
-    ALL_WORDS.filter((word) => word.length <= 7),
-    7,
-  );
-  return { dictionary, words };
+  lexicons[vocabulary] ??= {
+    dictionary: makeDictionary(list),
+    words: indexWords(list.filter((word) => word.length <= 7), 7),
+  };
+  return lexicons[vocabulary];
 }
 
 /**
@@ -359,7 +365,8 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
   const board = makeBoard(state.tiles);
   const shape = boardShapeNamed(OPEN_BOARD, state.boardSize);
 
-  const { dictionary, words } = thinking();
+  const level = LEVELS[state.level];
+  const { dictionary, words } = thinking(level.vocabulary);
   const moves = rank(
     board,
     /*
@@ -420,7 +427,8 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
      * started from, which is what new squares and grown words are measured
      * against.
      */
-    (after, placements, before) => scoreTurn(after, placements, { before }).total,
+    (after, placements, before) =>
+      scoreTurn(after, placements, { before, bonusSquares: shape.bonusSquares }).total,
     /*
      * Measured on this deployment, twenty-eight whole bot-against-bot games an
      * allowance, one blank in hand throughout. "Past pause" counts turns whose
@@ -473,28 +481,26 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
      * to forty, which is in the numbers above but is not part of the story
      * about 4x4s.
      *
-     * **Both numbers are now also the `shared/sim/blocks.ts` defaults**, so a
-     * `rank` given no `squares` -- the simulator, the property tests -- searches
-     * squares exactly as this does, and the balance table in docs/design.md
-     * measures the bot people actually play. They stay written out here anyway:
-     * this is the file that records what is deployed and why, and a default
-     * changed for the simulator's benefit should not silently become a change
-     * to production. What keeps the two honest is not this paragraph --
-     * `shared/sim/blocks.test.ts` reads the literal below out of this file and
-     * fails if it drifts from `BLOCK_DEFAULTS`. Change one and the test tells
-     * you to make a decision about the other.
+     * Both numbers are the `shared/sim/blocks.ts` defaults, and they are now
+     * what `hard` searches with. Every level's search shape -- squares,
+     * plays per turn, vocabulary -- lives in `LEVELS` (shared/sim/levels.ts),
+     * which the simulator reads too, so a level measured there is the level
+     * played here. `shared/sim/blocks.test.ts` holds `LEVELS.hard.squares` to
+     * `BLOCK_DEFAULTS`: change one and the test asks for a decision about the
+     * other.
      *
      * Forty over twenty-four is a coin-flip on this evidence (3.50 against
      * 3.21) and sixty-four is not measurably worse than either. Forty is
      * chosen because it is the best of the three and costs 512ms; no causal
      * account of why it beats its neighbours would be honest.
      *
-     * Two plays per turn from four candidates a step, against the simulator's
-     * six: six is affordable now -- 44ms and one turn in 703 past the pause --
+     * Everything above was measured at two plays per turn, every level, from
+     * four candidates a step; the levels now differ in depth (see `LEVELS`).
+     * Four candidates rather than the simulator's six: six is affordable now -- 44ms and one turn in 703 past the pause --
      * but twenty-eight games put it at 1.86 squares and 344 points against
      * breadth 4's 1.89 and 348. Indistinguishable, so the cheaper one stays.
      */
-    { chain: { depth: 2, breadth: 4 }, squares: { maxBlocks: 40, maxK: 3 } },
+    { chain: level.chain, squares: level.squares },
   );
 
   /*

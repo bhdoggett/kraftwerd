@@ -71,8 +71,9 @@ export function turnValue(
   variant: Variant,
   claimed: ReadonlySet<string>,
   before?: Board,
+  bonusSquares?: ReadonlyMap<string, number>,
 ): TurnValue {
-  const base = scoreTurn(board, placements, { before }).total;
+  const base = scoreTurn(board, placements, { before, bonusSquares }).total;
 
 
   if (variant.multiplier === "none") return { score: base, doubled: [] };

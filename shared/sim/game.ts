@@ -1,15 +1,15 @@
 import { boardShapeNamed, OPEN_BOARD } from "../boards.js";
 import { GAME, RACK, STACK_CAP, type Difficulty } from "../config.js";
 import { applyPlacements } from "../engine/legality.js";
-import type { Dictionary } from "../engine/legality.js";
 import { makeBoard } from "../engine/board.js";
 import type { Board, TileSpec } from "../engine/board.js";
 import { refill } from "../engine/rack.js";
 import { newSquares } from "../engine/squares.js";
-import { chooseRanked, rank, type WordIndex } from "./bot.js";
+import { chooseRanked, rank } from "./bot.js";
 import type { ValueFn } from "./components.js";
 import { bagFlat, bagFromWeights, draw, tilesLeft, type Bag } from "./bag.js";
 import { RARE, turnValue, type Variant } from "./variants.js";
+import { LEVELS, type Lexicon, type Vocabulary } from "./levels.js";
 
 export interface GameResult {
   /** Squares between the played mass and the nearest edge. */
@@ -117,6 +117,11 @@ export function seedTiles(
  * among, so figures from before difficulty existed are not seed-comparable
  * with figures from after it; see docs/design.md §6.
  *
+ * `lexicons` holds a dictionary and index for each vocabulary, and each seat
+ * searches with the one its level names (shared/sim/levels.ts) -- the same
+ * split convex/bots.ts makes, so an easy seat here knows what an easy bot
+ * knows there.
+ *
  * `chains` is the shape of the multi-play search: how many components a turn
  * may be built from, and how many candidates each step branches on. Left out,
  * `rank` picks its own default -- which is what every figure in design.md §6
@@ -132,8 +137,7 @@ export function seedTiles(
 export function playGame(
   variant: Variant,
   players: number,
-  dictionary: Dictionary,
-  words: WordIndex,
+  lexicons: Readonly<Record<Vocabulary, Lexicon>>,
   rng: () => number,
   difficulties: readonly Difficulty[] = ["hard"],
   chains?: readonly { depth: number; breadth: number; enablement?: number }[],
@@ -184,7 +188,7 @@ export function playGame(
    * pays for a rare letter only the first time depends on that.
    */
   const scoreOf: ValueFn = (after, p, before) =>
-    turnValue(after, p, variant, claimed, before).score;
+    turnValue(after, p, variant, claimed, before, shape.bonusSquares).score;
 
   while (turns < 200) {
     const player = hands[seat];
@@ -196,6 +200,9 @@ export function playGame(
      * perfect over its own ranking: stronger than `hard` and not a difficulty
      * anyone can be dealt, so the table it produced described nobody.
      */
+    const difficulty = difficulties[seat % difficulties.length];
+    const level = LEVELS[difficulty];
+    const { dictionary, words } = lexicons[level.vocabulary];
     const rankFor = () =>
       rank(
         board,
@@ -205,11 +212,14 @@ export function playGame(
         shape,
         size,
         scoreOf,
-        // Empty is not "every seat at index zero": it is nothing to seat, and
-        // `rank` reads undefined as "pick your own default".
-        { chain: chains !== undefined && chains.length > 0 ? chains[seat % chains.length] : undefined },
+        {
+          // Empty is not "every seat at index zero": it is nothing to seat, so
+          // the seat searches as its level does.
+          chain: chains !== undefined && chains.length > 0 ? chains[seat % chains.length] : level.chain,
+          squares: level.squares,
+        },
       );
-    let move = chooseRanked(rankFor(), difficulties[seat % difficulties.length], rng);
+    let move = chooseRanked(rankFor(), difficulty, rng);
 
     /*
      * Nothing playable: spend the free swap, if it is still there and the bag
@@ -222,7 +232,7 @@ export function playGame(
       topUp(player, bag, rng);
       player.swapped = true;
       swaps++;
-      move = chooseRanked(rankFor(), difficulties[seat % difficulties.length], rng);
+      move = chooseRanked(rankFor(), difficulty, rng);
     }
 
     turns++;
@@ -250,7 +260,8 @@ export function playGame(
     // extended is read in full, and the before-board is the only record of what
     // a stacked tile landed on. This used to pass the pre-move board as the
     // first argument and nothing as the last, and so got both halves wrong.
-    const { score, doubled } = turnValue(board, move.placements, variant, claimed, boardBefore);
+    const { score, doubled } = turnValue(
+      board, move.placements, variant, claimed, boardBefore, shape.bonusSquares);
     for (const letter of doubled) claimed.add(letter);
     for (const p of move.placements) {
       if (!p.isBlank && RARE.includes(p.letter)) rarePlayed.push(p.letter);

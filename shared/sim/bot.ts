@@ -184,7 +184,8 @@ export function bestMove(
    * properly, so the ranking decides.
    */
   const scoreOf: ValueFn =
-    options.value ?? ((after, p, before) => scoreTurn(after, p, { before }).total);
+    options.value ??
+    ((after, p, before) => scoreTurn(after, p, { before, bonusSquares: shape.bonusSquares }).total);
 
   return search(board, hand, dictionary, words, shape, size, scoreOf, options);
 }
