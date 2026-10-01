@@ -149,23 +149,43 @@
 }
 
 /*
- * What the play being recapped was, over the board while its squares light
- * up. Dressed as the refusal is, but higher, so the two never sit on top of
- * each other when a tile is refused in the middle of a recap.
+ * Who just played, what it made and what it scored, in the rack's place
+ * while a play is being shown (see Game.tsx). In the colour of whoever made
+ * the play, worn the way a tile wears it: data-seat sets the colour, and the
+ * ink is the tile's own.
  */
-.recapNote {
-  composes: refusal;
-  top: 10%;
-  /* Two lines: who, then what it earned. */
-  display: grid;
-  justify-items: center;
-  line-height: 1.2;
-  white-space: nowrap;
-  /* In the colour of whoever made the play, worn the way a tile wears it:
-     data-seat sets the colour, and the ink is the tile's own. */
+.announce {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
   background: var(--seat-full);
-  border-color: var(--seat-full);
   color: var(--tile-text);
+  text-align: center;
+  line-height: 1.2;
+  animation: refusal-in 140ms ease-out;
+}
+
+/* Exactly over the hidden rack, so the page keeps its shape. */
+.announceOverRack {
+  position: absolute;
+  inset: 0;
+}
+
+.announceName {
+  font-weight: 700;
+}
+
+.rackSlot {
+  position: relative;
+}
+
+/* Still laid out, so it holds the space, but not seen or reachable. */
+.rackHidden {
+  visibility: hidden;
 }
 
 /*

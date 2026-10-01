@@ -841,29 +841,6 @@ export function Game({
             </div>
           )}
 
-          {/* The recap lights up where a play went; this says who made it and
-              what it scored -- the words are on the board already. Keyed by
-              the turn, so each play in the sequence pops in as its own. */}
-          {noteTurn !== undefined && (
-            <div
-              // Per spot, so each part of a turn pops in as its own.
-              key={`${noteTurn.turnNumber}:${noteSpot ? [...noteSpot.cells][0] : ""}`}
-              className={styles.recapNote}
-              data-seat={seatOf.get(noteTurn.userId)}
-              role="status"
-              aria-live="polite"
-            >
-              <span>{noteTurn.name}</span>
-              {noteSpot !== undefined && noteSpot.words.length > 0 && (
-                <span className={styles.recapWords}>{noteSpot.words.join(", ")}</span>
-              )}
-              {/* The history scores a turn whole, so its points go with its last spot. */}
-              {(noteSpot === undefined || noteSpot.last) && (
-                <span className={styles.recapPoints}>+{noteTurn.score}</span>
-              )}
-            </div>
-          )}
-
           {/* The play's score in the board's corner, for a phone: the panel
               that says so in full sits below the board there. Hidden from
               screen readers, which get the same number from the panel. */}
@@ -930,43 +907,81 @@ export function Game({
           </div>
         )}
 
-        {me?.letters && game.status !== "finished" && !reviewing && (
-          <Rack
-            seat={view.yourSeat}
-            letters={me.letters}
-            spent={spentIndices}
-            blanks={blanksLeft}
-            selected={selected}
-            onSelect={setSelected}
-            onGrab={grab}
-            order={rackOrder}
-            previewOrder={previewOrder}
-            draggedIndex={draggedLetterIndex}
-            dragOverRack={rackHover !== null}
-            onShuffle={shuffleRack}
-            onRecall={clear}
-            canRecall={pending.length > 0}
-            onSwap={toggleSwap}
-            // Once a game, and only while the bag has something to swap with.
-            canSwap={myTurn && !me.swapped && view.tilesLeft > 0}
-            swapping={swapping}
-            onPass={togglePass}
-            canPass={myTurn}
-            passing={passing}
-            onPlay={() => {
-              // Pressing Play while somebody else is thinking is a fair
-              // question, and this is the answer to it.
-              if (!myTurn) {
-                refuse(playerOnTurn === undefined ? "Not your turn yet." : `It's ${playerOnTurn.name}'s turn.`);
-                return;
-              }
-              void submit();
-            }}
-            canPlay={myTurn && pending.length > 0 && !submitting && legality?.ok === true}
-            playAnswers={!myTurn}
-            playing={submitting}
-          />
-        )}
+        {/*
+          Who just played, what it made and what it scored. It takes the
+          rack's place rather than floating over the board: nobody is playing
+          while a play is being shown, and a card over the board covered the
+          very squares it was pointing at. The rack stays underneath, hidden,
+          so the page does not jump when the card comes and goes.
+        */}
+        {(() => {
+          const rackShown = me?.letters != null && game.status !== "finished" && !reviewing;
+          const announcing = noteTurn !== undefined;
+          const card = announcing && (
+            <div
+              // Per spot, so each part of a turn pops in as its own.
+              key={`${noteTurn.turnNumber}:${noteSpot ? [...noteSpot.cells][0] : ""}`}
+              className={[styles.announce, rackShown ? styles.announceOverRack : ""].join(" ")}
+              data-seat={seatOf.get(noteTurn.userId)}
+              role="status"
+              aria-live="polite"
+              // A catch-up replay never stands between you and your turn.
+              onPointerDown={recapActive ? skipRecap : undefined}
+            >
+              <span className={styles.announceName}>{noteTurn.name}</span>
+              {noteSpot !== undefined && noteSpot.words.length > 0 && (
+                <span className={styles.recapWords}>{noteSpot.words.join(", ")}</span>
+              )}
+              {/* The history scores a turn whole, so its points go with its last spot. */}
+              {(noteSpot === undefined || noteSpot.last) && (
+                <span className={styles.recapPoints}>+{noteTurn.score}</span>
+              )}
+            </div>
+          );
+          if (!rackShown || !me?.letters) return card;
+          return (
+            <div className={styles.rackSlot}>
+              <div className={announcing ? styles.rackHidden : undefined} inert={announcing}>
+              <Rack
+                seat={view.yourSeat}
+                letters={me.letters}
+                spent={spentIndices}
+                blanks={blanksLeft}
+                selected={selected}
+                onSelect={setSelected}
+                onGrab={grab}
+                order={rackOrder}
+                previewOrder={previewOrder}
+                draggedIndex={draggedLetterIndex}
+                dragOverRack={rackHover !== null}
+                onShuffle={shuffleRack}
+                onRecall={clear}
+                canRecall={pending.length > 0}
+                onSwap={toggleSwap}
+                // Once a game, and only while the bag has something to swap with.
+                canSwap={myTurn && !me.swapped && view.tilesLeft > 0}
+                swapping={swapping}
+                onPass={togglePass}
+                canPass={myTurn}
+                passing={passing}
+                onPlay={() => {
+                  // Pressing Play while somebody else is thinking is a fair
+                  // question, and this is the answer to it.
+                  if (!myTurn) {
+                    refuse(playerOnTurn === undefined ? "Not your turn yet." : `It's ${playerOnTurn.name}'s turn.`);
+                    return;
+                  }
+                  void submit();
+                }}
+                canPlay={myTurn && pending.length > 0 && !submitting && legality?.ok === true}
+                playAnswers={!myTurn}
+                playing={submitting}
+              />
+              </div>
+              {card}
+            </div>
+          );
+        })()}
 
         {blankAt !== null && (
           <div
