@@ -356,7 +356,7 @@ export function Game({
   }, [draggedLetterIndex, rackHover, rackOrder, spentIndices]);
 
   // Other players' plays: the catch-up replay and plays landing as you watch.
-  const { history, board: replayBoard, recapActive, skipRecap, noteSpot, noteTurn } =
+  const { history, board: replayBoard, recapActive, skipRecap, skipAll, noteSpot, noteTurn } =
     useTurnReplay({ gameId, view, reviewing });
 
   /*
@@ -930,6 +930,17 @@ export function Game({
               // A catch-up replay never stands between you and your turn.
               onPointerDown={recapActive ? skipRecap : undefined}
             >
+              <button
+                type="button"
+                className={styles.announceClose}
+                aria-label="Skip the replay"
+                title="Skip"
+                // Its own press, not the card's, which only cuts a catch-up short.
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={skipAll}
+              >
+                ×
+              </button>
               {/* A machine's level is noise here; the scoreboard still says it. */}
               <span className={styles.announceName}>{withoutLevel(noteTurn.name)}</span>
               {noteSpot !== undefined && !noteSpot.total && noteSpot.words.length > 0 && (

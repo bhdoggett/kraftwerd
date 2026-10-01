@@ -171,12 +171,15 @@
  * ink is the tile's own.
  */
 .announce {
+  /* Anchors the skip button; `.announceOverRack` takes it absolute instead. */
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: var(--space-1) var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  /* Room either side for the skip button, so centred text never runs under it. */
+  padding: var(--space-3) var(--space-8);
   border-radius: var(--radius-lg);
   background: var(--seat-full);
   color: var(--tile-text);
@@ -199,6 +202,29 @@
   from {
     opacity: 0;
   }
+}
+
+/* Puts every play still to be shown away at once. */
+.announceClose {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  width: 1.75rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.announceClose:hover {
+  opacity: 1;
 }
 
 /* Exactly over the hidden rack, so the page keeps its shape. */

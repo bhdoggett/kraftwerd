@@ -297,6 +297,13 @@ export function useTurnReplay({
     if (recapKey !== undefined) setRecapStep({ turn: recapKey, step: 0, done: true });
   };
 
+  /** Everything still to be shown, catch-up and live plays alike, put away at once. */
+  const skipAll = () => {
+    skipRecap();
+    const last = liveQueue[liveQueue.length - 1];
+    if (last !== undefined) setLiveShown(last.turnNumber);
+  };
+
   /*
    * The board the replay is showing: as it stood before the first play since
    * your turn, then with each play added in order. Rebuilt from the history
@@ -347,6 +354,7 @@ export function useTurnReplay({
     /** Whether a catch-up replay has the board, so the draft stands down. */
     recapActive,
     skipRecap,
+    skipAll,
     /** The spot being pointed out, and the turn it belongs to. */
     noteSpot,
     noteTurn,
