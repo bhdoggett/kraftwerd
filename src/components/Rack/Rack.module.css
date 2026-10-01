@@ -267,3 +267,19 @@
     animation: none;
   }
 }
+
+/*
+ * A shuffle: the tiles slide across to their new places, slower than the
+ * quick nudge a drag gives, so the change of order is seen happening.
+ */
+.shuffling .tile {
+  transition-duration: 360ms, 90ms, 90ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1), ease, ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shuffling .tile {
+    transition-duration: 0ms, 90ms, 90ms;
+  }
+}
+

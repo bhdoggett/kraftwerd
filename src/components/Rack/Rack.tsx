@@ -1,4 +1,4 @@
-import { useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { PassIcon, RecallIcon, ShuffleIcon, TradeIcon } from "../Icons/Icons";
 import { drawnFrom } from "../../lib/drawn";
 import styles from "./Rack.module.css";
@@ -53,6 +53,9 @@ interface RackProps {
   playing: boolean;
 }
 
+/** How long a shuffle's slide takes; matches `.shuffling` in Rack.module.css. */
+const SHUFFLE_MS = 360;
+
 export function Rack({
   seat,
   letters,
@@ -97,6 +100,25 @@ export function Rack({
   /** Left-to-right rank of each drawn tile, for its turn to rise. */
   const drawOrder = order.filter(isDrawn);
 
+  /*
+   * A new order with the same letters and nothing being dragged is a shuffle,
+   * and gets a slower slide so the tiles are seen changing places. A drag
+   * already moves each tile as it goes, so it keeps the quick one.
+   */
+  const [lastOrder, setLastOrder] = useState(order);
+  const [shuffling, setShuffling] = useState(0);
+  if (order !== lastOrder) {
+    setLastOrder(order);
+    if (draggedIndex === null && letters === seen && order.join() !== lastOrder.join()) {
+      setShuffling((n) => n + 1);
+    }
+  }
+  useEffect(() => {
+    if (shuffling === 0) return;
+    const done = setTimeout(() => setShuffling(0), SHUFFLE_MS);
+    return () => clearTimeout(done);
+  }, [shuffling]);
+
   const isSelected = (s: Selection) =>
     selected !== null &&
     selected.kind === s.kind &&
@@ -125,8 +147,16 @@ export function Rack({
 
   return (
     <div className={styles.rack} data-rack="" data-seat={seat === null ? undefined : seat % 4}>
-      <div className={styles.tiles}>
-        {order
+      <div className={[styles.tiles, shuffling > 0 ? styles.shuffling : ""].join(" ")}>
+        {[...order]
+          /*
+           * The page keeps the tiles in one fixed order, by letter index, and
+           * each is slid into its place by transform. Following the display
+           * order instead moved the elements themselves on every shuffle, and a
+           * moved element replays its animations -- so the tiles last drawn
+           * rose out of the bag again.
+           */
+          .sort((a, b) => a - b)
           // A staged tile leaves the rack. One being dragged back appears as a
           // placeholder once the pointer is over the rack, so the gap opens
           // where it is heading rather than sitting empty where it came from.
@@ -138,8 +168,7 @@ export function Rack({
             const letter = letters[index];
             if (letter === undefined) return null;
 
-            // DOM order stays put and tiles slide by transform instead, so the
-            // movement animates; reordering the DOM would jump.
+            // Where the tile shows, against where the page has it.
             const shift =
               previewOrder
                 .filter((i) => !spent.includes(i) || (i === draggedIndex && dragOverRack))
@@ -167,6 +196,13 @@ export function Rack({
                     ? ({ "--draw-order": drawOrder.indexOf(index) } as React.CSSProperties)
                     : {}),
                 }}
+                // Once risen, a tile stops being a fresh draw, so nothing later
+                // can set its rise off again.
+                onAnimationEnd={
+                  rising && drawOrder.indexOf(index) === drawOrder.length - 1
+                    ? () => setDrawn(null)
+                    : undefined
+                }
                 {...tileProps({ kind: "letter", index })}
               >
                 {letter}

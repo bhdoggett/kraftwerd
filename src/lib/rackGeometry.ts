@@ -48,10 +48,12 @@ export function rackSlotUnder(clientX: number, clientY: number): RackTarget {
 
   // The tiles are centred, so there is empty rack either side of them. Left of
   // them means the start, right of them the end.
-  const first = tiles[0]!.getBoundingClientRect();
-  if (clientX < first.left) return { overRack: true, position: 0 };
-
+  // Layout positions (offsetLeft), not drawn ones: the rack keeps its tiles in
+  // a fixed page order and slides each into its slot by transform, so the
+  // i-th element's layout box is the i-th slot whichever tile is showing there.
   const localX = clientX - bounds.left + rack.scrollLeft;
+  if (localX < tiles[0]!.offsetLeft) return { overRack: true, position: 0 };
+
   for (const [position, el] of tiles.entries()) {
     if (localX < el.offsetLeft + el.offsetWidth) return { overRack: true, position };
   }
