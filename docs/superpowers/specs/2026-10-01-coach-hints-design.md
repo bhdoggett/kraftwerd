@@ -46,8 +46,8 @@ hints: defineTable({
 }).index("by_game_user_turn", ["gameId", "userId", "turnNumber"])
 ```
 
-Rows for a finished game can be deleted when it finishes; they are never
-read again.
+Rows are small and are left in place when a game finishes; clearing them
+is not worth a write per finished game.
 
 ## Server
 
@@ -92,8 +92,11 @@ the coach.
    multiplier squares in the score, default exposure. `squares.nodeLimit`
    is capped (start at 2,000, tune on dev) so three blanks stay near two
    seconds at worst.
-4. Walk the ranking best-first; keep the first three moves whose words all
-   pass the game's dictionary (`wordsMissing`, as the bot does).
+4. Keep the first three moves of the ranking. No `words` table check: the
+   search only forms words in the full list, which is the list the table is
+   seeded from, and a play is checked against the table anyway when it is
+   made. (The bot checks because it plays without anyone looking; a hint is
+   only a suggestion.)
 5. Explain each kept move (below), compute rack words, write the cache row
    through an internal mutation, return.
 
@@ -158,8 +161,8 @@ don't count toward your record." Passed to `createGame` as `hints`.
 
 ### Tagging
 
-A "Practice" tag on hint games in the game header and wherever games are
-listed (lobby, history, game over).
+A "Practice" tag on hint games: in the game, at the head of the hint panel,
+and on the lobby's rows for current and past games.
 
 ## Load
 
@@ -179,9 +182,9 @@ release.
 - Records: a finished hint game leaves `gamesPlayed`, `wins`,
   `bestGameScore` and `bestTurnScore` unchanged; a normal game still counts.
 - `coach.hints` (convex-test): refused when not your turn, not seated, or
-  `hints` unset; returns at most three moves, every word in the
-  dictionary, none using tiles the caller does not hold; second call for
-  the same turn is served from the cache.
+  `hints` unset; returns at most three moves, every word in the full
+  list, none using tiles the caller does not hold; a second call for the
+  same turn is served from the cache.
 - `HintPanel`: tapping a card fills the pending move; stale turn dropped.
 
 ## Out of scope
