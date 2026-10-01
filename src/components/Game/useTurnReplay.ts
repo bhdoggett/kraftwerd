@@ -119,40 +119,27 @@ export function useTurnReplay({
     setSettledTiles(view.tiles);
   }
 
-  const me = view?.players.find((p) => p.letters !== null);
-
-  const yourTurn =
-    view?.game.status === "active" &&
-    view.yourSeat !== null &&
-    view.yourSeat === view.game.currentSeat;
-
   /*
-   * Out: the bag empty and nothing left in hand. Your turn never comes round
-   * again, so the replay below cannot wait for it -- it runs as the page
-   * opens instead, and is keyed by that moment rather than by the turn, which
-   * now moves on without you and would otherwise re-arm it every play.
+   * The replay is keyed by the moment the page opened, not by whose turn it
+   * is. It used to wait for your turn, so a play made after yours -- at a
+   * table of three, the next player's, while the third was still thinking --
+   * went unseen until your turn came round. Now whatever you missed replays
+   * as you arrive, once: plays from then on are watched as they land, so the
+   * turn coming round to you has nothing new to replay.
    */
-  const youAreOut =
-    view?.game.status === "active" &&
-    view.tilesLeft === 0 &&
-    me !== undefined &&
-    (me.letters?.length ?? 0) === 0 &&
-    me.blanks === 0;
-
-  const turnNow = view?.game.turnNumber;
-  const recapKey = yourTurn ? turnNow : openedAtTurn;
+  const recapKey = openedAtTurn;
   const recapState =
     recapStep !== null && recapStep.turn === recapKey ? recapStep : null;
   const recapPhase = recapState?.step ?? 0;
 
   /*
-   * Whether there is a replay to give. Shown once, as the turn opens: a
-   * reminder of what you missed belongs at the moment you arrive and nowhere
-   * after. At a table of three that is the play two turns back and then the
-   * one just before yours -- the board re-read in the order it was built.
+   * Whether there is a replay to give. Shown once, as you arrive: a reminder
+   * of what you missed belongs at that moment and nowhere after. At a table
+   * of three that can be the play two turns back and then the one after it --
+   * the board re-read in the order it was built.
    */
   const recapWanted =
-    (yourTurn || youAreOut) &&
+    view?.game.status === "active" &&
     !reviewing &&
     playsSinceYou.length > 0 &&
     recapState?.done !== true;
