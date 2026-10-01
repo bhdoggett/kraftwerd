@@ -182,7 +182,16 @@
   color: var(--tile-text);
   text-align: center;
   line-height: 1.2;
-  animation: refusal-in 140ms ease-out;
+  /* A quick fade where it stands. It borrowed the refused-tile message's
+     entrance, whose transform is built for a box centred by translate, so it
+     swept in from the side. */
+  animation: announce-in 120ms ease-out;
+}
+
+@keyframes announce-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* Exactly over the hidden rack, so the page keeps its shape. */
