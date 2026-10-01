@@ -98,9 +98,25 @@
  */
 /* The board is the frame: the message sits over it, in the top third and
    centred, where a play that was refused is still in view. */
+/*
+ * The board's square: as big as the column and the screen's height allow.
+ * Sized here rather than on the board itself so what is laid over it -- the
+ * score tally on its corner, a refused tile's message -- lines up with the
+ * board and not with the wider column.
+ */
 .boardArea {
   position: relative;
   min-width: 0;
+  width: min(100%, 72vh);
+  margin-inline: auto;
+}
+
+/* Full width on a phone held upright; the height cap only binds on a short
+   screen, and still leaves room for the rack below. */
+@media (max-width: 640px) {
+  .boardArea {
+    width: min(100%, 60vh);
+  }
 }
 
 /*
@@ -197,8 +213,11 @@
  */
 .boardTally {
   position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
+  /* On the board frame's corner, mostly in the room outside the grid, so it
+     no longer covers the top-right square. */
+  top: 0;
+  right: 0;
+  transform: translate(30%, -50%);
   z-index: 5;
   pointer-events: none;
   box-shadow: var(--shadow-lift);

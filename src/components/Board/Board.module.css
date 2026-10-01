@@ -40,23 +40,30 @@
    */
   scrollbar-width: none;
   /*
-   * No box of its own: no background, border, shadow or padding. The grid's
-   * own frame is the board's edge, and with the board fitted to this space
-   * (`fit` in Board.tsx) padding only made the squares smaller.
+   * No background or shadow, but a frame and a little room inside it.
+   *
+   * The frame is an outline, which is drawn on top and does not scroll: zoomed
+   * in, the grid's own border scrolls out of sight and the board read as an
+   * open tic-tac-toe grid, so this is the edge that stays. The room inside
+   * keeps the score tally (Game.module.css), which sits on the frame's corner,
+   * off the top-right square.
    */
+  outline: 1px solid var(--board-frame);
+  border-radius: var(--radius);
+  padding: var(--space-3);
   /*
    * A fixed box, not one that grows to fit. Zooming has to change what is
    * inside the board, never the space the board takes: a container that grew
    * with the zoom pushed the rack down the page and left you scrolling the
    * document to get back to it.
    *
-   * Square, as big as the column and the screen's height allow, and the board
-   * scales to fill it (`fit` in Board.tsx). A box of fixed height and full
-   * width left the board centred in empty space on every side.
+   * Square, filling the space the page gives it (`.boardArea` in
+   * Game.module.css sets how big), and the board scales to fill it (`fit` in
+   * Board.tsx). A box of fixed height and full width left the board centred
+   * in empty space on every side.
    */
-  width: min(100%, 72vh);
+  width: 100%;
   aspect-ratio: 1;
-  margin-inline: auto;
   display: grid;
   place-items: center;
 }
@@ -65,9 +72,6 @@
 @media (max-width: 640px) {
   .viewport {
     --cell-base: 22px;
-    /* Full width on a phone held upright; the height cap only binds on a
-       short screen, and still leaves room for the rack below. */
-    width: min(100%, 60vh);
   }
 }
 
