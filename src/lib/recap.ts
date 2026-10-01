@@ -188,8 +188,13 @@ export interface SpotStep extends PlaySpot {
   at: number;
   /** Every square of this turn shown so far, this spot's included. */
   upTo: Set<string>;
-  /** The turn's last spot, which is where its points are said. */
-  last: boolean;
+  /**
+   * The step after a turn's last spot that says what the turn scored, on its
+   * own: the whole play lit, no words. The history scores a turn whole, so
+   * the points are a step of their own rather than tacked onto the last
+   * spot's words.
+   */
+  total: boolean;
 }
 
 /** The plays as replay steps, a spot at a time (`playSpots`). */
@@ -203,16 +208,19 @@ export function spotSteps(
     if (turn === undefined) return [];
     const spots = playSpots(boardAfter(history, at + 1), turn.placements);
     const upTo = new Set<string>();
-    return spots.map((spot, i) => {
+    const steps: SpotStep[] = spots.map((spot) => {
       for (const k of spot.cells) upTo.add(k);
-      return {
-        ...spot,
-        turnNumber: play.turnNumber,
-        at,
-        upTo: new Set(upTo),
-        last: i === spots.length - 1,
-      };
+      return { ...spot, turnNumber: play.turnNumber, at, upTo: new Set(upTo), total: false };
     });
+    steps.push({
+      cells: new Set(upTo),
+      words: [],
+      turnNumber: play.turnNumber,
+      at,
+      upTo: new Set(upTo),
+      total: true,
+    });
+    return steps;
   });
 }
 

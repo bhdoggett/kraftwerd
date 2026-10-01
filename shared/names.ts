@@ -64,6 +64,11 @@ export function drawNames(
   return drawn;
 }
 
+/** A name without the level a machine's carries, for where the level is noise. */
+export function withoutLevel(name: string): string {
+  return name.replace(/ \((?:easy|medium|hard)\)$/, "");
+}
+
 /** What a machine plays under: the prefix says what it is, the level how good. */
 export function robotName(name: string, level: string): string {
   return `${ROBOT_PREFIX}${name} (${level})`;

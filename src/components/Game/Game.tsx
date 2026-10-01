@@ -23,6 +23,7 @@ import { Board } from "../Board/Board";
 import { DevTools } from "../DevTools/DevTools";
 import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import styles from "./Game.module.css";
+import { withoutLevel } from "../../../shared/names";
 import { useTurnReplay } from "./useTurnReplay";
 import { Rack, type Selection } from "../Rack/Rack";
 import { userMessage } from "../../lib/errors";
@@ -920,7 +921,7 @@ export function Game({
           const card = announcing && (
             <div
               // Per spot, so each part of a turn pops in as its own.
-              key={`${noteTurn.turnNumber}:${noteSpot ? [...noteSpot.cells][0] : ""}`}
+              key={`${noteTurn.turnNumber}:${noteSpot ? `${[...noteSpot.cells][0]}:${noteSpot.total}` : ""}`}
               className={[styles.announce, rackShown ? styles.announceOverRack : ""].join(" ")}
               data-seat={seatOf.get(noteTurn.userId)}
               role="status"
@@ -928,12 +929,13 @@ export function Game({
               // A catch-up replay never stands between you and your turn.
               onPointerDown={recapActive ? skipRecap : undefined}
             >
-              <span className={styles.announceName}>{noteTurn.name}</span>
-              {noteSpot !== undefined && noteSpot.words.length > 0 && (
+              {/* A machine's level is noise here; the scoreboard still says it. */}
+              <span className={styles.announceName}>{withoutLevel(noteTurn.name)}</span>
+              {noteSpot !== undefined && !noteSpot.total && noteSpot.words.length > 0 && (
                 <span className={styles.recapWords}>{noteSpot.words.join(", ")}</span>
               )}
-              {/* The history scores a turn whole, so its points go with its last spot. */}
-              {(noteSpot === undefined || noteSpot.last) && (
+              {/* The points are their own last step, once every spot is down. */}
+              {(noteSpot === undefined || noteSpot.total) && (
                 <span className={styles.recapPoints}>+{noteTurn.score}</span>
               )}
             </div>

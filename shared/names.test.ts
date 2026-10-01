@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { drawNames, NAMES, robotName, ROBOT_PREFIX } from "./names";
+import { drawNames, NAMES, robotName, ROBOT_PREFIX, withoutLevel } from "./names";
 
 /** A rigged rng: hands back the numbers given, then zeroes forever. */
 const rigged = (...values: number[]) => {
@@ -66,3 +66,15 @@ describe("what a machine is called", () => {
     for (const name of NAMES) expect(name.startsWith(ROBOT_PREFIX)).toBe(false);
   });
 });
+
+describe("a name without its level", () => {
+  test("drops a machine's level", () => {
+    expect(withoutLevel(robotName("Ada", "medium"))).toBe("Robo-Ada");
+  });
+
+  test("leaves a person's name alone, brackets and all", () => {
+    expect(withoutLevel("Sam (work)")).toBe("Sam (work)");
+    expect(withoutLevel("Ana")).toBe("Ana");
+  });
+});
+

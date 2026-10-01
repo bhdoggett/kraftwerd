@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   latestPlayByOthers,
   playSpots,
+  spotSteps,
   playsInHistorySinceYourTurn,
   playsSinceYourTurn,
 } from "./recap";
@@ -187,3 +188,27 @@ describe("a turn split into the places it was played", () => {
     expect(spots[0]?.words.sort()).toEqual(["AO", "ON", "TN"].sort());
   });
 });
+
+describe("a turn as replay steps", () => {
+  test("ends with its points as a step of their own", () => {
+    const history = [
+      {
+        turnNumber: 1,
+        userId: "bo",
+        kind: "play" as const,
+        score: 2,
+        placements: [
+          { x: 0, y: 0, letter: "A", isBlank: false },
+          { x: 1, y: 0, letter: "T", isBlank: false },
+        ],
+      },
+    ];
+    const steps = spotSteps(history, [{ turnNumber: 1 }]);
+
+    expect(steps.map((s) => s.total)).toEqual([false, true]);
+    expect(steps[0]?.words).toEqual(["AT"]);
+    expect(steps[1]?.words).toEqual([]);
+    expect([...steps[1]!.cells].sort()).toEqual(["0,0", "1,0"]);
+  });
+});
+
