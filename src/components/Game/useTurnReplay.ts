@@ -13,10 +13,11 @@ import {
 import { boardAfter } from "../../lib/replay";
 
 /**
- * How long each play in the recap is pointed out: the three pulses of
- * `recent-play` in Board.module.css, and a beat after them.
+ * How long each play in the recap is pointed out: the four pulses of
+ * `recent-play` in Board.module.css. A second longer than it was, so the
+ * words and points in the announcement can actually be read.
  */
-const RECAP_PLAY_MS = 2200;
+const RECAP_PLAY_MS = 3200;
 
 /**
  * How long the replay holds the board as you left it before the first play
