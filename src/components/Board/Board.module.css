@@ -40,19 +40,11 @@
    */
   scrollbar-width: none;
   /*
-   * The board's edge, kept when zoomed. An outline is drawn on top and does
-   * not scroll: zoomed in, the grid's own border scrolled out of sight and the
-   * board read as an open tic-tac-toe grid. Pulled in a pixel so that,
-   * unzoomed, it lies exactly on the grid's border rather than beside it --
-   * the grid is fitted to fill this box (`fit` in Board.tsx).
-   *
    * A fixed box, not one that grows to fit. Zooming has to change what is
    * inside the board, never the space the board takes: a container that grew
    * with the zoom pushed the rack down the page and left you scrolling the
    * document to get back to it. It fills `.frame`, below.
    */
-  outline: 1px solid var(--board-frame);
-  outline-offset: -1px;
   width: 100%;
   height: 100%;
   display: grid;
@@ -66,9 +58,26 @@
  * (`.boardArea` in Game.module.css sets how big).
  */
 .frame {
+  position: relative;
   width: 100%;
   aspect-ratio: 1;
   padding: var(--space-3);
+}
+
+/*
+ * The board's edge while zoomed in. The grid's own border scrolls out of
+ * sight then, and the board read as an open tic-tac-toe grid; this stays on
+ * the edge the board is clipped to. Its own element, laid over the board,
+ * because an outline on the scrolling box was painted under the board and
+ * hidden by it. Not there at all unzoomed or zoomed out, where the grid's own
+ * border is the edge.
+ */
+.edge {
+  position: absolute;
+  inset: var(--space-3);
+  border: 1px solid var(--board-frame);
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* 15 columns at full size overflow a phone, so the squares shrink instead. */

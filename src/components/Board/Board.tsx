@@ -443,6 +443,7 @@ export function Board({
           {cells}
         </div>
       </div>
+      {zoom > 1 && <div className={styles.edge} aria-hidden="true" />}
     </div>
   );
 }
