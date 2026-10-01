@@ -920,8 +920,9 @@ export function Game({
           const announcing = noteTurn !== undefined;
           const card = announcing && (
             <div
-              // Per spot, so each part of a turn pops in as its own.
-              key={`${noteTurn.turnNumber}:${noteSpot ? `${[...noteSpot.cells][0]}:${noteSpot.total}` : ""}`}
+              // One element for the whole run of steps, not one per step: it
+              // stays up from one play to the next and changes colour between
+              // players, rather than vanishing and fading back in each time.
               className={[styles.announce, rackShown ? styles.announceOverRack : ""].join(" ")}
               data-seat={seatOf.get(noteTurn.userId)}
               role="status"

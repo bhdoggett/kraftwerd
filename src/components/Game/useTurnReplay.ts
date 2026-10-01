@@ -98,18 +98,51 @@ export function useTurnReplay({
    * card on the live board, no rewind -- rather than saved up for a replay.
    * Not your own: you know what you just played.
    */
+  /*
+   * The turn history: the review reads it, and both replays step through it.
+   * Kept for the whole of a game that is on, so a play landing while you
+   * watch never waits on a fetch -- that wait is what let the whole play flash
+   * onto the board before stepping in.
+   */
+  const history = useQuery(
+    api.games.listTurns,
+    reviewing || view?.game.status === "active" ? { gameId } : "skip",
+  );
+
   const latestTheirs = useMemo(
     () => (view ? latestPlayByOthers(view.tiles, view.viewerUserId) : null),
     [view],
   );
-  const livePlay =
-    !reviewing &&
-    latestTheirs !== null &&
-    openedAtTurn !== undefined &&
-    latestTheirs.turnNumber >= openedAtTurn &&
-    latestTheirs.turnNumber > liveShown
-      ? latestTheirs
-      : null;
+
+  /*
+   * Plays watched as they land, in order: every play by someone else since
+   * the page opened that has not had its moment yet. Taking only the newest
+   * meant a second play landing mid-way cut the first short, and the rack
+   * blinked back between two plays made in quick succession. Read off the
+   * history, with the board's newest play added if the history has not
+   * caught up with it yet.
+   */
+  const viewer = view?.viewerUserId;
+  const liveQueue = useMemo(() => {
+    if (openedAtTurn === undefined || viewer === undefined) return [];
+    const waiting = (turn: number) => turn >= openedAtTurn && turn > liveShown;
+    const queue = (history ?? [])
+      .filter((t) => t.userId !== viewer && t.placements.length > 0 && waiting(t.turnNumber))
+      .sort((a, b) => a.turnNumber - b.turnNumber)
+      .map((t) => ({
+        turnNumber: t.turnNumber,
+        cells: new Set(t.placements.map((p) => cellKey(p.x, p.y))),
+      }));
+    if (
+      latestTheirs !== null &&
+      waiting(latestTheirs.turnNumber) &&
+      !queue.some((p) => p.turnNumber === latestTheirs.turnNumber)
+    ) {
+      queue.push(latestTheirs);
+    }
+    return queue;
+  }, [history, viewer, openedAtTurn, liveShown, latestTheirs]);
+  const livePlay = reviewing ? null : (liveQueue[0] ?? null);
   const liveTurn = livePlay?.turnNumber;
 
   /*
@@ -150,20 +183,7 @@ export function useTurnReplay({
     playsSinceYou.length > 0 &&
     recapState?.done !== true;
 
-  /*
-   * The turn history, fetched while it is being reviewed and while a recap is
-   * replaying what was played. Most visits need neither, so it is not fetched
-   * the rest of the time.
-   */
-  const history = useQuery(
-    api.games.listTurns,
-    // Kept while the game is on, too: a play landing while you watch is
-    // stepped through off the history, and waiting to fetch it then is what
-    // let the whole play flash onto the board first.
-    reviewing || recapWanted || livePlay !== null || view?.game.status === "active"
-      ? { gameId }
-      : "skip",
-  );
+
 
   /*
    * The plays to replay, read off the history rather than the board: the board

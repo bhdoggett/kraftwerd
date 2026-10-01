@@ -184,10 +184,15 @@
   line-height: 1.2;
   /* Big enough to take in at a glance: it is only up for a few seconds. */
   font-size: 1.2rem;
-  /* A quick fade where it stands. It borrowed the refused-tile message's
-     entrance, whose transform is built for a box centred by translate, so it
-     swept in from the side. */
+  /* A quick fade where it stands when it first appears. It borrowed the
+     refused-tile message's entrance, whose transform is built for a box
+     centred by translate, so it swept in from the side. */
   animation: announce-in 120ms ease-out;
+  /* From one player's play to the next it stays up and eases into the new
+     player's colour, rather than dropping back to the rack in between. */
+  transition:
+    background-color 300ms ease,
+    color 300ms ease;
 }
 
 @keyframes announce-in {
