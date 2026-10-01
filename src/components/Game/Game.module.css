@@ -245,8 +245,11 @@
   inset: 0;
 }
 
+/* Who, a little faded, so it sets off what they made rather than running
+   into it. */
 .announceName {
   font-weight: 700;
+  opacity: 0.7;
 }
 
 .rackSlot {
