@@ -40,32 +40,35 @@
    */
   scrollbar-width: none;
   /*
-   * No background or shadow, but a frame and a little room inside it.
+   * The board's edge, kept when zoomed. An outline is drawn on top and does
+   * not scroll: zoomed in, the grid's own border scrolled out of sight and the
+   * board read as an open tic-tac-toe grid. Pulled in a pixel so that,
+   * unzoomed, it lies exactly on the grid's border rather than beside it --
+   * the grid is fitted to fill this box (`fit` in Board.tsx).
    *
-   * The frame is an outline, which is drawn on top and does not scroll: zoomed
-   * in, the grid's own border scrolls out of sight and the board read as an
-   * open tic-tac-toe grid, so this is the edge that stays. The room inside
-   * keeps the score tally (Game.module.css), which sits on the frame's corner,
-   * off the top-right square.
-   */
-  outline: 1px solid var(--board-frame);
-  border-radius: var(--radius);
-  padding: var(--space-3);
-  /*
    * A fixed box, not one that grows to fit. Zooming has to change what is
    * inside the board, never the space the board takes: a container that grew
    * with the zoom pushed the rack down the page and left you scrolling the
-   * document to get back to it.
-   *
-   * Square, filling the space the page gives it (`.boardArea` in
-   * Game.module.css sets how big), and the board scales to fill it (`fit` in
-   * Board.tsx). A box of fixed height and full width left the board centred
-   * in empty space on every side.
+   * document to get back to it. It fills `.frame`, below.
    */
+  outline: 1px solid var(--board-frame);
+  outline-offset: -1px;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
   display: grid;
   place-items: center;
+}
+
+/*
+ * Around the board: a little room with no border of its own, which keeps the
+ * score tally (Game.module.css) on the board's corner rather than over the
+ * top-right square. Square, filling the space the page gives it
+ * (`.boardArea` in Game.module.css sets how big).
+ */
+.frame {
+  width: 100%;
+  aspect-ratio: 1;
+  padding: var(--space-3);
 }
 
 /* 15 columns at full size overflow a phone, so the squares shrink instead. */
@@ -312,7 +315,8 @@
   justify-self: stretch;
   border: 3px solid transparent;
   pointer-events: none;
-  animation: recent-play 640ms ease-out 3;
+  /* Four pulses: the whole of RECAP_PLAY_MS in useTurnReplay.ts. */
+  animation: recent-play 800ms ease-out 4;
 }
 
 @keyframes recent-play {

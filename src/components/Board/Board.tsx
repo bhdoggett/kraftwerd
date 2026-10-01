@@ -143,9 +143,10 @@ export function Board({
       // pair of squares, 1px of padding and 1px of border on each side.
       const chrome = boardSize - 1 + 4;
       const scale = Math.min(width - chrome, height - chrome) / (boardSize * base);
-      // Hundredths, as the zoom is, so a resize of a pixel does not re-lay out
-      // every square.
-      setFit(Math.floor(scale * 100) / 100);
+      // Thousandths: fine enough that the grid fills the box to under a pixel,
+      // so its border lies on the frame's, and still coarse enough that a
+      // resize of a pixel does not re-lay out every square.
+      setFit(Math.floor(scale * 1000) / 1000);
     };
 
     measure();
@@ -404,41 +405,43 @@ export function Board({
   }
 
   return (
-    <div
-      ref={viewport}
-      className={styles.viewport}
-      style={{ "--cell-scale": zoom * fit } as React.CSSProperties}
-      onPointerDown={(e) => {
-        pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        // Cleared for every press, not only for one starting on a staged
-        // tile: the flag outlived the drag that set it, and the click it went
-        // on swallowing was the next tap on any square -- which is how a tile
-        // is placed without dragging one.
-        dragged.current = false;
-        // A staged tile is dragged, not panned from.
-        if ((e.target as HTMLElement).closest("[data-staged]") !== null) {
-          press.current = { x: e.clientX, y: e.clientY };
-          return;
-        }
-        if (pointers.current.size > 1) return;
-
-        panned.current = false;
-        const el = viewport.current;
-        if (el === null) return;
-        pan.current = {
-          x: e.clientX,
-          y: e.clientY,
-          left: el.scrollLeft,
-          top: el.scrollTop,
-        };
-      }}
-    >
+    <div className={styles.frame}>
       <div
-        className={styles.grid}
-      data-seat={yourSeat === null ? undefined : yourSeat % 4}
-        style={{ gridTemplateColumns: `repeat(${boardSize}, var(--cell-size))` }}
+        ref={viewport}
+        className={styles.viewport}
+        style={{ "--cell-scale": zoom * fit } as React.CSSProperties}
+        onPointerDown={(e) => {
+          pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          // Cleared for every press, not only for one starting on a staged
+          // tile: the flag outlived the drag that set it, and the click it went
+          // on swallowing was the next tap on any square -- which is how a tile
+          // is placed without dragging one.
+          dragged.current = false;
+          // A staged tile is dragged, not panned from.
+          if ((e.target as HTMLElement).closest("[data-staged]") !== null) {
+            press.current = { x: e.clientX, y: e.clientY };
+            return;
+          }
+          if (pointers.current.size > 1) return;
+
+          panned.current = false;
+          const el = viewport.current;
+          if (el === null) return;
+          pan.current = {
+            x: e.clientX,
+            y: e.clientY,
+            left: el.scrollLeft,
+            top: el.scrollTop,
+          };
+        }}
       >
-        {cells}
+        <div
+          className={styles.grid}
+          data-seat={yourSeat === null ? undefined : yourSeat % 4}
+          style={{ gridTemplateColumns: `repeat(${boardSize}, var(--cell-size))` }}
+        >
+          {cells}
+        </div>
       </div>
     </div>
   );
