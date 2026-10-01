@@ -1,5 +1,6 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
+import { asShown } from "../shared/names.js";
 import { displayName } from "./auth_helpers";
 
 /**
@@ -90,8 +91,8 @@ export async function friendIdsOf(
  * Everyone else is the alias their seat was dealt.
  *
  * A machine's seat carries an alias too, but it is never consulted: the
- * `bot === undefined` test comes first, so a machine renders as its `Robo-`
- * name to everybody. The field is there so that every draw excludes the
+ * `bot === undefined` test comes first, so a machine renders as its own name
+ * and level to everybody. The field is there so that every draw excludes the
  * machines' names by the same mechanism it excludes people's -- bookkeeping,
  * not a disguise.
  */
@@ -121,10 +122,9 @@ export async function namesFor(
     // Read only now that the answer is known to be the real name. Fetching it
     // first and discarding it worked, but a chokepoint that loads names it has
     // decided to hide is one edit away from handing one out by accident.
-    names.set(
-      player.userId,
-      displayName(await ctx.db.get("users", player.userId)),
-    );
+    const name = displayName(await ctx.db.get("users", player.userId));
+    // Machines made before the `Robo-` prefix was dropped still carry it.
+    names.set(player.userId, player.bot === undefined ? name : asShown(name));
   }
 
   return names;

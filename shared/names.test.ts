@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { drawNames, NAMES, robotName, ROBOT_PREFIX, withoutLevel } from "./names";
+import { asShown, drawNames, NAMES, robotName, ROBOT_PREFIX, withoutLevel } from "./names";
 
 /** A rigged rng: hands back the numbers given, then zeroes forever. */
 const rigged = (...values: number[]) => {
@@ -54,22 +54,23 @@ describe("drawing names", () => {
 });
 
 describe("what a machine is called", () => {
-  test("wears the prefix, so no seat is mistaken for a person", () => {
-    expect(robotName("Gawain", "medium")).toBe("Robo-Gawain (medium)");
+  test("its name and its level, so no seat is mistaken for a person", () => {
+    expect(robotName("Gawain", "medium")).toBe("Gawain (medium)");
   });
 
-  test("the prefix is the one the pool check knows about", () => {
-    expect(robotName("Egil", "hard").startsWith(ROBOT_PREFIX)).toBe(true);
+  test("an older machine shows without the prefix it was stored with", () => {
+    expect(asShown("Robo-Egil (hard)")).toBe("Egil (hard)");
+    expect(asShown("Egil (hard)")).toBe("Egil (hard)");
   });
 
-  test("no name in the pool already wears it", () => {
+  test("no name in the pool starts with the old prefix", () => {
     for (const name of NAMES) expect(name.startsWith(ROBOT_PREFIX)).toBe(false);
   });
 });
 
 describe("a name without its level", () => {
   test("drops a machine's level", () => {
-    expect(withoutLevel(robotName("Ada", "medium"))).toBe("Robo-Ada");
+    expect(withoutLevel(robotName("Ada", "medium"))).toBe("Ada");
   });
 
   test("leaves a person's name alone, brackets and all", () => {

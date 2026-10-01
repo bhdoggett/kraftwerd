@@ -231,7 +231,7 @@ export default defineSchema({
      * Written for every human seat including the one that made the game, so
      * that no seat is the one without a disguise. Absent on a private game,
      * where nobody needs one, and absent on a machine's seat, which has no
-     * identity to protect: a machine is its Robo- name to everybody.
+     * identity to protect: a machine is its own name to everybody.
      */
     alias: v.optional(v.string()),
     /**

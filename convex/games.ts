@@ -307,7 +307,7 @@ export const createGame = mutation({
      * The machines' names are passed in by hand here, and only here, because
      * the machines are not seated until below: every later draw finds them in
      * the `alias` of a row that already exists. Either way they are excluded,
-     * so a table never reads as a Gawain sitting beside a Robo-Gawain.
+     * so a table never reads as a Gawain sitting beside a machine Gawain.
      */
     const alias = isPublic
       ? drawNames(
@@ -371,7 +371,7 @@ export const createGame = mutation({
  * Its bare pool name goes in `alias` even though a machine has nothing to
  * hide. That is the one place every draw already looks to see what is spoken
  * for at this table, so writing it there is what stops a joiner being dealt
- * `Gawain` next to a seated `Robo-Gawain (easy)`. It is never rendered:
+ * `Gawain` next to a seated `Gawain (easy)`. It is never rendered:
  * `namesFor` checks `bot` before it consults `alias`.
  */
 async function seatBot(
@@ -468,7 +468,7 @@ export const joinGame = mutation({
      * The machines are in that reckoning: `seatBot` writes each one's bare
      * pool name into its `alias`, so this draw excludes them without knowing
      * they exist. The prefix tells the two kinds apart, but it does not make
-     * `Gawain` beside `Robo-Gawain (easy)` a table anybody wants to read.
+     * `Gawain` beside `Gawain (easy)` a table anybody wants to read.
      */
     const alias =
       game.isPublic === true

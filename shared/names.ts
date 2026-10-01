@@ -4,8 +4,11 @@
  *
  * One pool for both, because two pools kept the kinds apart only by
  * convention -- "Sigurd" and "Robin" both read as a person's name -- and a
- * convention cannot be relied on by somebody reading a scoreboard. The
- * `Robo-` prefix can, so the prefix does that job and the pool does not.
+ * convention cannot be relied on by somebody reading a scoreboard. A
+ * machine's level in brackets can, so the level does that job and the pool
+ * does not. (A `Robo-` prefix did it until it was dropped: it put the same
+ * five letters in front of every machine, and the part that told two apart
+ * came last.)
  *
  * Every name is one word and a mortal person from legend: no deities, no fae,
  * no animal tricksters, and nothing from a living faith. Sources are public
@@ -32,7 +35,11 @@ export const NAMES = [
   "Wiglaf", "Hrothgar", "Unferth", "Scyld", "Hygelac", "Hildeburh",
 ] as const;
 
-/** What marks a seat as a machine rather than a person. */
+/**
+ * What used to mark a machine's name. Machines made before it was dropped
+ * still carry it in their stored name, so it is taken off when they are shown
+ * (`asShown`).
+ */
 export const ROBOT_PREFIX = "Robo-";
 
 /**
@@ -69,7 +76,12 @@ export function withoutLevel(name: string): string {
   return name.replace(/ \((?:easy|medium|hard)\)$/, "");
 }
 
-/** What a machine plays under: the prefix says what it is, the level how good. */
+/** What a machine plays under: its name, and how good it is. */
 export function robotName(name: string, level: string): string {
-  return `${ROBOT_PREFIX}${name} (${level})`;
+  return `${name} (${level})`;
+}
+
+/** A machine's stored name as it is shown, without the prefix older ones carry. */
+export function asShown(name: string): string {
+  return name.startsWith(ROBOT_PREFIX) ? name.slice(ROBOT_PREFIX.length) : name;
 }

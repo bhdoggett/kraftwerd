@@ -1901,7 +1901,7 @@ describe("computer players", () => {
     const bot = await t.run(async (ctx) =>
       ctx.db.get("users", players[1].userId),
     );
-    expect(bot?.name).toBe("Robo-Hervor (hard)");
+    expect(bot?.name).toBe("Hervor (hard)");
   });
 
   // The name arrives from the client, so a machine could otherwise be given
@@ -1986,7 +1986,7 @@ describe("computer players", () => {
 
     // Bookkeeping, not a disguise: it is what later draws look at to see the
     // name is spoken for. Nobody is ever shown it -- this seat renders as
-    // "Robo-Gawain (easy)" to every viewer, which `namesFor` decides.
+    // "Gawain (easy)" to every viewer, which `namesFor` decides.
     const players = await seatsOf(t, gameId);
     expect(players.find((p) => p.bot !== undefined)?.alias).toBe("Gawain");
   });
@@ -2505,7 +2505,7 @@ describe("who you are allowed to see", () => {
     expect(nameOf(view, alice)).toBe("Alice");
   });
 
-  test("a machine keeps its Robo- name for everyone", async () => {
+  test("a machine keeps its own name for everyone", async () => {
     const seats = await strangers();
     const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
       playerCount: 3,
@@ -2515,7 +2515,26 @@ describe("who you are allowed to see", () => {
     await seats.asCarol.mutation(api.games.joinGame, { gameId });
 
     const view = await seats.asCarol.query(api.games.getGame, { gameId });
-    expect(view?.players.map((p) => p.name)).toContain("Robo-Gawain (easy)");
+    expect(view?.players.map((p) => p.name)).toContain("Gawain (easy)");
+  });
+
+  test("a machine made with the old prefix shows without it", async () => {
+    const seats = await strangers();
+    const { gameId } = await seats.asAlice.mutation(api.games.createGame, {
+      playerCount: 2,
+      bots: [{ level: "easy", name: "Gawain" }],
+    });
+    // As a machine made before the prefix was dropped was stored.
+    await seats.t.run(async (ctx) => {
+      const bot = (await ctx.db
+        .query("players")
+        .withIndex("by_game", (q) => q.eq("gameId", gameId))
+        .collect()).find((p) => p.bot !== undefined);
+      await ctx.db.patch("users", bot!.userId, { name: "Robo-Gawain (easy)" });
+    });
+
+    const view = await seats.asAlice.query(api.games.getGame, { gameId });
+    expect(view?.players.map((p) => p.name)).toContain("Gawain (easy)");
   });
 
   test("the lobby disguises opponents too, not just the board", async () => {
