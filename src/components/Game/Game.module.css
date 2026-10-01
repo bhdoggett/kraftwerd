@@ -182,6 +182,8 @@
   color: var(--tile-text);
   text-align: center;
   line-height: 1.2;
+  /* Big enough to take in at a glance: it is only up for a few seconds. */
+  font-size: 1.2rem;
   /* A quick fade where it stands. It borrowed the refused-tile message's
      entrance, whose transform is built for a box centred by translate, so it
      swept in from the side. */
@@ -234,7 +236,7 @@
 }
 
 .recapPoints {
-  font-size: 1.1rem;
+  font-size: 1.6rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }

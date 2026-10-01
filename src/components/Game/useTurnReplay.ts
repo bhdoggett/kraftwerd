@@ -20,6 +20,12 @@ import { boardAfter } from "../../lib/replay";
 const RECAP_PLAY_MS = 3200;
 
 /**
+ * How long a turn's points step lasts: a name and a number, so it needs far
+ * less reading time than a spot's words.
+ */
+const RECAP_POINTS_MS = 1600;
+
+/**
  * How long the replay holds the board as you left it before the first play
  * lands: long enough to register as the position you remember.
  */
@@ -224,18 +230,22 @@ export function useTurnReplay({
   const liveIndex = liveStep !== null && liveStep.turn === liveTurn ? liveStep.index : 0;
   const liveSpot = liveSteps?.[liveIndex];
   const liveSpotCount = liveSteps?.length ?? 0;
+  const liveSpotIsTotal = liveSpot?.total === true;
 
   // Each spot gets a play's length; after the last, the play has had its moment.
   // A newer play landing sooner replaces it.
   useEffect(() => {
     // The clock starts with the first spot on screen, not before it.
     if (liveTurn === undefined || liveSpotCount === 0) return;
-    const next = setTimeout(() => {
-      if (liveIndex + 1 < liveSpotCount) setLiveStep({ turn: liveTurn, index: liveIndex + 1 });
-      else setLiveShown(liveTurn);
-    }, RECAP_PLAY_MS);
+    const next = setTimeout(
+      () => {
+        if (liveIndex + 1 < liveSpotCount) setLiveStep({ turn: liveTurn, index: liveIndex + 1 });
+        else setLiveShown(liveTurn);
+      },
+      liveSpotIsTotal ? RECAP_POINTS_MS : RECAP_PLAY_MS,
+    );
     return () => clearTimeout(next);
-  }, [liveTurn, liveIndex, liveSpotCount]);
+  }, [liveTurn, liveIndex, liveSpotCount, liveSpotIsTotal]);
 
   /** The spot the card over the board speaks for: replayed, or just watched. */
   const noteSpot = recapPlay ?? liveSpot;
@@ -257,10 +267,10 @@ export function useTurnReplay({
           step: recapPhase + 1,
           done: recapPhase >= replayCount,
         }),
-      recapPhase === 0 ? RECAP_LEAD_MS : RECAP_PLAY_MS,
+      recapPhase === 0 ? RECAP_LEAD_MS : recapPlay?.total ? RECAP_POINTS_MS : RECAP_PLAY_MS,
     );
     return () => clearTimeout(next);
-  }, [recapping, recapKey, recapPhase, replayCount]);
+  }, [recapping, recapKey, recapPhase, replayCount, recapPlay?.total]);
 
   /** Any press on the board ends the replay: it must never stand between you and your turn. */
   const skipRecap = () => {
