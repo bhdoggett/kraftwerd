@@ -26,7 +26,7 @@ import { withoutLevel } from "../../../shared/names";
 import { useTurnReplay } from "./useTurnReplay";
 import { Rack, type Selection } from "../Rack/Rack";
 import { userMessage } from "../../lib/errors";
-import { HintPanel } from "../HintPanel/HintPanel";
+import { HintBar } from "../HintBar/HintBar";
 import { hintFor, NO_HINT, shownHint, stageHint, type HintState } from "../../lib/stageHint";
 import { nearSquares } from "../../../shared/engine/nearSquares";
 import type { HintMove } from "../../../shared/sim/coach";
@@ -856,6 +856,20 @@ export function Game({
           </div>
         )}
 
+        {/* Above the board, so a hint is in reach without scrolling. */}
+        {game.hints === true && (
+          <HintBar
+            canAsk={myTurn}
+            turnKey={hintKey}
+            result={shownHint(hint.result, game.turnNumber)}
+            active={game.status === "active"}
+            loading={hint.loading}
+            error={hint.error}
+            onAsk={() => void ask()}
+            onPick={pick}
+          />
+        )}
+
         {/* The refusal floats over the board, so the board is what it is
             measured against. */}
         <div
@@ -1316,17 +1330,6 @@ export function Game({
           whole panel for "checking…" and back was what made the page jump on
           every tile.
         */}
-        {game.hints === true && (
-          <HintPanel
-            canAsk={myTurn}
-            result={shownHint(hint.result, game.turnNumber)}
-            active={game.status === "active"}
-            loading={hint.loading}
-            error={hint.error}
-            onAsk={() => void ask()}
-            onPick={pick}
-          />
-        )}
 
         {pending.length > 0 && (
           <section className={styles.play}>
