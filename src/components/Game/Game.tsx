@@ -876,7 +876,9 @@ export function Game({
             awaitingBlankAt={showDraft ? blankAt : null}
             goodCells={showDraft ? wordCells.good : undefined}
             badCells={showDraft ? wordCells.bad : undefined}
-            recentCells={noteSpot?.cells}
+            // The points step lays nothing new, so it rings nothing: ringing
+            // the whole play replayed the first spot's rings a second time.
+            recentCells={noteSpot?.total === true ? undefined : noteSpot?.cells}
             onGrabStaged={!reviewing ? grabStaged : undefined}
           />
 

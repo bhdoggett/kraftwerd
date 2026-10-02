@@ -205,10 +205,13 @@
   }
 }
 
-/* A phone's rack is narrow: smaller, so a few words still fit on a line. */
+/* A phone's rack is narrow: smaller, and two rows -- who on top, what they
+   made (or scored) below -- so the words get a line of their own. */
 @media (max-width: 640px) {
   .announce {
     font-size: 1.05rem;
+    flex-direction: column;
+    gap: var(--space-1);
   }
 
   .announce .recapPoints {
