@@ -5,6 +5,8 @@ import styles from "./HintPanel.module.css";
 interface HintPanelProps {
   /** Your turn: the only time a hint is worth asking for. */
   canAsk: boolean;
+  /** The game is still on; a finished one keeps the tag but not the button. */
+  active?: boolean;
   result: HintResult | null;
   loading: boolean;
   error: string | null;
@@ -16,19 +18,21 @@ interface HintPanelProps {
  * Hints in a practice game: a button, up to three plays to pick from, and the
  * words the rack spells. Picking a play stages it; Play is still yours.
  */
-export function HintPanel({ canAsk, result, loading, error, onAsk, onPick }: HintPanelProps) {
+export function HintPanel({ canAsk, active = true, result, loading, error, onAsk, onPick }: HintPanelProps) {
   return (
     <section className={styles.panel} aria-label="Hints">
       <div className={styles.header}>
         <span className={styles.tag}>Practice</span>
-        <button
-          type="button"
-          className={styles.ask}
-          onClick={onAsk}
-          disabled={!canAsk || loading}
-        >
-          {loading ? "Thinking…" : "Hint"}
-        </button>
+        {active && (
+          <button
+            type="button"
+            className={styles.ask}
+            onClick={onAsk}
+            disabled={!canAsk || loading}
+          >
+            {loading ? "Thinking…" : "Hint"}
+          </button>
+        )}
       </div>
 
       {error !== null && <p className={styles.error}>{error}</p>}

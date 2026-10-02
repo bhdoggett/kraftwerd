@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { shownHint, stageHint } from "./stageHint";
+import { hintFor, NO_HINT, shownHint, stageHint } from "./stageHint";
 
 const p = (x: number, letter: string, isBlank = false) => ({ x, y: 7, letter, isBlank });
 
@@ -29,5 +29,19 @@ describe("shownHint", () => {
   });
   test("dropped once the turn has moved on", () => {
     expect(shownHint(result, 5)).toBeNull();
+  });
+});
+
+describe("hintFor", () => {
+  const state = { key: "gameA:12", result: { turnNumber: 12, moves: [], rackWords: [] }, loading: false, error: null };
+  test("shown in the game and turn it was asked in", () => {
+    expect(hintFor(state, "gameA:12")).toBe(state);
+  });
+  test("not shown in another game at the same turn", () => {
+    expect(hintFor(state, "gameB:12")).toBe(NO_HINT);
+  });
+  test("not shown on another turn, error and loading included", () => {
+    const stale = { ...state, loading: true, error: "Hints are for your own turn" };
+    expect(hintFor(stale, "gameA:13")).toBe(NO_HINT);
   });
 });

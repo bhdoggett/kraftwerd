@@ -37,9 +37,7 @@ async function table(hints: boolean) {
 describe("coach.hints", () => {
   test("up to three moves from your own rack, every word a word", async () => {
     const { asAlice, gameId } = await table(true);
-    const started = Date.now();
     const result = await asAlice.action(api.coach.hints, { gameId });
-    console.log(`coach.hints took ${Date.now() - started}ms`);
 
     expect(result.turnNumber).toBe(0);
     expect(result.moves.length).toBeGreaterThan(0);

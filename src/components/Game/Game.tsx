@@ -28,9 +28,9 @@ import { useTurnReplay } from "./useTurnReplay";
 import { Rack, type Selection } from "../Rack/Rack";
 import { userMessage } from "../../lib/errors";
 import { HintPanel } from "../HintPanel/HintPanel";
-import { shownHint, stageHint } from "../../lib/stageHint";
+import { hintFor, NO_HINT, shownHint, stageHint, type HintState } from "../../lib/stageHint";
 import { nearSquares } from "../../../shared/engine/nearSquares";
-import type { HintMove, HintResult } from "../../../shared/sim/coach";
+import type { HintMove } from "../../../shared/sim/coach";
 import { markCells } from "../../lib/boardFeedback";
 import { boardAfter, scoresAfter } from "../../lib/replay";
 import { squareBreakdown } from "../../lib/breakdown";
@@ -134,11 +134,7 @@ export function Game({
   const joinGame = useMutation(api.games.joinGame);
   const rematch = useMutation(api.games.rematch);
   const askHints = useAction(api.coach.hints);
-  const [hint, setHint] = useState<{
-    result: HintResult | null;
-    loading: boolean;
-    error: string | null;
-  }>({ result: null, loading: false, error: null });
+  const [hintState, setHintState] = useState<HintState>(NO_HINT);
   const [copied, setCopied] = useState(false);
 
   const [pending, setPending] = useState<Staged[]>([]);
@@ -390,6 +386,9 @@ export function Game({
   useWakeLock(view?.game.status === "active");
 
   const turnNumber = view?.game.turnNumber;
+  // A hint belongs to the game and turn it was asked on; anything stored under
+  // another key (a previous game, an earlier turn, a late reply) reads as none.
+  const hint = hintFor(hintState, `${gameId}:${turnNumber}`);
   /**
    * Whether a draft still means anything here. A game that is over takes no
    * more turns, so the tiles staged for one belong to nothing -- and quitting
@@ -590,12 +589,13 @@ export function Game({
   }
 
   async function ask() {
-    setHint((h) => ({ ...h, loading: true, error: null }));
+    const key = `${gameId}:${turnNumber}`;
+    setHintState({ key, result: null, loading: true, error: null });
     try {
       const result = await askHints({ gameId });
-      setHint({ result, loading: false, error: null });
+      setHintState({ key, result, loading: false, error: null });
     } catch (err) {
-      setHint({ result: null, loading: false, error: userMessage(err) });
+      setHintState({ key, result: null, loading: false, error: userMessage(err) });
     }
   }
 
@@ -607,6 +607,9 @@ export function Game({
       return;
     }
     setSelected(null);
+    setBlankAt(null);
+    setPassing(false);
+    setSwapping(false);
     setPending(staged);
   }
 
@@ -1333,6 +1336,7 @@ export function Game({
           <HintPanel
             canAsk={myTurn}
             result={shownHint(hint.result, game.turnNumber)}
+            active={game.status === "active"}
             loading={hint.loading}
             error={hint.error}
             onAsk={() => void ask()}

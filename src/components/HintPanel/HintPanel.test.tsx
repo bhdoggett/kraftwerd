@@ -55,4 +55,10 @@ describe("HintPanel", () => {
     panel({ canAsk: false, result: null });
     expect((screen.getByRole("button", { name: "Hint" })).hasAttribute("disabled")).toBe(true);
   });
+
+  test("a finished game keeps the tag but offers no Hint button", () => {
+    panel({ active: false });
+    expect(screen.getByText("Practice")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /hint|thinking/i })).toBeNull();
+  });
 });

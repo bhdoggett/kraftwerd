@@ -32,3 +32,18 @@ export function stageHint(
 export function shownHint(result: HintResult | null, turnNumber: number): HintResult | null {
   return result !== null && result.turnNumber === turnNumber ? result : null;
 }
+
+/** A hint request's state, tagged with the game and turn it was asked on. */
+export interface HintState {
+  key: string;
+  result: HintResult | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export const NO_HINT: HintState = { key: "", result: null, loading: false, error: null };
+
+/** The state for this game and turn; one stored under another key is not ours. */
+export function hintFor(state: HintState, key: string): HintState {
+  return state.key === key ? state : NO_HINT;
+}
