@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { RULES_VERSION } from "../shared/config.js";
-import { checkDisplayName } from "../shared/names.js";
+import { checkDisplayName, suggestDisplayName } from "../shared/names.js";
 import { mutation, query } from "./_generated/server";
 import { googleConfigured } from "./auth";
 import { currentUser } from "./auth_helpers";
@@ -53,6 +53,8 @@ export const viewer = query({
            * a guest is somebody who has not yet decided to stay.
            */
           needsDisplayName: user.isGuest !== true && !user.displayName,
+          /** What the prompt starts from: their Google first name, if usable. */
+          suggestedDisplayName: suggestDisplayName(user.name),
           /** The newest rules version this player has been told about. */
           rulesSeen: user.rulesSeen ?? RULES_SEEN_UNTRACKED,
           stats: {

@@ -6,18 +6,28 @@ import { userMessage } from "../../lib/errors";
 import styles from "./Account.module.css";
 
 interface NameFormProps {
-  /** The name already chosen, if any, to start the field from. */
+  /** The name already chosen, if any. */
   current: string | null;
+  /** What the field starts with, when that is not `current`. */
+  initial?: string | null;
   submitLabel: string;
+  /** The button's label while the field still holds `initial` untouched. */
+  keepLabel?: string;
   onSaved?: () => void;
 }
 
 /** The one field for choosing what other players see, wherever it is asked. */
-export function NameForm({ current, submitLabel, onSaved }: NameFormProps) {
+export function NameForm({
+  current,
+  initial,
+  submitLabel,
+  keepLabel,
+  onSaved,
+}: NameFormProps) {
   const save = useMutation(api.users.setDisplayName);
   // The prompt and the account page can both be up at once.
   const id = useId();
-  const [value, setValue] = useState(current ?? "");
+  const [value, setValue] = useState(initial ?? current ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -68,7 +78,11 @@ export function NameForm({ current, submitLabel, onSaved }: NameFormProps) {
           className={styles.button}
           disabled={saving || unchanged || value.trim() === ""}
         >
-          {saving ? "Saving…" : submitLabel}
+          {saving
+            ? "Saving…"
+            : keepLabel !== undefined && value === initial
+              ? keepLabel
+              : submitLabel}
         </button>
       </div>
       {error ? (

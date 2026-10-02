@@ -115,3 +115,15 @@ export function checkDisplayName(
   }
   return { ok: true, name };
 }
+
+/**
+ * What to offer a player who has not chosen a name yet: the first word of
+ * the name Google gave us. The first name only, so keeping the suggestion
+ * does not hand a surname to everybody they play. Null when that word would
+ * not pass as a display name.
+ */
+export function suggestDisplayName(googleName: string | undefined): string | null {
+  const first = googleName?.trim().split(/\s+/)[0] ?? "";
+  const checked = checkDisplayName(first);
+  return checked.ok ? checked.name : null;
+}

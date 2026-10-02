@@ -6,6 +6,7 @@ import {
   NAMES,
   robotName,
   ROBOT_PREFIX,
+  suggestDisplayName,
   withoutLevel,
 } from "./names";
 
@@ -109,5 +110,17 @@ describe("checkDisplayName", () => {
 
   test("refuses brackets, so nobody can pass for a machine", () => {
     expect(checkDisplayName("Gawain (hard)").ok).toBe(false);
+  });
+});
+
+describe("suggestDisplayName", () => {
+  test("offers the first name only", () => {
+    expect(suggestDisplayName("Ana Real-Surname")).toBe("Ana");
+  });
+
+  test("offers nothing when there is no usable name", () => {
+    expect(suggestDisplayName(undefined)).toBeNull();
+    expect(suggestDisplayName("A")).toBeNull();
+    expect(suggestDisplayName("ana@gmail.com")).toBeNull();
   });
 });

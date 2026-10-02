@@ -7,23 +7,42 @@ import { NameForm } from "./NameForm";
 /**
  * Asks for a display name before anything else, and will not be waved away.
  *
- * Until a player chooses one they are "Player" to everybody, rather than the
- * name Google gave us: a friend's friend can sit at the same private table,
- * and they have no business knowing who you are.
+ * It starts from their Google first name, but nothing is shown to anybody
+ * until they keep it or change it. Until then they are "Player": a friend's
+ * friend can sit at the same private table, and should not learn who you are
+ * without you agreeing to it.
  */
 export function DisplayNameNotice() {
   const viewer = useQuery(api.users.viewer);
   if (!viewer?.needsDisplayName) return null;
 
+  const suggested = viewer.suggestedDisplayName;
+
   return (
     <Modal>
       <div className={styles.prompt}>
-        <h2 className={styles.title}>Pick a display name</h2>
+        <h2 className={styles.title}>
+          {suggested ? "How other players see you" : "Pick a display name"}
+        </h2>
         <p className={styles.lede}>
-          Other players see this instead of the name on your Google account.
-          You can change it later from the menu.
+          {suggested ? (
+            <>
+              Other players will see you as <strong>{suggested}</strong>. Keep
+              it, or change it to anything you like.
+            </>
+          ) : (
+            "Other players see this instead of the name on your Google account."
+          )}{" "}
+          You can change it later under Account in the menu.
         </p>
-        <NameForm current={null} submitLabel="Save" />
+        {/* Keyed so the field picks up the suggestion if it arrives late. */}
+        <NameForm
+          key={suggested ?? ""}
+          current={null}
+          initial={suggested}
+          submitLabel="Save"
+          keepLabel="Keep"
+        />
       </div>
     </Modal>
   );

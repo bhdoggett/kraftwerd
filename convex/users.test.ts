@@ -107,3 +107,15 @@ describe("display names", () => {
     expect(JSON.stringify(seen)).not.toMatch(/Real-Surname|realsurname/i);
   });
 });
+
+describe("the suggested name", () => {
+  test("is the Google first name, and is not shown until kept", async () => {
+    const t = convexTest(schema, modules);
+    await t.run((ctx) => ctx.db.insert("users", { authId: "auth|a", name: "Ana Real-Surname" }));
+    const asAna = t.withIdentity({ subject: "auth|a" });
+
+    const me = await asAna.query(api.users.viewer);
+    expect(me?.suggestedDisplayName).toBe("Ana");
+    expect(me?.displayName).toBeNull();
+  });
+});
