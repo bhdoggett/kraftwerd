@@ -85,8 +85,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     bots: BotSeat[],
     isPublic = false,
     seat = 0,
+    hints = false,
   ) {
-    const game = await start(playerCount, friendIds, bots, isPublic, seat);
+    const game = await start(playerCount, friendIds, bots, isPublic, seat, hints);
     if (game === null) return;
 
     setCreating(false);
@@ -200,8 +201,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           />
         ) : (
           <CreateGame
-            onStart={(playerCount, friendIds, bots, isPublic, seat) =>
-              void startGame(playerCount, friendIds, bots, isPublic, seat)
+            onStart={(playerCount, friendIds, bots, isPublic, seat, hints) =>
+              void startGame(playerCount, friendIds, bots, isPublic, seat, hints)
             }
             onCancel={() => {
               setCreating(false);
@@ -275,6 +276,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
                     {" · "} waiting for {g.waitingFor}
                   </>
                 )}
+                {g.hints && <span className={styles.practice}>Practice</span>}
               </span>
             </span>
             {g.yourTurn && <span className={styles.badge}>Your turn</span>}
@@ -400,6 +402,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
                   <br />
                   <span className={styles.meta}>
                     {g.abandoned ? "someone quit" : `${g.tileCount} tiles`}
+                    {g.hints && <span className={styles.practice}>Practice</span>}
                   </span>
                 </span>
                 <button

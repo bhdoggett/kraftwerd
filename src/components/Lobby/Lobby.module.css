@@ -229,3 +229,12 @@
   color: var(--danger);
   font-size: 0.85rem;
 }
+
+.practice {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.75rem;
+}
