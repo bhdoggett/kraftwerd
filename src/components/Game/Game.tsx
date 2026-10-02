@@ -1426,34 +1426,6 @@ export function Game({
               })}
             </div>
 
-            {/*
-              Always here, so the panel cannot change height when the verdict
-              lands. Legality is null while the words are being checked, and a
-              line that comes and goes on every tile shortens the page — enough
-              that, scrolled near the bottom, the browser clamps the scroll and
-              the whole board appears to jump.
-            */}
-            {/* One line per thing wrong, since a play can be wrong in more
-                than one way -- disconnected and not a word at once. Each line
-                still gathers its own kind, so a play with three bad words
-                says so once. */}
-            <div
-              className={[
-                styles.reasons,
-                legality === null || legality.ok ? styles.reasonQuiet : "",
-              ].join(" ")}
-            >
-              {legality !== null && !legality.ok ? (
-                legality.faults.map((fault) => (
-                  <p key={fault.reason} className={styles.reason}>
-                    {describeFault(fault)}
-                  </p>
-                ))
-              ) : (
-                <p className={styles.reason}>Checking your play…</p>
-              )}
-            </div>
-
             {preview && breakdownOf(preview).length > 0 && (
               <div className={styles.bonus}>
                 <h3 className={styles.bonusHeading}>Square bonus</h3>
@@ -1487,13 +1459,30 @@ export function Game({
               </p>
             )}
 
-            {preview && (
-              <p className={styles.scoreLine}>
-                This play scores{" "}
-                {/* The line stays put whether the play is legal or not: it is
-                    the panel changing height that made the page jump. */}
-                {scoreBadge}
-              </p>
+            {/*
+              One slot for the verdict: what the play scores, or -- when it
+              cannot be played -- why not, one line per kind of fault, since a
+              play can be disconnected and not a word at once. Never both: a
+              play that is wrong scores 0, which the badge on the board already
+              says. A separate line held open for the reasons left a blank gap
+              under every good play, and the panel has to keep its height
+              rather than grow a line when a fault appears -- on a phone that
+              is what made the board jump. One slot does both.
+            */}
+            {legality !== null && !legality.ok ? (
+              <div className={styles.reasons}>
+                {legality.faults.map((fault) => (
+                  <p key={fault.reason} className={styles.reason}>
+                    {describeFault(fault)}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              preview && (
+                <p className={styles.scoreLine}>
+                  This play scores {scoreBadge}
+                </p>
+              )
             )}
 
             {leftOpen > 0 && (

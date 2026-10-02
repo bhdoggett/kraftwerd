@@ -576,23 +576,18 @@
 }
 
 /* Holds its line whether or not it has anything to say. */
-.reasonQuiet {
-  visibility: hidden;
-}
 
 /*
- * Holds a line's worth of space whether or not there is anything to say, for
- * the same reason the block is always rendered: a panel that changes height
- * on every tile shortens the page under a scroll that is already near the
- * bottom, and the board appears to jump.
+ * The reasons a play cannot be made, in the score line's place. As tall as
+ * that line at least, so a single fault swaps in without the panel moving.
  */
 .reasons {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: var(--space-1);
-  min-height: 1.2em;
+  min-height: 2rem;
 }
-
 .reason {
   margin: 0;
   font-size: var(--text-sm);
@@ -602,6 +597,7 @@
 
 .scoreLine {
   margin: 0;
+  min-height: 2rem;
   display: flex;
   align-items: center;
   gap: var(--space-2);
