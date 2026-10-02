@@ -1,0 +1,110 @@
+.panel {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.tag {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.ask {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--text-inverse);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ask:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.ask:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--border-strong);
+}
+
+.points {
+  grid-row: span 2;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.word {
+  font-family: var(--font-tile);
+}
+
+.rare {
+  margin-left: var(--space-1);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.75rem;
+}
+
+.reasons {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.empty,
+.error {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.error {
+  color: var(--danger);
+}
+
+.rackWords summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.rackWords p {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-tile);
+}

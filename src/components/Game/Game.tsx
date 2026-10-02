@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { api } from "../../../convex/_generated/api";
@@ -27,6 +27,10 @@ import { withoutLevel } from "../../../shared/names";
 import { useTurnReplay } from "./useTurnReplay";
 import { Rack, type Selection } from "../Rack/Rack";
 import { userMessage } from "../../lib/errors";
+import { HintPanel } from "../HintPanel/HintPanel";
+import { shownHint, stageHint } from "../../lib/stageHint";
+import { nearSquares } from "../../../shared/engine/nearSquares";
+import type { HintMove, HintResult } from "../../../shared/sim/coach";
 import { markCells } from "../../lib/boardFeedback";
 import { boardAfter, scoresAfter } from "../../lib/replay";
 import { squareBreakdown } from "../../lib/breakdown";
@@ -129,6 +133,12 @@ export function Game({
   const passTurn = useMutation(api.games.passTurn);
   const joinGame = useMutation(api.games.joinGame);
   const rematch = useMutation(api.games.rematch);
+  const askHints = useAction(api.coach.hints);
+  const [hint, setHint] = useState<{
+    result: HintResult | null;
+    loading: boolean;
+    error: string | null;
+  }>({ result: null, loading: false, error: null });
   const [copied, setCopied] = useState(false);
 
   const [pending, setPending] = useState<Staged[]>([]);
@@ -213,6 +223,13 @@ export function Game({
       bonusSquares: shape.bonusSquares,
     });
   }, [boards, placements, view]);
+
+  /** 3x3s this pending move leaves one tile short -- said aloud in practice games. */
+  const leftOpen = useMemo(() => {
+    if (!view || view.game.hints !== true || !boards || placements.length === 0) return 0;
+    const shape = boardShapeNamed(view.layout, view.game.boardSize);
+    return nearSquares(boards.before, placements, shape, view.game.boardSize).length;
+  }, [view, boards, placements]);
 
   // The words this play would put on the board. Computed locally by the same
   // engine the server uses, so only these few words need checking.
@@ -570,6 +587,27 @@ export function Game({
    */
   function isFull(x: number, y: number) {
     return (boards?.before.get(cellKey(x, y))?.stacked ?? 0) >= STACK_CAP;
+  }
+
+  async function ask() {
+    setHint((h) => ({ ...h, loading: true, error: null }));
+    try {
+      const result = await askHints({ gameId });
+      setHint({ result, loading: false, error: null });
+    } catch (err) {
+      setHint({ result: null, loading: false, error: userMessage(err) });
+    }
+  }
+
+  function pick(move: HintMove) {
+    if (!me?.letters) return;
+    const staged = stageHint(move.placements, me.letters);
+    if (staged === null) {
+      refuse("That hint no longer fits your rack.");
+      return;
+    }
+    setSelected(null);
+    setPending(staged);
   }
 
   /** Say why a tile did not land, and take it back down after a moment. */
@@ -1291,6 +1329,17 @@ export function Game({
           whole panel for "checking…" and back was what made the page jump on
           every tile.
         */}
+        {game.hints === true && (
+          <HintPanel
+            canAsk={myTurn}
+            result={shownHint(hint.result, game.turnNumber)}
+            loading={hint.loading}
+            error={hint.error}
+            onAsk={() => void ask()}
+            onPick={pick}
+          />
+        )}
+
         {pending.length > 0 && (
           <section className={styles.play}>
             <div className={styles.words}>
@@ -1429,6 +1478,10 @@ export function Game({
                     the panel changing height that made the page jump. */}
                 {scoreBadge}
               </p>
+            )}
+
+            {leftOpen > 0 && (
+              <p className={styles.warning}>Leaves a 3×3 one tile short for the next player.</p>
             )}
           </section>
         )}
