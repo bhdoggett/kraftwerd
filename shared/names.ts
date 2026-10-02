@@ -85,3 +85,33 @@ export function robotName(name: string, level: string): string {
 export function asShown(name: string): string {
   return name.startsWith(ROBOT_PREFIX) ? name.slice(ROBOT_PREFIX.length) : name;
 }
+
+/** How long a chosen display name may be, after trimming. */
+export const DISPLAY_NAME_MIN = 2;
+export const DISPLAY_NAME_MAX = 24;
+
+/**
+ * A display name as a player typed it, tidied, or why it cannot be one.
+ *
+ * Shared so the form can say what is wrong before the server does. No `@`,
+ * because the point of choosing a name is to stop showing an email address.
+ * No brackets, so nobody can dress up as a machine with a level after it.
+ */
+export function checkDisplayName(
+  raw: string,
+): { ok: true; name: string } | { ok: false; reason: string } {
+  const name = raw.trim().replace(/\s+/g, " ");
+  if (name.length < DISPLAY_NAME_MIN) {
+    return { ok: false, reason: `At least ${DISPLAY_NAME_MIN} characters` };
+  }
+  if (name.length > DISPLAY_NAME_MAX) {
+    return { ok: false, reason: `At most ${DISPLAY_NAME_MAX} characters` };
+  }
+  if (name.includes("@")) {
+    return { ok: false, reason: "No email addresses" };
+  }
+  if (!/^[\p{L}\p{N} .'_-]+$/u.test(name)) {
+    return { ok: false, reason: "Letters, numbers, spaces and . ' _ - only" };
+  }
+  return { ok: true, name };
+}

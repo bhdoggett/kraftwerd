@@ -1,5 +1,13 @@
 import { describe, expect, test } from "vitest";
-import { asShown, drawNames, NAMES, robotName, ROBOT_PREFIX, withoutLevel } from "./names";
+import {
+  asShown,
+  checkDisplayName,
+  drawNames,
+  NAMES,
+  robotName,
+  ROBOT_PREFIX,
+  withoutLevel,
+} from "./names";
 
 /** A rigged rng: hands back the numbers given, then zeroes forever. */
 const rigged = (...values: number[]) => {
@@ -79,3 +87,27 @@ describe("a name without its level", () => {
   });
 });
 
+
+describe("checkDisplayName", () => {
+  test("trims and collapses spaces", () => {
+    expect(checkDisplayName("  Word   Nerd ")).toEqual({ ok: true, name: "Word Nerd" });
+  });
+
+  test("allows letters from any script", () => {
+    expect(checkDisplayName("Zoë").ok).toBe(true);
+    expect(checkDisplayName("ゆき").ok).toBe(true);
+  });
+
+  test("refuses names too short or too long", () => {
+    expect(checkDisplayName(" a ").ok).toBe(false);
+    expect(checkDisplayName("x".repeat(25)).ok).toBe(false);
+  });
+
+  test("refuses an email address", () => {
+    expect(checkDisplayName("ana@gmail.com").ok).toBe(false);
+  });
+
+  test("refuses brackets, so nobody can pass for a machine", () => {
+    expect(checkDisplayName("Gawain (hard)").ok).toBe(false);
+  });
+});

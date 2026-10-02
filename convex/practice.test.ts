@@ -21,7 +21,7 @@ async function botGame(hints: boolean) {
     for (const word of ["CAT"]) await ctx.db.insert("words", { word });
     return await ctx.db.insert("users", {
       authId: "auth|alice",
-      name: "Alice",
+      displayName: "Alice",
     });
   });
   const asAlice = t.withIdentity({ subject: "auth|alice" });
@@ -54,7 +54,7 @@ describe("practice games", () => {
   test("hints are refused when a seat waits for a person", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+      await ctx.db.insert("users", { authId: "auth|alice", displayName: "Alice" });
     });
     const asAlice = t.withIdentity({ subject: "auth|alice" });
     await expect(

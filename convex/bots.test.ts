@@ -18,7 +18,7 @@ const CENTRE = 7;
 async function table(words: string[]) {
   const t = convexTest(schema, modules);
   await t.run(async (ctx) => {
-    await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+    await ctx.db.insert("users", { authId: "auth|alice", displayName: "Alice" });
     for (const word of words) await ctx.db.insert("words", { word });
   });
 

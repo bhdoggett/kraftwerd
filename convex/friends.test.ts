@@ -11,8 +11,8 @@ const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
 async function twoUsers() {
   const t = convexTest(schema, modules);
   await t.run(async (ctx) => {
-    await ctx.db.insert("users", { authId: "auth|a", name: "Ana", email: "ana@example.com" });
-    await ctx.db.insert("users", { authId: "auth|b", name: "Bo", email: "bo@example.com" });
+    await ctx.db.insert("users", { authId: "auth|a", displayName: "Ana", email: "ana@example.com" });
+    await ctx.db.insert("users", { authId: "auth|b", displayName: "Bo", email: "bo@example.com" });
   });
   return { t, asAna: t.withIdentity({ subject: "auth|a" }), asBo: t.withIdentity({ subject: "auth|b" }) };
 }
@@ -285,9 +285,9 @@ describe("asking from inside a game", () => {
   async function tableOfThree() {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
-      await ctx.db.insert("users", { authId: "auth|guest", name: "Guest" });
-      await ctx.db.insert("users", { authId: "auth|third", name: "Third" });
+      await ctx.db.insert("users", { authId: "auth|host", displayName: "Host" });
+      await ctx.db.insert("users", { authId: "auth|guest", displayName: "Guest" });
+      await ctx.db.insert("users", { authId: "auth|third", displayName: "Third" });
     });
 
     const asHost = t.withIdentity({ subject: "auth|host" });
@@ -380,9 +380,9 @@ describe("asking from inside a game", () => {
   test("nobody is asked from a game with strangers", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
-      await ctx.db.insert("users", { authId: "auth|guest", name: "Guest" });
-      await ctx.db.insert("users", { authId: "auth|third", name: "Third" });
+      await ctx.db.insert("users", { authId: "auth|host", displayName: "Host" });
+      await ctx.db.insert("users", { authId: "auth|guest", displayName: "Guest" });
+      await ctx.db.insert("users", { authId: "auth|third", displayName: "Third" });
     });
     const asHost = t.withIdentity({ subject: "auth|host" });
     const asGuest = t.withIdentity({ subject: "auth|guest" });
@@ -411,7 +411,7 @@ describe("asking from inside a game", () => {
   test("you cannot ask about a game you are not at", async () => {
     const { t, gameId, third } = await tableOfThree();
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|outsider", name: "Outsider" });
+      await ctx.db.insert("users", { authId: "auth|outsider", displayName: "Outsider" });
     });
     const asOutsider = t.withIdentity({ subject: "auth|outsider" });
 
@@ -423,7 +423,7 @@ describe("asking from inside a game", () => {
   test("you cannot ask somebody who is not at the table", async () => {
     const { t, gameId, asGuest } = await tableOfThree();
     const outsider = await t.run(async (ctx) =>
-      ctx.db.insert("users", { authId: "auth|outsider", name: "Outsider" }),
+      ctx.db.insert("users", { authId: "auth|outsider", displayName: "Outsider" }),
     );
 
     await expect(
@@ -434,7 +434,7 @@ describe("asking from inside a game", () => {
   test("a machine has nobody to be friends with", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|solo", name: "Solo" });
+      await ctx.db.insert("users", { authId: "auth|solo", displayName: "Solo" });
     });
     const asSolo = t.withIdentity({ subject: "auth|solo" });
     const { gameId } = await asSolo.mutation(api.games.createGame, {

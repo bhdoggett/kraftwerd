@@ -48,6 +48,7 @@ async function standIn(ctx: MutationCtx, name: string) {
   const id = await ctx.db.insert("users", {
     authId,
     name,
+    displayName: name,
     email: `${authId.replace("|", ".")}@example.test`,
   });
   return await ctx.db.get("users", id);

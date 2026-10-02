@@ -89,8 +89,9 @@ export const listFriends = query({
       return {
         friendshipId: edge._id,
         userId: otherId,
+        // No email, even to a friend: a friendship can start from a game,
+        // and the address would tell them who you are.
         name: displayName(user),
-        email: user?.email ?? null,
       };
     };
 

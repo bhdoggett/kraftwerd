@@ -1,4 +1,6 @@
+import { ConvexError, v } from "convex/values";
 import { RULES_VERSION } from "../shared/config.js";
+import { checkDisplayName } from "../shared/names.js";
 import { mutation, query } from "./_generated/server";
 import { googleConfigured } from "./auth";
 import { currentUser } from "./auth_helpers";
@@ -33,10 +35,24 @@ export const viewer = query({
       ? null
       : {
           id: user._id,
-          name: user.name ?? user.email ?? null,
+          /** What everybody else sees, once chosen. */
+          displayName: user.displayName ?? null,
+          /**
+           * What Google calls them, and their address: theirs to see, so the
+           * account page can say which account this is. Nobody else gets
+           * either.
+           */
+          name: user.name ?? null,
+          email: user.email ?? null,
           image: user.image ?? null,
           /** An account made to try the game, with no way back into it. */
           isGuest: user.isGuest === true,
+          /**
+           * Ask for a name before anything else. Not of a guest: they cannot
+           * sit with other people, so there is nobody to show a name to, and
+           * a guest is somebody who has not yet decided to stay.
+           */
+          needsDisplayName: user.isGuest !== true && !user.displayName,
           /** The newest rules version this player has been told about. */
           rulesSeen: user.rulesSeen ?? RULES_SEEN_UNTRACKED,
           stats: {
@@ -62,6 +78,18 @@ export const acknowledgeRules = mutation({
     const user = await currentUser(ctx);
     if (user.rulesSeen === RULES_VERSION) return null;
     await ctx.db.patch("users", user._id, { rulesSeen: RULES_VERSION });
+    return null;
+  },
+});
+
+/** Choose the name other players see. */
+export const setDisplayName = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const user = await currentUser(ctx);
+    const checked = checkDisplayName(args.name);
+    if (!checked.ok) throw new ConvexError(checked.reason);
+    await ctx.db.patch("users", user._id, { displayName: checked.name });
     return null;
   },
 });

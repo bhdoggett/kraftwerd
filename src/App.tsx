@@ -4,6 +4,8 @@ import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import styles from "./App.module.css";
 import { AcceptFriend } from "./components/AcceptFriend/AcceptFriend";
+import { Account } from "./components/Account/Account";
+import { DisplayNameNotice } from "./components/Account/DisplayNameNotice";
 import { Game } from "./components/Game/Game";
 import { Swatches } from "./components/Swatches/Swatches";
 import { Lobby } from "./components/Lobby/Lobby";
@@ -39,7 +41,7 @@ export default function App() {
             to go to, and the route is about to be irrelevant anyway. */}
         <div className={styles.side}>
           <Authenticated>
-            {route.name === "game" && (
+            {(route.name === "game" || route.name === "account") && (
               <button
                 type="button"
                 className={styles.link}
@@ -102,6 +104,8 @@ export default function App() {
               onLeave={() => navigate({ name: "lobby" })}
               onOpen={(gameId) => navigate({ name: "game", gameId })}
             />
+          ) : route.name === "account" ? (
+            <Account onBack={() => navigate({ name: "lobby" })} />
           ) : route.name === "friend" ? (
             <AcceptFriend
               token={route.token}
@@ -110,6 +114,9 @@ export default function App() {
           ) : (
             <Lobby onOpen={(gameId) => navigate({ name: "game", gameId })} />
           )}
+          {/* Last, so it sits over any other notice: nothing else should be
+              answered before the name everybody will see is chosen. */}
+          <DisplayNameNotice />
         </Authenticated>
         <Unauthenticated>
           {/* A guest account is offered on the way in, not on the way to

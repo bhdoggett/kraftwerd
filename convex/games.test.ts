@@ -37,9 +37,9 @@ async function twoPlayerGame(letters: string[]) {
   const [alice, bob] = await t.run(async (ctx) => {
     const a = await ctx.db.insert("users", {
       authId: "auth|alice",
-      name: "Alice",
+      displayName: "Alice",
     });
-    const b = await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
+    const b = await ctx.db.insert("users", { authId: "auth|bob", displayName: "Bob" });
     for (const word of WORDS) await ctx.db.insert("words", { word });
     return [a, b];
   });
@@ -281,11 +281,11 @@ describe("placeTiles", () => {
     const [alice, bob] = await t.run(async (ctx) => {
       const a = await ctx.db.insert("users", {
         authId: "auth|alice",
-        name: "Alice",
+        displayName: "Alice",
       });
       const b = await ctx.db.insert("users", {
         authId: "auth|bob",
-        name: "Bob",
+        displayName: "Bob",
       });
       return [a, b];
     });
@@ -619,7 +619,7 @@ describe("solo games", () => {
   test("a one-player game may be played alone", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) =>
-      ctx.db.insert("users", { authId: "auth|solo", name: "Solo" }),
+      ctx.db.insert("users", { authId: "auth|solo", displayName: "Solo" }),
     );
 
     const { gameId } = await t
@@ -636,7 +636,7 @@ describe("solo games", () => {
       for (const word of WORDS) await ctx.db.insert("words", { word });
       return await ctx.db.insert("users", {
         authId: "auth|solo",
-        name: "Solo",
+        displayName: "Solo",
       });
     });
     void alice;
@@ -664,7 +664,7 @@ describe("solo games", () => {
   test("a game among friends is playable the moment it is made", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) =>
-      ctx.db.insert("users", { authId: "auth|a", name: "A" }),
+      ctx.db.insert("users", { authId: "auth|a", displayName: "A" }),
     );
 
     const { gameId } = await t
@@ -681,7 +681,7 @@ describe("solo games", () => {
   test("a game offered to strangers waits until it is full", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) =>
-      ctx.db.insert("users", { authId: "auth|a", name: "A" }),
+      ctx.db.insert("users", { authId: "auth|a", displayName: "A" }),
     );
 
     const { gameId } = await t
@@ -828,12 +828,12 @@ describe("game invitations", () => {
       for (const word of WORDS) await ctx.db.insert("words", { word });
       const a = await ctx.db.insert("users", {
         authId: "auth|ana",
-        name: "Ana",
+        displayName: "Ana",
         email: "ana@example.com",
       });
       const b = await ctx.db.insert("users", {
         authId: "auth|bo",
-        name: "Bo",
+        displayName: "Bo",
         email: "bo@example.com",
       });
       await ctx.db.insert("friendships", {
@@ -866,7 +866,7 @@ describe("game invitations", () => {
   test("every seat's rack is dealt when the game is made", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|ana", name: "Ana" });
+      await ctx.db.insert("users", { authId: "auth|ana", displayName: "Ana" });
     });
     const asAna = t.withIdentity({ subject: "auth|ana" });
     const { gameId } = await asAna.mutation(api.games.createGame, { playerCount: 3 });
@@ -882,7 +882,7 @@ describe("game invitations", () => {
   test("the maker can swap before a seat kept for a later invite is filled", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|ana", name: "Ana" });
+      await ctx.db.insert("users", { authId: "auth|ana", displayName: "Ana" });
     });
     const asAna = t.withIdentity({ subject: "auth|ana" });
     const { gameId } = await asAna.mutation(api.games.createGame, { playerCount: 3 });
@@ -997,9 +997,9 @@ describe("joining by link", () => {
   async function lobbyGame(playerCount: number) {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
-      await ctx.db.insert("users", { authId: "auth|guest", name: "Guest" });
-      await ctx.db.insert("users", { authId: "auth|third", name: "Third" });
+      await ctx.db.insert("users", { authId: "auth|host", displayName: "Host" });
+      await ctx.db.insert("users", { authId: "auth|guest", displayName: "Guest" });
+      await ctx.db.insert("users", { authId: "auth|third", displayName: "Third" });
     });
     const asHost = t.withIdentity({ subject: "auth|host" });
     const { gameId } = await asHost.mutation(api.games.createGame, {
@@ -1165,10 +1165,10 @@ describe("the lobby's game lists", () => {
       await t.run(async (ctx) => {
         await ctx.db.insert("users", {
           authId: "auth|guest",
-          name: "Guest",
+          displayName: "Guest",
           isGuest: true,
         });
-        await ctx.db.insert("users", { authId: "auth|real", name: "Real" });
+        await ctx.db.insert("users", { authId: "auth|real", displayName: "Real" });
       });
       return {
         t,
@@ -1225,10 +1225,10 @@ describe("the lobby's game lists", () => {
     await t.run(async (ctx) => {
       await ctx.db.insert("users", {
         authId: "auth|guest",
-        name: "Guest",
+        displayName: "Guest",
         isGuest: true,
       });
-      await ctx.db.insert("users", { authId: "auth|real", name: "Real" });
+      await ctx.db.insert("users", { authId: "auth|real", displayName: "Real" });
     });
 
     const asGuest = t.withIdentity({ subject: "auth|guest" });
@@ -1241,7 +1241,7 @@ describe("the lobby's game lists", () => {
   test("a game abandoned before it began is not counted or kept", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
+      await ctx.db.insert("users", { authId: "auth|host", displayName: "Host" });
     });
     const asHost = t.withIdentity({ subject: "auth|host" });
     const { gameId } = await asHost.mutation(api.games.createGame, {
@@ -1263,8 +1263,8 @@ describe("the lobby's game lists", () => {
   test("leaving a game that has not started frees the seat and leaves it standing", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|host", name: "Host" });
-      await ctx.db.insert("users", { authId: "auth|guest", name: "Guest" });
+      await ctx.db.insert("users", { authId: "auth|host", displayName: "Host" });
+      await ctx.db.insert("users", { authId: "auth|guest", displayName: "Guest" });
     });
     const asHost = t.withIdentity({ subject: "auth|host" });
     const asGuest = t.withIdentity({ subject: "auth|guest" });
@@ -1298,7 +1298,7 @@ describe("the lobby's game lists", () => {
   test("a new game shows in the lobby however many games you have played", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|regular", name: "Regular" });
+      await ctx.db.insert("users", { authId: "auth|regular", displayName: "Regular" });
     });
     const asRegular = t.withIdentity({ subject: "auth|regular" });
 
@@ -1317,7 +1317,7 @@ describe("the lobby's game lists", () => {
   test("a solo game quit before the first turn leaves no record", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|solo", name: "Solo" });
+      await ctx.db.insert("users", { authId: "auth|solo", displayName: "Solo" });
     });
     const asSolo = t.withIdentity({ subject: "auth|solo" });
     const { gameId } = await asSolo.mutation(api.games.createGame, {
@@ -1500,7 +1500,7 @@ describe("the board", () => {
     // to aim at, so this one makes its own game.
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|open", name: "Open" });
+      await ctx.db.insert("users", { authId: "auth|open", displayName: "Open" });
     });
     const { gameId } = await t
       .withIdentity({ subject: "auth|open" })
@@ -1552,8 +1552,8 @@ describe("stacking is playing, not passing", () => {
   test("a game does not end because two turns running only replaced letters", async () => {
     const t = convexTest(schema, modules);
     const [alice, bob] = await t.run(async (ctx) => {
-      const a = await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
-      const b = await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
+      const a = await ctx.db.insert("users", { authId: "auth|alice", displayName: "Alice" });
+      const b = await ctx.db.insert("users", { authId: "auth|bob", displayName: "Bob" });
       for (const word of [...WORDS, "AM", "AH", "IT"])
         await ctx.db.insert("words", { word });
       return [a, b];
@@ -1626,8 +1626,8 @@ describe("computer players", () => {
   async function table() {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
-      await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
+      await ctx.db.insert("users", { authId: "auth|alice", displayName: "Alice" });
+      await ctx.db.insert("users", { authId: "auth|bob", displayName: "Bob" });
       for (const word of WORDS) await ctx.db.insert("words", { word });
     });
     return { t, asAlice: t.withIdentity({ subject: "auth|alice" }) };
@@ -2115,7 +2115,7 @@ describe("the order past games come back in", () => {
   async function twoFinished() {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+      await ctx.db.insert("users", { authId: "auth|alice", displayName: "Alice" });
       for (const word of WORDS) await ctx.db.insert("words", { word });
     });
     const asAlice = t.withIdentity({ subject: "auth|alice" });
@@ -2213,7 +2213,7 @@ describe("records and the rules they were set under", () => {
     const alice = await t.run(async (ctx) => {
       const id = await ctx.db.insert("users", {
         authId: "auth|alice",
-        name: "Alice",
+        displayName: "Alice",
       });
       for (const word of WORDS) await ctx.db.insert("words", { word });
       return id;
@@ -2321,15 +2321,15 @@ describe("who you are allowed to see", () => {
     const [alice, bob, carol] = await t.run(async (ctx) => {
       const a = await ctx.db.insert("users", {
         authId: "auth|alice",
-        name: "Alice",
+        displayName: "Alice",
       });
       const b = await ctx.db.insert("users", {
         authId: "auth|bob",
-        name: "Bob",
+        displayName: "Bob",
       });
       const c = await ctx.db.insert("users", {
         authId: "auth|carol",
-        name: "Carol",
+        displayName: "Carol",
       });
       await ctx.db.insert("friendships", {
         requesterId: a,
@@ -2685,9 +2685,9 @@ describe("playing the same people again", () => {
       for (const word of WORDS) await ctx.db.insert("words", { word });
       const a = await ctx.db.insert("users", {
         authId: "auth|alice",
-        name: "Alice",
+        displayName: "Alice",
       });
-      const b = await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
+      const b = await ctx.db.insert("users", { authId: "auth|bob", displayName: "Bob" });
       await ctx.db.insert("friendships", {
         requesterId: a,
         addresseeId: b,
@@ -2750,7 +2750,7 @@ describe("playing the same people again", () => {
   test("the same machines come back, at the same seats and just as hard", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+      await ctx.db.insert("users", { authId: "auth|alice", displayName: "Alice" });
       for (const word of WORDS) await ctx.db.insert("words", { word });
     });
     const asAlice = t.withIdentity({ subject: "auth|alice" });
@@ -2859,9 +2859,9 @@ describe("turn order", () => {
   async function tableOfThree() {
     const t = convexTest(schema, modules);
     const [ana, bo, cy] = await t.run(async (ctx) => {
-      const a = await ctx.db.insert("users", { authId: "auth|ana", name: "Ana" });
-      const b = await ctx.db.insert("users", { authId: "auth|bo", name: "Bo" });
-      const c = await ctx.db.insert("users", { authId: "auth|cy", name: "Cy" });
+      const a = await ctx.db.insert("users", { authId: "auth|ana", displayName: "Ana" });
+      const b = await ctx.db.insert("users", { authId: "auth|bo", displayName: "Bo" });
+      const c = await ctx.db.insert("users", { authId: "auth|cy", displayName: "Cy" });
       for (const other of [b, c]) {
         await ctx.db.insert("friendships", {
           requesterId: a,

@@ -16,13 +16,17 @@ import { CreateGame } from "../CreateGame/CreateGame";
 const canShare =
   typeof navigator !== "undefined" && typeof navigator.share === "function";
 
-/** Somebody in one of the lists: who they are, and a smaller line beneath. */
-function Who({ name, detail }: { name: React.ReactNode; detail: React.ReactNode }) {
+/** Somebody in one of the lists: who they are, and maybe a smaller line beneath. */
+function Who({ name, detail }: { name: React.ReactNode; detail?: React.ReactNode }) {
   return (
     <span className={styles.name}>
       {name}
-      <br />
-      <span className={styles.email}>{detail}</span>
+      {detail !== undefined && (
+        <>
+          <br />
+          <span className={styles.email}>{detail}</span>
+        </>
+      )}
     </span>
   );
 }
@@ -180,7 +184,7 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           <h3 className={styles.heading}>Wants to be friends</h3>
           {data.incoming.map((f) => (
             <div key={f.friendshipId} className={styles.row}>
-              <Who name={f.name} detail={f.email} />
+              <Who name={f.name} />
               <button
                 type="button"
                 className={styles.button}
@@ -216,7 +220,7 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
           {data.friends.map((f) => (
             <div key={f.friendshipId} className={styles.row}>
-              <Who name={f.name} detail={f.email} />
+              <Who name={f.name} />
               <button
                 type="button"
                 className={styles.button}
@@ -264,7 +268,7 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           <h3 className={styles.heading}>Waiting on them</h3>
           {data.outgoing.map((f) => (
             <div key={f.friendshipId} className={styles.row}>
-              <Who name={f.name} detail={f.email} />
+              <Who name={f.name} />
               <button
                 type="button"
                 className={styles.secondary}

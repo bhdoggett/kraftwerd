@@ -25,8 +25,19 @@ export default defineSchema({
     /** The Better Auth user id, which is also the JWT subject. */
     authId: v.string(),
     email: v.optional(v.string()),
+    /**
+     * The name Google gave us. Private to its owner: other players see
+     * `displayName`, so signing in with Google never tells a stranger who
+     * you are.
+     */
     name: v.optional(v.string()),
     image: v.optional(v.string()),
+    /**
+     * The name this player chose to be shown as. Absent until they choose
+     * one, and the auth triggers never write it, so signing in again cannot
+     * put the Google name back.
+     */
+    displayName: v.optional(v.string()),
     /**
      * An account made to try the game before signing up for one. Stamped as
      * the row is created rather than asked of Better Auth on every read: it

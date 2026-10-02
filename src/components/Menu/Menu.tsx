@@ -93,6 +93,20 @@ export function Menu() {
             </button>
           )}
 
+          {isAuthenticated && (
+            <button
+              type="button"
+              role="menuitem"
+              className={styles.item}
+              onClick={() => {
+                setOpen(false);
+                navigate({ name: "account" });
+              }}
+            >
+              Account
+            </button>
+          )}
+
           <div className={styles.divider} />
 
           {/* A row of three rather than a button that cycles: a menu has the

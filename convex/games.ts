@@ -407,6 +407,7 @@ async function seatBot(
   const userId = await ctx.db.insert("users", {
     authId: `bot|${gameId}|${seat}`,
     name: robotName(name, level),
+    displayName: robotName(name, level),
   });
 
   await joinSeat(ctx, gameId, userId, seat, "joined", name);

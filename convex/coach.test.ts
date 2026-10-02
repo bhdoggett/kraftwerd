@@ -14,8 +14,8 @@ const RACK = ["C", "A", "T", "S", "E", "R", "O"];
 async function table(hints: boolean) {
   const t = convexTest(schema, modules);
   const alice = await t.run(async (ctx) => {
-    await ctx.db.insert("users", { authId: "auth|bob", name: "Bob" });
-    return await ctx.db.insert("users", { authId: "auth|alice", name: "Alice" });
+    await ctx.db.insert("users", { authId: "auth|bob", displayName: "Bob" });
+    return await ctx.db.insert("users", { authId: "auth|alice", displayName: "Alice" });
   });
   const asAlice = t.withIdentity({ subject: "auth|alice" });
   const { gameId } = await asAlice.mutation(api.games.createGame, {

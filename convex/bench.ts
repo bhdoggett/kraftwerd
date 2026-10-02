@@ -75,7 +75,7 @@ async function makeGame(
   const stamp = `${Date.now()}-${Math.random()}`;
   const users = await Promise.all(
     [0, 1].map((i) =>
-      ctx.db.insert("users", { authId: `bench|${stamp}|${i}`, name: `Bench ${i}` }),
+      ctx.db.insert("users", { authId: `bench|${stamp}|${i}`, name: `Bench ${i}`, displayName: `Bench ${i}` }),
     ),
   );
 

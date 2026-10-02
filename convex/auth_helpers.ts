@@ -48,10 +48,17 @@ export function refuseGuest(user: Doc<"users">): void {
   }
 }
 
-/** Prefer a real name, fall back to the local part of the email. */
+/**
+ * The name other people see: the one this player chose, never the one Google
+ * gave them nor any part of their email. Until they choose, they are "Player".
+ *
+ * Machines are the exception. Their rows are made by `seatBot`, which also
+ * writes `displayName`, but older ones only have `name` -- and a machine has
+ * no identity to protect.
+ */
 export function displayName(user: Doc<"users"> | null): string {
   if (user === null) return "Unknown";
-  if (user.name && user.name.trim() !== "") return user.name;
-  if (user.email) return user.email.split("@")[0];
+  if (user.displayName && user.displayName.trim() !== "") return user.displayName;
+  if (user.authId.startsWith("bot|") && user.name) return user.name;
   return "Player";
 }
