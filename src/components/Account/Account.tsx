@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import styles from "./Account.module.css";
+import { DeleteAccount } from "./DeleteAccount";
 import { NameForm } from "./NameForm";
 
 /** What other people see of this account, and what only its owner does. */
@@ -33,6 +34,8 @@ export function Account({ onBack }: { onBack: () => void }) {
           </p>
         </section>
       )}
+
+      <DeleteAccount />
 
       <button type="button" className={styles.secondary} onClick={onBack}>
         Back to the lobby

@@ -58,6 +58,7 @@ export function refuseGuest(user: Doc<"users">): void {
  */
 export function displayName(user: Doc<"users"> | null): string {
   if (user === null) return "Unknown";
+  if (user.deletedAt !== undefined) return "Deleted player";
   if (user.displayName && user.displayName.trim() !== "") return user.displayName;
   if (user.authId.startsWith("bot|") && user.name) return user.name;
   return "Player";

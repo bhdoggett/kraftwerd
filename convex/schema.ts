@@ -39,6 +39,12 @@ export default defineSchema({
      */
     displayName: v.optional(v.string()),
     /**
+     * When the account was deleted. The row stays, emptied, so the finished
+     * games it played still point at somebody; `authId` is changed so nothing
+     * can sign in as it again.
+     */
+    deletedAt: v.optional(v.number()),
+    /**
      * An account made to try the game before signing up for one. Stamped as
      * the row is created rather than asked of Better Auth on every read: it
      * cannot change for a given account -- making a real one makes a new row.

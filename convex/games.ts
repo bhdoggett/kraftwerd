@@ -1287,55 +1287,101 @@ export const resignGame = mutation({
     const player = await seatOf(ctx, args.gameId, userId);
     if (player === null) throw new ConvexError("You are not in this game");
 
-    // Nobody has played yet, so there is nothing to lose: quitting cancels
-    // rather than finishes. Recording it would put a game you never played
-    // into your record, and a game nobody played into your history — and
-    // would hand whoever is left a win over a game that never happened.
-    if (game.turnNumber === 0) {
-      /*
-       * Whose game it is decides what leaving means, not what state it is in.
-       * The maker walking away takes the game with them -- nobody else is
-       * left holding a table they did not set. Anyone else just gives the
-       * seat back, and the game goes on waiting for somebody to take it.
-       *
-       * This asked `status !== "lobby"` until games among friends became
-       * playable from the moment they are made, at which point every such
-       * game was "started" and a guest leaving cancelled it out from under
-       * the person who made it.
-       */
-      if (game.createdBy === userId) {
-        const seated = await seatedAt(ctx, args.gameId);
-        for (const seat of seated) {
-          await ctx.db.delete("players", seat._id);
-          // A machine's user row belongs to this game alone, so it goes with
-          // it. A person's row obviously does not.
-          if (seat.bot !== undefined) await ctx.db.delete("users", seat.userId);
-        }
-        const bag = await ctx.db
-          .query("bags")
-          .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-          .unique();
-        if (bag !== null) await ctx.db.delete("bags", bag._id);
-        await ctx.db.delete("games", args.gameId);
-      } else {
-        // Somebody else's game, still waiting for players: give the seat back
-        // rather than calling the whole thing off, rack and all, so whoever
-        // takes it next is dealt the same letters rather than fresh ones.
-        await ctx.db.delete("players", player._id);
-        await ctx.db.patch("games", args.gameId, {
-          reservedRacks: [...(game.reservedRacks ?? []), player.letters],
-        });
-      }
-      return null;
-    }
-
-    const resignedBy = [...new Set([...(game.resignedBy ?? []), userId])];
-    await ctx.db.patch("games", args.gameId, { resignedBy });
-
-    await finishGame(ctx, { ...game, resignedBy });
+    await leaveGame(ctx, game, player, userId);
     return null;
   },
 });
+
+/**
+ * Take a player out of a game that is not over: what resigning does, and
+ * what deleting an account does to every game the account is still in.
+ */
+export async function leaveGame(
+  ctx: MutationCtx,
+  game: Doc<"games">,
+  player: Doc<"players">,
+  userId: Id<"users">,
+) {
+  // Nobody has played yet, so there is nothing to lose: quitting cancels
+  // rather than finishes. Recording it would put a game you never played
+  // into your record, and a game nobody played into your history — and
+  // would hand whoever is left a win over a game that never happened.
+  if (game.turnNumber === 0) {
+    /*
+     * Whose game it is decides what leaving means, not what state it is in.
+     * The maker walking away takes the game with them -- nobody else is
+     * left holding a table they did not set. Anyone else just gives the
+     * seat back, and the game goes on waiting for somebody to take it.
+     *
+     * This asked `status !== "lobby"` until games among friends became
+     * playable from the moment they are made, at which point every such
+     * game was "started" and a guest leaving cancelled it out from under
+     * the person who made it.
+     */
+    if (game.createdBy === userId) {
+      const seated = await seatedAt(ctx, game._id);
+      for (const seat of seated) {
+        await ctx.db.delete("players", seat._id);
+        // A machine's user row belongs to this game alone, so it goes with
+        // it. A person's row obviously does not.
+        if (seat.bot !== undefined) await ctx.db.delete("users", seat.userId);
+      }
+      const bag = await ctx.db
+        .query("bags")
+        .withIndex("by_game", (q) => q.eq("gameId", game._id))
+        .unique();
+      if (bag !== null) await ctx.db.delete("bags", bag._id);
+      await ctx.db.delete("games", game._id);
+    } else {
+      // Somebody else's game, still waiting for players: give the seat back
+      // rather than calling the whole thing off, rack and all, so whoever
+      // takes it next is dealt the same letters rather than fresh ones.
+      await ctx.db.delete("players", player._id);
+      await ctx.db.patch("games", game._id, {
+        reservedRacks: [...(game.reservedRacks ?? []), player.letters],
+      });
+    }
+    return;
+  }
+
+  const resignedBy = [...new Set([...(game.resignedBy ?? []), userId])];
+  await ctx.db.patch("games", game._id, { resignedBy });
+
+  await finishGame(ctx, { ...game, resignedBy });
+}
+
+/**
+ * A game and everything hanging off it, gone. Only for a game nobody else
+ * played in -- one against the machines or nobody -- since anyone else at the
+ * table would lose it from their history.
+ */
+export async function deleteWholeGame(ctx: MutationCtx, gameId: Id<"games">) {
+  for (const seat of await seatedAt(ctx, gameId)) {
+    await ctx.db.delete("players", seat._id);
+    if (seat.bot !== undefined) await ctx.db.delete("users", seat.userId);
+  }
+  for await (const tile of ctx.db
+    .query("tiles")
+    .withIndex("by_game", (q) => q.eq("gameId", gameId))) {
+    await ctx.db.delete("tiles", tile._id);
+  }
+  for await (const turn of ctx.db
+    .query("turns")
+    .withIndex("by_game_and_turn", (q) => q.eq("gameId", gameId))) {
+    await ctx.db.delete("turns", turn._id);
+  }
+  for await (const hint of ctx.db
+    .query("hints")
+    .withIndex("by_game_user_turn", (q) => q.eq("gameId", gameId))) {
+    await ctx.db.delete("hints", hint._id);
+  }
+  const bag = await ctx.db
+    .query("bags")
+    .withIndex("by_game", (q) => q.eq("gameId", gameId))
+    .unique();
+  if (bag !== null) await ctx.db.delete("bags", bag._id);
+  await ctx.db.delete("games", gameId);
+}
 
 /**
  * Rotate the seat and apply the end condition (§6).
