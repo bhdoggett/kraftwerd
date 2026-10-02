@@ -1,16 +1,14 @@
 import { v } from "convex/values";
-import ALL_WORDS from "../shared/data/words.json" with { type: "json" };
-import COMMON_WORDS from "../shared/data/common-words.json" with { type: "json" };
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
 import { type Difficulty } from "../shared/config.js";
 import { makeBoard, type TileSpec } from "../shared/engine/board.js";
-import { makeDictionary } from "../shared/engine/dictionary.js";
 import { applyPlacements, wordsFormed } from "../shared/engine/legality.js";
-import { chooseRanked, indexWords, rank, type Move } from "../shared/sim/bot.js";
-import { LEVELS, type Lexicon, type Vocabulary } from "../shared/sim/levels.js";
+import { chooseRanked, rank, type Move } from "../shared/sim/bot.js";
+import { LEVELS } from "../shared/sim/levels.js";
 import { tilesLeft } from "../shared/engine/bag.js";
 import { scoreTurn } from "../shared/engine/score.js";
 import { blanksLeft, hasWord, loadTiles, seatOnTurn } from "./games.js";
+import { lexicon } from "./lexicon";
 import { internal } from "./_generated/api";
 import {
   env,
@@ -46,40 +44,6 @@ import type { Id } from "./_generated/dataModel";
  * authority — what the bot finally plays is checked against it like anybody
  * else's move — but the bundle is what lets it tell a move from a mess.
  */
-const lexicons: Partial<Record<Vocabulary, Lexicon>> = {};
-
-/**
- * Built on the first bot turn, not when the module loads.
- *
- * Every function in a deployment shares the module graph, so work done at the
- * top level here is work the sign-in query pays for too — on every cold
- * isolate, in a game with no machines in it at all. Indexing the dictionary
- * is a bot's cost and should be charged to bots.
- */
-function thinking(vocabulary: Vocabulary): Lexicon {
-  const list = vocabulary === "full" ? ALL_WORDS : COMMON_WORDS;
-  /*
-   * Only words up to seven letters are indexed, seven being the most tiles a
-   * turn can lay: a rack holds seven. A longer word is not out of reach in
-   * principle -- it would run through letters already standing -- but those
-   * lengths were cut when a turn had a second to finish in, and that reason has
-   * gone with the rest. It is another thing to measure rather than another
-   * thing to keep. Crossing words are checked against the whole of the
-   * level's list, so nothing the bot plays is limited to seven letters; only
-   * what it looks for is.
-   *
-   * One pair per vocabulary (shared/sim/levels.ts), and the dictionary is the
-   * level's list too, not the game's: an easy bot checking its crossing words
-   * against every word in the game would still build squares out of words it
-   * was never meant to know.
-   */
-  lexicons[vocabulary] ??= {
-    dictionary: makeDictionary(list),
-    words: indexWords(list.filter((word) => word.length <= 7), 7),
-  };
-  return lexicons[vocabulary];
-}
-
 /**
  * Blanks the search may consider spending in one turn, out of the three a
  * player holds for the game. See the note at the call site.
@@ -366,7 +330,7 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
   const shape = boardShapeNamed(OPEN_BOARD, state.boardSize);
 
   const level = LEVELS[state.level];
-  const { dictionary, words } = thinking(level.vocabulary);
+  const { dictionary, words } = lexicon(level.vocabulary);
   const moves = rank(
     board,
     /*
