@@ -187,6 +187,8 @@
    *   640px  phone         -- rack buttons drop to their own row, tighter
    *                           page padding
    *   860px  stacked game  -- the game's side panel moves under the board
+   *                           (min-width: 861px is the same line, from the
+   *                           wide side)
    *
    * Pick from these before adding a fourth.
    */

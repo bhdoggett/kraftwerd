@@ -73,115 +73,127 @@ export function Scoreboard({
   const pct = Math.min(100, Math.round(((bagSize - tilesLeft) / bagSize) * 100));
 
   return (
-    <aside className={styles.panel}>
+    // Named for screen readers, since the "Scores" heading it used to carry
+    // went: the cards say what they are to anyone who can see them.
+    <aside className={styles.panel} aria-label="Scores">
       {/*
-        Whose move it is, said outright. The row for that seat was in bold,
-        which tells you once you have worked out that bold is what it means.
+        Whose move it is, said outright, with Quit at the end of the same
+        line. The row for that seat was in bold, which tells you once you have
+        worked out that bold is what it means.
       */}
-      {status === "active" && (
-        <p className={styles.turnLine}>
-          {onTurn === null
-            ? "Waiting"
-            : onTurn.isYou
-              ? "Your turn"
-              : `${onTurn.name}'s turn`}
-        </p>
-      )}
-
-      <div className={styles.header}>
-        <h2 className={styles.heading}>Scores</h2>
-        {onQuit && (
-          <button type="button" className={styles.quit} onClick={onQuit}>
-            Quit
-          </button>
-        )}
-      </div>
-
-      {ordered.map((p) => (
-        <div key={p.userId} className={styles.row}>
-          <span
-            className={[
-              styles.dot,
-              p.seat === currentSeat && status === "active" ? styles.onTurn : "",
-            ].join(" ")}
-            style={{ background: `var(--seat-${p.seat % 4})` }}
-          >
-            {p.score}
-          </span>
-          <span
-            className={[
-              styles.name,
-              p.seat === currentSeat && status !== "finished" ? styles.turn : "",
-            ].join(" ")}
-          >
-            {p.name}
-            {p.isYou && <span className={styles.you}> (you)</span>}
-          </span>
-
-          {/*
-            Asked and asking both read as text rather than a control: the
-            first has nothing left to do, and the second is answered in the
-            friends list, where accept and decline already live.
-          */}
-          {(() => {
-            const friend = friendStates?.find((f) => f.userId === p.userId);
-            if (friend === undefined || friend.state === "friends") return null;
-
-            if (friend.state === "asked") {
-              return (
-                <span
-                  className={styles.invited}
-                  aria-label={`Friend invite sent to ${p.name}`}
-                >
-                  asked
-                </span>
-              );
-            }
-
-            if (friend.state === "asking") {
-              return (
-                <span
-                  className={styles.invited}
-                  aria-label={`${p.name} sent you a friend invite`}
-                >
-                  asks you
-                </span>
-              );
-            }
-
-            return (
-              <button
-                type="button"
-                className={styles.invite}
-                aria-label={`Send friend invite to ${p.name}`}
-                onClick={() => onInvite?.(p.userId)}
-              >
-                +
-              </button>
-            );
-          })()}
-          {/*
-            How many tiles they are holding, once the bag can no longer top
-            anyone up.
-
-            Not before: while there are tiles to draw, every hand refills to a
-            full rack after every play, so the number is seven on every row
-            and says nothing. Once the bag is dry the hands start to differ,
-            and what is left in them decides the game -- whoever goes out
-            takes what everyone else is still holding.
-          */}
-          {(tilesLeft === 0 || status === "finished") &&
-            status !== "lobby" &&
-            p.tilesInHand !== null && (
-            <span
-              className={styles.tiles}
-              aria-label={`${p.tilesInHand} ${p.tilesInHand === 1 ? "tile" : "tiles"} in hand`}
-            >
-              {p.tilesInHand}
-            </span>
+      {(status === "active" || onQuit) && (
+        <div className={styles.header}>
+          {status === "active" && (
+            <p className={styles.turnLine}>
+              {onTurn === null
+                ? "Waiting"
+                : onTurn.isYou
+                  ? "Your turn"
+                  : `${onTurn.name}'s turn`}
+            </p>
+          )}
+          {onQuit && (
+            <button type="button" className={styles.quit} onClick={onQuit}>
+              Quit
+            </button>
           )}
         </div>
-      ))}
+      )}
+
+      {/*
+        Side by side, a card a player: the score large, the name under it.
+        Stacked rows took a line of the panel a player and pushed what the
+        play is worth down the page; across, all three fit in the height of
+        one.
+      */}
+      <div className={styles.players}>
+        {ordered.map((p) => {
+          const friend = friendStates?.find((f) => f.userId === p.userId);
+          const showTiles =
+            (tilesLeft === 0 || status === "finished") &&
+            status !== "lobby" &&
+            p.tilesInHand !== null;
+
+          return (
+            <div key={p.userId} className={styles.player}>
+              <span
+                className={[
+                  styles.dot,
+                  p.seat === currentSeat && status === "active" ? styles.onTurn : "",
+                ].join(" ")}
+                style={{ background: `var(--seat-${p.seat % 4})` }}
+              >
+                {p.score}
+              </span>
+              <span
+                className={[
+                  styles.name,
+                  p.seat === currentSeat && status !== "finished" ? styles.turn : "",
+                ].join(" ")}
+                title={p.name}
+              >
+                {p.name}
+              </span>
+
+              {(showTiles || (friend !== undefined && friend.state !== "friends")) && (
+                <span className={styles.extras}>
+                  {/*
+                    Asked and asking both read as text rather than a control:
+                    the first has nothing left to do, and the second is
+                    answered in the friends list, where accept and decline
+                    already live.
+                  */}
+                  {friend?.state === "asked" && (
+                    <span
+                      className={styles.invited}
+                      aria-label={`Friend invite sent to ${p.name}`}
+                    >
+                      asked
+                    </span>
+                  )}
+                  {friend?.state === "asking" && (
+                    <span
+                      className={styles.invited}
+                      aria-label={`${p.name} sent you a friend invite`}
+                    >
+                      asks you
+                    </span>
+                  )}
+                  {friend?.state === "none" && (
+                    <button
+                      type="button"
+                      className={styles.invite}
+                      aria-label={`Send friend invite to ${p.name}`}
+                      onClick={() => onInvite?.(p.userId)}
+                    >
+                      +
+                    </button>
+                  )}
+                  {/*
+                    How many tiles they are holding, once the bag can no
+                    longer top anyone up.
+
+                    Not before: while there are tiles to draw, every hand
+                    refills to a full rack after every play, so the number is
+                    the same on every card and says nothing. Once the bag is
+                    dry the hands start to differ, and what is left in them
+                    decides the game -- whoever goes out takes what everyone
+                    else is still holding.
+                  */}
+                  {showTiles && (
+                    <span
+                      className={styles.tiles}
+                      aria-label={`${p.tilesInHand} ${p.tilesInHand === 1 ? "tile" : "tiles"} in hand`}
+                    >
+                      {p.tilesInHand}
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {/*
         The bar alone says how far through the game is -- exact counts

@@ -7,11 +7,13 @@
   min-width: 200px;
 }
 
+/* Whose turn it is, then Quit, on one line above the cards. Quit keeps to
+   the right even on its own, in a game with no turn to name. */
 .header {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
 
@@ -29,54 +31,81 @@
   background: var(--danger-soft);
 }
 
-.heading {
-  margin: 0;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-
-.row {
-  display: flex;
-  align-items: center;
+/*
+ * A card a player, side by side: as many equal columns as there are seats,
+ * so two players split the panel in half and three in thirds.
+ */
+.players {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   gap: var(--space-2);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border);
 }
 
-.row:last-child {
-  border-bottom: none;
+.player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  text-align: center;
 }
 
 /*
- * The score, in the seat's own colour: it reads as one thing per player
- * now, rather than a colour swatch and a number in separate corners of
- * the row. A circle for one or two digits; a three-digit score (this game
- * runs long) pushes it into a pill rather than clipping or shrinking the
- * text, the same min-width-plus-padding trick .tiles below uses.
+ * The score, in the seat's own colour. A circle for one or two digits; a three-digit score
+ * (this game runs long) stretches it into a pill rather than clipping or
+ * shrinking the text.
  */
 .dot {
-  min-width: 30px;
-  height: 30px;
-  padding: 0 7px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 var(--space-2);
   border-radius: 999px;
   display: grid;
   place-items: center;
   flex: none;
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   /* Dark ink on a bright seat colour, same pairing a tile itself uses. */
   color: var(--tile-text);
 }
 
+/*
+ * Up to two lines, so a name like "Isolde (medium)" breaks at the space
+ * rather than losing its level to an ellipsis. Only a name too long for two
+ * lines is cut short.
+ */
 .name {
-  flex: 1;
-  min-width: 0;
+  max-width: 100%;
+  font-size: var(--text-sm);
+  line-height: 1.25;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+/* A step down on a phone, where three cards share a narrow screen. */
+@media (max-width: 640px) /* phone */ {
+  .name {
+    font-size: var(--text-xs);
+  }
+}
+
+/* What else there is to say about a player: the friend invite, and tiles in
+   hand once the bag is dry. */
+.extras {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
 }
 
 /*
@@ -115,11 +144,6 @@
   font-size: var(--text-xs);
 }
 
-.you {
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
-
 .turn {
   font-weight: 700;
 }
@@ -130,7 +154,9 @@
  * hours later, that is the first question you have.
  */
 .turnLine {
-  margin: 0 0 var(--space-2);
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   background: var(--accent-soft);
@@ -140,7 +166,7 @@
 }
 
 /*
- * And marked on the row itself: a ring round the score of the seat on the
+ * And marked on the card itself: a ring round the score of the seat on the
  * move. An arrow used to sit between the name and the score, pointing at it;
  * once the score moved into the dot, the arrow was left at the end of the row
  * pointing at nothing, so the mark went onto the thing it is about. The gap in
@@ -148,7 +174,7 @@
  */
 .onTurn {
   box-shadow:
-    0 0 0 2px var(--surface-raised),
+    0 0 0 2px var(--surface-sunken),
     0 0 0 4px var(--accent);
 }
 
@@ -197,4 +223,43 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Rows again in the side panel. The cards are for the stacked layout, where
+ * the panel sits under the board and every line of it pushes the page down;
+ * beside the board its height costs nothing, and three cards across 280px
+ * cut names short that a row has room to show whole.
+ */
+@media (min-width: 861px) /* not stacked game */ {
+  .players {
+    grid-auto-flow: row;
+    gap: 0;
+  }
+
+  .player {
+    flex-direction: row;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    border-radius: 0;
+    background: none;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+
+  .player:last-child {
+    border-bottom: none;
+  }
+
+  .name {
+    flex: 1;
+  }
+
+  /* The gap between the ring and the pill is drawn in the panel's colour
+     here, not the card's: there is no card behind it. */
+  .onTurn {
+    box-shadow:
+      0 0 0 2px var(--surface-raised),
+      0 0 0 4px var(--accent);
+  }
 }
