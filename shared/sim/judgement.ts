@@ -6,10 +6,11 @@
  * "completer takes it" (design.md §4.4) makes that half most of the skill. A
  * block left one tile short is not a near miss, it is a gift.
  */
-import { GAME, SCORING_SQUARE_SIZE, SQUARE_BONUS, STACK_CAP } from "../config.js";
+import { GAME, SQUARE_BONUS, STACK_CAP } from "../config.js";
 import { cellKey, type Board } from "../engine/board.js";
 import type { Placement } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
+import { nearSquares } from "../engine/nearSquares.js";
 
 export interface ExposureWeights {
   /**
@@ -126,35 +127,8 @@ export function exposure(
 
   let penalty = 0;
 
-  // 3x3s one tile from complete, counted once each.
-  const seen = new Set<string>();
-  const k = SCORING_SQUARE_SIZE;
-  for (const p of placements) {
-    for (let j = 0; j < k; j++) {
-      for (let i = 0; i < k; i++) {
-        const ox = p.x - i;
-        const oy = p.y - j;
-        if (ox < 0 || oy < 0 || ox + k > size || oy + k > size) continue;
-        const id = `${ox},${oy}`;
-        if (seen.has(id)) continue;
-        seen.add(id);
-
-        let gaps = 0;
-        let blocked = false;
-        for (let dy = 0; dy < k && !blocked; dy++) {
-          for (let dx = 0; dx < k; dx++) {
-            if (shape.blocked.has(cellKey(ox + dx, oy + dy))) {
-              blocked = true;
-              break;
-            }
-            if (!filled(ox + dx, oy + dy)) gaps++;
-          }
-        }
-
-        if (!blocked && gaps === 1) penalty += w.nearBlock * SQUARE_BONUS;
-      }
-    }
-  }
+  // 3x3s one tile from complete.
+  penalty += w.nearBlock * SQUARE_BONUS * nearSquares(before, placements, shape, size).length;
 
   // Words left with a square to grow into: one tile collects the whole run.
   const walked = new Set<string>();
