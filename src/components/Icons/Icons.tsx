@@ -25,6 +25,15 @@ const base = (size: number) => ({
   style: { display: "block" },
 });
 
+/** Opens downward: a disclosure. Rotated by its button when open. */
+export function ChevronIcon({ size = 16 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 /** Take the tiles back off the board: an arrow returning to where it began. */
 export function RecallIcon({ size = 16 }: IconProps) {
   return (

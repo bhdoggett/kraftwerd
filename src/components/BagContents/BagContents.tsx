@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RACK } from "../../../shared/config";
 import { newBag, tilesLeft } from "../../../shared/engine/bag";
+import { ChevronIcon } from "../Icons/Icons";
 import styles from "./BagContents.module.css";
 
 /**
@@ -54,7 +55,9 @@ export function BagContents({
         <span>
           <strong>{left}</strong> of {total} tiles left
         </span>
-        <span className={styles.chevron}>{open ? "▾" : "▸"}</span>
+        <span className={[styles.chevron, open ? styles.chevronOpen : ""].join(" ")}>
+          <ChevronIcon />
+        </span>
       </button>
 
       {open && (
