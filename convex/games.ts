@@ -772,6 +772,23 @@ export const respondToInvite = mutation({
       return null;
     }
 
+    /*
+     * Seats fill in the order invitations are accepted. Turns go round in
+     * seat order, so taking the lowest seat still held for somebody who has
+     * not answered puts this player's turn before theirs: the round goes
+     * through everyone who has accepted, then waits on whoever has not. They
+     * swap, rack and all -- nobody invited has played yet, so a seat is only
+     * a colour and a place in the round.
+     */
+    const ahead = (await seatedAt(ctx, args.gameId))
+      .filter((p) => p.status === "invited" && p._id !== me._id && p.seat < me.seat)
+      .sort((a, b) => a.seat - b.seat)[0];
+    if (ahead !== undefined) {
+      await ctx.db.patch("players", ahead._id, { seat: me.seat });
+      await ctx.db.patch("players", me._id, { seat: ahead.seat });
+      me.seat = ahead.seat;
+    }
+
     await ctx.db.patch("players", me._id, { status: "joined" });
 
     const players = await seatedAt(ctx, args.gameId);

@@ -2855,3 +2855,69 @@ describe("the game-over notice", () => {
   });
 });
 
+describe("turn order", () => {
+  async function tableOfThree() {
+    const t = convexTest(schema, modules);
+    const [ana, bo, cy] = await t.run(async (ctx) => {
+      const a = await ctx.db.insert("users", { authId: "auth|ana", name: "Ana" });
+      const b = await ctx.db.insert("users", { authId: "auth|bo", name: "Bo" });
+      const c = await ctx.db.insert("users", { authId: "auth|cy", name: "Cy" });
+      for (const other of [b, c]) {
+        await ctx.db.insert("friendships", {
+          requesterId: a,
+          addresseeId: other,
+          status: "accepted",
+        });
+      }
+      return [a, b, c];
+    });
+    const asAna = t.withIdentity({ subject: "auth|ana" });
+    const asBo = t.withIdentity({ subject: "auth|bo" });
+    const asCy = t.withIdentity({ subject: "auth|cy" });
+    const { gameId } = await asAna.mutation(api.games.createGame, { playerCount: 3 });
+    // Bo is asked first, so he holds the earlier seat; Cy is asked second.
+    await asAna.mutation(api.games.inviteToGame, { gameId, friendIds: [bo, cy] });
+    const seatOf = async (userId: Id<"users">) =>
+      (await t.run(async (ctx) =>
+        ctx.db
+          .query("players")
+          .withIndex("by_game_and_user", (q) => q.eq("gameId", gameId).eq("userId", userId))
+          .unique(),
+      ))!.seat;
+    const turn = async () =>
+      (await t.run(async (ctx) => ctx.db.get("games", gameId)))!.currentSeat;
+    return { gameId, asAna, asBo, asCy, ana, bo, cy, seatOf, turn };
+  }
+
+  test("seats, and so turns and colours, go in the order people accepted", async () => {
+    const { gameId, asAna, asBo, asCy, bo, cy, seatOf, turn } = await tableOfThree();
+    const [boAskedFor, cyAskedFor] = [await seatOf(bo), await seatOf(cy)];
+
+    // Cy accepts before Bo, so Cy takes the earlier seat Bo was asked for.
+    await asCy.mutation(api.games.respondToInvite, { gameId, accept: true });
+    expect(await seatOf(cy)).toBe(boAskedFor);
+    expect(await seatOf(bo)).toBe(cyAskedFor);
+    await asBo.mutation(api.games.respondToInvite, { gameId, accept: true });
+
+    await asAna.mutation(api.games.passTurn, { gameId });
+    expect(await turn()).toBe(await seatOf(cy));
+    await asCy.mutation(api.games.passTurn, { gameId });
+    expect(await turn()).toBe(await seatOf(bo));
+  });
+
+  test("waits on whoever has not accepted, after those who have", async () => {
+    const { gameId, asAna, asBo, asCy, bo, cy, seatOf, turn } = await tableOfThree();
+
+    // Only Cy has accepted. Ana, then Cy, then the turn waits on Bo.
+    await asCy.mutation(api.games.respondToInvite, { gameId, accept: true });
+    await asAna.mutation(api.games.passTurn, { gameId });
+    expect(await turn()).toBe(await seatOf(cy));
+    await asCy.mutation(api.games.passTurn, { gameId });
+    expect(await turn()).toBe(await seatOf(bo));
+
+    // Bo accepts and takes the turn that was waiting on him.
+    await asBo.mutation(api.games.respondToInvite, { gameId, accept: true });
+    expect(await turn()).toBe(await seatOf(bo));
+  });
+});
+
