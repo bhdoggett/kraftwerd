@@ -338,6 +338,21 @@ export const createGame = mutation({
     }
 
     /*
+     * Deal the empty seats now too, rather than as each is taken. Otherwise
+     * a swap made before the table filled went back into a bag nobody else had
+     * drawn from yet, and the seats dealt after it drew from that swap's
+     * letters. Every rack comes out of the bag at the start, as it would at a
+     * table where everybody sat down at once.
+     */
+    const reservedRacks: string[][] = [];
+    for (let i = 1 + bots.length; i < args.playerCount; i++) {
+      reservedRacks.push((await drawInto(ctx, gameId, [])).letters);
+    }
+    if (reservedRacks.length > 0) {
+      await ctx.db.patch("games", gameId, { reservedRacks });
+    }
+
+    /*
      * Who the game is for decides whether it waits.
      *
      * Among friends it is playable the moment it exists, on the maker's own
@@ -400,8 +415,17 @@ async function joinSeat(
   status: "invited" | "joined" = "joined",
   alias?: string,
 ) {
-  // A fresh rack, drawn server-side out of the game's own bag.
-  const rack = await drawInto(ctx, gameId, []);
+  // The rack dealt for this seat when the game was made, if there is one
+  // waiting; otherwise a fresh one, drawn server-side out of the game's bag.
+  const game = await ctx.db.get("games", gameId);
+  const [reserved, ...rest] = game?.reservedRacks ?? [];
+  let rack: { letters: string[] };
+  if (reserved !== undefined) {
+    await ctx.db.patch("games", gameId, { reservedRacks: rest });
+    rack = { letters: reserved };
+  } else {
+    rack = await drawInto(ctx, gameId, []);
+  }
 
   await ctx.db.insert("players", {
     gameId,
@@ -1251,8 +1275,12 @@ export const resignGame = mutation({
         await ctx.db.delete("games", args.gameId);
       } else {
         // Somebody else's game, still waiting for players: give the seat back
-        // rather than calling the whole thing off.
+        // rather than calling the whole thing off, rack and all, so whoever
+        // takes it next is dealt the same letters rather than fresh ones.
         await ctx.db.delete("players", player._id);
+        await ctx.db.patch("games", args.gameId, {
+          reservedRacks: [...(game.reservedRacks ?? []), player.letters],
+        });
       }
       return null;
     }
@@ -1483,8 +1511,11 @@ function unseenLetters(
   bag: Record<string, number>,
   players: readonly Doc<"players">[],
   viewerId: Id<"users">,
+  /** Racks dealt for seats not yet taken: out of the bag, in nobody's hand. */
+  reserved: readonly string[][] = [],
 ): Record<string, number> {
   const unseen: Record<string, number> = { ...bag };
+  for (const letter of reserved.flat()) unseen[letter] = (unseen[letter] ?? 0) + 1;
   for (const player of players) {
     if (player.userId === viewerId) continue;
     for (const letter of player.letters) {
@@ -1570,7 +1601,12 @@ export const getGame = query({
        * made, so those letters are out of the bag whether or not the answer
        * has come back yet.
        */
-      unseen: unseenLetters(bag?.letters ?? newBag(RACK), players, userId),
+      unseen: unseenLetters(
+        bag?.letters ?? newBag(RACK),
+        players,
+        userId,
+        game.reservedRacks,
+      ),
       viewerUserId: userId,
       /** Null when the viewer is looking at a game they have not joined. */
       yourSeat: you?.seat ?? null,

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
-import { BLANKS_PER_GAME, RACK, RULES_VERSION } from "../shared/config";
+import { BAG_SIZE, BLANKS_PER_GAME, RACK, RULES_VERSION } from "../shared/config";
 import { NAMES } from "../shared/names";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -65,7 +65,13 @@ async function twoPlayerGame(letters: string[]) {
       blank: true,
       status: "joined",
     });
-    await ctx.db.patch("games", gameId, { status: "active", layout: "Bars" });
+    // Bob is seated by hand, so he takes the rack dealt for his seat out of
+    // reserve the way joining would.
+    await ctx.db.patch("games", gameId, {
+      status: "active",
+      layout: "Bars",
+      reservedRacks: [],
+    });
 
     const players = await ctx.db
       .query("players")
@@ -851,6 +857,37 @@ describe("game invitations", () => {
     await asAna.mutation(api.games.inviteToGame, { gameId, friendIds: [bo] });
     return { t, gameId, asAna, asBo, ana, bo };
   }
+
+  test("the maker can swap while an invitation is still outstanding", async () => {
+    const { gameId, asAna } = await invitedGame();
+    await expect(asAna.mutation(api.games.swapTiles, { gameId })).resolves.toBeNull();
+  });
+
+  test("every seat's rack is dealt when the game is made", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|ana", name: "Ana" });
+    });
+    const asAna = t.withIdentity({ subject: "auth|ana" });
+    const { gameId } = await asAna.mutation(api.games.createGame, { playerCount: 3 });
+
+    // Ana's rack and two more for the empty seats are out of the bag already,
+    // so a swap now goes back into a bag the whole table has drawn from.
+    const view = await asAna.query(api.games.getGame, { gameId });
+    expect(view?.tilesLeft).toBe(BAG_SIZE - 3 * RACK.size);
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    expect(game?.reservedRacks).toHaveLength(2);
+  });
+
+  test("the maker can swap before a seat kept for a later invite is filled", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", { authId: "auth|ana", name: "Ana" });
+    });
+    const asAna = t.withIdentity({ subject: "auth|ana" });
+    const { gameId } = await asAna.mutation(api.games.createGame, { playerCount: 3 });
+    await expect(asAna.mutation(api.games.swapTiles, { gameId })).resolves.toBeNull();
+  });
 
   test("an invited game is playable while the answer is outstanding", async () => {
     const { t, gameId } = await invitedGame();

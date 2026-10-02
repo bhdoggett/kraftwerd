@@ -145,6 +145,14 @@ export default defineSchema({
      * apart from "their turn came round again".
      */
     turnHeld: v.optional(v.boolean()),
+    /**
+     * Racks already dealt for seats nobody has taken yet, handed out in order
+     * as they fill (`joinSeat`). Every seat is dealt when the game is made, so
+     * a swap made before the table fills goes back into a bag the other
+     * seats have already drawn from, as it would once they had sat down.
+     * Absent on games made before this.
+     */
+    reservedRacks: v.optional(v.array(v.array(v.string()))),
     /** Set when the game finishes; ties give every leader a win. */
     winnerIds: v.optional(v.array(v.id("users"))),
     /**
