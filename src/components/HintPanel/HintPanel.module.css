@@ -19,26 +19,11 @@
   border-radius: var(--radius);
   background: var(--accent-soft);
   color: var(--text);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }
 
 .ask {
-  padding: var(--space-2) var(--space-4);
-  border: none;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: var(--text-inverse);
-  font: inherit;
-  cursor: pointer;
-}
-
-.ask:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.ask:disabled {
-  opacity: 0.5;
-  cursor: default;
+  composes: button from "../Button/Button.module.css";
 }
 
 .card {
@@ -62,7 +47,7 @@
 
 .points {
   grid-row: span 2;
-  font-size: 1.25rem;
+  font-size: var(--text-lg);
   font-weight: 600;
 }
 
@@ -80,18 +65,18 @@
   margin-left: var(--space-1);
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .reasons {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .empty,
 .error {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .error {
@@ -101,7 +86,7 @@
 .rackWords summary {
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .rackWords p {

@@ -6,7 +6,7 @@
 
 .title {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: var(--text-lg);
 }
 
 .field {
@@ -17,7 +17,7 @@
 
 .label {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .counts {
@@ -34,7 +34,7 @@
   background: transparent;
   color: var(--text);
   font-family: var(--font-tile);
-  font-size: 1rem;
+  font-size: var(--text-md);
   font-weight: 800;
   line-height: 1;
   font-synthesis-weight: none;
@@ -55,7 +55,7 @@
 
 .heading {
   margin: 0 0 var(--space-2);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -99,7 +99,7 @@
  */
 .machine {
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -116,7 +116,7 @@
   border: 1px solid var(--border-strong);
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -132,6 +132,13 @@
 
 .level:last-child {
   border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+/* The open-seat stepper's ends, once there is nothing left to add or take
+   away. Without this they looked as pressable as ever and did nothing. */
+.level:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: default;
 }
 
 /* The chosen level lights up in the seat's own colour, like a played tile. */
@@ -152,7 +159,7 @@
   border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   text-align: left;
 }
 
@@ -166,7 +173,7 @@
   padding: 4px var(--space-2);
   border-block: 1px solid var(--border-strong);
   text-align: center;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -188,24 +195,24 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .listHint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }
 
 .hint {
   margin: var(--space-2) 0 0;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .error {
   margin: 0;
   color: var(--danger);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .actions {
@@ -215,24 +222,11 @@
 }
 
 .button {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--text-inverse);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-4);
-  font-weight: 600;
-}
-
-.button:disabled {
-  opacity: 0.45;
-  cursor: default;
+  composes: button from "../Button/Button.module.css";
 }
 
 .secondary {
-  composes: button;
-  background: transparent;
-  color: var(--text);
-  border-color: var(--border-strong);
+  composes: secondary from "../Button/Button.module.css";
 }
 
 /*
@@ -256,7 +250,7 @@
   background: var(--surface-raised);
   color: var(--text);
   text-align: left;
-  font-size: 1rem;
+  font-size: var(--text-md);
 }
 
 .choice:hover:not(:disabled) {
@@ -265,13 +259,13 @@
 }
 
 .choice:disabled {
-  opacity: 0.45;
+  opacity: var(--disabled-opacity);
   cursor: default;
 }
 
 .choiceHint {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 400;
 }
 

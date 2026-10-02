@@ -17,7 +17,7 @@
 }
 
 .swatch:disabled {
-  opacity: 0.25;
+  opacity: var(--disabled-opacity);
   cursor: not-allowed;
 }
 
@@ -25,8 +25,10 @@
   transform: translateY(-2px);
 }
 
+/* Ringed in the text colour, not the swatch's own: gold on a white page was
+   1.4:1, so in light theme the chosen gold looked unchosen. */
 .selected {
   box-shadow:
     0 0 0 2px var(--surface-raised),
-    0 0 0 4px var(--tile-face);
+    0 0 0 4px var(--text);
 }

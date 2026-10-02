@@ -13,19 +13,30 @@ function stored(): ThemeChoice {
 /**
  * Light, dark, or whatever the system says.
  *
- * "system" removes the attribute rather than resolving it, so the stylesheet's
- * prefers-color-scheme rules apply and the page follows the OS live — a
- * resolved value would freeze at whatever it was when the page loaded.
+ * "system" is resolved here to light or dark, and followed live: the page
+ * listens for the OS changing its mind, so nothing freezes at whatever it was
+ * on load. Resolving it means the stylesheet only has to know one way of
+ * being dark -- the attribute -- rather than writing every dark token out a
+ * second time under prefers-color-scheme. index.html sets the same attribute
+ * before the first paint, so a dark system never flashes light.
  */
 export function useTheme(): [ThemeChoice, (choice: ThemeChoice) => void] {
   const [choice, setChoice] = useState<ThemeChoice>(stored);
 
   useEffect(() => {
     const root = document.documentElement;
-    if (choice === "system") root.removeAttribute("data-theme");
-    else root.setAttribute("data-theme", choice);
-
     window.localStorage.setItem(KEY, choice);
+
+    if (choice !== "system") {
+      root.setAttribute("data-theme", choice);
+      return;
+    }
+
+    const dark = window.matchMedia("(prefers-color-scheme: dark)");
+    const follow = () => root.setAttribute("data-theme", dark.matches ? "dark" : "light");
+    follow();
+    dark.addEventListener("change", follow);
+    return () => dark.removeEventListener("change", follow);
   }, [choice]);
 
   return [choice, setChoice];

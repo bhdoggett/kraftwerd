@@ -16,12 +16,12 @@
 
 .title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--text-lg);
 }
 
 .lede {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -36,7 +36,7 @@
 
 .heading {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -54,7 +54,7 @@
 }
 
 .label {
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -73,7 +73,7 @@
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
-  font-size: 1rem;
+  font-size: var(--text-md);
 }
 
 .input:focus {
@@ -82,36 +82,22 @@
 }
 
 .button {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--text-inverse);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-4);
-  font-weight: 600;
-}
-
-.button:disabled {
-  opacity: 0.45;
-  cursor: default;
+  composes: button from "../Button/Button.module.css";
 }
 
 .secondary {
+  composes: secondary from "../Button/Button.module.css";
   align-self: flex-start;
-  border: 1px solid var(--border-strong);
-  background: transparent;
-  color: var(--text);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-4);
 }
 
 .hint {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 
 .error {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--danger);
 }

@@ -84,7 +84,7 @@
 }
 
 /* 15 columns at full size overflow a phone, so the squares shrink instead. */
-@media (max-width: 640px) {
+@media (max-width: 640px) /* phone */ {
   .viewport {
     --cell-base: 22px;
   }
@@ -366,5 +366,11 @@
   .recent::after {
     animation: none;
     border-color: var(--seat-full);
+  }
+
+  /* The pending border already says the blank is waiting; a pulse that never
+     stops is the one thing a reduced-motion setting most wants gone. */
+  .awaiting {
+    animation: none;
   }
 }

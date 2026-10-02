@@ -12,7 +12,8 @@
 
 .panel {
   width: min(440px, 100%);
-  max-height: 85vh;
+  /* dvh, not vh: on iOS the toolbar sits over the bottom of a vh-sized panel. */
+  max-height: 85dvh;
   overflow: auto;
   padding: var(--space-6);
   background: var(--surface-raised);

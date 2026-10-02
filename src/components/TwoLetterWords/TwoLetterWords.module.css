@@ -13,25 +13,16 @@
 
 .title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--text-lg);
 }
 
 .close {
-  border: 1px solid var(--border-strong);
-  background: transparent;
-  color: var(--text);
-  border-radius: var(--radius);
-  padding: 2px var(--space-3);
-  font-size: 0.85rem;
-}
-
-.close:hover {
-  background: var(--surface-sunken);
+  composes: close from "../Button/Button.module.css";
 }
 
 .intro {
   margin: 0 0 var(--space-4);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -53,5 +44,5 @@
   text-align: center;
   font-weight: 700;
   letter-spacing: 0.04em;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }

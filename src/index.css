@@ -126,7 +126,8 @@
   --accent: var(--play);
   --accent-hover: var(--play-hover);
   --accent-soft: var(--play-soft);
-  --pending: #b45c00;
+  /* Darkened from #b45c00 (4.05:1 on --pending-soft) to clear 4.5:1. */
+  --pending: #a35200;
   --pending-soft: #ffeccc;
   --danger: #c40036;
   --danger-soft: #ffdfe6;
@@ -145,14 +146,18 @@
   --valid: #00a63f;
   --valid-hover: #008a34;
   --valid-soft: #d7f6e3;
-  --invalid: #e5002e;
+  /* Darkened from #e5002e (3.82:1 on --invalid-soft) to clear 4.5:1. */
+  --invalid: #cc0029;
   --invalid-soft: #ffdde4;
 
   /* Play button and word-validity feedback (the chip, its outline on the
      board, the points badges) -- an avocado green, kept apart from --valid
      above so the board's centre marker can keep its own green undisturbed. */
-  --play: #429e00;
-  --play-hover: #378300;
+  /* Darkened from #429e00, which white text on Play sat at 3.43:1 against
+     and the green chip text at 3.01:1 on --play-soft. This clears 5.5:1 and
+     4.9:1. */
+  --play: #317700;
+  --play-hover: #286200;
   --play-soft: #e3f6d5;
 
   /*
@@ -173,6 +178,19 @@
   --seat-1: color-mix(in srgb, var(--full-pacific) var(--tile-tint), #ffffff);
   --seat-2: color-mix(in srgb, var(--full-gold) var(--tile-tint), #ffffff);
 
+  /*
+   * Breakpoints. A media query cannot read a custom property, so these are
+   * written out where they are used; this is the list they come from, and
+   * each use is tagged with its name in a comment beside the number.
+   *
+   *   380px  small phone   -- an SE: the rack tiles shrink again to fit nine
+   *   640px  phone         -- rack buttons drop to their own row, tighter
+   *                           page padding
+   *   860px  stacked game  -- the game's side panel moves under the board
+   *
+   * Pick from these before adding a fourth.
+   */
+
   /* Spacing scale */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -180,6 +198,30 @@
   --space-4: 1rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
+
+  /*
+   * Type scale. The modules had grown some two dozen sizes between them, many
+   * a hair apart (0.78, 0.8 and 0.82; 0.85, 0.88 and 0.9), which nobody could
+   * tell apart on screen but which still had to be kept in step by hand. Six
+   * steps cover every role the app has: fine print and badges, labels and
+   * small caps headings, secondary and body text, inputs, dialog titles, and
+   * the big numbers. Small sits on 14px so that the 0.85 and 0.9 that most
+   * text used before both land within a fraction of a pixel of where they
+   * were. Tile letters are not on this scale -- they size with the tile.
+   */
+  --text-2xs: 0.7rem;
+  --text-xs: 0.8rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.2rem;
+  --text-xl: 1.6rem;
+
+  /*
+   * How faded a control is when it cannot be pressed. One value, because the
+   * old ones ran from 0.25 to 0.5 and a dimmer button read as more firmly off
+   * than a lighter one beside it, which it never was.
+   */
+  --disabled-opacity: 0.4;
 
   --radius: 4px;
   --radius-lg: 8px;
@@ -221,103 +263,15 @@
 }
 
 /*
- * Dark values live in one block, applied either because the system asks for
- * dark and no explicit choice overrides it, or because dark was chosen.
+ * Dark values, in one block. Applied by the data-theme attribute alone:
+ * Theme.tsx resolves "follow the system" to light or dark and keeps it in
+ * step with the OS, and index.html sets it before the first paint. Before
+ * that, these were written out twice -- once under prefers-color-scheme and
+ * again for a chosen dark -- which is two places to keep in step.
+ *
+ * The attribute also works on a single element, which is how /swatches
+ * shows light and dark side by side.
  */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]),
-  [data-theme="dark"] {
-    --surface: #08080a;
-    --surface-raised: #121216;
-    --surface-sunken: #000000;
-    --border: #26262e;
-    --border-strong: #45454f;
-
-    --text: #f2f2f5;
-    --text-muted: #8f8f9b;
-    --text-inverse: #08080a;
-
-    /*
-     * Blueprint: a technical read rather than a warm one, closer to the
-     * band's "Computer World" era than its Bauhaus one. Board and lines
-     * only -- the tiles that sit on top already got their own pass (see
-     * .tile in Board.module.css and Rack.module.css).
-     */
-    --cell-empty: #060608;
-    /* A hairline tinted with the seat-1 colour instead of neutral grey, so
-       the grid itself reads as lit rather than just ruled. 42% of the tube:
-       at 30% the lines and the multiplier marks, drawn in the same ink,
-       barely stood off the near-black squares. */
-    --cell-line: color-mix(in srgb, var(--full-pacific) 42%, #000);
-    --cell-blocked: #000000;
-    /* A blocked square and an empty one are both near-black now that
-       --cell-empty darkened to match the board; this ring is what still
-       tells them apart. */
-    --blocked-ring: inset 0 0 0 1px #2a2a35;
-    --board-frame: var(--border-strong);
-
-    /* The faces do not change: that is the point of choosing them this way. */
-    --tile-edge: #000000;
-    --tile-blank-face: #ffffff;
-    --tile-blank-edge: #000000;
-    /*
-     * No glow: a tile reads as a physical object catching light (see .tile
-     * in Board.module.css) rather than a lit tube, so nothing here casts a
-     * coloured halo. Left as a hook rather than deleted, the way the light
-     * theme's own "none" already does, in case a future look wants it back.
-     */
-    --tile-lit: none;
-    /* A bare square is black here, not paper: the letter is the tube itself. */
-    --ink-tomato: var(--full-tomato);
-    --menu-face: var(--full-lime);
-    /* Edge and face the same lime: on a black bar the mark is the shape, and
-       an edge in the board's ink only eats into it. */
-    --menu-mark: var(--full-lime);
-    --ink-pacific: var(--full-pacific);
-    --ink-gold: var(--full-gold);
-    --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
-    /* Matte Pro, unchanged: a tile catching light above a near-black board
-       still wants the deeper shadow. */
-    --tile-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.18), 0 10px 18px -6px rgb(0 0 0 / 0.6),
-      0 1px 3px rgb(0 0 0 / 0.4);
-    --tile-shadow-hover:
-      inset 0 1px 0 rgb(255 255 255 / 0.18), 0 16px 26px -8px rgb(0 0 0 / 0.65),
-      0 2px 4px rgb(0 0 0 / 0.4);
-
-    /*
-     * Accent is Play's own green, not a colour of its own -- blue (Cobalt)
-     * and violet before it were both technically fine and still didn't
-     * feel right. Play's green already carries "primary action" weight
-     * everywhere else; referenced rather than duplicated here so the two
-     * can't drift apart by accident.
-     */
-    --accent: var(--play);
-    --accent-hover: var(--play-hover);
-    --accent-soft: var(--play-soft);
-    --pending: var(--full-orange);
-    --pending-soft: #2b1405;
-    --danger: #ff4d6d;
-    --danger-soft: #2e0711;
-    --badge-fill: transparent;
-
-    --valid: #2bff88;
-    --valid-hover: #6bffae;
-    --valid-soft: #04301b;
-    --invalid: #ff2b55;
-    --invalid-soft: #330711;
-
-    --play: #a0da4e;
-    --play-hover: #bde583;
-    --play-soft: #1c280c;
-
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 2px 10px rgb(0 0 0 / 0.5);
-    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.7), 0 8px 24px rgb(0 0 0 / 0.6);
-  }
-}
-
-/* The same values again, for when dark is chosen on a light system. */
-/* Chosen dark, wherever it is chosen: the document, or one element of it. */
 [data-theme="dark"] {
   --surface: #08080a;
   --surface-raised: #121216;
@@ -329,11 +283,22 @@
   --text-muted: #8f8f9b;
   --text-inverse: #08080a;
 
-  /* See the media-query block above: same blueprint read either way a dark
-     theme gets chosen. */
+  /*
+   * Blueprint: a technical read rather than a warm one, closer to the
+   * band's "Computer World" era than its Bauhaus one. Board and lines
+   * only -- the tiles that sit on top already got their own pass (see
+   * .tile in Board.module.css and Rack.module.css).
+   */
   --cell-empty: #060608;
+  /* A hairline tinted with the seat-1 colour instead of neutral grey, so
+     the grid itself reads as lit rather than just ruled. 42% of the tube:
+     at 30% the lines and the multiplier marks, drawn in the same ink,
+     barely stood off the near-black squares. */
   --cell-line: color-mix(in srgb, var(--full-pacific) 42%, #000);
   --cell-blocked: #000000;
+  /* A blocked square and an empty one are both near-black now that
+     --cell-empty darkened to match the board; this ring is what still
+     tells them apart. */
   --blocked-ring: inset 0 0 0 1px #2a2a35;
   --board-frame: var(--border-strong);
 
@@ -341,8 +306,12 @@
   --tile-edge: #000000;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #000000;
-  /* See the media-query block above: no glow, a tile reads as a physical
-     object catching light instead. */
+  /*
+   * No glow: a tile reads as a physical object catching light (see .tile
+   * in Board.module.css) rather than a lit tube, so nothing here casts a
+   * coloured halo. Left as a hook rather than deleted, the way the light
+   * theme's own "none" already does, in case a future look wants it back.
+   */
   --tile-lit: none;
   /* A bare square is black here, not paper: the letter is the tube itself. */
   --ink-tomato: var(--full-tomato);
@@ -353,7 +322,8 @@
   --ink-pacific: var(--full-pacific);
   --ink-gold: var(--full-gold);
   --cell-inset: inset 0 2px 6px rgb(0 0 0 / 0.7);
-  /* See the media-query block above: Matte Pro's deeper shadow, unchanged. */
+  /* Matte Pro, unchanged: a tile catching light above a near-black board
+     still wants the deeper shadow. */
   --tile-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.18), 0 10px 18px -6px rgb(0 0 0 / 0.6),
     0 1px 3px rgb(0 0 0 / 0.4);
@@ -361,8 +331,13 @@
     inset 0 1px 0 rgb(255 255 255 / 0.18), 0 16px 26px -8px rgb(0 0 0 / 0.65),
     0 2px 4px rgb(0 0 0 / 0.4);
 
-  /* See the media-query block above: accent is Play's own green either
-     way a dark theme gets chosen. */
+  /*
+   * Accent is Play's own green, not a colour of its own -- blue (Cobalt)
+   * and violet before it were both technically fine and still didn't
+   * feel right. Play's green already carries "primary action" weight
+   * everywhere else; referenced rather than duplicated here so the two
+   * can't drift apart by accident.
+   */
   --accent: var(--play);
   --accent-hover: var(--play-hover);
   --accent-soft: var(--play-soft);
@@ -378,8 +353,6 @@
   --invalid: #ff2b55;
   --invalid-soft: #330711;
 
-  /* See the media-query block above: same avocado green either way a dark
-     theme gets chosen. */
   --play: #a0da4e;
   --play-hover: #bde583;
   --play-soft: #1c280c;
@@ -500,7 +473,7 @@ body,
  * 374px of tiles alone, before the rack's own padding, which wraps on a phone
  * even without the buttons — they drop to their own row below 640px.
  */
-@media (max-width: 640px) {
+@media (max-width: 640px) /* phone */ {
   :root {
     --rack-tile-width: 34px;
     --rack-gap: 3px;
@@ -508,7 +481,7 @@ body,
 }
 
 /* Narrower still — an SE is 320px across, and nine tiles have to fit in it. */
-@media (max-width: 380px) {
+@media (max-width: 380px) /* small phone */ {
   :root {
     --rack-tile-width: 30px;
     --rack-gap: 2px;

@@ -12,6 +12,12 @@
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-3) var(--space-6);
+  /* Clear of a notch or rounded corner. index.html opts into drawing under
+     them (viewport-fit=cover) so the bar's colour runs to the edge; the
+     content inside it still has to stay out from under them. */
+  padding-top: max(var(--space-3), env(safe-area-inset-top));
+  padding-left: max(var(--space-6), env(safe-area-inset-left));
+  padding-right: max(var(--space-6), env(safe-area-inset-right));
   background: var(--surface-raised);
   border-bottom: 1px solid var(--border);
 }
@@ -37,7 +43,7 @@
   /* Lifted off the header just enough to have an edge, now that it has no
      frame drawing one for it. */
   box-shadow: var(--shadow);
-  font-size: 1.05rem;
+  font-size: var(--text-md);
 }
 
 .markTile {
@@ -49,7 +55,7 @@
   border: var(--tile-stroke) solid var(--tile-edge);
   color: var(--tile-text);
   font-family: var(--font-tile);
-  font-size: 1.25rem;
+  font-size: var(--text-lg);
   font-weight: 800;
   font-synthesis-weight: none;
   line-height: 1;
@@ -78,15 +84,21 @@
 }
 
 .main {
-  padding: var(--space-6);
+  --main-pad: var(--space-6);
+  padding: var(--main-pad);
+  /* The sides and the bottom are where a notch, rounded corners and the home
+     indicator sit; the top is the header's. */
+  padding-left: max(var(--main-pad), env(safe-area-inset-left));
+  padding-right: max(var(--main-pad), env(safe-area-inset-right));
+  padding-bottom: max(var(--main-pad), env(safe-area-inset-bottom));
   flex: 1;
 }
 
 /* A phone gives the board every pixel of width it can: the full padding took
    48px off a 425px screen, and the board is what that width is for. */
-@media (max-width: 640px) {
+@media (max-width: 640px) /* phone */ {
   .main {
-    padding: var(--space-3);
+    --main-pad: var(--space-3);
   }
 }
 
@@ -141,7 +153,7 @@
   background: var(--danger-soft);
   border: 1px solid var(--danger);
   color: var(--danger);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 /*
@@ -170,7 +182,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   color: var(--text-muted);
-  font-size: 0.65rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -183,14 +195,14 @@
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius);
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   line-height: 1.5;
 }
 
 .tagline {
   margin: 0;
   color: var(--text);
-  font-size: 0.95rem;
+  font-size: var(--text-md);
   line-height: 1.5;
   text-align: center;
 }
@@ -226,7 +238,7 @@
 }
 
 .guest:disabled {
-  opacity: 0.5;
+  opacity: var(--disabled-opacity);
   cursor: default;
 }
 
@@ -239,7 +251,7 @@
   background: var(--surface-raised);
   color: var(--text);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .howTo:hover {
@@ -265,7 +277,7 @@
 }
 
 .google:disabled {
-  opacity: 0.5;
+  opacity: var(--disabled-opacity);
   cursor: default;
 }
 

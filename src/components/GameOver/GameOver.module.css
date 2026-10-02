@@ -6,7 +6,7 @@
 
 .title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--text-lg);
 }
 
 .scores {
@@ -38,21 +38,10 @@
   gap: var(--space-2);
 }
 
-.button,
-.secondary {
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-4);
-  font-weight: 600;
-}
-
 .button {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--text-inverse);
+  composes: button from "../Button/Button.module.css";
 }
 
 .secondary {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: inherit;
+  composes: secondary from "../Button/Button.module.css";
 }

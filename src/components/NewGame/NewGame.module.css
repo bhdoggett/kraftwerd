@@ -6,18 +6,18 @@
 
 .title {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: var(--text-lg);
 }
 
 .subtitle {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .heading {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -37,7 +37,7 @@
   background: var(--surface-sunken);
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -75,34 +75,21 @@
 }
 
 .button {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--text-inverse);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-4);
-  font-weight: 600;
-}
-
-.button:disabled {
-  opacity: 0.45;
-  cursor: default;
+  composes: button from "../Button/Button.module.css";
 }
 
 .secondary {
-  composes: button;
-  background: transparent;
-  color: var(--text);
-  border-color: var(--border-strong);
+  composes: secondary from "../Button/Button.module.css";
 }
 
 .empty {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .error {
   margin: 0;
   color: var(--danger);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }

@@ -15,7 +15,7 @@
   border: none;
   background: none;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }
 
 .summary:hover {
@@ -28,13 +28,13 @@
 }
 
 .chevron {
-  font-size: 0.7rem;
+  font-size: var(--text-2xs);
 }
 
 .note {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
 }
 
 .letters {
@@ -87,7 +87,7 @@
     conic-gradient(var(--accent) calc((1 - var(--fill)) * 100%), var(--surface-sunken) 0);
   color: var(--text);
   font-family: var(--font-tile);
-  font-size: 0.7rem;
+  font-size: var(--text-2xs);
   font-weight: 800;
   font-synthesis-weight: none;
   cursor: pointer;
@@ -116,7 +116,7 @@
   background: var(--surface);
   color: var(--text);
   font-family: var(--font-body, inherit);
-  font-size: 0.7rem;
+  font-size: var(--text-2xs);
   font-weight: 600;
   white-space: nowrap;
   box-shadow: var(--shadow-lift);

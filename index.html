@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=kw3" />
     <link rel="apple-touch-icon" href="/favicon.png?v=kw3" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!--
       Readex Pro: free (SIL Open Font License), no pageview tiers or
       subscription, ever — replaces Outfit, which itself replaced League
@@ -22,6 +22,21 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/index.css" />
+    <!--
+      The theme, before anything paints. Theme.tsx owns this attribute once
+      React is up; this only answers the first frame, so a dark system (or a
+      saved dark choice) never shows the light page for a moment first.
+      Same storage key and choices as Theme.tsx.
+    -->
+    <script>
+      try {
+        var saved = localStorage.getItem("kraftwerd:theme");
+        var dark =
+          saved === "dark" ||
+          (saved !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      } catch (e) {}
+    </script>
     <title>kraftwerd</title>
     <meta name="description" content="Build word squares against your friends." />
     <!--

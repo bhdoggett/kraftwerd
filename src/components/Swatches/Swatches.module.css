@@ -20,7 +20,7 @@
 
 .heading {
   margin: 0 0 var(--space-3);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: var(--tracking);
   color: var(--text-muted);
@@ -33,7 +33,7 @@
   padding-left: 90px;
   gap: 0;
   color: var(--text-muted);
-  font-size: 0.6rem;
+  font-size: var(--text-2xs);
 }
 
 .columns span {
@@ -51,12 +51,12 @@
   width: 90px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .note {
   margin: var(--space-3) 0 0;
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   line-height: 1.5;
 }

@@ -54,7 +54,7 @@
   border-radius: var(--radius);
   background: transparent;
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   text-align: left;
 }
 
@@ -78,7 +78,7 @@
 
 .groupLabel {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .choices {
@@ -118,18 +118,9 @@
 
 .dialogTitle {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--text-lg);
 }
 
 .close {
-  border: 1px solid var(--border-strong);
-  background: transparent;
-  color: var(--text);
-  border-radius: var(--radius);
-  padding: 2px var(--space-3);
-  font-size: 0.85rem;
-}
-
-.close:hover {
-  background: var(--surface-sunken);
+  composes: close from "../Button/Button.module.css";
 }

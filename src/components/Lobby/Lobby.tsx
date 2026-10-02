@@ -157,7 +157,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
               className={styles.button}
               onClick={() => void dismissDecline({ gameId: told.gameId })}
             >
-              OK
+              Got it
             </button>
           </div>
         </Modal>
@@ -410,7 +410,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
                   className={styles.secondary}
                   onClick={() => onOpen(g.gameId)}
                 >
-                  View
+                  Open
                 </button>
               </div>
             ))}
@@ -439,10 +439,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
             </span>
           </div>
           <p className={styles.betaNote}>
-            Counts games played under the rules as they stand. The rules are
-            still moving — bag, rack, scoring — and when they change these start
-            again, since a score set with a different bag never competed with a
-            newer one. The games themselves are kept either way.
+            Current rules only. Resets when the rules change; your games are kept.
           </p>
         </section>
       )}

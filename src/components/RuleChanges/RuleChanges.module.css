@@ -6,13 +6,13 @@
 
 .title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--text-lg);
 }
 
 .list {
   margin: 0;
   padding-left: var(--space-4);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 
@@ -21,11 +21,6 @@
 }
 
 .button {
+  composes: button from "../Button/Button.module.css";
   align-self: flex-end;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--text-inverse);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-4);
-  font-weight: 600;
 }

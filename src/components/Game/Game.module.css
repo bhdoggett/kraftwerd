@@ -27,7 +27,7 @@
  * rather than moved in the markup so the reading order stays scores-then-play
  * on a wide screen, where both are on the page at once.
  */
-@media (max-width: 860px) {
+@media (max-width: 860px) /* stacked game */ {
   .layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -53,33 +53,26 @@
 /* The running total, called out rather than repeated as a row in the table. */
 
 .button {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--text-inverse);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-4);
-  font-weight: 600;
-  transition: background-color 90ms ease;
-}
-
-.button:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.button:disabled {
-  opacity: 0.45;
-  cursor: default;
+  composes: button from "../Button/Button.module.css";
 }
 
 .secondary {
-  composes: button;
-  background: transparent;
-  color: var(--text);
-  border-color: var(--border-strong);
+  composes: secondary from "../Button/Button.module.css";
 }
 
-.secondary:hover:not(:disabled) {
-  background: var(--surface-sunken);
+/* Quitting asks first, in the app's own dialog rather than the browser's. */
+.quitWarning {
+  margin: 0 0 var(--space-4);
+}
+
+.quitActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.quitConfirm {
+  composes: danger from "../Button/Button.module.css";
 }
 
 .error {
@@ -88,7 +81,7 @@
   background: var(--danger-soft);
   border: 1px solid var(--danger);
   color: var(--danger);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 /*
@@ -113,7 +106,7 @@
 
 /* Full width on a phone held upright; the height cap only binds on a short
    screen, and still leaves room for the rack below. */
-@media (max-width: 640px) {
+@media (max-width: 640px) /* phone */ {
   .boardArea {
     width: min(100%, 60vh);
   }
@@ -136,7 +129,7 @@
   background: var(--accent-soft);
   color: var(--accent);
   border: 1px solid var(--accent);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .finalRoundTitle {
@@ -157,7 +150,7 @@
   background: var(--accent-soft);
   color: var(--accent);
   border: 1px solid var(--accent);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   box-shadow: var(--shadow-lift);
   pointer-events: none;
@@ -187,7 +180,7 @@
   line-height: 1.2;
   /* Big enough to take in at a glance: it is only up for a few seconds.
      The name and the words both read at this size. */
-  font-size: 1.3rem;
+  font-size: var(--text-lg);
   /* A quick fade where it stands when it first appears. It borrowed the
      refused-tile message's entrance, whose transform is built for a box
      centred by translate, so it swept in from the side. */
@@ -207,15 +200,15 @@
 
 /* A phone's rack is narrow: smaller, and two rows -- who on top, what they
    made (or scored) below -- so the words get a line of their own. */
-@media (max-width: 640px) {
+@media (max-width: 640px) /* phone */ {
   .announce {
-    font-size: 1.05rem;
+    font-size: var(--text-md);
     flex-direction: column;
     gap: var(--space-1);
   }
 
   .announce .recapPoints {
-    font-size: 1.3rem;
+    font-size: var(--text-lg);
   }
 }
 
@@ -233,7 +226,7 @@
   border-radius: var(--radius);
   background: transparent;
   color: inherit;
-  font-size: 1.25rem;
+  font-size: var(--text-lg);
   line-height: 1;
   opacity: 0.7;
 }
@@ -287,7 +280,7 @@
 }
 
 .recapPoints {
-  font-size: 1.6rem;
+  font-size: var(--text-xl);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -307,7 +300,7 @@
 
 .notice {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   margin: 0;
 }
 
@@ -320,7 +313,7 @@
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--surface);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
@@ -347,6 +340,7 @@
   border-radius: 0;
   background: var(--tile-face);
   color: var(--tile-text);
+  /* A tile's letter rather than text, so it stays off the type scale. */
   font-size: 1.6rem;
   font-weight: 600;
   box-shadow: var(--shadow-lift);
@@ -365,7 +359,7 @@
   background: var(--pending-soft);
   border: 1px solid var(--pending);
   color: var(--pending);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 
@@ -400,7 +394,7 @@
   background: var(--danger-soft);
   border: 1px solid var(--danger);
   color: var(--danger);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 
@@ -411,31 +405,18 @@
 
 
 
-.popoverBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 150;
-  display: grid;
-  place-items: center;
-  padding: var(--space-4);
-  background: rgb(0 0 0 / 0.4);
-}
-
+/* The blank's letter picker. Its panel is the shared Modal; this only lays
+   the letters out inside it. */
 .popover {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lift);
 }
 
 .popoverTitle {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 
@@ -478,7 +459,7 @@
   align-items: center;
   gap: var(--space-2);
   font-family: var(--font-mono);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   letter-spacing: 0.06em;
   padding: 3px var(--space-3);
   border-radius: 999px;
@@ -527,7 +508,7 @@
   border-radius: 999px;
   border: 1px solid var(--play);
   color: var(--play);
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -545,7 +526,7 @@
   border-radius: 999px;
   border: 1px solid var(--play);
   color: var(--play);
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -557,7 +538,7 @@
   border-radius: 999px;
   background: var(--play);
   color: var(--text-inverse);
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   font-weight: 800;
   text-align: center;
 }
@@ -574,7 +555,7 @@
 
 .bonusHeading {
   margin: 0;
-  font-size: 0.65rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -614,7 +595,7 @@
 
 .reason {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   color: var(--danger);
   text-align: center;
 }
@@ -625,7 +606,7 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 /* Only shown for a play that is legal, so it belongs with the green. */
@@ -636,7 +617,7 @@
   background: var(--play);
   color: var(--text-inverse);
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -664,7 +645,7 @@
 
 .breakdown th {
   padding: 0 var(--space-4) var(--space-1);
-  font-size: 0.65rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -688,7 +669,7 @@
   border: 1px solid var(--border);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .rowTotal {
@@ -730,7 +711,7 @@
   border-radius: var(--radius);
   background: transparent;
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
@@ -776,7 +757,7 @@
 }
 
 .reviewStep:disabled {
-  opacity: 0.35;
+  opacity: var(--disabled-opacity);
   cursor: default;
 }
 
@@ -788,51 +769,24 @@
 }
 
 .reviewSays {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   /* Whole line to itself on a narrow screen rather than squeezing the slider. */
   flex-basis: 100%;
 }
 
-/*
- * Says what the board's three marks mean, in the side panel above the other
- * help on offer there -- worth seeing before the two-letter words, not a
- * caption easy to scroll past under the board. Same weight as .reviewOpen
- * beside it, so it reads as part of that same row of things worth knowing
- * rather than fine print.
- */
-.legend {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.legendRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* The exact mark Board.module.css draws that square with (Icons.tsx) -- the
-   real icon, not a description of it, coloured the same as the board's. */
-.legendMark {
-  display: flex;
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  align-items: center;
-  justify-content: center;
-  color: var(--cell-line);
-}
-
 .warning {
   margin: var(--space-2) 0 0;
   color: var(--danger);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
+}
+
+/*
+ * Reduced motion: the refused-tile message keeps its fade but loses its
+ * slide. A fade is a change of state, not movement across the screen.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .refusal {
+    animation-name: announce-in;
+  }
 }

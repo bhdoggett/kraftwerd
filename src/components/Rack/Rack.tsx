@@ -146,147 +146,155 @@ export function Rack({
   });
 
   return (
-    <div className={styles.rack} data-rack="" data-seat={seat === null ? undefined : seat % 4}>
-      <div className={[styles.tiles, shuffling > 0 ? styles.shuffling : ""].join(" ")}>
-        {[...order]
-          /*
-           * The page keeps the tiles in one fixed order, by letter index, and
-           * each is slid into its place by transform. Following the display
-           * order instead moved the elements themselves on every shuffle, and a
-           * moved element replays its animations -- so the tiles last drawn
-           * rose out of the bag again.
-           */
-          .sort((a, b) => a - b)
-          // A staged tile leaves the rack. One being dragged back appears as a
-          // placeholder once the pointer is over the rack, so the gap opens
-          // where it is heading rather than sitting empty where it came from.
-          .filter(
-            (index) =>
-              !spent.includes(index) || (index === draggedIndex && dragOverRack),
-          )
-          .map((index, slot) => {
-            const letter = letters[index];
-            if (letter === undefined) return null;
+    // The frame is only there to be measured: the rack's layout answers to its
+    // own width, and a container query cannot restyle the container itself.
+    <div className={styles.frame}>
+      <div className={styles.rack} data-rack="" data-seat={seat === null ? undefined : seat % 4}>
+        <div className={[styles.tiles, shuffling > 0 ? styles.shuffling : ""].join(" ")}>
+          {[...order]
+            /*
+             * The page keeps the tiles in one fixed order, by letter index, and
+             * each is slid into its place by transform. Following the display
+             * order instead moved the elements themselves on every shuffle, and a
+             * moved element replays its animations -- so the tiles last drawn
+             * rose out of the bag again.
+             */
+            .sort((a, b) => a - b)
+            // A staged tile leaves the rack. One being dragged back appears as a
+            // placeholder once the pointer is over the rack, so the gap opens
+            // where it is heading rather than sitting empty where it came from.
+            .filter(
+              (index) =>
+                !spent.includes(index) || (index === draggedIndex && dragOverRack),
+            )
+            .map((index, slot) => {
+              const letter = letters[index];
+              if (letter === undefined) return null;
 
-            // Where the tile shows, against where the page has it.
-            const shift =
-              previewOrder
-                .filter((i) => !spent.includes(i) || (i === draggedIndex && dragOverRack))
-                .indexOf(index) - slot;
+              // Where the tile shows, against where the page has it.
+              const shift =
+                previewOrder
+                  .filter((i) => !spent.includes(i) || (i === draggedIndex && dragOverRack))
+                  .indexOf(index) - slot;
 
-            const rising = isDrawn(index);
-            return (
-              <button
-                key={rising ? `${index}:${drawn!.gen}` : index}
-                type="button"
-                className={[
-                  styles.tile,
-                  isSelected({ kind: "letter", index }) ? styles.selected : "",
-                  draggedIndex === index ? styles.lifted : "",
-                  rising ? styles.drawn : "",
-                ].join(" ")}
-                // The letter's own index, not its position: staged tiles leave
-                // the rack, so positions shift but indices do not.
-                data-rack-slot={index}
-                style={{
-                  ...(shift === 0
-                    ? {}
-                    : { transform: `translateX(calc(var(--rack-step) * ${shift}))` }),
-                  ...(rising
-                    ? ({ "--draw-order": drawOrder.indexOf(index) } as React.CSSProperties)
-                    : {}),
-                }}
-                // Once risen, a tile stops being a fresh draw, so nothing later
-                // can set its rise off again.
-                onAnimationEnd={
-                  rising && drawOrder.indexOf(index) === drawOrder.length - 1
-                    ? () => setDrawn(null)
-                    : undefined
-                }
-                {...tileProps({ kind: "letter", index })}
-              >
-                {letter}
-              </button>
-            );
-          })}
-      </div>
+              const rising = isDrawn(index);
+              return (
+                <button
+                  key={rising ? `${index}:${drawn!.gen}` : index}
+                  type="button"
+                  className={[
+                    styles.tile,
+                    isSelected({ kind: "letter", index }) ? styles.selected : "",
+                    draggedIndex === index ? styles.lifted : "",
+                    rising ? styles.drawn : "",
+                  ].join(" ")}
+                  // The letter's own index, not its position: staged tiles leave
+                  // the rack, so positions shift but indices do not.
+                  data-rack-slot={index}
+                  style={{
+                    ...(shift === 0
+                      ? {}
+                      : { transform: `translateX(calc(var(--rack-step) * ${shift}))` }),
+                    ...(rising
+                      ? ({ "--draw-order": drawOrder.indexOf(index) } as React.CSSProperties)
+                      : {}),
+                  }}
+                  // Once risen, a tile stops being a fresh draw, so nothing later
+                  // can set its rise off again.
+                  onAnimationEnd={
+                    rising && drawOrder.indexOf(index) === drawOrder.length - 1
+                      ? () => setDrawn(null)
+                      : undefined
+                  }
+                  {...tileProps({ kind: "letter", index })}
+                >
+                  {letter}
+                </button>
+              );
+            })}
+        </div>
 
-      {/*
-        One tile carrying a count, not a tile each: they are interchangeable,
-        and three of them took up as much rack as three letters for no reason.
-        The count is dropped at one, where a bare tile says the same thing.
-      */}
-      {blanks > 0 && (
-        <div className={styles.blanks}>
+        {/*
+          One tile carrying a count, not a tile each: they are interchangeable,
+          and three of them took up as much rack as three letters for no reason.
+          The count is dropped at one, where a bare tile says the same thing.
+        */}
+        {blanks > 0 && (
+          <div className={styles.blanks}>
+            <button
+              type="button"
+              className={[
+                styles.tile,
+                styles.blank,
+                isSelected({ kind: "blank" }) ? styles.selected : "",
+              ].join(" ")}
+              data-face="blank"
+              aria-label={`Blank tile, ${blanks} left`}
+              {...tileProps({ kind: "blank" })}
+            >
+              {blanks > 1 && <span className={styles.count}>{blanks}</span>}
+            </button>
+          </div>
+        )}
+
+        <div className={styles.actions}>
           <button
             type="button"
-            className={[
-              styles.tile,
-              styles.blank,
-              isSelected({ kind: "blank" }) ? styles.selected : "",
-            ].join(" ")}
-            data-face="blank"
-            aria-label={`Blank tile, ${blanks} left`}
-            {...tileProps({ kind: "blank" })}
+            className={styles.action}
+            onClick={onRecall}
+            disabled={!canRecall}
+            aria-label="Take every tile back off the board"
+            title="Recall tiles"
           >
-            {blanks > 1 && <span className={styles.count}>{blanks}</span>}
+            <RecallIcon />
+            <span className={styles.actionLabel}>Recall</span>
+          </button>
+          <button
+            type="button"
+            onClick={onSwap}
+            disabled={!canSwap}
+            aria-pressed={swapping}
+            className={[styles.action, swapping ? styles.actionOn : ""].join(" ")}
+            aria-label="Swap your whole rack, once a game"
+            title="Swap rack (once a game)"
+          >
+            <TradeIcon />
+            <span className={styles.actionLabel}>Swap</span>
+          </button>
+          <button
+            type="button"
+            onClick={onPass}
+            disabled={!canPass}
+            aria-pressed={passing}
+            className={[styles.action, passing ? styles.actionOn : ""].join(" ")}
+            aria-label="Pass your turn"
+            title="Pass"
+          >
+            <PassIcon />
+            <span className={styles.actionLabel}>Pass</span>
+          </button>
+          <button
+            type="button"
+            className={styles.action}
+            onClick={onShuffle}
+            aria-label="Shuffle your tiles"
+            title="Shuffle"
+          >
+            <ShuffleIcon />
+            <span className={styles.actionLabel}>Shuffle</span>
+          </button>
+          <button
+            type="button"
+            className={styles.play}
+            onClick={onPlay}
+            // Only truly disabled when there is nothing to say: a disabled
+            // button fires no click, and so cannot answer the press.
+            disabled={!canPlay && !playAnswers}
+            aria-disabled={!canPlay}
+          >
+            {playing ? "Playing…" : "Play"}
           </button>
         </div>
-      )}
-
-      <div className={styles.actions}>
-        <button
-          type="button"
-          className={styles.action}
-          onClick={onRecall}
-          disabled={!canRecall}
-          aria-label="Take every tile back off the board"
-          title="Recall tiles"
-        >
-          <RecallIcon />
-        </button>
-        <button
-          type="button"
-          onClick={onSwap}
-          disabled={!canSwap}
-          aria-pressed={swapping}
-          className={[styles.action, swapping ? styles.actionOn : ""].join(" ")}
-          aria-label="Swap your whole rack, once a game"
-          title="Swap rack (once a game)"
-        >
-          <TradeIcon />
-        </button>
-        <button
-          type="button"
-          onClick={onPass}
-          disabled={!canPass}
-          aria-pressed={passing}
-          className={[styles.action, passing ? styles.actionOn : ""].join(" ")}
-          aria-label="Pass your turn"
-          title="Pass"
-        >
-          <PassIcon />
-        </button>
-        <button
-          type="button"
-          className={styles.action}
-          onClick={onShuffle}
-          aria-label="Shuffle your tiles"
-          title="Shuffle"
-        >
-          <ShuffleIcon />
-        </button>
-        <button
-          type="button"
-          className={styles.play}
-          onClick={onPlay}
-          // Only truly disabled when there is nothing to say: a disabled
-          // button fires no click, and so cannot answer the press.
-          disabled={!canPlay && !playAnswers}
-          aria-disabled={!canPlay}
-        >
-          {playing ? "Playing…" : "Play"}
-        </button>
       </div>
     </div>
   );

@@ -24,6 +24,11 @@ interface BoardProps {
   pending: readonly Placement[];
   /** Seat number per player id, which is what picks a tile's colour. */
   seatOf: ReadonlyMap<string, number>;
+  /**
+   * Name per player id, for screen readers: the colour that says whose tile
+   * this is says nothing to them.
+   */
+  nameOf?: ReadonlyMap<string, string>;
   /** The viewer's seat, so tiles they are still holding match their own. */
   yourSeat: number | null;
   canPlace: boolean;
@@ -42,6 +47,15 @@ interface BoardProps {
 
 const key = (x: number, y: number) => `${x},${y}`;
 
+const BONUS_NAME: Record<number, string> = { 2: "double word", 3: "triple word", 4: "quadruple word" };
+
+const ARROWS: Record<string, [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+};
+
 /**
  * The whole board, drawn like a crossword grid.
  *
@@ -55,6 +69,7 @@ export function Board({
   tiles,
   pending,
   seatOf,
+  nameOf,
   yourSeat,
   canPlace,
   awaitingBlankAt,
@@ -301,6 +316,27 @@ export function Board({
     return map;
   }, [pending]);
 
+  /**
+   * The one square the keyboard rests on. The board is a single Tab stop and
+   * the arrow keys move within it -- 225 stops was a wall to tab through to
+   * reach anything after the board. Starts on the centre, where the first
+   * word has to go.
+   */
+  const [cursor, setCursor] = useState(() => key(shape.centre.x, shape.centre.y));
+  const grid = useRef<HTMLDivElement>(null);
+
+  const moveCursor = (e: React.KeyboardEvent) => {
+    const step = ARROWS[e.key];
+    if (step === undefined) return;
+    e.preventDefault();
+    const [cx, cy] = cursor.split(",").map(Number);
+    const nx = Math.min(boardSize - 1, Math.max(0, cx + step[0]));
+    const ny = Math.min(boardSize - 1, Math.max(0, cy + step[1]));
+    const next = key(nx, ny);
+    setCursor(next);
+    grid.current?.querySelector<HTMLElement>(`[data-pos="${next}"]`)?.focus();
+  };
+
   const cells: React.ReactNode[] = [];
 
   for (let y = 0; y < boardSize; y++) {
@@ -367,14 +403,34 @@ export function Board({
           // has a letter it scores like any tile, so it looks like any tile.
           data-face={awaiting ? "blank" : undefined}
           data-staged={stage === undefined ? undefined : ""}
+          data-pos={k}
+          tabIndex={k === cursor ? 0 : -1}
+          onFocus={() => setCursor(k)}
           aria-disabled={blocked || (!stage && !canPlace)}
-          aria-label={
+          // Everything the square shows by shape or colour alone, said in
+          // words: the multiplier, whose tile it is, and whether it is full.
+          aria-label={[
             blocked
-              ? `blocked square, column ${x + 1}, row ${y + 1}`
-              : stage || tile
-                ? `${(stage ?? tile)!.letter} at column ${x + 1}, row ${y + 1}`
-                : `open square, column ${x + 1}, row ${y + 1}`
-          }
+              ? "blocked square"
+              : stage
+                ? `${stage.letter}, your tile, not yet played`
+                : tile
+                  ? [
+                      tile.letter,
+                      nameOf?.get(tile.placedBy) === undefined
+                        ? undefined
+                        : `played by ${nameOf.get(tile.placedBy)}`,
+                      depth >= 2 ? "full" : undefined,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")
+                  : "open square",
+            empty && bonusMultiplier !== undefined ? BONUS_NAME[bonusMultiplier] : undefined,
+            empty && isCentre ? "centre" : undefined,
+            `column ${x + 1}, row ${y + 1}`,
+          ]
+            .filter(Boolean)
+            .join(", ")}
           onPointerDown={(e) => {
             if (stage && onGrabStaged) onGrabStaged(x, y, e);
           }}
@@ -436,6 +492,10 @@ export function Board({
         }}
       >
         <div
+          ref={grid}
+          role="group"
+          aria-label="Board, use the arrow keys to move between squares"
+          onKeyDown={moveCursor}
           className={styles.grid}
           data-seat={yourSeat === null ? undefined : yourSeat % 4}
           style={{ gridTemplateColumns: `repeat(${boardSize}, var(--cell-size))` }}

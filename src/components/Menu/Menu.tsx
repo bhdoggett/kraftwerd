@@ -8,6 +8,7 @@ import { MoonIcon, MoreIcon, SunIcon, SystemIcon } from "../Icons/Icons";
 import styles from "./Menu.module.css";
 import { Modal } from "../Modal/Modal";
 import { RulesDialog } from "../Rules/Rules";
+import { TwoLetterWordsDialog } from "../TwoLetterWords/TwoLetterWords";
 import { THEME_CHOICES, useTheme } from "../Theme/Theme";
 
 const THEME_ICON = { light: SunIcon, dark: MoonIcon, system: SystemIcon };
@@ -23,6 +24,7 @@ const THEME_LABEL = { light: "Light", dark: "Dark", system: "Follow the system" 
 export function Menu() {
   const [open, setOpen] = useState(false);
   const [rules, setRules] = useState(false);
+  const [twoLetterWords, setTwoLetterWords] = useState(false);
   const [friends, setFriends] = useState(false);
   const { isAuthenticated } = useConvexAuth();
   const viewer = useQuery(api.users.viewer);
@@ -77,6 +79,21 @@ export function Menu() {
             }}
           >
             How to play
+          </button>
+
+          {/* Here rather than beside the board: it is a reference, wanted
+              in the lobby as much as mid-game, and the side panel is for
+              the game in front of you. */}
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.item}
+            onClick={() => {
+              setTwoLetterWords(true);
+              setOpen(false);
+            }}
+          >
+            Two-letter words
           </button>
 
           {isAuthenticated && (
@@ -182,6 +199,8 @@ export function Menu() {
       )}
 
       {rules && <RulesDialog onClose={() => setRules(false)} />}
+
+      {twoLetterWords && <TwoLetterWordsDialog onClose={() => setTwoLetterWords(false)} />}
 
       {friends && (
         <Modal onDismiss={() => setFriends(false)}>

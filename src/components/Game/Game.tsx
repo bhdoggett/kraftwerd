@@ -21,7 +21,6 @@ import {
 } from "../../../shared/config";
 import { Board } from "../Board/Board";
 import { DevTools } from "../DevTools/DevTools";
-import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import styles from "./Game.module.css";
 import { withoutLevel } from "../../../shared/names";
 import { useTurnReplay } from "./useTurnReplay";
@@ -40,7 +39,7 @@ import { moveStagedTo, stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
 import { followPointer } from "../../lib/followPointer";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
-import { TwoLetterWordsDialog } from "../TwoLetterWords/TwoLetterWords";
+import { Modal } from "../Modal/Modal";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -182,7 +181,8 @@ export function Game({
    */
   const [reviewing, setReviewing] = useState(false);
   const [stepAt, setStepAt] = useState<number | null>(null);
-  const [showTwoLetterWords, setShowTwoLetterWords] = useState(false);
+  /** The warning a Quit press is asking to be confirmed against, while it is asked. */
+  const [quitting, setQuitting] = useState<string | null>(null);
   /** Colour picked while taking an open seat at a game reached by link. */
   const [joinSeatChoice, setJoinSeatChoice] = useState<number | null>(null);
 
@@ -731,7 +731,7 @@ export function Game({
         : game.playerCount > 1
           ? "Quit this game? The other player wins it."
           : "Quit this game?";
-    if (window.confirm(warning)) void resignGame({ gameId }).then(onLeave);
+    setQuitting(warning);
   }
 
   /** Answer the question the dropped blank is asking. */
@@ -783,6 +783,9 @@ export function Game({
 
   // Player id to seat, which is how a tile knows what colour to be.
   const seatOf = new Map(view.players.map((p) => [p.userId, p.seat]));
+  const nameOf = new Map(
+    view.players.map((p) => [p.userId, p.userId === view.viewerUserId ? "you" : p.name]),
+  );
 
   const turns = history ?? [];
   // Fresh review starts at the end: the board you were just looking at.
@@ -865,6 +868,7 @@ export function Game({
             tiles={shown}
             pending={showDraft ? pending : []}
             seatOf={seatOf}
+            nameOf={nameOf}
             yourSeat={view.yourSeat}
             /* Not gated on the turn: a play can be laid out and priced while
                you wait, which is when there is time to think about it.
@@ -1047,16 +1051,9 @@ export function Game({
         })()}
 
         {blankAt !== null && (
-          <div
-            className={styles.popoverBackdrop}
-            role="dialog"
-            aria-modal="true"
-            // Pressing away takes the blank back, which is what the button
-            // under the letters used to say in words.
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setBlankAt(null);
-            }}
-          >
+          // Pressing away takes the blank back, which is what the button
+          // under the letters used to say in words.
+          <Modal onDismiss={() => setBlankAt(null)} label="Choose a letter for the blank">
             <div className={styles.popover}>
               <p className={styles.popoverTitle}>What does this blank stand for?</p>
 
@@ -1084,9 +1081,33 @@ export function Game({
                   </button>
                 ))}
               </div>
-
             </div>
-          </div>
+          </Modal>
+        )}
+
+        {quitting !== null && (
+          <Modal onDismiss={() => setQuitting(null)} label="Quit this game">
+            <p className={styles.quitWarning}>{quitting}</p>
+            <div className={styles.quitActions}>
+              <button
+                type="button"
+                className={styles.secondary}
+                onClick={() => setQuitting(null)}
+              >
+                Keep playing
+              </button>
+              <button
+                type="button"
+                className={styles.quitConfirm}
+                onClick={() => {
+                  setQuitting(null);
+                  void resignGame({ gameId }).then(onLeave);
+                }}
+              >
+                Quit
+              </button>
+            </div>
+          </Modal>
         )}
 
         {view.seatsFilled < game.playerCount && (
@@ -1286,51 +1307,6 @@ export function Game({
             )}
           </>
         )}
-
-        {/* What the board's three marks mean, said once rather than left
-            for a dozen shaded squares to explain themselves. Above the
-            other help on offer here, not a caption under the board where
-            it would be easy to scroll past. */}
-        <div className={styles.legend}>
-          <div className={styles.legendRow}>
-            <span className={styles.legendMark}>
-              <DoubleWordIcon />
-            </span>
-            <span>×2 Double word</span>
-          </div>
-          <div className={styles.legendRow}>
-            <span className={styles.legendMark}>
-              <TripleWordIcon />
-            </span>
-            <span>×3 Triple word</span>
-          </div>
-          <div className={styles.legendRow}>
-            <span className={styles.legendMark}>
-              <QuadWordIcon />
-            </span>
-            <span>×4 Quadruple word</span>
-          </div>
-        </div>
-
-        {/*
-          A list of what you could have played is help while you are playing.
-          Once the game is over it is only clutter, in the one place where
-          what to do next is the whole question.
-        */}
-        {game.status !== "finished" && (
-          <button
-            type="button"
-            className={styles.reviewOpen}
-            onClick={() => setShowTwoLetterWords(true)}
-          >
-            Two-letter words
-          </button>
-        )}
-
-        {showTwoLetterWords && (
-          <TwoLetterWordsDialog onClose={() => setShowTwoLetterWords(false)} />
-        )}
-
 
         {/*
           Everything here comes from the placement itself — the words, their

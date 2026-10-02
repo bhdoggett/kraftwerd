@@ -1,0 +1,102 @@
+/*
+ * The app's buttons, defined once. Each component used to carry its own copy,
+ * and the copies drifted apart -- different padding, a different border on
+ * the quiet button, hover in some places and not others -- so the same kind
+ * of button looked subtly different from one dialog to the next. Components
+ * now compose these and keep only what is genuinely their own.
+ */
+
+/* The one thing to do here: filled in the accent, like Play. */
+.button {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-weight: 600;
+  transition: background-color 90ms ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.button:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: default;
+}
+
+/*
+ * The other choice beside it: an outline, so the filled one is still the
+ * obvious answer. The strong border rather than the plain one, which on a
+ * raised dialog was faint enough that the button read as loose text.
+ */
+.secondary {
+  composes: button;
+  border-color: var(--border-strong);
+  background: transparent;
+  color: var(--text);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+/*
+ * Something that cannot be taken back. There is no hover shade of the danger
+ * colour in the palette, so it brightens instead of darkening the way the
+ * accent does.
+ */
+.danger {
+  composes: button;
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--danger);
+  filter: brightness(1.1);
+}
+
+/*
+ * A dialog's Close, in the corner beside its title. Smaller and lighter than
+ * a secondary button, since it sits on the title's line rather than in a row
+ * of actions, but the same outline and the same hover.
+ */
+.close {
+  composes: secondary;
+  padding: 2px var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: inherit;
+}
+
+/*
+ * Destructive, but one of several in a row rather than the answer to a
+ * question: removing a friend sits beside the ordinary buttons on the same
+ * line, and a solid red block there would shout over the name it belongs to.
+ */
+.quietDanger {
+  composes: danger;
+  background: transparent;
+  color: var(--danger);
+}
+
+.quietDanger:hover:not(:disabled) {
+  background: var(--danger-soft);
+  filter: none;
+}
+
+/*
+ * Smaller, for buttons that sit two or three to a line beside a name in a
+ * list, where the full padding pushed the name into an ellipsis.
+ *
+ * Kept here rather than as an override in the component that wants it. Vite
+ * copies this file into every module that composes from it and the minifier
+ * keeps only the last copy, so these rules can land after a component's own
+ * and win over it whatever the component says. A size or colour change has to
+ * live in this file, where the order is fixed, to be sure of applying.
+ */
+.compact {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
