@@ -253,6 +253,8 @@ export const createGame = mutation({
      * name is against yet -- a full table has nothing to offer anybody.
      */
     isPublic: v.optional(v.boolean()),
+    /** A practice game with hints. Only when every other seat is a machine. */
+    hints: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const me = await currentUser(ctx);
@@ -295,6 +297,11 @@ export const createGame = mutation({
       }
     }
 
+    const hints = args.hints === true;
+    if (hints && (bots.length === 0 || bots.length !== args.playerCount - 1)) {
+      throw new ConvexError("Hints are only for games against the computer");
+    }
+
     // A game is only worth listing if somebody could take a seat at it.
     const isPublic =
       args.isPublic === true && args.playerCount - 1 - bots.length > 0;
@@ -329,6 +336,7 @@ export const createGame = mutation({
       createdBy: userId,
       isPublic,
       rulesVersion: RULES_VERSION,
+      ...(hints ? { hints: true } : {}),
     });
 
     await joinSeat(ctx, gameId, userId, seat, "joined", alias);
@@ -876,6 +884,8 @@ export const rematch = mutation({
        */
       isPublic: before.isPublic,
       rulesVersion: RULES_VERSION,
+      // Practice stays practice: a rematch is the same table over again.
+      ...(before.hints === true ? { hints: true } : {}),
     });
 
     for (const player of players) {
@@ -1095,7 +1105,11 @@ async function playTurn(
     });
 
     const played = await ctx.db.get("users", userId);
-    if (played !== null && (game.rulesVersion ?? 0) === RULES_VERSION) {
+    if (
+      played !== null &&
+      (game.rulesVersion ?? 0) === RULES_VERSION &&
+      game.hints !== true
+    ) {
       const user = await recordUnderCurrentRules(ctx, played);
       if (score.total > (user.bestTurnScore ?? 0)) {
         await ctx.db.patch("users", userId, { bestTurnScore: score.total });
@@ -1228,8 +1242,10 @@ async function finishGame(
    * began with, and those scores never competed with today's -- a different
    * bag, a different rack, different scoring. It keeps its history and its
    * winner; it simply does not go in the record.
+   *
+   * Nor does a practice game: its hints were offered to every person at it.
    */
-  if ((game.rulesVersion ?? 0) !== RULES_VERSION) return;
+  if ((game.rulesVersion ?? 0) !== RULES_VERSION || game.hints === true) return;
 
   for (const player of players) {
     const found = await ctx.db.get("users", player.userId);
@@ -1754,6 +1770,8 @@ export const listMyGames = query({
           youWon: (game.winnerIds ?? []).includes(p.userId),
           /** True when the game ended because someone quit. */
           abandoned: (game.resignedBy ?? []).length > 0,
+          /** A practice game: hints on, counted toward nothing. */
+          hints: game.hints === true,
           /**
            * When it ended, falling back to when it began for games that
            * finished before this was recorded.

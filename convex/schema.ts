@@ -199,6 +199,12 @@ export default defineSchema({
      * definition and so count for nothing.
      */
     rulesVersion: v.optional(v.number()),
+    /**
+     * A practice game: the Hint button is offered, and nothing here counts
+     * toward anybody's record. Set when the game is made and never changed;
+     * absent reads as an ordinary game.
+     */
+    hints: v.optional(v.boolean()),
   })
     .index("by_status", ["status"])
     // Public games still in their lobby, without reading every game ever
