@@ -6,7 +6,7 @@
  * "completer takes it" (design.md §4.4) makes that half most of the skill. A
  * block left one tile short is not a near miss, it is a gift.
  */
-import { GAME, SQUARE_BONUS, STACK_CAP } from "../config.js";
+import { GAME, SQUARE_BONUS } from "../config.js";
 import { cellKey, type Board } from "../engine/board.js";
 import type { Placement } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
@@ -19,20 +19,8 @@ export interface ExposureWeights {
    * makes both its words, and a rack that has one.
    */
   nearBlock: number;
-  /**
-   * Per point of multiplier above one, for a multiplier square nobody has
-   * covered yet that the move brings within a word's reach (see `REACH`). An
-   * x3 opened costs twice what an x2 does: the word laid across it pays that
-   * much more over its plain score.
-   */
-  openBonus: number;
   /** Per letter, for a word left extendable. */
   openRun: number;
-  /**
-   * Per tile left able to be stacked on. Zero by default -- see below; it
-   * means nothing at `STACK_CAP` 2.
-   */
-  stackable: number;
 }
 
 /**
@@ -47,33 +35,22 @@ export interface ExposureWeights {
  * hands over. Only a 3x3 pays now (RULES_VERSION 9), so only a 3x3 is charged:
  * a 4x4 one short is already charged through the 3x3s inside it.
  *
- * An opened multiplier costs 2 a point above one -- 2 for an x2, 6 for an x4
- * -- which is about half of what a four-letter word gains across it.
+ * Opening a multiplier square to the next player is not charged at all. It
+ * was, at 2 a point above one -- 2 for an x2, 6 for an x4 -- until bots were
+ * seated against each other with and without it: over 40 games each, a bot
+ * charging nothing beat one charging 2 by 26 to 14, about 9 points a game,
+ * and charging 1 did no better than nothing. It made the bot play small to
+ * guard squares the next player usually could not use, and pass up the long
+ * words through multipliers that score. Measure before bringing it back.
  *
- * `stackable` is 0, and that is not tuning but arithmetic. The term charges a
- * placement whose square could still take another tile -- and at `STACK_CAP` 2
- * that is true of every placement on an empty square and false for every one
- * that stacks. So it is a flat per-tile tax that separates nothing, and it
- * separates nothing in the wrong direction: it charges *less* for stacking,
- * which is the aggressive move, than for playing fresh. Kept rather than
- * deleted because it starts discriminating the moment the cap rises above 2 --
- * then a tile laid on a square with room left really does leave something
- * behind, and the weight is here waiting.
+ * Nothing is charged for a tile left able to be stacked on. There was a weight
+ * for it, kept at 0: at a stack cap of two it is true of every tile laid on an
+ * empty square and false of every one that stacks, so it separated nothing.
  */
 export const DEFAULT_EXPOSURE: ExposureWeights = {
   nearBlock: 0.5,
-  openBonus: 2,
   openRun: 0.15,
-  stackable: 0,
 };
-
-/**
- * How far from a standing tile, along its row or column, a multiplier square
- * counts as within reach: three empty squares, so a four-letter word from
- * that tile covers it. Longer words reach further, but a four-letter word is
- * the one a rack can nearly always find.
- */
-const REACH = 3;
 
 /**
  * What a move leaves for the next player, in points they can expect to take.
@@ -83,9 +60,8 @@ const REACH = 3;
  * "completer takes it" means a block one tile short is simply a gift. Reading
  * that costs nothing here: exposure is countable geometry. No letter is worth
  * more than another and there is no rack to guess at -- a 3x3 gap pays
- * SQUARE_BONUS to whoever fills it, an open-ended run pays its own length, an
- * uncovered multiplier pays its multiple of whatever word crosses it, and all
- * three are read straight off the grid. So what would elsewhere be a search
+ * SQUARE_BONUS to whoever fills it and an open-ended run pays its own length,
+ * both read straight off the grid. So what would elsewhere be a search
  * is here a few loops over a few dozen cells.
  *
  * Deliberately no `applyPlacements`. This runs for every candidate in a list
@@ -158,38 +134,6 @@ export function exposure(
       const ends = (open(sx - dx, sy - dy) ? 1 : 0) + (open(ex, ey) ? 1 : 0);
       penalty += w.openRun * length * ends;
     }
-  }
-
-  /*
-   * Multiplier squares nobody has covered yet, newly within a word's reach of
-   * a tile this move laid. Only newly: one a standing tile already reached
-   * was open before this move and is not this move's doing.
-   */
-  const reaches = (bx: number, by: number, has: (x: number, y: number) => boolean) => {
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-      for (let step = 1; step <= REACH + 1; step++) {
-        const x = bx + dx * step;
-        const y = by + dy * step;
-        if (x < 0 || y < 0 || x >= size || y >= size) break;
-        if (shape.blocked.has(cellKey(x, y))) break;
-        if (has(x, y)) return true;
-      }
-    }
-    return false;
-  };
-  const had = (x: number, y: number) => before.has(cellKey(x, y));
-  for (const [key, multiplier] of shape.bonusSquares) {
-    const [bx, by] = key.split(",").map(Number) as [number, number];
-    if (filled(bx, by)) continue;
-    if (reaches(bx, by, filled) && !reaches(bx, by, had)) {
-      penalty += w.openBonus * (multiplier - 1);
-    }
-  }
-
-  // Tiles this move leaves able to be built on by the next player.
-  for (const p of placements) {
-    const depth = (before.get(cellKey(p.x, p.y))?.stacked ?? 0) + 1;
-    if (depth < STACK_CAP) penalty += w.stackable;
   }
 
   return penalty;

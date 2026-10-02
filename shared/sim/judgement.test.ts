@@ -16,39 +16,20 @@ describe("exposure", () => {
     );
 
   test("a move leaving a 3x3 one tile short is charged a share of the square", () => {
-    const risky = exposure(nearly(), [at(6, 8, "T")], shape, 15, { openRun: 0, openBonus: 0 });
+    const risky = exposure(nearly(), [at(6, 8, "T")], shape, 15, { openRun: 0 });
     expect(risky).toBeCloseTo(DEFAULT_EXPOSURE.nearBlock * SQUARE_BONUS);
   });
 
   test("closing the block yourself leaves nothing to take", () => {
     const withCorner = new Map(nearly());
     withCorner.set("6,8", { letter: "T", isBlank: false, stacked: 1 });
-    const closing = exposure(withCorner, [at(8, 8, "O")], shape, 15, { openRun: 0, openBonus: 0 });
+    const closing = exposure(withCorner, [at(8, 8, "O")], shape, 15, { openRun: 0 });
     expect(closing).toBe(0);
   });
 
   test("a 2x2 one short is not charged: it pays nothing", () => {
     const before = makeBoard([at(7, 7, "A"), at(8, 7, "T")]);
-    expect(exposure(before, [at(7, 8, "T")], shape, 15, { openRun: 0, openBonus: 0 })).toBe(0);
-  });
-
-  test("bringing an uncovered multiplier within reach is charged by its multiple", () => {
-    // Three squares below the x2 at (9,9), and below the x3 at (11,11), each
-    // on a row and column with no other multiplier within reach.
-    const two = exposure(makeBoard([]), [at(9, 12, "A")], shape, 15, { openRun: 0, nearBlock: 0 });
-    const three = exposure(makeBoard([]), [at(11, 14, "A")], shape, 15, { openRun: 0, nearBlock: 0 });
-    expect(two).toBeCloseTo(DEFAULT_EXPOSURE.openBonus * 1);
-    expect(three).toBeCloseTo(DEFAULT_EXPOSURE.openBonus * 2);
-  });
-
-  test("a multiplier already within reach is not this move's doing", () => {
-    const before = makeBoard([at(9, 11, "A")]);
-    expect(exposure(before, [at(9, 12, "B")], shape, 15, { openRun: 0, nearBlock: 0 })).toBe(0);
-  });
-
-  test("covering the multiplier yourself leaves nothing to take", () => {
-    expect(exposure(makeBoard([]), [at(11, 11, "A")], shape, 15, { openRun: 0, nearBlock: 0 }))
-      .toBe(0);
+    expect(exposure(before, [at(7, 8, "T")], shape, 15, { openRun: 0 })).toBe(0);
   });
 
   test("a longer word left open is worth more to the opponent", () => {
@@ -78,25 +59,11 @@ describe("exposure", () => {
     expect(noBlocks + noRuns).toBeCloseTo(all);
 
     expect(exposure(before, placements, shape, 15,
-      { nearBlock: 0, openRun: 0, openBonus: 0, stackable: 0 })).toBe(0);
-  });
-
-  test("stackable is off, and off is a decision rather than an omission", () => {
-    // At STACK_CAP 2 the term is true of every placement on an empty square and
-    // false for every one that stacks -- a flat tax that separates nothing, and
-    // backwards, since it charges less for stacking than for playing fresh. It
-    // stays in the interface for a cap above 2, so it must still work.
-    expect(DEFAULT_EXPOSURE.stackable).toBe(0);
-
-    const before = makeBoard([at(7, 7, "A"), at(8, 7, "T")]);
-    const placements = [at(7, 8, "T")];
-
-    expect(exposure(before, placements, shape, 15, { stackable: 1 }))
-      .toBeCloseTo(exposure(before, placements, shape, 15) + placements.length);
+      { nearBlock: 0, openRun: 0 })).toBe(0);
   });
 
   test("the defaults are the ones the spec names", () => {
-    expect(DEFAULT_EXPOSURE).toEqual({ nearBlock: 0.5, openBonus: 2, openRun: 0.15, stackable: 0 });
+    expect(DEFAULT_EXPOSURE).toEqual({ nearBlock: 0.5, openRun: 0.15 });
   });
 });
 

@@ -6,6 +6,7 @@ import type { Board, TileSpec } from "../engine/board.js";
 import { refill } from "../engine/rack.js";
 import { newSquares } from "../engine/squares.js";
 import { chooseRanked, rank } from "./bot.js";
+import type { ExposureWeights } from "./judgement.js";
 import type { ValueFn } from "./components.js";
 import { bagFlat, bagFromWeights, draw, tilesLeft, type Bag } from "./bag.js";
 import { RARE, turnValue, type Variant } from "./variants.js";
@@ -141,6 +142,14 @@ export function playGame(
   rng: () => number,
   difficulties: readonly Difficulty[] = ["hard"],
   chains?: readonly { depth: number; breadth: number; enablement?: number }[],
+  /**
+   * What each seat charges for what a move leaves open (`exposure` in
+   * judgement.ts), seated the way `chains` is. Left out, every seat uses the
+   * default weights, as live play does. Seating two weightings against each
+   * other is how a weight is tuned: change every seat at once and a run
+   * compares two tables, not two players.
+   */
+  exposures?: readonly (Partial<ExposureWeights> | false)[],
 ): GameResult {
   const size = variant.size ?? GAME.boardSize;
   const shape = boardShapeNamed(OPEN_BOARD, size);
@@ -217,6 +226,9 @@ export function playGame(
           // the seat searches as its level does.
           chain: chains !== undefined && chains.length > 0 ? chains[seat % chains.length] : level.chain,
           squares: level.squares,
+          ...(exposures !== undefined && exposures.length > 0
+            ? { exposure: exposures[seat % exposures.length] }
+            : {}),
         },
       );
     let move = chooseRanked(rankFor(), difficulty, rng);
