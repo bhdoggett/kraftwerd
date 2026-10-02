@@ -64,6 +64,15 @@ describe("coach.hints", () => {
     expect(rows).toHaveLength(1);
   }, 120_000);
 
+  test("a swap clears the turn's hint, so the new rack gets its own", async () => {
+    const { t, asAlice, gameId } = await table(true);
+    await asAlice.action(api.coach.hints, { gameId });
+    expect(await t.run(async (ctx) => await ctx.db.query("hints").collect())).toHaveLength(1);
+
+    await asAlice.mutation(api.games.swapTiles, { gameId });
+    expect(await t.run(async (ctx) => await ctx.db.query("hints").collect())).toHaveLength(0);
+  }, 120_000);
+
   test("refused in a game without hints", async () => {
     const { asAlice, gameId } = await table(false);
     await expect(asAlice.action(api.coach.hints, { gameId })).rejects.toThrow(

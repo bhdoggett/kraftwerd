@@ -660,7 +660,7 @@ async function swapRack(
   gameId: Id<"games">,
   userId: Id<"users">,
 ) {
-  const { player } = await requireTurn(ctx, gameId, userId);
+  const { game, player } = await requireTurn(ctx, gameId, userId);
 
   if (player.swapped === true) {
     throw new ConvexError("You have already used your swap this game");
@@ -678,6 +678,16 @@ async function swapRack(
     letters: rack.letters,
     swapped: true,
   });
+
+  // A hint is kept per turn, and the turn has not moved: drop the one worked
+  // out for the old rack, so asking again searches the new one.
+  const stale = await ctx.db
+    .query("hints")
+    .withIndex("by_game_user_turn", (q) =>
+      q.eq("gameId", gameId).eq("userId", userId).eq("turnNumber", game.turnNumber),
+    )
+    .unique();
+  if (stale !== null) await ctx.db.delete("hints", stale._id);
 }
 
 export const swapTiles = mutation({

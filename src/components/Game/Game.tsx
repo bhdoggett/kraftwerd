@@ -388,7 +388,13 @@ export function Game({
   const turnNumber = view?.game.turnNumber;
   // A hint belongs to the game and turn it was asked on; anything stored under
   // another key (a previous game, an earlier turn, a late reply) reads as none.
-  const hint = hintFor(hintState, `${gameId}:${turnNumber}`);
+  /*
+   * Which rack a hint was asked for: the game, the turn, and whether the
+   * rack has been swapped since. A swap keeps the turn, so without the last
+   * part the old rack's hints stayed up after the letters had changed.
+   */
+  const hintKey = `${gameId}:${turnNumber}:${me?.swapped === true ? "swapped" : ""}`;
+  const hint = hintFor(hintState, hintKey);
   /**
    * Whether a draft still means anything here. A game that is over takes no
    * more turns, so the tiles staged for one belong to nothing -- and quitting
@@ -589,7 +595,7 @@ export function Game({
   }
 
   async function ask() {
-    const key = `${gameId}:${turnNumber}`;
+    const key = hintKey;
     setHintState({ key, result: null, loading: true, error: null });
     try {
       const result = await askHints({ gameId });
