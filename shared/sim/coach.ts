@@ -57,10 +57,17 @@ export const MAX_RACK_WORDS = 20;
  * The hard bot's search, with the square solver's node budget capped: a hint
  * is a person waiting on a button, and with three blanks in hand the uncapped
  * solver measured up to six seconds.
+ *
+ * Without the bot's defence. A bot marks a move down for what it leaves open
+ * to the next player (`exposure` in judgement.ts), and so a hint on an empty
+ * board offered a tight 2x2 for 12 over a long word across the centre for 17.
+ * A hint answers "what scores most", and how much to give away is the
+ * player's own call. The price of spending a blank still applies.
  */
 const SEARCH = {
   chain: LEVELS.hard.chain,
   squares: { ...LEVELS.hard.squares, nodeLimit: 2_000 },
+  exposure: false as const,
 };
 
 export function explain(

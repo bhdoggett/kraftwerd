@@ -59,3 +59,22 @@ describe("coaching", () => {
     expect(moves).toEqual([]);
   });
 });
+
+describe("hints rank by what scores, not by what a bot would risk", () => {
+  test("an opening long word beats a tight little square", () => {
+    // A 2x2 in the centre is four doubled two-letter words; LABORS across the
+    // centre is one doubled six-letter word and the long-word bonus. The bot's
+    // defence used to rank the square first for what LABORS leaves open.
+    const words = ["LABORS", "LABOR", "LA", "AB", "BO", "OR", "AR", "LO", "AS", "OS", "SO"];
+    const result = coach(
+      makeBoard([]),
+      { letters: ["L", "A", "B", "O", "R", "S"], blanks: 0 },
+      lex(words),
+      lex(words),
+      shape,
+      15,
+    );
+    expect(result.moves[0]?.words.map((w) => w.word)).toContain("LABORS");
+  }, 60_000);
+});
+
