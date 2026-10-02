@@ -775,6 +775,47 @@
   flex-basis: 100%;
 }
 
+/*
+ * The board's three marks and what they pay, on one line. A bar rather than
+ * the three-row key it replaced, which took a panel's worth of the side for
+ * something you need only until you have played a game or two. The marks are
+ * the board's own icons in the board's own ink.
+ */
+.multipliers {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.multipliersLabel {
+  /* Set like the SCORES heading above it, a step smaller so the label and
+     all three marks share the side panel's one line. */
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  margin-right: auto;
+}
+
+.multiplier {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.multiplierMark {
+  display: flex;
+  color: var(--cell-line);
+}
+
 .warning {
   margin: var(--space-2) 0 0;
   color: var(--danger);

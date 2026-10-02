@@ -40,6 +40,7 @@ import { useWakeLock } from "../../lib/useWakeLock";
 import { followPointer } from "../../lib/followPointer";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
 import { Modal } from "../Modal/Modal";
+import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -1321,6 +1322,30 @@ export function Game({
             )}
           </>
         )}
+
+        {/* What the board's three marks pay, in one line: enough to remind,
+            not a panel to read. How to play has the full story. */}
+        <div className={styles.multipliers}>
+          <span className={styles.multipliersLabel}>Word multipliers</span>
+          <span className={styles.multiplier}>
+            <span className={styles.multiplierMark}>
+              <DoubleWordIcon />
+            </span>
+            ×2
+          </span>
+          <span className={styles.multiplier}>
+            <span className={styles.multiplierMark}>
+              <TripleWordIcon />
+            </span>
+            ×3
+          </span>
+          <span className={styles.multiplier}>
+            <span className={styles.multiplierMark}>
+              <QuadWordIcon />
+            </span>
+            ×4
+          </span>
+        </div>
 
         {/*
           Everything here comes from the placement itself — the words, their
