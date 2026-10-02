@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { hintResult } from "./hintResult";
 
 export const gameStatus = v.union(
   v.literal("lobby"),
@@ -335,6 +336,18 @@ export default defineSchema({
     squares: v.array(v.number()),
     score: v.number(),
   }).index("by_game_and_turn", ["gameId", "turnNumber"]),
+
+  /**
+   * Hints already worked out, one row per game, player and turn, so asking
+   * twice -- or reloading -- costs a read rather than a search. Left in place
+   * when a game ends.
+   */
+  hints: defineTable({
+    gameId: v.id("games"),
+    userId: v.id("users"),
+    turnNumber: v.number(),
+    result: hintResult,
+  }).index("by_game_user_turn", ["gameId", "userId", "turnNumber"]),
 
   /**
    * The dictionary, loaded via `npx convex import` rather than bundled: 59k
