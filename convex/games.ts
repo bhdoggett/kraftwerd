@@ -1649,6 +1649,8 @@ export const getGame = query({
         blanks: blanksLeft(p),
         /** Whether this game's one free swap is spent. */
         swapped: p.swapped === true,
+        /** A machine's seat rather than a person's. */
+        isBot: p.bot !== undefined,
         /** Asked, but not yet sitting down. */
         invited: p.status === "invited",
       })),

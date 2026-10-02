@@ -1218,18 +1218,23 @@ export function Game({
               machines. It is under way the moment it is asked for, on the
               seat of whoever asked -- so this button is the first turn of
               the new game as much as it is the end of the old one.
+
+              Only with somebody else to play: against machines alone,
+              starting a fresh game from the lobby is the same thing.
             */}
-            <button
-              type="button"
-              className={[styles.reviewOpen, styles.playAgain].join(" ")}
-              onClick={() => {
-                void rematch({ gameId })
-                  .then((again) => onOpen(again.gameId))
-                  .catch((err: unknown) => refuse(userMessage(err)));
-              }}
-            >
-              Play again
-            </button>
+            {view.players.some((p) => !p.isBot && p.userId !== view.viewerUserId) && (
+              <button
+                type="button"
+                className={[styles.reviewOpen, styles.playAgain].join(" ")}
+                onClick={() => {
+                  void rematch({ gameId })
+                    .then((again) => onOpen(again.gameId))
+                    .catch((err: unknown) => refuse(userMessage(err)));
+                }}
+              >
+                Play again
+              </button>
+            )}
           </>
         )}
 
