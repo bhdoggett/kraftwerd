@@ -87,11 +87,13 @@ describe("hints rank by what scores, not by what a bot would risk", () => {
 
 
 describe("choosing hints by the blanks they spend", () => {
-  // A stand-in for a ranked move: only its blanks matter here.
-  const move = (name: string, blanks: number) => ({
-    name,
-    placements: Array.from({ length: 4 }, (_, i) => at(i, 7, "A", i < blanks)),
-  });
+  // A stand-in for a ranked move: its blanks, and tiles of its own so no two
+  // are the same play.
+  let made = 0;
+  const move = (name: string, blanks: number) => {
+    const letter = String.fromCharCode(65 + (made++ % 26));
+    return { name, placements: Array.from({ length: 4 }, (_, i) => at(i, 7, letter, i < blanks)) };
+  };
   const names = (moves: { name: string }[]) => moves.map((m) => m.name);
 
   test("at most one hint for each count of blanks, and plain plays fill the rest", () => {
@@ -113,6 +115,22 @@ describe("choosing hints by the blanks they spend", () => {
   test("four hints hold the best play for each count of blanks, one with none", () => {
     const ranked = [move("three", 3), move("three again", 3), move("two", 2), move("one", 1), move("plain", 0)];
     expect(names(choose(ranked))).toEqual(["three", "two", "one", "plain"]);
+  });
+
+  test("the same tiles laid somewhere else are the same hint", () => {
+    const shifted = (name: string, x: number) => ({
+      name,
+      placements: ["P", "A", "Y"].map((letter, i) => at(x + i, 7, letter)),
+    });
+    const turned = { name: "turned", placements: ["P", "A", "Y"].map((letter, i) => at(7, 3 + i, letter)) };
+    const ranked = [shifted("here", 5), shifted("there", 6), turned, move("other", 0)];
+    expect(names(choose(ranked))).toEqual(["here", "other"]);
+  });
+
+  test("the same tiles in another shape are another hint", () => {
+    const across = { name: "across", placements: ["P", "A", "Y"].map((letter, i) => at(5 + i, 7, letter)) };
+    const bent = { name: "bent", placements: [at(5, 7, "P"), at(6, 7, "A"), at(6, 8, "Y")] };
+    expect(names(choose([across, bent]))).toEqual(["across", "bent"]);
   });
 
   test("the list keeps the ranking's order", () => {

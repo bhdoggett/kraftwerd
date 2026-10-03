@@ -132,9 +132,29 @@ export function choose<T extends { placements: readonly Placement[] }>(
   const plain = ranked.find((move) => blanksIn(move) === 0);
   if (plain !== undefined) picked.add(plain);
 
+  // The same tiles in the same shape, slid or turned on its side: one idea,
+  // so only its best spot is listed.
+  const tilesOf = (move: T) => {
+    const shape = (cells: { x: number; y: number; tile: string }[]) => {
+      const left = Math.min(...cells.map((c) => c.x));
+      const top = Math.min(...cells.map((c) => c.y));
+      return cells.map((c) => `${c.x - left},${c.y - top}${c.tile}`).sort().join(" ");
+    };
+    const cells = move.placements.map((p) => ({ x: p.x, y: p.y, tile: p.isBlank ? `?${p.letter}` : p.letter }));
+    const across = shape(cells);
+    const down = shape(cells.map((c) => ({ x: c.y, y: c.x, tile: c.tile })));
+    return across < down ? across : down;
+  };
+  const laid = new Set<string>();
+  if (plain !== undefined) laid.add(tilesOf(plain));
+
   const spent = new Set<number>();
   for (const move of ranked) {
     if (picked.size >= max) break;
+    if (picked.has(move)) continue;
+    const tiles = tilesOf(move);
+    if (laid.has(tiles)) continue;
+    laid.add(tiles);
     const blanks = blanksIn(move);
     if (blanks > 0) {
       if (spent.has(blanks)) continue;
