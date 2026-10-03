@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { boardShapeNamed, OPEN_BOARD } from "../boards";
 import { makeBoard } from "../engine/board";
 import { makeDictionary } from "../engine/dictionary";
-import { coach, explain, rackWordsOf, MAX_HINTS } from "./coach";
+import { choose, coach, explain, rackWordsOf, MAX_HINTS } from "./coach";
 import { indexWords } from "./words";
 
 const lex = (words: string[]) => ({ dictionary: makeDictionary(words), words: indexWords(words, 7) });
@@ -78,3 +78,33 @@ describe("hints rank by what scores, not by what a bot would risk", () => {
   }, 60_000);
 });
 
+
+describe("choosing hints by the blanks they spend", () => {
+  // A stand-in for a ranked move: only its blanks matter here.
+  const move = (name: string, blanks: number) => ({
+    name,
+    placements: Array.from({ length: 4 }, (_, i) => at(i, 7, "A", i < blanks)),
+  });
+  const names = (moves: { name: string }[]) => moves.map((m) => m.name);
+
+  test("at most one hint for each count of blanks, and plain plays fill the rest", () => {
+    const ranked = [move("three", 3), move("three again", 3), move("two", 2), move("plain", 0), move("plain too", 0)];
+    expect(names(choose(ranked, 3))).toEqual(["three", "two", "plain"]);
+    expect(names(choose(ranked, 4))).toEqual(["three", "two", "plain", "plain too"]);
+  });
+
+  test("a play with no blanks always makes the list, however far down it ranks", () => {
+    const ranked = [move("three", 3), move("two", 2), move("one", 1), move("plain", 0)];
+    expect(names(choose(ranked, 3))).toEqual(["three", "two", "plain"]);
+  });
+
+  test("with no plain play on offer, the blank plays are all there is", () => {
+    const ranked = [move("one", 1), move("one again", 1), move("two", 2)];
+    expect(names(choose(ranked, 3))).toEqual(["one", "two"]);
+  });
+
+  test("the list keeps the ranking's order", () => {
+    const ranked = [move("plain", 0), move("one", 1), move("plain too", 0)];
+    expect(names(choose(ranked, 3))).toEqual(["plain", "one", "plain too"]);
+  });
+});

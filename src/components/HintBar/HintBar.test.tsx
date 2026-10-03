@@ -53,6 +53,12 @@ describe("HintBar", () => {
     expect(screen.getByText(/closes a 3×3/)).toBeTruthy();
   });
 
+  test("each hint says how many blanks it spends", () => {
+    bar();
+    fireEvent.click(hint());
+    expect(screen.getByText("no blanks")).toBeTruthy();
+  });
+
   test("no play found says so", () => {
     bar({ result: { turnNumber: 0, moves: [], rackWords: [] } });
     fireEvent.click(hint());

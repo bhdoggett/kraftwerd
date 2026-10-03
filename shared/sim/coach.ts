@@ -106,6 +106,37 @@ export function rackWordsOf(letters: readonly string[], common: Lexicon): string
     .slice(0, MAX_RACK_WORDS);
 }
 
+/**
+ * The hints worth showing, out of every ranked move, in rank order.
+ *
+ * Left to rank alone, an opening rack with blanks in it fills the list with
+ * plays that spend them all -- and a blank kept back can be worth more at the
+ * end, when one word can reach a ×4 or a ×4 and a ×3 together. So at most one
+ * hint spends each count of blanks, and the best play spending none is always
+ * on the list, however far down it ranks.
+ */
+export function choose<T extends { placements: readonly Placement[] }>(
+  ranked: readonly T[],
+  max: number = MAX_HINTS,
+): T[] {
+  const blanksIn = (move: T) => move.placements.filter((p) => p.isBlank).length;
+  const picked = new Set<T>();
+  const plain = ranked.find((move) => blanksIn(move) === 0);
+  if (plain !== undefined) picked.add(plain);
+
+  const spent = new Set<number>();
+  for (const move of ranked) {
+    if (picked.size >= max) break;
+    const blanks = blanksIn(move);
+    if (blanks > 0) {
+      if (spent.has(blanks)) continue;
+      spent.add(blanks);
+    }
+    picked.add(move);
+  }
+  return ranked.filter((move) => picked.has(move));
+}
+
 export function coach(
   board: Board,
   hand: Hand,
@@ -118,7 +149,7 @@ export function coach(
     scoreTurn(after, placements, { before, bonusSquares: shape.bonusSquares }).total;
   const ranked = rank(board, hand, full.dictionary, full.words, shape, size, scoreOf, SEARCH);
   return {
-    moves: ranked.slice(0, MAX_HINTS).map((m) => explain(board, m.placements, common, shape, size)),
+    moves: choose(ranked).map((m) => explain(board, m.placements, common, shape, size)),
     rackWords: rackWordsOf(hand.letters, common),
   };
 }

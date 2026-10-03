@@ -14,3 +14,10 @@ export function reasonsOf(move: HintMove): string[] {
   if (move.leavesOpen > 0) reasons.push("leaves a 3×3 one tile short");
   return reasons;
 }
+
+/** How many blanks a hint spends, for a rack that might rather keep them. */
+export function blanksLabel(move: HintMove): string {
+  const blanks = move.placements.filter((p) => p.isBlank).length;
+  if (blanks === 0) return "no blanks";
+  return blanks === 1 ? "1 blank" : `${blanks} blanks`;
+}

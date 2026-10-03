@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { HintMove, HintResult } from "../../../shared/sim/coach";
-import { reasonsOf } from "../../lib/hintReasons";
+import { blanksLabel, reasonsOf } from "../../lib/hintReasons";
 import { Modal } from "../Modal/Modal";
 import styles from "./HintBar.module.css";
 
@@ -111,9 +111,10 @@ export function HintBar({
                           </span>
                         ))}
                       </span>
-                      {reasons.length > 0 && (
-                        <span className={styles.reasons}>{reasons.join(" · ")}</span>
-                      )}
+                      <span className={styles.reasons}>
+                        <span className={styles.blanks}>{blanksLabel(move)}</span>
+                        {reasons.length > 0 && ` · ${reasons.join(" · ")}`}
+                      </span>
                     </button>
                   );
                 })}
