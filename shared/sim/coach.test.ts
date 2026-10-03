@@ -54,6 +54,13 @@ describe("coaching", () => {
     }
   });
 
+  test("a blank can stand in for a letter in an ordinary word", () => {
+    // No T in the rack: NUT needs the blank as its T.
+    const { moves } = coach(makeBoard([]), { letters: ["N", "U"], blanks: 2 }, lex(["NUT"]), lex(["NUT"]), shape, 15);
+    const nut = moves.find((m) => m.words.some((w) => w.word === "NUT"));
+    expect(nut?.placements.filter((p) => p.isBlank)).toHaveLength(1);
+  });
+
   test("no play is no moves, not an error", () => {
     const { moves } = coach(makeBoard([]), { letters: ["Q"], blanks: 0 }, FULL, COMMON, shape, 15);
     expect(moves).toEqual([]);

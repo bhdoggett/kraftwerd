@@ -14,7 +14,7 @@ import { applyPlacements } from "../engine/legality.js";
 import { nearSquares } from "../engine/nearSquares.js";
 import { scoreTurn, type Placement } from "../engine/score.js";
 import { rank } from "./bot.js";
-import type { Hand, ValueFn } from "./components.js";
+import { moveKey, type Hand, type ValueFn } from "./components.js";
 import { LEVELS, type Lexicon } from "./levels.js";
 import { rackWords } from "./words.js";
 
@@ -68,6 +68,14 @@ const SEARCH = {
   chain: LEVELS.hard.chain,
   squares: { ...LEVELS.hard.squares, nodeLimit: 2_000 },
   exposure: false as const,
+};
+
+/** One blank in the general search, and no square search: SEARCH has those. */
+const ONE_BLANK = {
+  chain: LEVELS.hard.chain,
+  squares: { maxBlocks: 0 },
+  exposure: false as const,
+  blanksEverywhere: true,
 };
 
 export function explain(
@@ -148,6 +156,20 @@ export function coach(
   const scoreOf: ValueFn = (after, placements, before) =>
     scoreTurn(after, placements, { before, bonusSquares: shape.bonusSquares }).total;
   const ranked = rank(board, hand, full.dictionary, full.words, shape, size, scoreOf, SEARCH);
+  if (hand.blanks > 0) {
+    // The search above spends blanks only on squares. A second pass lets one
+    // blank stand in for a letter in an ordinary word -- NUT with no T in the
+    // rack. One, not all of them: measured mid-game, one costs 2-3 seconds and
+    // three cost up to fifteen. Its moves already priced, so they merge by value.
+    const known = new Set(ranked.map((m) => moveKey(m.placements)));
+    const oneBlank = rank(board, { letters: hand.letters, blanks: 1 }, full.dictionary,
+      full.words, shape, size, scoreOf, ONE_BLANK);
+    for (const move of oneBlank) {
+      if (known.has(moveKey(move.placements))) continue;
+      ranked.push(move);
+    }
+    ranked.sort((a, b) => b.value - a.value);
+  }
   return {
     moves: choose(ranked).map((m) => explain(board, m.placements, common, shape, size)),
     rackWords: rackWordsOf(hand.letters, common),
