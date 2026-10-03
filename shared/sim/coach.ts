@@ -50,7 +50,7 @@ export interface HintResult extends Coaching {
   turnNumber: number;
 }
 
-export const MAX_HINTS = 3;
+export const MAX_HINTS = 4;
 export const MAX_RACK_WORDS = 20;
 
 /**

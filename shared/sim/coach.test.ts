@@ -37,7 +37,7 @@ describe("explaining a move", () => {
 });
 
 describe("coaching", () => {
-  test("at most three moves, each made from the rack and every word in the full list", () => {
+  test("at most four moves, each made from the rack and every word in the full list", () => {
     const rack = ["C", "A", "T", "S"];
     const { moves } = coach(makeBoard([]), { letters: rack, blanks: 0 }, FULL, COMMON, shape, 15);
 
@@ -101,6 +101,11 @@ describe("choosing hints by the blanks they spend", () => {
   test("with no plain play on offer, the blank plays are all there is", () => {
     const ranked = [move("one", 1), move("one again", 1), move("two", 2)];
     expect(names(choose(ranked, 3))).toEqual(["one", "two"]);
+  });
+
+  test("four hints hold the best play for each count of blanks, one with none", () => {
+    const ranked = [move("three", 3), move("three again", 3), move("two", 2), move("one", 1), move("plain", 0)];
+    expect(names(choose(ranked))).toEqual(["three", "two", "one", "plain"]);
   });
 
   test("the list keeps the ranking's order", () => {

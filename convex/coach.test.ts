@@ -35,13 +35,13 @@ async function table(hints: boolean) {
 }
 
 describe("coach.hints", () => {
-  test("up to three moves from your own rack, every word a word", async () => {
+  test("up to four moves from your own rack, every word a word", async () => {
     const { asAlice, gameId } = await table(true);
     const result = await asAlice.action(api.coach.hints, { gameId });
 
     expect(result.turnNumber).toBe(0);
     expect(result.moves.length).toBeGreaterThan(0);
-    expect(result.moves.length).toBeLessThanOrEqual(3);
+    expect(result.moves.length).toBeLessThanOrEqual(4);
     for (const move of result.moves) {
       const left = [...RACK];
       for (const p of move.placements) {
