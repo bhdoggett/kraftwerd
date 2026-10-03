@@ -430,8 +430,10 @@ export function Game({
 
   const dropRef = useRef<(x: number, y: number, origin: Origin) => void>(() => {});
   dropRef.current = (x, y, origin) => {
-    if (origin.kind === "cell") moveStaged(origin, x, y);
-    else place(x, y);
+    if (origin.kind !== "cell") place(x, y);
+    // A staged tile that cannot land on the square it was dropped on goes
+    // home to the rack, not back to the square it left.
+    else if (!moveStaged(origin, x, y)) recallRef.current(origin, null);
   };
 
   // Window-level so the drag survives leaving the rack, and so releasing
@@ -474,7 +476,14 @@ export function Game({
         .elementFromPoint(e.clientX, e.clientY)
         ?.closest("[data-cell]")
         ?.getAttribute("data-cell");
-      if (!cell) return;
+      if (!cell) {
+        // Dropped somewhere no tile can go -- the margin round the board, a
+        // blocked square, the page itself. A staged tile goes to the rack
+        // rather than back to its square: letting go of it there reads as
+        // putting it down, not as wanting it where it was.
+        if (origin?.kind === "cell") recallRef.current(origin, null);
+        return;
+      }
 
       const [cx, cy] = cell.split(",").map(Number);
       if (cx !== undefined && cy !== undefined && origin !== undefined) {
@@ -554,23 +563,27 @@ export function Game({
     startDrag(tile.letter, tile.isBlank, { kind: "cell", x, y }, event);
   }
 
-  /** Move a staged tile, keeping the rack slot it came from. */
-  function moveStaged(origin: { x: number; y: number }, x: number, y: number) {
+  /**
+   * Move a staged tile, keeping the rack slot it came from. False when the
+   * square refuses it, so the caller can send it to the rack instead.
+   */
+  function moveStaged(origin: { x: number; y: number }, x: number, y: number): boolean {
     const moving = pending.find((p) => p.x === origin.x && p.y === origin.y);
     if (moving !== undefined) {
       // Landing it there would change nothing, so it stays where it was.
       if (changesNothing(x, y, moving.letter)) {
         refuse(`That square is already ${moving.letter} — a tile has to change it.`);
-        return;
+        return false;
       }
       if (isFull(x, y)) {
         refuse(`That square is full — ${STACK_CAP} tiles is the limit.`);
-        return;
+        return false;
       }
     }
 
     setPending((current) => moveStagedTo(current, origin, x, y));
     setError(null);
+    return true;
   }
 
   /**
