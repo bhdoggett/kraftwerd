@@ -94,4 +94,25 @@ describe("the price of a blank", () => {
     ];
     expect(blankPrice(makeBoard([]), two, 8)).toBeCloseTo(16);
   });
+
+  describe("by the bag, when it is given", () => {
+    const full = { left: 85, start: 85 };
+
+    test("full price with the bag as dealt, whatever the board", () => {
+      const busy = makeBoard(Array.from({ length: 30 }, (_, i) => at(i % 15, Math.floor(i / 15), "A")));
+      expect(blankPrice(busy, spent, 20, full)).toBeCloseTo(20);
+    });
+
+    test("falls in a straight line with the bag", () => {
+      expect(blankPrice(makeBoard([]), spent, 20, { left: 17, start: 85 })).toBeCloseTo(4);
+    });
+
+    test("nothing once the bag is empty", () => {
+      expect(blankPrice(makeBoard([]), spent, 20, { left: 0, start: 85 })).toBe(0);
+    });
+
+    test("never above full price, if a swap leaves more in the bag than the deal did", () => {
+      expect(blankPrice(makeBoard([]), spent, 20, { left: 90, start: 85 })).toBeCloseTo(20);
+    });
+  });
 });

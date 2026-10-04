@@ -9,6 +9,7 @@ const lex = (words: string[]) => ({ dictionary: makeDictionary(words), words: in
 const FULL = lex(["CAT", "ACT", "CATS", "ACTS", "SCAT", "AT", "TA", "AS", "SAT", "TAS"]);
 const COMMON = lex(["CAT", "ACT", "CATS", "ACTS", "AT", "AS", "SAT"]);
 const shape = boardShapeNamed(OPEN_BOARD, 15);
+const BAG = { left: 85, start: 85 };
 const at = (x: number, y: number, letter: string, isBlank = false) => ({ x, y, letter, isBlank });
 
 describe("rack words", () => {
@@ -39,7 +40,7 @@ describe("explaining a move", () => {
 describe("coaching", () => {
   test("at most four moves, each made from the rack and every word in the full list", () => {
     const rack = ["C", "A", "T", "S"];
-    const { moves } = coach(makeBoard([]), { letters: rack, blanks: 0 }, FULL, COMMON, shape, 15);
+    const { moves } = coach(makeBoard([]), { letters: rack, blanks: 0 }, FULL, COMMON, shape, 15, BAG);
 
     expect(moves.length).toBeGreaterThan(0);
     expect(moves.length).toBeLessThanOrEqual(MAX_HINTS);
@@ -56,13 +57,13 @@ describe("coaching", () => {
 
   test("a blank can stand in for a letter in an ordinary word", () => {
     // No T in the rack: NUT needs the blank as its T.
-    const { moves } = coach(makeBoard([]), { letters: ["N", "U"], blanks: 2 }, lex(["NUT"]), lex(["NUT"]), shape, 15);
+    const { moves } = coach(makeBoard([]), { letters: ["N", "U"], blanks: 2 }, lex(["NUT"]), lex(["NUT"]), shape, 15, BAG);
     const nut = moves.find((m) => m.words.some((w) => w.word === "NUT"));
     expect(nut?.placements.filter((p) => p.isBlank)).toHaveLength(1);
   });
 
   test("no play is no moves, not an error", () => {
-    const { moves } = coach(makeBoard([]), { letters: ["Q"], blanks: 0 }, FULL, COMMON, shape, 15);
+    const { moves } = coach(makeBoard([]), { letters: ["Q"], blanks: 0 }, FULL, COMMON, shape, 15, BAG);
     expect(moves).toEqual([]);
   });
 });
@@ -80,61 +81,52 @@ describe("hints rank by what scores, not by what a bot would risk", () => {
       lex(words),
       shape,
       15,
+      BAG,
     );
     expect(result.moves[0]?.words.map((w) => w.word)).toContain("LABORS");
   }, 60_000);
 });
 
 
-describe("choosing hints by the blanks they spend", () => {
-  // A stand-in for a ranked move: its blanks, and tiles of its own so no two
-  // are the same play.
-  let made = 0;
-  const move = (name: string, blanks: number) => {
-    const letter = String.fromCharCode(65 + (made++ % 26));
-    return { name, placements: Array.from({ length: 4 }, (_, i) => at(i, 7, letter, i < blanks)) };
-  };
-  const names = (moves: { name: string }[]) => moves.map((m) => m.name);
+describe("choosing hints", () => {
+  // A stand-in for a ranked move: a name that is its idea, and its blanks.
+  const move = (name: string, blanks: number, idea = name) => ({
+    name,
+    idea,
+    placements: Array.from({ length: 4 }, (_, i) => at(i, 7, "A", i < blanks)),
+  });
+  const pick = (ranked: ReturnType<typeof move>[], max?: number) =>
+    choose(ranked, (m) => m.idea, max).map((m) => m.name);
 
-  test("at most one hint for each count of blanks, and plain plays fill the rest", () => {
-    const ranked = [move("three", 3), move("three again", 3), move("two", 2), move("plain", 0), move("plain too", 0)];
-    expect(names(choose(ranked, 3))).toEqual(["three", "two", "plain"]);
-    expect(names(choose(ranked, 4))).toEqual(["three", "two", "plain", "plain too"]);
+  test("the best play spending no blanks always makes the list, however far down it ranks", () => {
+    const ranked = [move("three", 3), move("two", 2), move("one", 1), move("one more", 1), move("plain", 0)];
+    expect(pick(ranked, 4)).toEqual(["three", "two", "one", "plain"]);
   });
 
-  test("a play with no blanks always makes the list, however far down it ranks", () => {
-    const ranked = [move("three", 3), move("two", 2), move("one", 1), move("plain", 0)];
-    expect(names(choose(ranked, 3))).toEqual(["three", "two", "plain"]);
+  test("otherwise the ranking alone decides, blanks or not", () => {
+    const ranked = [move("one", 1), move("one more", 1), move("plain", 0), move("two", 2)];
+    expect(pick(ranked, 3)).toEqual(["one", "one more", "plain"]);
   });
 
   test("with no plain play on offer, the blank plays are all there is", () => {
-    const ranked = [move("one", 1), move("one again", 1), move("two", 2)];
-    expect(names(choose(ranked, 3))).toEqual(["one", "two"]);
+    expect(pick([move("one", 1), move("two", 2)], 4)).toEqual(["one", "two"]);
   });
 
-  test("four hints hold the best play for each count of blanks, one with none", () => {
-    const ranked = [move("three", 3), move("three again", 3), move("two", 2), move("one", 1), move("plain", 0)];
-    expect(names(choose(ranked))).toEqual(["three", "two", "one", "plain"]);
-  });
-
-  test("the same tiles laid somewhere else are the same hint", () => {
-    const shifted = (name: string, x: number) => ({
-      name,
-      placements: ["P", "A", "Y"].map((letter, i) => at(x + i, 7, letter)),
-    });
-    const turned = { name: "turned", placements: ["P", "A", "Y"].map((letter, i) => at(7, 3 + i, letter)) };
-    const ranked = [shifted("here", 5), shifted("there", 6), turned, move("other", 0)];
-    expect(names(choose(ranked))).toEqual(["here", "other"]);
-  });
-
-  test("the same tiles in another shape are another hint", () => {
-    const across = { name: "across", placements: ["P", "A", "Y"].map((letter, i) => at(5 + i, 7, letter)) };
-    const bent = { name: "bent", placements: [at(5, 7, "P"), at(6, 7, "A"), at(6, 8, "Y")] };
-    expect(names(choose([across, bent]))).toEqual(["across", "bent"]);
+  test("one idea is listed once, at its best", () => {
+    const ranked = [move("YA+ALPINES", 1, "ALPINES"), move("AY+ALPINES", 1, "ALPINES"), move("plain", 0)];
+    expect(pick(ranked)).toEqual(["YA+ALPINES", "plain"]);
   });
 
   test("the list keeps the ranking's order", () => {
-    const ranked = [move("plain", 0), move("one", 1), move("plain too", 0)];
-    expect(names(choose(ranked, 3))).toEqual(["plain", "one", "plain too"]);
+    expect(pick([move("plain", 0), move("one", 1), move("plain too", 0)])).toEqual(["plain", "one", "plain too"]);
+  });
+});
+
+describe("a hint's idea is its main word", () => {
+  test("the same word slid along the board is one hint", () => {
+    const words = ["CAT", "AT"];
+    const { moves } = coach(makeBoard([]), { letters: ["C", "A", "T"], blanks: 0 }, lex(words), lex(words), shape, 15, BAG);
+    const cats = moves.filter((m) => m.words.some((w) => w.word === "CAT"));
+    expect(cats).toHaveLength(1);
   });
 });

@@ -20,7 +20,7 @@ import type { WordIndex } from "./words.js";
 import { blankMoves, blockMoves, type BlockOptions } from "./blocks.js";
 import { chain } from "./chain.js";
 import { components, moveKey, type Hand, type Move, type ValueFn } from "./components.js";
-import { blankPrice, exposure, type ExposureWeights } from "./judgement.js";
+import { blankPrice, exposure, type BagLeft, type ExposureWeights } from "./judgement.js";
 import type { Difficulty } from "../config.js";
 
 export { indexWords, type WordIndex } from "./words.js";
@@ -56,8 +56,11 @@ interface MoveOptions {
    * judgement.ts.
    */
   exposure?: Partial<ExposureWeights> | false;
-  /** What a blank must beat to be worth spending. `false` never spends one. */
-  blanks?: { reserve: number } | false;
+  /**
+   * What a blank must beat to be worth spending. `false` never spends one.
+   * With `bag`, the price falls with the bag rather than with the board.
+   */
+  blanks?: { reserve: number; bag?: BagLeft } | false;
   /** Let the general search spend blanks too. Slow; for measurement. */
   blanksEverywhere?: boolean;
 }
@@ -281,6 +284,7 @@ export function rank(
    * NaN, and NaN sorts nowhere. The moves are marked and dropped instead.
    */
   const reserve = options.blanks === false ? undefined : options.blanks?.reserve;
+  const bagLeft = options.blanks === false ? undefined : options.blanks?.bag;
   for (const move of merged) {
     const usesBlank = move.placements.some((p) => p.isBlank);
     if (options.blanks === false && usesBlank) {
@@ -292,7 +296,7 @@ export function rank(
       (options.exposure === false
         ? 0
         : exposure(board, move.placements, shape, size, options.exposure ?? {})) +
-      (usesBlank ? blankPrice(board, move.placements, reserve) : 0);
+      (usesBlank ? blankPrice(board, move.placements, reserve, bagLeft) : 0);
     move.value = move.score - penalty;
   }
 

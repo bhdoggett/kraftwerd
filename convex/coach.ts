@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
+import { BAG_SIZE, RACK } from "../shared/config.js";
+import { tilesLeft } from "../shared/engine/bag.js";
 import { makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { coach, type HintResult } from "../shared/sim/coach.js";
 import { internal } from "./_generated/api";
@@ -40,8 +42,15 @@ export const hintState = internalQuery({
     if (cached !== null) return { kind: "cached" as const, result: cached.result };
 
     const tiles = await loadTiles(ctx, args.gameId);
+    // Only how many tiles are left, which the table shows anyway: never which.
+    const bag = await ctx.db
+      .query("bags")
+      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
+      .unique();
     return {
       kind: "search" as const,
+      bagLeft: bag === null ? 0 : tilesLeft(bag.letters),
+      playerCount: game.playerCount,
       userId,
       turnNumber: game.turnNumber,
       boardSize: game.boardSize,
@@ -64,6 +73,8 @@ type HintState =
   | { kind: "cached"; result: HintResult }
   | {
       kind: "search";
+      bagLeft: number;
+      playerCount: number;
       userId: Id<"users">;
       turnNumber: number;
       boardSize: number;
@@ -113,6 +124,7 @@ export const hints = action({
       lexicon("common"),
       shape,
       state.boardSize,
+      { left: state.bagLeft, start: BAG_SIZE - RACK.size * state.playerCount },
     );
     const result: HintResult = { turnNumber: state.turnNumber, ...coaching };
 

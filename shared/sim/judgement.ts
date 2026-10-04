@@ -152,6 +152,20 @@ export function exposure(
 const DEFAULT_BLANK_RESERVE = 8;
 
 /**
+ * Tiles still in the bag, and how many it held once the racks were dealt.
+ *
+ * The other measure of how far through a game is, for a caller that can see
+ * the bag. A blank is worth keeping while there are draws to come that might
+ * want it, so the price falls with the bag: full when the racks have just
+ * been dealt, nothing once the bag is empty. A swap can put more back than
+ * the deal left, so the share is capped at one.
+ */
+export interface BagLeft {
+  left: number;
+  start: number;
+}
+
+/**
  * What spending a blank costs beyond the tiles it lays.
  *
  * The old rule spent a blank only when nothing else could be played at all,
@@ -174,10 +188,15 @@ export function blankPrice(
   board: Board,
   placements: readonly Placement[],
   reserve: number = DEFAULT_BLANK_RESERVE,
+  bag?: BagLeft,
 ): number {
   const spent = placements.filter((p) => p.isBlank).length;
   if (spent === 0) return 0;
 
+  if (bag !== undefined) {
+    const share = bag.start > 0 ? Math.min(1, Math.max(0, bag.left / bag.start)) : 0;
+    return reserve * share * spent;
+  }
   const left = Math.max(0, GAME.endThreshold - board.size);
   return reserve * (left / GAME.endThreshold) * spent;
 }
