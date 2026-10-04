@@ -1,9 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { OPEN_BOARD, boardShapeNamed } from "../shared/boards.js";
-import { BAG_SIZE, RACK } from "../shared/config.js";
 import { tilesLeft } from "../shared/engine/bag.js";
 import { makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { coach, type HintResult } from "../shared/sim/coach.js";
+import { bagAtDeal } from "../shared/sim/judgement.js";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, internalMutation, internalQuery } from "./_generated/server";
@@ -124,7 +124,7 @@ export const hints = action({
       lexicon("common"),
       shape,
       state.boardSize,
-      { left: state.bagLeft, start: BAG_SIZE - RACK.size * state.playerCount },
+      { left: state.bagLeft, start: bagAtDeal(state.playerCount) },
     );
     const result: HintResult = { turnNumber: state.turnNumber, ...coaching };
 

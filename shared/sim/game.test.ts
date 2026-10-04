@@ -125,12 +125,15 @@ describe("a seeded board", () => {
     // One game each way, so the seed matters. This used to ask for twice the
     // bare opening, which held only while the simulator scored no multiplier
     // squares: the centre is a x2 (rules version 11), so a bare opening word
-    // is doubled, and across seeds 1-10 the seeded opener now leads by 1.1x
-    // to 1.8x rather than several times over. Seed 6 is the widest of them.
-    const bare = playGame(VARIANT, 2, lexicons, seeded(6), ["hard"]);
+    // is doubled, and across seeds 1-10 the seeded opener led by 1.1x to 1.8x.
+    // Since a blank costs its full price while the bag is full (BLANK_PRICE),
+    // the opener no longer spends one closing a square off the seed, and
+    // across the same seeds the lead runs 0.5x to 1.7x: the seed helps only
+    // when the rack fits it. Seed 5 is the widest of them.
+    const bare = playGame(VARIANT, 2, lexicons, seeded(5), ["hard"]);
     const seededBoard = playGame(
       { ...VARIANT, seed: { word: "FUZZ", stacked: true } },
-      2, lexicons, seeded(6), ["hard"],
+      2, lexicons, seeded(5), ["hard"],
     );
 
     expect(seededBoard.turnScores[0]).toBeGreaterThan(bare.turnScores[0] * 1.5);

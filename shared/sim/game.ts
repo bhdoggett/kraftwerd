@@ -6,7 +6,7 @@ import type { Board, TileSpec } from "../engine/board.js";
 import { refill } from "../engine/rack.js";
 import { newSquares } from "../engine/squares.js";
 import { chooseRanked, rank } from "./bot.js";
-import type { ExposureWeights } from "./judgement.js";
+import { BLANK_PRICE, type ExposureWeights } from "./judgement.js";
 import type { ValueFn } from "./components.js";
 import { bagFlat, bagFromWeights, draw, tilesLeft, type Bag } from "./bag.js";
 import { RARE, turnValue, type Variant } from "./variants.js";
@@ -162,6 +162,8 @@ export function playGame(
     topUp(player, bag, rng);
     return player;
   });
+  // What the bag held once the racks were dealt, for the price of a blank.
+  const dealt = bag === null ? 0 : tilesLeft(bag);
 
   const claimed = new Set<string>();
   const rarePlayed: string[] = [];
@@ -226,6 +228,12 @@ export function playGame(
           // the seat searches as its level does.
           chain: chains !== undefined && chains.length > 0 ? chains[seat % chains.length] : level.chain,
           squares: level.squares,
+          // As live play prices a blank. An endless bag never empties, so a
+          // blank there keeps its full price.
+          blanks: {
+            reserve: BLANK_PRICE,
+            bag: bag === null ? { left: 1, start: 1 } : { left: tilesLeft(bag), start: dealt },
+          },
           ...(exposures !== undefined && exposures.length > 0
             ? { exposure: exposures[seat % exposures.length] }
             : {}),

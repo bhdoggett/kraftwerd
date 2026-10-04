@@ -4,6 +4,7 @@ import { type Difficulty } from "../shared/config.js";
 import { makeBoard, type TileSpec } from "../shared/engine/board.js";
 import { applyPlacements, wordsFormed } from "../shared/engine/legality.js";
 import { chooseRanked, rank, type Move } from "../shared/sim/bot.js";
+import { bagAtDeal, BLANK_PRICE } from "../shared/sim/judgement.js";
 import { LEVELS } from "../shared/sim/levels.js";
 import { tilesLeft } from "../shared/engine/bag.js";
 import { scoreTurn } from "../shared/engine/score.js";
@@ -296,6 +297,8 @@ export const turnState = internalQuery({
       level: player.bot,
       letters: player.letters,
       blanks: blanksLeft(player),
+      bagLeft: bag === null ? 0 : tilesLeft(bag.letters),
+      playerCount: game.playerCount,
       /** The free swap is unspent and there is something to swap with. */
       canSwap:
         player.swapped !== true &&
@@ -320,6 +323,8 @@ type TurnState = {
   level: Difficulty;
   letters: string[];
   blanks: number;
+  bagLeft: number;
+  playerCount: number;
   boardSize: number;
   tiles: TileSpec[];
 };
@@ -464,7 +469,12 @@ async function chooseMove(ctx: ActionCtx, state: TurnState) {
      * but twenty-eight games put it at 1.86 squares and 344 points against
      * breadth 4's 1.89 and 348. Indistinguishable, so the cheaper one stays.
      */
-    { chain: level.chain, squares: level.squares },
+    {
+      chain: level.chain,
+      squares: level.squares,
+      // A blank's price falls with the bag; see BLANK_PRICE.
+      blanks: { reserve: BLANK_PRICE, bag: { left: state.bagLeft, start: bagAtDeal(state.playerCount) } },
+    },
   );
 
   /*

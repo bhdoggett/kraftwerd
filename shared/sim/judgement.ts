@@ -6,7 +6,7 @@
  * "completer takes it" (design.md §4.4) makes that half most of the skill. A
  * block left one tile short is not a near miss, it is a gift.
  */
-import { GAME, SQUARE_BONUS } from "../config.js";
+import { BAG_SIZE, GAME, RACK, SQUARE_BONUS } from "../config.js";
 import { cellKey, type Board } from "../engine/board.js";
 import type { Placement } from "../engine/score.js";
 import type { BoardShape } from "../boards.js";
@@ -164,6 +164,32 @@ export interface BagLeft {
   left: number;
   start: number;
 }
+
+/** What the bag holds once every rack at a table of this size is dealt. */
+export function bagAtDeal(players: number): number {
+  return BAG_SIZE - RACK.size * players;
+}
+
+/**
+ * What a blank costs, with the bag as dealt, for bots and hints alike: a play
+ * has to beat the best blank-free one by this much a blank to be preferred.
+ * Falls with the bag (`blankPrice`).
+ *
+ * Measured, hard against hard, 100 games a price on the same deals with seats
+ * swapped, against the old price of 8 falling with the board:
+ *
+ *   price   points vs old   wins   blanks spent on turns (median)
+ *     10        +4 ± 7       56     2, 5, 9
+ *     20      +0.5 ± 7       52     3, 8, 10
+ *     30        -9 ± 7       46     5, 9, 10
+ *     40       -13 ± 7       44     7, 9, 10
+ *
+ * Holding a blank does not win the bot points on average -- dearer than 20
+ * starts to cost them. Twenty is the dearest that costs nothing, and it is
+ * chosen for how it plays: three blanks gone by the third turn fell from 8
+ * seats in 100 to 2.
+ */
+export const BLANK_PRICE = 20;
 
 /**
  * What spending a blank costs beyond the tiles it lays.

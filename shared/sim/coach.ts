@@ -15,7 +15,7 @@ import { nearSquares } from "../engine/nearSquares.js";
 import { scoreTurn, type Placement } from "../engine/score.js";
 import { rank } from "./bot.js";
 import { moveKey, type Hand, type Move, type ValueFn } from "./components.js";
-import type { BagLeft } from "./judgement.js";
+import { BLANK_PRICE, type BagLeft } from "./judgement.js";
 import { LEVELS, type Lexicon } from "./levels.js";
 import { rackWords } from "./words.js";
 
@@ -64,7 +64,7 @@ export const MAX_RACK_WORDS = 20;
  * board offered a tight 2x2 for 12 over a long word across the centre for 17.
  * A hint answers "what scores most", and how much to give away is the
  * player's own call. The price of spending a blank still applies, and is the
- * hint's own: see BLANK_PRICE.
+ * same as a bot's: see BLANK_PRICE in judgement.ts.
  */
 const SEARCH = {
   chain: LEVELS.hard.chain,
@@ -79,15 +79,6 @@ const ONE_BLANK = {
   exposure: false as const,
   blanksEverywhere: true,
 };
-
-/**
- * What a hint charges for each blank a play spends, with the bag as dealt.
- * It falls in a straight line to nothing as the bag empties (`blankPrice` in
- * judgement.ts), so early on a play has to beat the best blank-free one by
- * this much a blank to rank above it, and once there is nothing left to draw
- * a blank costs nothing at all. A first guess, not a measurement.
- */
-export const BLANK_PRICE = 20;
 
 export function explain(
   before: Board,
