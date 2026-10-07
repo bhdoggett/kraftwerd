@@ -94,3 +94,28 @@ export function scoresAfter(
 
   return scores;
 }
+
+/**
+ * Where a replay has got to: a turn of the history, and whether its points
+ * have been shown yet. A turn's points are their own step, after its last
+ * spot (`spotSteps`), so the turn is on the board before it is on the scores.
+ */
+export interface ReplayPoint {
+  at: number;
+  scored: boolean;
+}
+
+/**
+ * The scores and the player on turn as a replay shows them, so the table
+ * keeps pace with the board rather than standing at the end of the replay
+ * from its first frame.
+ */
+export function standingAt<T extends ReplayTurn>(
+  turns: readonly T[],
+  point: ReplayPoint,
+): { scores: Map<string, number>; onTurn: T["userId"] | undefined } {
+  return {
+    scores: scoresAfter(turns, point.scored ? point.at + 1 : point.at),
+    onTurn: turns[point.at]?.userId,
+  };
+}

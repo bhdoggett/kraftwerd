@@ -31,7 +31,7 @@ import { hintFor, NO_HINT, shownHint, stageHint, type HintState } from "../../li
 import { nearSquares } from "../../../shared/engine/nearSquares";
 import type { HintMove } from "../../../shared/sim/coach";
 import { markCells } from "../../lib/boardFeedback";
-import { boardAfter, scoresAfter } from "../../lib/replay";
+import { boardAfter, scoresAfter, standingAt } from "../../lib/replay";
 import { squareBreakdown } from "../../lib/breakdown";
 import { moveToPosition, rackSlotUnder, shuffled } from "../../lib/rackGeometry";
 import { readDraft, writeDraft } from "../../lib/draft";
@@ -370,7 +370,7 @@ export function Game({
   }, [draggedLetterIndex, rackHover, rackOrder, spentIndices]);
 
   // Other players' plays: the catch-up replay and plays landing as you watch.
-  const { history, board: replayBoard, recapActive, skipRecap, skipAll, noteSpot, noteTurn } =
+  const { history, point, board: replayBoard, recapActive, skipRecap, skipAll, noteSpot, noteTurn } =
     useTurnReplay({ gameId, view, reviewing });
 
   /*
@@ -835,6 +835,22 @@ export function Game({
     ready && step < turns.length ? scoresAfter(turns, step) : null;
 
   /*
+   * A replay, or a play landing as you watch, moves the scoreboard with the
+   * board: the player whose play is going down is on turn, and their points
+   * arrive with the step that shows them. Read off the live game instead, the
+   * scoreboard ran ahead to the end of the replay from its first frame.
+   */
+  const replayStanding =
+    reviewScores === null && point !== null && history !== undefined
+      ? standingAt(history, point)
+      : null;
+  const shownScores = reviewScores ?? replayStanding?.scores ?? null;
+  const shownSeat =
+    replayStanding?.onTurn === undefined
+      ? game.currentSeat
+      : (seatOf.get(replayStanding.onTurn) ?? game.currentSeat);
+
+  /*
    * What this play scores. A play that is not legal scores nothing, whatever
    * its words and squares would have added up to. Drawn in the play panel, and
    * over the board on a small screen, where the panel is a scroll away.
@@ -1269,14 +1285,14 @@ export function Game({
           players={view.players.map((p) => ({
             userId: p.userId,
             seat: p.seat,
-            score: reviewScores === null ? p.score : (reviewScores.get(p.userId) ?? 0),
+            score: shownScores === null ? p.score : (shownScores.get(p.userId) ?? 0),
             name: p.name,
             isYou: p.letters !== null,
             // Not while a review is mid-game: the hand it would name is the
             // one held now, not the one held then.
-            tilesInHand: reviewScores === null ? p.letterCount : null,
+            tilesInHand: shownScores === null ? p.letterCount : null,
           }))}
-          currentSeat={game.currentSeat}
+          currentSeat={shownSeat}
           tilesLeft={view.tilesLeft}
           unseen={view.unseen}
           bagSize={BAG_SIZE}

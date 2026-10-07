@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { boardAfter, scoresAfter } from "./replay";
+import { boardAfter, scoresAfter, standingAt } from "./replay";
 
 const play = (userId: string, ...cells: [number, number, string][]) => ({
   userId,
@@ -92,5 +92,23 @@ describe("the scores as they stood", () => {
     const passed = [scored("alice", 12), { ...scored("alice", 0), kind: "pass" as const, score: 0 }];
 
     expect(scoresAfter(passed, 2)).toEqual(new Map([["alice", 12]]));
+  });
+});
+
+describe("the table as a replay shows it", () => {
+  const turns = [scored("alice", 10), scored("bob", 7), scored("alice", 5)];
+
+  test("while a play goes down, it is that player's turn and their points are not in yet", () => {
+    const standing = standingAt(turns, { at: 1, scored: false });
+    expect(standing.onTurn).toBe("bob");
+    expect(standing.scores.get("alice")).toBe(10);
+    expect(standing.scores.get("bob") ?? 0).toBe(0);
+  });
+
+  test("once its points are shown, they count", () => {
+    const standing = standingAt(turns, { at: 1, scored: true });
+    expect(standing.onTurn).toBe("bob");
+    expect(standing.scores.get("bob")).toBe(7);
+    expect(standing.scores.get("alice")).toBe(10);
   });
 });

@@ -10,7 +10,7 @@ import {
   playsSinceYourTurn,
   spotSteps,
 } from "../../lib/recap";
-import { boardAfter } from "../../lib/replay";
+import { boardAfter, type ReplayPoint } from "../../lib/replay";
 
 /**
  * How long each play in the recap is pointed out: the four pulses of
@@ -347,8 +347,31 @@ export function useTurnReplay({
       ? null
       : view.tiles.filter((t) => !recapCells.has(cellKey(t.x, t.y)));
 
+  /*
+   * Where the board on screen stands in the history, for the scoreboard to
+   * keep pace with it: whose play is going down, and whether its points have
+   * been shown. Null when the board is the live one.
+   */
+  const livePlayAt =
+    livePlay === null ? -1 : turns.findIndex((t) => t.turnNumber === livePlay.turnNumber);
+  const point: ReplayPoint | null = recapping
+    ? recapPlay !== undefined
+      ? { at: recapPlay.at, scored: recapPlay.total }
+      : replaySteps?.[0] !== undefined
+        ? { at: replaySteps[0].at, scored: false }
+        : null
+    : liveBoard === null
+      ? null
+      : liveSpot !== undefined
+        ? { at: liveSpot.at, scored: liveSpot.total }
+        : livePlayAt >= 0
+          ? { at: livePlayAt, scored: false }
+          : null;
+
   return {
     history,
+    /** Where the replayed or landing play stands, or null for the live board. */
+    point,
     /** The board to show instead of the live one, or null to show the live one. */
     board: recapBoard ?? liveBoard ?? heldBack,
     /** Whether a catch-up replay has the board, so the draft stands down. */
