@@ -890,7 +890,9 @@ export function Game({
         {/* Above the board, so a hint is in reach without scrolling. */}
         {game.hints === true && (
           <HintBar
-            canAsk={myTurn}
+            // Not while other players' plays are still going down: the hint
+            // is for the board they leave, which is not on screen yet.
+            canAsk={myTurn && replayBoard === null}
             turnKey={hintKey}
             result={shownHint(hint.result, game.turnNumber)}
             active={game.status === "active"}
