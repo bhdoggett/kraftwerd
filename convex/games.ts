@@ -36,6 +36,7 @@ import { currentUser, displayName, refuseGuest, requireUser } from "./auth_helpe
 import { friendIdsOf, namesAt, namesFor, seatOf } from "./seats";
 import { askToBeFriends, rowsBetween } from "./friends";
 import { placement } from "./schema";
+import { summarizeGame } from "../shared/summary.js";
 
 /**
  * New games are played on an open board.
@@ -1232,10 +1233,19 @@ async function finishGame(
   const best = eligible.reduce((max, p) => Math.max(max, p.score), -Infinity);
   const winners = eligible.filter((p) => p.score === best).map((p) => p.userId);
 
+  const turns = await ctx.db
+    .query("turns")
+    .withIndex("by_game_and_turn", (q) => q.eq("gameId", game._id))
+    .take(MAX_TILES);
+
   await ctx.db.patch("games", game._id, {
     status: "finished",
     winnerIds: winners,
     finishedAt: Date.now(),
+    summary: summarizeGame(
+      turns,
+      players.map((p) => p.userId),
+    ),
   });
 
   // Tell everyone still at the table how it came out (`pendingResults`).

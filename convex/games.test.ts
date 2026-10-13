@@ -709,6 +709,29 @@ describe("resigning and stats", () => {
     expect(game?.resignedBy).toEqual([alice]);
   });
 
+  test("a finished game carries its summary", async () => {
+    const { t, gameId, asAlice, alice, bob } = await twoPlayerGame(["A", "D"]);
+    await asAlice.mutation(api.games.placeTiles, {
+      gameId,
+      placements: [at(0, 0, "A"), at(1, 0, "D")],
+    });
+
+    await asAlice.mutation(api.games.resignGame, { gameId });
+
+    const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
+    const summary = game?.summary ?? [];
+    expect(summary.find((r) => r.userId === alice)).toMatchObject({
+      turns: 1,
+      tilesPlayed: 2,
+      stacks: 0,
+      bestPlay: { words: ["AD"] },
+    });
+    expect(summary.find((r) => r.userId === bob)).toMatchObject({
+      turns: 0,
+      bestPlay: null,
+    });
+  });
+
   test("a resigner cannot win even while ahead", async () => {
     const { t, gameId, asAlice, alice, bob } = await twoPlayerGame([
       "A",

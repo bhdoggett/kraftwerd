@@ -39,6 +39,7 @@ import { moveStagedTo, stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
 import { followPointer } from "../../lib/followPointer";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
+import { GameSummary } from "../GameSummary/GameSummary";
 import { Modal } from "../Modal/Modal";
 import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
@@ -1320,6 +1321,19 @@ export function Game({
         */}
         {game.status === "finished" && game.turnNumber > 0 && !reviewing && (
           <>
+            {/* Absent on games that finished before it was recorded. */}
+            {game.summary && (
+              <GameSummary
+                summary={game.summary}
+                players={view.players.map((p) => ({
+                  userId: p.userId,
+                  seat: p.seat,
+                  name: p.name,
+                  isYou: p.letters !== null,
+                }))}
+              />
+            )}
+
             <button
               type="button"
               className={styles.reviewOpen}

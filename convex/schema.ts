@@ -15,6 +15,26 @@ export const placement = v.object({
   isBlank: v.boolean(),
 });
 
+/** One player's finished game, added up (shared/summary.ts). */
+export const playerSummary = v.object({
+  userId: v.id("users"),
+  turns: v.number(),
+  passes: v.number(),
+  trades: v.number(),
+  points: v.number(),
+  tilesPlayed: v.number(),
+  stacks: v.number(),
+  squares: v.number(),
+  bestPlay: v.union(
+    v.null(),
+    v.object({
+      turnNumber: v.number(),
+      words: v.array(v.string()),
+      score: v.number(),
+    }),
+  ),
+});
+
 export default defineSchema({
   /**
    * App-level mirror of the Better Auth user, kept in sync by the triggers in
@@ -223,6 +243,12 @@ export default defineSchema({
      * absent reads as an ordinary game.
      */
     hints: v.optional(v.boolean()),
+    /**
+     * How the game went, a player at a time (`summarizeGame`): worked out
+     * once, when it finishes, since nothing reads it before then. Absent on
+     * games that finished before it was recorded.
+     */
+    summary: v.optional(v.array(playerSummary)),
   })
     .index("by_status", ["status"])
     // Public games still in their lobby, without reading every game ever
