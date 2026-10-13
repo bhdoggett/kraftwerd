@@ -1,3 +1,4 @@
+import { BLANKS_PER_GAME } from "../../../shared/config";
 import { BagContents } from "../BagContents/BagContents";
 import styles from "./Scoreboard.module.css";
 
@@ -17,6 +18,12 @@ interface Standing {
    * anyone's hand at the time, so the only count available is today's.
    */
   tilesInHand: number | null;
+  /**
+   * Blanks left of the game's allowance. Public, the way the tiles in hand
+   * are: every blank played is on the board for anyone to count. Absent when
+   * there is nothing to say -- before the game starts, or once it is over.
+   */
+  blanks?: number;
 }
 
 /**
@@ -113,6 +120,7 @@ export function Scoreboard({
             (tilesLeft === 0 || status === "finished") &&
             status !== "lobby" &&
             p.tilesInHand !== null;
+          const showBlanks = status === "active" && p.blanks !== undefined;
 
           return (
             <div key={p.userId} className={styles.player}>
@@ -135,7 +143,9 @@ export function Scoreboard({
                 {p.name}
               </span>
 
-              {(showTiles || (friend !== undefined && friend.state !== "friends")) && (
+              {(showTiles ||
+                showBlanks ||
+                (friend !== undefined && friend.state !== "friends")) && (
                 <span className={styles.extras}>
                   {/*
                     Asked and asking both read as text rather than a control:
@@ -180,6 +190,28 @@ export function Scoreboard({
                     decides the game -- whoever goes out takes what everyone
                     else is still holding.
                   */}
+                  {/*
+                    Blanks left, a pip each out of the game's allowance:
+                    filled for one still to spend, hollow for one gone.
+                  */}
+                  {showBlanks && (
+                    <span
+                      className={styles.blanks}
+                      role="img"
+                      aria-label={`${p.blanks} ${p.blanks === 1 ? "blank" : "blanks"} left`}
+                      title={`${p.blanks} ${p.blanks === 1 ? "blank" : "blanks"} left`}
+                    >
+                      {Array.from({ length: BLANKS_PER_GAME }, (_, i) => (
+                        <span
+                          key={i}
+                          className={[
+                            styles.pip,
+                            i < (p.blanks ?? 0) ? styles.pipLeft : "",
+                          ].join(" ")}
+                        />
+                      ))}
+                    </span>
+                  )}
                   {showTiles && (
                     <span
                       className={styles.tiles}

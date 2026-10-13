@@ -1291,6 +1291,7 @@ export function Game({
             // Not while a review is mid-game: the hand it would name is the
             // one held now, not the one held then.
             tilesInHand: shownScores === null ? p.letterCount : null,
+            blanks: p.blanks,
           }))}
           currentSeat={shownSeat}
           tilesLeft={view.tilesLeft}

@@ -196,6 +196,27 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Blanks left, as pips: blank tiles in miniature, outlined when spent. Small
+ * enough to sit beside the name without reading as a second score.
+ */
+.blanks {
+  display: flex;
+  gap: 2px;
+}
+
+.pip {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+}
+
+.pipLeft {
+  border-color: var(--text-muted);
+  background: var(--text-muted);
+}
+
 .progress {
   margin-top: var(--space-4);
 }
