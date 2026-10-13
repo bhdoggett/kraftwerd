@@ -21,6 +21,25 @@ interface HintBarProps {
   onPick: (move: HintMove) => void;
 }
 
+/**
+ * "Thinking" with its dots counting up, none to three and round again, so
+ * a wait that runs a few seconds still looks alive. Every dot is always laid
+ * out and only shown in turn, so the button does not change width as they
+ * come and go. Read out once, as plain "Thinking…".
+ */
+function Thinking() {
+  return (
+    <span className={styles.thinking} aria-label="Thinking…" role="status">
+      <span aria-hidden="true">
+        Thinking
+        <span className={styles.dot}>.</span>
+        <span className={styles.dot}>.</span>
+        <span className={styles.dot}>.</span>
+      </span>
+    </span>
+  );
+}
+
 type Open = { kind: "hints" | "words"; key: string } | null;
 
 /**
@@ -60,7 +79,7 @@ export function HintBar({
             onClick={() => show("hints")}
             disabled={!canAsk}
           >
-            {loading && showing === null ? "Thinking…" : "Hint"}
+            {loading && showing === null ? <Thinking /> : "Hint"}
           </button>
           <button
             type="button"
@@ -81,7 +100,9 @@ export function HintBar({
 
           {/* Waiting covers the moment between pressing and the request
               starting, not only the request itself. */}
-          {result === null && error === null && <p className={styles.note}>Thinking…</p>}
+          {result === null && error === null && <p className={styles.note}>
+              <Thinking />
+            </p>}
           {error !== null && <p className={styles.error}>{error}</p>}
 
           {showing === "hints" && result !== null && (

@@ -132,3 +132,74 @@
   font-family: var(--font-tile);
   line-height: 1.6;
 }
+
+/*
+ * "Thinking" while a hint is worked out: the dots count up a beat at a time
+ * -- none, one, two, three -- and go out together, while the word itself
+ * breathes between full strength and faded. Opacity rather than a colour, so
+ * the same pulse reads on the accent button and on the popover alike.
+ */
+.thinking {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.dot {
+  animation: 1.6s steps(1, end) infinite;
+}
+
+.dot:nth-child(1) {
+  animation-name: dot-1;
+}
+
+.dot:nth-child(2) {
+  animation-name: dot-2;
+}
+
+.dot:nth-child(3) {
+  animation-name: dot-3;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes dot-1 {
+  0% {
+    visibility: hidden;
+  }
+  25% {
+    visibility: visible;
+  }
+}
+
+@keyframes dot-2 {
+  0% {
+    visibility: hidden;
+  }
+  50% {
+    visibility: visible;
+  }
+}
+
+@keyframes dot-3 {
+  0% {
+    visibility: hidden;
+  }
+  75% {
+    visibility: visible;
+  }
+}
+
+/* Held at three, still: the word says it is working without the motion. */
+@media (prefers-reduced-motion: reduce) {
+  .thinking,
+  .dot:nth-child(n) {
+    animation: none;
+  }
+}
