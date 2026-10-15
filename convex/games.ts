@@ -244,7 +244,7 @@ export const createGame = mutation({
     /** A computer player per entry, seated next to you in the order given. */
     bots: v.optional(v.array(botSeat)),
     /**
-     * Which colour the maker chose. Omitted keeps the old default of 0, so a
+     * Which color the maker chose. Omitted keeps the old default of 0, so a
      * caller that has never heard of this (a test, `respondToInvite`'s own
      * bookkeeping) still gets the table it always got.
      */
@@ -279,13 +279,13 @@ export const createGame = mutation({
     }
     const seat = args.seat ?? 0;
     if (seat < 0 || seat >= GAME.maxPlayers) {
-      throw new ConvexError("Not a colour this game has");
+      throw new ConvexError("Not a color this game has");
     }
-    // Bots take whatever colours the maker's choice left behind, in order --
+    // Bots take whatever colors the maker's choice left behind, in order --
     // they have no preference of their own to express. Worked out before the
     // game exists, rather than after, so the game's very first `currentSeat`
     // can be the lowest seat actually sat in -- not always 0, now that 0
-    // is a colour rather than a guaranteed occupant.
+    // is a color rather than a guaranteed occupant.
     const botSeats = Array.from({ length: GAME.maxPlayers }, (_, i) => i)
       .filter((s) => s !== seat)
       .slice(0, bots.length);
@@ -466,7 +466,7 @@ export const joinGame = mutation({
   args: {
     gameId: v.id("games"),
     /**
-     * Which colour the joiner chose. Omitted takes the next open seat in
+     * Which color the joiner chose. Omitted takes the next open seat in
      * order, which is what every caller did before this existed.
      */
     seat: v.optional(v.number()),
@@ -485,14 +485,14 @@ export const joinGame = mutation({
 
     const seat = args.seat ?? players.length;
     if (seat < 0 || seat >= GAME.maxPlayers) {
-      throw new ConvexError("Not a colour this game has");
+      throw new ConvexError("Not a color this game has");
     }
-    // Two people cannot reach for the same colour: Convex runs this as one
+    // Two people cannot reach for the same color: Convex runs this as one
     // transaction, so whichever request commits first is the one that gets
     // it, and the second sees this row and is told the truth rather than
     // silently taking the seat over.
     if (players.some((p) => p.seat === seat)) {
-      throw new ConvexError("That colour is already taken");
+      throw new ConvexError("That color is already taken");
     }
 
     /*
@@ -543,7 +543,7 @@ export const joinGame = mutation({
      * on this very seat -- the turn holds at an empty one rather than wrap
      * back round, so whoever sits down takes it. `waitingHere` asks whether
      * the seat being filled is the one the turn is held at, since a joiner
-     * taking some other colour has no claim on a turn that is not theirs.
+     * taking some other color has no claim on a turn that is not theirs.
      */
     if (game.isPublic === true) {
       if (players.length + 1 === game.playerCount) {
@@ -798,7 +798,7 @@ export const respondToInvite = mutation({
      * not answered puts this player's turn before theirs: the round goes
      * through everyone who has accepted, then waits on whoever has not. They
      * swap, rack and all -- nobody invited has played yet, so a seat is only
-     * a colour and a place in the round.
+     * a color and a place in the round.
      */
     const ahead = (await seatedAt(ctx, args.gameId))
       .filter((p) => p.status === "invited" && p._id !== me._id && p.seat < me.seat)
@@ -839,9 +839,9 @@ export const respondToInvite = mutation({
  * Play the same people again.
  *
  * Anyone who was at the table may ask for it, and the game is under way the
- * moment they do, on their own seat: the colours carry over, the colours are
+ * moment they do, on their own seat: the colors carry over, the colors are
  * the turn order, and asking for the rematch is taking the first turn of it.
- * Everybody else is invited back to the colour they had, and answers the way
+ * Everybody else is invited back to the color they had, and answers the way
  * they would answer any other invitation.
  *
  * The machines come back as they were, same seat and same difficulty. Half of
@@ -1423,7 +1423,7 @@ async function advanceTurn(
 
   /*
    * The next seat after this one, wrapping around -- not
-   * `(currentSeat + 1) % playerCount`. Seats are colours now, chosen freely
+   * `(currentSeat + 1) % playerCount`. Seats are colors now, chosen freely
    * from GAME.maxPlayers regardless of how many are actually at the table,
    * so a two-player game's seats need not be {0, 1}; they could just as
    * easily be {0, 2}, and modular arithmetic against the headcount would
@@ -1659,7 +1659,7 @@ export const getGame = query({
        * Asked of the seats rather than of the status: a game among friends is
        * playable from the moment it is made, so being under way no longer
        * means being full. This read `status === "lobby"`, which stopped being
-       * true for those games and took the colour picker with it.
+       * true for those games and took the color picker with it.
        */
       canJoin: you === undefined && players.length < game.playerCount,
       seatsFilled: seated.length,
@@ -1923,7 +1923,7 @@ export const listOpenGames = query({
           gameId: game._id,
           playerCount: game.playerCount,
           seatsFilled: seated.length,
-          /** Who is waiting, as this viewer may see them, and which colour
+          /** Who is waiting, as this viewer may see them, and which color
               each one holds -- so a joiner can see what's still open. */
           players: seated.map((p) => ({
             name: names.get(p.userId) ?? "Player",

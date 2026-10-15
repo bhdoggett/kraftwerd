@@ -243,7 +243,9 @@ export function Rack({
             className={styles.action}
             onClick={onRecall}
             disabled={!canRecall}
-            aria-label="Take every tile back off the board"
+            // Starts with the word the button shows, so saying "Recall" to
+            // voice control finds it.
+            aria-label="Recall: take every tile back off the board"
             title="Recall tiles"
           >
             <RecallIcon />

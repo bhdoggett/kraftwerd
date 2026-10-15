@@ -71,6 +71,19 @@ describe("the Play button when it cannot be played", () => {
   });
 });
 
+describe("naming the buttons", () => {
+  test("Recall's name starts with the word it shows", () => {
+    // Voice control finds a button by what is written on it, so the name a
+    // screen reader hears has to contain that word, not just paraphrase it.
+    draw();
+
+    const recall = screen.getByRole("button", {
+      name: "Recall: take every tile back off the board",
+    });
+    expect(recall.textContent).toContain("Recall");
+  });
+});
+
 describe("working out the fresh draw", () => {
   test("is whatever follows the letters kept", () => {
     // Played A and T out of CATS; kept C and S; drew E, R.

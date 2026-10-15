@@ -159,8 +159,8 @@
 
 /*
  * Who just played, what it made and what it scored, in the rack's place
- * while a play is being shown (see Game.tsx). In the colour of whoever made
- * the play, worn the way a tile wears it: data-seat sets the colour, and the
+ * while a play is being shown (see Game.tsx). In the color of whoever made
+ * the play, worn the way a tile wears it: data-seat sets the color, and the
  * ink is the tile's own.
  */
 .announce {
@@ -186,7 +186,7 @@
      centred by translate, so it swept in from the side. */
   animation: announce-in 120ms ease-out;
   /* From one player's play to the next it stays up and eases into the new
-     player's colour, rather than dropping back to the rack in between. */
+     player's color, rather than dropping back to the rack in between. */
   transition:
     background-color 300ms ease,
     color 300ms ease;
@@ -242,10 +242,10 @@
 }
 
 /* Who, a little faded, so it sets off what they made rather than running
-   into it. */
+   into it. No fainter than 0.8: at 0.7 the name fell under 4.5:1. */
 .announceName {
   font-weight: 700;
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 .rackSlot {
@@ -724,7 +724,7 @@
 
 /*
  * Playing these people again is the one thing on this panel that starts
- * something, so it is the green the Play button is -- the colour this game
+ * something, so it is the green the Play button is -- the color this game
  * has used for "go" since the first tile. Everything else here looks back at
  * the game that just ended.
  */

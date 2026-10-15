@@ -25,7 +25,7 @@ describe("evaluateCommand", () => {
   test("allows ordinary work", () => {
     expect(evaluateCommand("npm run dev")).toBeNull();
     expect(evaluateCommand("git status")).toBeNull();
-    expect(evaluateCommand("git push -u origin ben/tile-colours")).toBeNull();
+    expect(evaluateCommand("git push -u origin ben/tile-colors")).toBeNull();
     expect(evaluateCommand("git branch -d ben/old-work")).toBeNull();
     expect(evaluateCommand("npx convex dev")).toBeNull();
     expect(evaluateCommand("npx convex env set SITE_URL http://localhost:5175")).toBeNull();
@@ -113,11 +113,11 @@ describe("evaluateCommand", () => {
 
   test("allows the documented happy path as one multi-line block", () => {
     const block = [
-      "git push -u origin ben/tile-colours",
+      "git push -u origin ben/tile-colors",
       'gh pr create --draft --base main --title "x" --body "y"',
     ].join("\n");
     expect(evaluateCommand(block)).toBeNull();
-    expect(evaluateCommand(block, { branch: "ben/tile-colours" })).toBeNull();
+    expect(evaluateCommand(block, { branch: "ben/tile-colors" })).toBeNull();
   });
 
   test("does not treat 'main' inside a branch name as a push to main", () => {
@@ -220,7 +220,7 @@ describe("evaluateCommand", () => {
   test("quote-stripping does not reintroduce the branch-name false positive", () => {
     expect(evaluateCommand("git push -u origin sam/fix-main-menu")).toBeNull();
     const block = [
-      "git push -u origin ben/tile-colours",
+      "git push -u origin ben/tile-colors",
       'gh pr create --draft --base main --title "x" --body "y"',
     ].join("\n");
     expect(evaluateCommand(block)).toBeNull();

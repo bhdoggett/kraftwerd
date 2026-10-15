@@ -112,7 +112,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     }
   }
 
-  /** Which open game's colour row is expanded, if any. */
+  /** Which open game's color row is expanded, if any. */
   const [pickingSeatFor, setPickingSeatFor] = useState<Id<"games"> | null>(
     null,
   );
@@ -151,7 +151,8 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
       {told !== undefined && (
         <Modal onDismiss={() => void dismissDecline({ gameId: told.gameId })}>
           <div className={styles.declined}>
-            <p className={styles.declinedSays}>{told.name} declined the game.</p>
+            {/* A heading, so it names the dialog it is the whole of. */}
+            <h2 className={styles.declinedSays}>{told.name} declined the game.</h2>
             <button
               type="button"
               className={styles.button}
@@ -306,14 +307,17 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
       */}
       {viewer?.isGuest !== true && (
         <section className={styles.section}>
-          <button
-            type="button"
-            className={styles.openGamesToggle}
-            aria-expanded={openGamesExpanded}
-            onClick={() => setOpenGamesExpanded((open) => !open)}
-          >
-            {openGamesExpanded ? "▾" : "▸"} Open games ({openCount})
-          </button>
+          <h2 className={styles.toggleHeading}>
+            <button
+              type="button"
+              className={styles.openGamesToggle}
+              aria-expanded={openGamesExpanded}
+              onClick={() => setOpenGamesExpanded((open) => !open)}
+            >
+              <span aria-hidden="true">{openGamesExpanded ? "▾" : "▸"}</span>{" "}
+              Open games ({openCount})
+            </button>
+          </h2>
 
           {openGamesExpanded && (
             <>
@@ -375,7 +379,9 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
                 </div>
               ))}
               {joinError !== null && (
-                <p className={styles.error}>{joinError}</p>
+                <p className={styles.error} role="alert">
+                  {joinError}
+                </p>
               )}
             </>
           )}
@@ -384,14 +390,17 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
 
       {past.length > 0 && (
         <section className={styles.section}>
-          <button
-            type="button"
-            className={styles.disclosure}
-            onClick={() => setShowPast((open) => !open)}
-            aria-expanded={showPast}
-          >
-            {showPast ? "▾" : "▸"} Past games ({past.length})
-          </button>
+          <h2 className={styles.toggleHeading}>
+            <button
+              type="button"
+              className={styles.disclosure}
+              onClick={() => setShowPast((open) => !open)}
+              aria-expanded={showPast}
+            >
+              <span aria-hidden="true">{showPast ? "▾" : "▸"}</span>{" "}
+              Past games ({past.length})
+            </button>
+          </h2>
 
           {showPast &&
             past.map((g) => (

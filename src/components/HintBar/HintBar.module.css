@@ -136,7 +136,7 @@
 /*
  * "Thinking" while a hint is worked out: the dots count up a beat at a time
  * -- none, one, two, three -- and go out together, while the word itself
- * breathes between full strength and faded. Opacity rather than a colour, so
+ * breathes between full strength and faded. Opacity rather than a color, so
  * the same pulse reads on the accent button and on the popover alike.
  */
 .thinking {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   BAG_SIZE,
   BLANKS_PER_GAME,
@@ -17,6 +17,8 @@ import styles from "./Rules.module.css";
 
 interface RulesDialogProps {
   onClose: () => void;
+  /** Where focus goes on close, when the button that opened it is gone. */
+  returnFocusTo?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -27,12 +29,26 @@ interface RulesDialogProps {
  *
  * Opening is the menu's business; this is only the dialog.
  */
-export function RulesDialog({ onClose }: RulesDialogProps) {
+export function RulesDialog({ onClose, returnFocusTo }: RulesDialogProps) {
   const [showWordList, setShowWordList] = useState(false);
+  const toRules = useRef<HTMLButtonElement>(null);
+  const toWordList = useRef<HTMLButtonElement>(null);
+  const shown = useRef(showWordList);
+
+  /*
+   * Both ways between the two pages, focus goes to the button that leads back.
+   * The one that was pressed is gone with the page it was on, and focus with
+   * it -- left there, a screen reader hears nothing and Tab starts over.
+   */
+  useEffect(() => {
+    if (shown.current === showWordList) return;
+    shown.current = showWordList;
+    (showWordList ? toRules : toWordList).current?.focus();
+  }, [showWordList]);
 
   if (showWordList) {
     return (
-      <Modal wide onDismiss={() => setShowWordList(false)}>
+      <Modal wide onDismiss={() => setShowWordList(false)} returnFocusTo={returnFocusTo}>
         <div className={styles.body}>
           <div className={styles.head}>
             <h2 className={styles.title}>Word list</h2>
@@ -43,6 +59,7 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
 
           <p>
             <button
+              ref={toRules}
               type="button"
               className={styles.textLink}
               onClick={() => setShowWordList(false)}
@@ -82,7 +99,7 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
   }
 
   return (
-    <Modal wide onDismiss={onClose}>
+    <Modal wide onDismiss={onClose} returnFocusTo={returnFocusTo}>
       <div className={styles.body}>
         <div className={styles.head}>
           <h2 className={styles.title}>How to play</h2>
@@ -139,6 +156,7 @@ export function RulesDialog({ onClose }: RulesDialogProps) {
           <li>
             Play as many words as your rack allows. Real words only (see{" "}
             <button
+              ref={toWordList}
               type="button"
               className={styles.textLink}
               onClick={() => setShowWordList(true)}

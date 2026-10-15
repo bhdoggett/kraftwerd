@@ -13,7 +13,7 @@ command to type, a conflict marker, or a piece of git vocabulary.
 
 - "Saved your work and sent it to GitHub." Not "committed and pushed."
 - "Ben changed some of the same files. I've brought his changes in and yours still work."
-- "This branch is where your new tile colours live. Ben will see it as a draft on GitHub."
+- "This branch is where your new tile colors live. Ben will see it as a draft on GitHub."
 
 Explain what changed and why. If something needs his decision, ask in terms of
 the game, never in terms of git.
@@ -36,7 +36,7 @@ in his terms:
 > new thing meant to sit on top of that, or is it separate?"
 
 If it sits on top, branch from that branch rather than from `origin/main`, and
-say so in the new pull request: "this builds on the stacked-tile colours."
+say so in the new pull request: "this builds on the stacked-tile colors."
 Otherwise branch from `origin/main` as below.
 
 This matters because he cannot see it. Every branch holds only its own work,
@@ -70,7 +70,7 @@ Full detail in `references/git-workflow.md`.
 ## Conflicts are yours to solve
 
 He never sees a conflict marker. Resolve it, then say what you did in his
-terms: "you and Ben both changed the tile colours; I kept your hover effect and
+terms: "you and Ben both changed the tile colors; I kept your hover effect and
 his border." Ask only when the choice genuinely cannot be made from context,
 and ask about the game, not about the file.
 

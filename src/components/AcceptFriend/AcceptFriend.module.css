@@ -12,6 +12,14 @@
   box-shadow: var(--shadow);
 }
 
+/* Spaced like the card, which it sits inside as one block. */
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
 .title {
   margin: 0;
   font-size: var(--text-lg);

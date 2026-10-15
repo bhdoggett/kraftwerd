@@ -270,7 +270,7 @@ describe("placeTiles", () => {
   });
 
   /**
-   * Colours are picked freely now, not handed out in join order -- a
+   * Colors are picked freely now, not handed out in join order -- a
    * two-player game's seats can be {0, 2} as easily as {0, 1}. Turn order
    * has to find the next *occupied* seat, not add one and wrap at the
    * headcount: `(currentSeat + 1) % playerCount` would advance play to seat
@@ -673,7 +673,7 @@ describe("solo games", () => {
 
     const game = await t.run(async (ctx) => ctx.db.get("games", gameId));
     expect(game?.status).toBe("active");
-    // On the maker's own seat: whoever made it goes first, whatever colour
+    // On the maker's own seat: whoever made it goes first, whatever color
     // they took.
     expect(game?.currentSeat).toBe(0);
   });
@@ -2751,7 +2751,7 @@ describe("playing the same people again", () => {
       ).sort((a, b) => a.seat - b.seat),
     );
 
-  test("everybody keeps the colour they had, and whoever asked plays first", async () => {
+  test("everybody keeps the color they had, and whoever asked plays first", async () => {
     const { t, gameId, asBob, alice, bob } = await played();
 
     const again = await asBob.mutation(api.games.rematch, { gameId });
@@ -2763,7 +2763,7 @@ describe("playing the same people again", () => {
       [bob, "joined"],
     ]);
 
-    // Bob asked for it, so it is under way on Bob's own seat: the colours are
+    // Bob asked for it, so it is under way on Bob's own seat: the colors are
     // the turn order, and his is the second of them.
     const game = await t.run(async (ctx) => ctx.db.get("games", again.gameId));
     expect(game?.status).toBe("active");
@@ -2912,7 +2912,7 @@ describe("turn order", () => {
     return { gameId, asAna, asBo, asCy, ana, bo, cy, seatOf, turn };
   }
 
-  test("seats, and so turns and colours, go in the order people accepted", async () => {
+  test("seats, and so turns and colors, go in the order people accepted", async () => {
     const { gameId, asAna, asBo, asCy, bo, cy, seatOf, turn } = await tableOfThree();
     const [boAskedFor, cyAskedFor] = [await seatOf(bo), await seatOf(cy)];
 

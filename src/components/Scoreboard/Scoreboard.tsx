@@ -1,5 +1,6 @@
 import { BLANKS_PER_GAME } from "../../../shared/config";
 import { BagContents } from "../BagContents/BagContents";
+import { SrOnly } from "../SrOnly/SrOnly";
 import styles from "./Scoreboard.module.css";
 
 interface Standing {
@@ -152,21 +153,21 @@ export function Scoreboard({
                     the first has nothing left to do, and the second is
                     answered in the friends list, where accept and decline
                     already live.
+
+                    The word on screen is terse and the whole sentence is
+                    said instead: an aria-label on a plain span is ignored,
+                    so a screen reader heard only "asked".
                   */}
                   {friend?.state === "asked" && (
-                    <span
-                      className={styles.invited}
-                      aria-label={`Friend invite sent to ${p.name}`}
-                    >
-                      asked
+                    <span className={styles.invited}>
+                      <span aria-hidden="true">asked</span>
+                      <SrOnly>Friend invite sent to {p.name}</SrOnly>
                     </span>
                   )}
                   {friend?.state === "asking" && (
-                    <span
-                      className={styles.invited}
-                      aria-label={`${p.name} sent you a friend invite`}
-                    >
-                      asks you
+                    <span className={styles.invited}>
+                      <span aria-hidden="true">asks you</span>
+                      <SrOnly>{p.name} sent you a friend invite</SrOnly>
                     </span>
                   )}
                   {friend?.state === "none" && (
@@ -212,12 +213,13 @@ export function Scoreboard({
                       ))}
                     </span>
                   )}
+                  {/* A bare number reads as another score; the words say what it counts. */}
                   {showTiles && (
-                    <span
-                      className={styles.tiles}
-                      aria-label={`${p.tilesInHand} ${p.tilesInHand === 1 ? "tile" : "tiles"} in hand`}
-                    >
-                      {p.tilesInHand}
+                    <span className={styles.tiles}>
+                      <span aria-hidden="true">{p.tilesInHand}</span>
+                      <SrOnly>
+                        {`${p.tilesInHand} ${p.tilesInHand === 1 ? "tile" : "tiles"} in hand`}
+                      </SrOnly>
                     </span>
                   )}
                 </span>

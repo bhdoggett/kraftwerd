@@ -10,7 +10,7 @@ interface BoardTile {
   y: number;
   letter: string;
   isBlank: boolean;
-  /** Who put it there, so the board can light it in their colour. */
+  /** Who put it there, so the board can light it in their color. */
   placedBy: string;
   /** How many tiles have ever landed here, this one included. */
   stacked: number;
@@ -22,10 +22,10 @@ interface BoardProps {
   layout: string;
   tiles: readonly BoardTile[];
   pending: readonly Placement[];
-  /** Seat number per player id, which is what picks a tile's colour. */
+  /** Seat number per player id, which is what picks a tile's color. */
   seatOf: ReadonlyMap<string, number>;
   /**
-   * Name per player id, for screen readers: the colour that says whose tile
+   * Name per player id, for screen readers: the color that says whose tile
    * this is says nothing to them.
    */
   nameOf?: ReadonlyMap<string, string>;
@@ -46,6 +46,13 @@ interface BoardProps {
 }
 
 const key = (x: number, y: number) => `${x},${y}`;
+
+/** How far the board zooms out and in, by any means: pinch, wheel or button. */
+const MIN_ZOOM = 0.75;
+const MAX_ZOOM = 2.5;
+/** One press of a zoom button: a quarter of the fitted size, so 0.75 to 2.5 is
+    seven presses and every stop is a round number. */
+const ZOOM_STEP = 0.25;
 
 const BONUS_NAME: Record<number, string> = { 2: "double word", 3: "triple word", 4: "quadruple word" };
 
@@ -182,7 +189,24 @@ export function Board({
     // Rounded to hundredths: a pinch reports a new distance every frame, and
     // re-laying out 225 squares for a change too small to see is most of what
     // made the gesture feel rough.
-    Math.round(Math.min(2.5, Math.max(0.75, value)) * 100) / 100;
+    Math.round(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)) * 100) / 100;
+
+  /**
+   * Zoom by button, aimed at the middle of what is showing.
+   *
+   * Pinch and ctrl+wheel are the only other ways in, and neither is there for
+   * a keyboard, a switch, or a hand that cannot pinch -- and on a phone,
+   * where the squares are at their smallest, zooming in is how a square
+   * becomes big enough to hit.
+   */
+  const zoomTo = (next: (current: number) => number) => {
+    const el = viewport.current;
+    if (el !== null) {
+      const box = el.getBoundingClientRect();
+      focus.current = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    }
+    setZoom((current) => clamp(next(current)));
+  };
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -352,10 +376,10 @@ export function Board({
       /* Not empty, but still somewhere a tile may go. */
       const playable = !blocked && stage === undefined;
 
-      // Whose colour this square is lit in. A tile being staged is not on the
-      // board yet, but it is the viewer's, so it takes their colour early.
+      // Whose color this square is lit in. A tile being staged is not on the
+      // board yet, but it is the viewer's, so it takes their color early.
       /*
-       * Whose colour the square wears. A tile staged this turn is yours, even
+       * Whose color the square wears. A tile staged this turn is yours, even
        * where it lands on somebody else's — showing the owner underneath made
        * your own play look like theirs until you pressed Play.
        */
@@ -367,7 +391,7 @@ export function Board({
       if (stage) classes.push(styles.pending, styles.tile);
       /*
        * How deep this square has been built, counting a staged tile as the
-       * next one down. It drives the colour: paler when fresh, the pure tube
+       * next one down. It drives the color: paler when fresh, the pure tube
        * when full. `tile.stacked` is what persists; the staged tile is a
        * preview of what the square becomes if the turn is played.
        */
@@ -397,7 +421,7 @@ export function Board({
           // Every square but a blocked one is a drop target now: a tile may
           data-cell={blocked ? undefined : k}
           data-seat={seat === undefined ? undefined : seat % 4}
-          // What kind of tile this is; index.css turns that into a colour.
+          // What kind of tile this is; index.css turns that into a color.
           data-stack={depth >= 2 ? Math.min(depth, 2) : undefined}
           // Only a blank still waiting for its letter reads as one: once it
           // has a letter it scores like any tile, so it looks like any tile.
@@ -407,7 +431,7 @@ export function Board({
           tabIndex={k === cursor ? 0 : -1}
           onFocus={() => setCursor(k)}
           aria-disabled={blocked || (!stage && !canPlace)}
-          // Everything the square shows by shape or colour alone, said in
+          // Everything the square shows by shape or color alone, said in
           // words: the multiplier, whose tile it is, and whether it is full.
           aria-label={[
             blocked
@@ -427,6 +451,12 @@ export function Board({
                   : "open square",
             empty && bonusMultiplier !== undefined ? BONUS_NAME[bonusMultiplier] : undefined,
             empty && isCentre ? "centre" : undefined,
+            // The word rings say this in color alone, so it is said here too.
+            badCells?.has(k)
+              ? "in a word that is not valid"
+              : goodCells?.has(k)
+                ? "in a valid word"
+                : undefined,
             `column ${x + 1}, row ${y + 1}`,
           ]
             .filter(Boolean)
@@ -434,10 +464,13 @@ export function Board({
           onPointerDown={(e) => {
             if (stage && onGrabStaged) onGrabStaged(x, y, e);
           }}
-          onClick={() => {
+          onClick={(e) => {
             // Swallowed if this click ended a pan or a drag rather than
-            // being a tap on the square.
-            if (panned.current || dragged.current) return;
+            // being a tap on the square. Not from the keyboard, though:
+            // Enter and Space click with `detail` 0 and no pointerdown, so
+            // nothing ever cleared the flags for them, and the last pan
+            // went on swallowing every key press until the next tap.
+            if (e.detail !== 0 && (panned.current || dragged.current)) return;
             if (blocked) return;
             // Tapping your own staged tile takes it back; anything else is a
             // square you may play onto, whatever is already there.
@@ -461,49 +494,85 @@ export function Board({
   }
 
   return (
-    <div className={styles.frame}>
-      <div
-        ref={viewport}
-        className={styles.viewport}
-        style={{ "--cell-scale": zoom * fit } as React.CSSProperties}
-        onPointerDown={(e) => {
-          pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-          // Cleared for every press, not only for one starting on a staged
-          // tile: the flag outlived the drag that set it, and the click it went
-          // on swallowing was the next tap on any square -- which is how a tile
-          // is placed without dragging one.
-          dragged.current = false;
-          // A staged tile is dragged, not panned from.
-          if ((e.target as HTMLElement).closest("[data-staged]") !== null) {
-            press.current = { x: e.clientX, y: e.clientY };
-            return;
-          }
-          if (pointers.current.size > 1) return;
-
-          panned.current = false;
-          const el = viewport.current;
-          if (el === null) return;
-          pan.current = {
-            x: e.clientX,
-            y: e.clientY,
-            left: el.scrollLeft,
-            top: el.scrollTop,
-          };
-        }}
-      >
+    <div className={styles.board}>
+      <div className={styles.frame}>
         <div
-          ref={grid}
-          role="group"
-          aria-label="Board, use the arrow keys to move between squares"
-          onKeyDown={moveCursor}
-          className={styles.grid}
-          data-seat={yourSeat === null ? undefined : yourSeat % 4}
-          style={{ gridTemplateColumns: `repeat(${boardSize}, var(--cell-size))` }}
+          ref={viewport}
+          className={styles.viewport}
+          style={{ "--cell-scale": zoom * fit } as React.CSSProperties}
+          onPointerDown={(e) => {
+            pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            // Cleared for every press, not only for one starting on a staged
+            // tile: the flag outlived the drag that set it, and the click it went
+            // on swallowing was the next tap on any square -- which is how a tile
+            // is placed without dragging one.
+            dragged.current = false;
+            // A staged tile is dragged, not panned from.
+            if ((e.target as HTMLElement).closest("[data-staged]") !== null) {
+              press.current = { x: e.clientX, y: e.clientY };
+              return;
+            }
+            if (pointers.current.size > 1) return;
+
+            panned.current = false;
+            const el = viewport.current;
+            if (el === null) return;
+            pan.current = {
+              x: e.clientX,
+              y: e.clientY,
+              left: el.scrollLeft,
+              top: el.scrollTop,
+            };
+          }}
         >
-          {cells}
+          <div
+            ref={grid}
+            role="group"
+            aria-label="Board, use the arrow keys to move between squares"
+            onKeyDown={moveCursor}
+            className={styles.grid}
+            data-seat={yourSeat === null ? undefined : yourSeat % 4}
+            style={{ gridTemplateColumns: `repeat(${boardSize}, var(--cell-size))` }}
+          >
+            {cells}
+          </div>
         </div>
+        {zoom > 1 && <div className={styles.edge} aria-hidden="true" />}
       </div>
-      {zoom > 1 && <div className={styles.edge} aria-hidden="true" />}
+      {/* Under the board rather than over it: laid over a corner, the buttons
+          covered a square that, at the fitted size, could not be panned out
+          from under them. Off at either end by aria-disabled rather than
+          disabled, which would drop keyboard focus off the button just
+          pressed; a press there is clamped to nothing anyway. */}
+      <div className={styles.zoom} role="group" aria-label="Board zoom">
+        <button
+          type="button"
+          className={styles.zoomButton}
+          aria-label="Zoom out"
+          aria-disabled={zoom <= MIN_ZOOM}
+          onClick={() => zoomTo((z) => z - ZOOM_STEP)}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          className={styles.zoomButton}
+          aria-label="Fit the board"
+          aria-disabled={zoom === 1}
+          onClick={() => zoomTo(() => 1)}
+        >
+          Fit
+        </button>
+        <button
+          type="button"
+          className={styles.zoomButton}
+          aria-label="Zoom in"
+          aria-disabled={zoom >= MAX_ZOOM}
+          onClick={() => zoomTo((z) => z + ZOOM_STEP)}
+        >
+          +
+        </button>
+      </div>
     </div>
   );
 }

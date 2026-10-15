@@ -57,26 +57,30 @@ export function AcceptFriend({ token, onDone }: AcceptFriendProps) {
 
   return (
     <div className={styles.card}>
-      {error !== null ? (
-        <>
-          <h2 className={styles.title}>That link did not work</h2>
-          <p className={styles.detail}>{error}</p>
-        </>
-      ) : result === null ? (
-        <p className={styles.detail}>Adding you…</p>
-      ) : result.ok ? (
-        <>
-          <h2 className={styles.title}>You and {result.name} are friends</h2>
-          <p className={styles.detail}>
-            They are in your friends list now — start a game from the menu.
-          </p>
-        </>
-      ) : (
-        <>
-          <h2 className={styles.title}>{TURNED_AWAY[result.reason].title}</h2>
-          <p className={styles.detail}>{TURNED_AWAY[result.reason].detail}</p>
-        </>
-      )}
+      {/* Always there, so the answer is read out when it replaces "Adding
+          you…" -- it arrives on its own, with nothing pressed to expect it. */}
+      <div className={styles.result} role="status">
+        {error !== null ? (
+          <>
+            <h2 className={styles.title}>That link did not work</h2>
+            <p className={styles.detail}>{error}</p>
+          </>
+        ) : result === null ? (
+          <p className={styles.detail}>Adding you…</p>
+        ) : result.ok ? (
+          <>
+            <h2 className={styles.title}>You and {result.name} are friends</h2>
+            <p className={styles.detail}>
+              They are in your friends list now — start a game from the menu.
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 className={styles.title}>{TURNED_AWAY[result.reason].title}</h2>
+            <p className={styles.detail}>{TURNED_AWAY[result.reason].detail}</p>
+          </>
+        )}
+      </div>
       <button type="button" className={styles.button} onClick={onDone}>
         Go to the lobby
       </button>

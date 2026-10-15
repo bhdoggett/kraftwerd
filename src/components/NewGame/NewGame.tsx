@@ -4,6 +4,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { userMessage } from "../../lib/errors";
 import { Modal } from "../Modal/Modal";
+import sr from "../SrOnly/SrOnly.module.css";
 import styles from "./NewGame.module.css";
 
 interface NewGameProps {
@@ -97,6 +98,11 @@ export function NewGame({
             >
               {copied ? "Copied" : "Copy"}
             </button>
+            {/* Always there, so the change is heard: a button whose own
+                label changes is not announced by every screen reader. */}
+            <span className={sr.srOnly} role="status">
+              {copied ? "Link copied" : ""}
+            </span>
           </div>
         </div>
         )}
@@ -112,16 +118,16 @@ export function NewGame({
             </p>
           )}
           {available.map((f) => (
-            <div key={f.friendshipId} className={styles.row}>
+            // A label, so the name is something to press as well as the box.
+            <label key={f.friendshipId} className={styles.row}>
               <input
                 type="checkbox"
                 checked={picked.includes(f.userId)}
                 disabled={!picked.includes(f.userId) && picked.length >= seatsToFill}
                 onChange={() => toggle(f.userId)}
-                aria-label={`Invite ${f.name}`}
               />
               <span className={styles.name}>{f.name}</span>
-            </div>
+            </label>
           ))}
           {picked.length > 0 && (
             <div className={[styles.actions, styles.inviteActions].join(" ")}>
@@ -137,7 +143,11 @@ export function NewGame({
         </div>
         )}
 
-        {error && <p className={styles.error}>{error}</p>}
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
 
         <div className={styles.actions}>
           <button type="button" className={styles.secondary} onClick={onClose}>

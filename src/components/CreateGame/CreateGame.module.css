@@ -112,6 +112,8 @@
 }
 
 .level {
+  /* Tall enough to hit with a thumb: the type is small, the target is not. */
+  min-height: 28px;
   padding: 4px var(--space-2);
   border: 1px solid var(--border-strong);
   background: transparent;
@@ -141,7 +143,7 @@
   cursor: default;
 }
 
-/* The chosen level lights up in the seat's own colour, like a played tile. */
+/* The chosen level lights up in the seat's own color, like a played tile. */
 .levelOn {
   background: var(--tile-face);
   border-color: var(--tile-edge);
@@ -170,6 +172,9 @@
 /* The number of held seats, between the two buttons that change it. */
 .openCount {
   min-width: 30px;
+  /* Centred in the height the buttons either side of it set. */
+  display: grid;
+  place-items: center;
   padding: 4px var(--space-2);
   border-block: 1px solid var(--border-strong);
   text-align: center;
@@ -269,7 +274,7 @@
   font-weight: 400;
 }
 
-/* The hint keeps its own colour when the button around it is being hovered. */
+/* The hint keeps its own color when the button around it is being hovered. */
 .choice:hover:not(:disabled) .choiceHint {
   color: var(--text-muted);
 }

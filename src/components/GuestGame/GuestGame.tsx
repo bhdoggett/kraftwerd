@@ -74,7 +74,11 @@ export function GuestGame({
           time.
         </p>
 
-        {error !== null && <p className={styles.error}>{error}</p>}
+        {error !== null && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
 
         <div className={styles.actions}>
           <button

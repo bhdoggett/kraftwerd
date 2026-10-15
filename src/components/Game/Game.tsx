@@ -1,5 +1,5 @@
 import { useAction, useMutation, useQuery } from "convex/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -43,6 +43,7 @@ import { GameSummary } from "../GameSummary/GameSummary";
 import { Modal } from "../Modal/Modal";
 import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
+import { SrOnly } from "../SrOnly/SrOnly";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -185,7 +186,7 @@ export function Game({
   const [stepAt, setStepAt] = useState<number | null>(null);
   /** The warning a Quit press is asking to be confirmed against, while it is asked. */
   const [quitting, setQuitting] = useState<string | null>(null);
-  /** Colour picked while taking an open seat at a game reached by link. */
+  /** Color picked while taking an open seat at a game reached by link. */
   const [joinSeatChoice, setJoinSeatChoice] = useState<number | null>(null);
 
   /** Live pointer drag: the tile that follows the finger/cursor. */
@@ -495,21 +496,158 @@ export function Game({
     return followPointer(onMove, onUp);
   }, [dragging, drag?.origin]);
 
-  if (view === undefined) return <p className={styles.notice}>Loading game…</p>;
-  if (view === null) return <p className={styles.notice}>Game not found.</p>;
-
-  const { game } = view;
   const myTurn =
-    me !== undefined && game.status === "active" && me.seat === game.currentSeat;
+    me !== undefined && view?.game.status === "active" && me.seat === view.game.currentSeat;
 
   /*
    * Play-out, once the bag is empty (§6): everyone plays out what they hold,
    * and the game ends when all are out or a full round goes by with nobody
    * placing a tile. Nothing else in the UI says the ending has begun.
    */
-  const playingOut = game.status === "active" && view.tilesLeft === 0;
+  const playingOut = view?.game.status === "active" && view.tilesLeft === 0;
   const meOut =
     me !== undefined && (me.letters?.length ?? 0) === 0 && me.blanks === 0;
+
+  /*
+   * What a screen reader is told as the game moves: another player's play,
+   * a tile that would not land, the last round, the turn coming round.
+   *
+   * One region, mounted with the page and only ever written into. A
+   * `role="status"` that arrives already holding its message is often not
+   * read at all -- the reader has to see the region empty first and then see
+   * it change -- so the messages that appear on screen with their own box
+   * are said here instead, and their boxes keep quiet.
+   *
+   * Written straight into the element rather than through state: React
+   * renders it empty and never touches it again, and a message is not worth
+   * a render of the whole game. A repeat gets a trailing space, so the same
+   * refusal twice in a row is still a change.
+   */
+  const announcer = useRef<HTMLSpanElement>(null);
+  const announce = (text: string) => {
+    const region = announcer.current;
+    if (region === null) return;
+    region.textContent = region.textContent === text ? `${text}\u00a0` : text;
+  };
+
+  // Each play by somebody else once, as its card goes up -- not once a spot.
+  const saidTurn = useRef<number | null>(null);
+  useEffect(() => {
+    if (noteTurn === undefined || saidTurn.current === noteTurn.turnNumber) return;
+    saidTurn.current = noteTurn.turnNumber;
+    announce(describeTurn({ ...noteTurn, name: withoutLevel(noteTurn.name) }));
+  }, [noteTurn]);
+
+  /*
+   * Your turn, once the plays that led to it have been shown: said while the
+   * card was still going through them, it was talked over by the next one.
+   * The scoreboard's "Your turn" is only ever seen.
+   */
+  const turnComesRound = myTurn && noteTurn === undefined;
+  useEffect(() => {
+    if (turnComesRound) announce("Your turn.");
+  }, [turnComesRound]);
+
+  const finalRound =
+    playingOut && !reviewing
+      ? meOut
+        ? {
+            title: "You're out",
+            body: "Nothing left to play. The game ends when everyone is out, or a full round passes with nobody playing.",
+          }
+        : {
+            title: "The bag is empty",
+            body: "Play out your tiles. The game ends when everyone is out, or a full round passes with nobody playing.",
+          }
+      : null;
+  const finalRoundSays = finalRound === null ? null : `${finalRound.title}. ${finalRound.body}`;
+  useEffect(() => {
+    if (finalRoundSays !== null) announce(finalRoundSays);
+  }, [finalRoundSays]);
+
+  /*
+   * The rack goes inert while another player's play is shown in its place,
+   * and a focused element inside something inert is dropped to the page
+   * itself -- a keyboard user would be thrown back to the top. So focus goes
+   * to the card's Skip first, and when the card comes down, back to where it
+   * was in the rack. Layout effects, so the move happens before the browser
+   * gets round to dropping it.
+   */
+  const announcing = noteTurn !== undefined;
+  const rackRef = useRef<HTMLDivElement>(null);
+  const skipRef = useRef<HTMLButtonElement>(null);
+  const focusBeforeCard = useRef<HTMLElement | null>(null);
+  /** Whether focus is on the card, which takes it with it when it goes. */
+  const cardHasFocus = useRef(false);
+  useLayoutEffect(() => {
+    if (announcing) {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && rackRef.current?.contains(active)) {
+        focusBeforeCard.current = active;
+        skipRef.current?.focus();
+      }
+      return;
+    }
+    const back = focusBeforeCard.current;
+    const lost = cardHasFocus.current;
+    focusBeforeCard.current = null;
+    cardHasFocus.current = false;
+    // Only when the card took focus away with it: somebody who tabbed off it
+    // on purpose stays where they went.
+    if (!lost) return;
+    if (document.activeElement !== null && document.activeElement !== document.body) return;
+    refocus(back);
+  }, [announcing]);
+
+  /**
+   * Put focus back on a control in the rack: the one given, if it is still
+   * there to press, or else the first that is.
+   */
+  function refocus(target: HTMLElement | null) {
+    if (target !== null && target.isConnected && !target.matches(":disabled")) {
+      target.focus();
+      return;
+    }
+    rackRef.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+  }
+
+  /*
+   * The pass and swap questions open below the rack, out of sight of a
+   * keyboard and unheard by a screen reader, so focus goes to the question's
+   * Cancel as it opens -- the safe answer, read with the question -- and back
+   * to the button that asked once it is answered.
+   */
+  const confirmFrom = useRef<HTMLElement | null>(null);
+  const passCancelRef = useRef<HTMLButtonElement>(null);
+  const swapCancelRef = useRef<HTMLButtonElement>(null);
+  const askingPass = passing && myTurn;
+  const askingSwap = swapping && myTurn;
+  useEffect(() => {
+    if (askingPass) passCancelRef.current?.focus();
+  }, [askingPass]);
+  useEffect(() => {
+    if (askingSwap) swapCancelRef.current?.focus();
+  }, [askingSwap]);
+
+  /** Remember what opened a question, so answering it can go back there. */
+  function noteAsker() {
+    const active = document.activeElement;
+    confirmFrom.current = active instanceof HTMLElement ? active : null;
+  }
+
+  /** Close the pass or swap question and give focus back to its button. */
+  function answered(close: () => void) {
+    close();
+    const from = confirmFrom.current;
+    confirmFrom.current = null;
+    // After the render that takes the bar away, so the button is pressable.
+    requestAnimationFrame(() => refocus(from));
+  }
+
+  if (view === undefined) return <p className={styles.notice}>Loading game…</p>;
+  if (view === null) return <p className={styles.notice}>Game not found.</p>;
+
+  const { game } = view;
 
   /** Whoever the game is waiting on, so a press on Play can name them. */
   const playerOnTurn =
@@ -637,6 +775,7 @@ export function Game({
   /** Say why a tile did not land, and take it back down after a moment. */
   function refuse(why: string) {
     setRefusal(why);
+    announce(why);
     if (refusalTimer.current !== null) clearTimeout(refusalTimer.current);
     refusalTimer.current = setTimeout(() => setRefusal(null), 2600);
   }
@@ -696,12 +835,14 @@ export function Game({
 
   /** The rack's swap button asks first: the swap is once a game. */
   function toggleSwap() {
+    if (!swapping) noteAsker();
     setSwapping((current) => !current);
     setPassing(false);
   }
 
   /** Pressing Pass asks first: one tap should not cost a turn by accident. */
   function togglePass() {
+    if (!passing) noteAsker();
     setPassing((current) => !current);
     if (!passing) {
       setPending([]);
@@ -715,7 +856,7 @@ export function Game({
     setError(null);
     try {
       await passTurn({ gameId });
-      setPassing(false);
+      answered(() => setPassing(false));
     } catch (e) {
       setError(userMessage(e));
     }
@@ -730,7 +871,7 @@ export function Game({
       setSelected(null);
       setBlankAt(null);
       await swapTiles({ gameId });
-      setSwapping(false);
+      answered(() => setSwapping(false));
     } catch (e) {
       setError(userMessage(e));
     }
@@ -796,7 +937,7 @@ export function Game({
   /** Players who have been asked but have not taken their seat yet. */
   const invitees = view.players.filter((p) => p.invited === true).map((p) => p.name);
 
-  // Player id to seat, which is how a tile knows what colour to be.
+  // Player id to seat, which is how a tile knows what color to be.
   const seatOf = new Map(view.players.map((p) => [p.userId, p.seat]));
   const nameOf = new Map(
     view.players.map((p) => [p.userId, p.userId === view.viewerUserId ? "you" : p.name]),
@@ -874,16 +1015,11 @@ export function Game({
         {/* Above the board rather than floating over it: this one stands for
             the whole round, so it must not cover a square somebody is aiming
             at, and it must not disappear the way the refusal does. */}
-        {playingOut && !reviewing && (
-          <div className={styles.finalRound} role="status" aria-live="polite">
-            <strong className={styles.finalRoundTitle}>
-              {meOut ? "You're out" : "The bag is empty"}
-            </strong>
-            <span>
-              {meOut
-                ? "Nothing left to play. The game ends when everyone is out, or a full round passes with nobody playing."
-                : "Play out your tiles. The game ends when everyone is out, or a full round passes with nobody playing."}
-            </span>
+        {/* Said aloud through the game's announcer, not from here: see `announce`. */}
+        {finalRound !== null && (
+          <div className={styles.finalRound}>
+            <strong className={styles.finalRoundTitle}>{finalRound.title}</strong>
+            <span>{finalRound.body}</span>
           </div>
         )}
 
@@ -936,11 +1072,8 @@ export function Game({
           {/* Floats over the board rather than sitting in the column: a message
               that pushed the layout down would move the square you were aiming
               at. */}
-          {refusal !== null && (
-            <div className={styles.refusal} role="status" aria-live="polite">
-              {refusal}
-            </div>
-          )}
+          {/* Seen only: `refuse` says it aloud through the announcer. */}
+          {refusal !== null && <div className={styles.refusal}>{refusal}</div>}
 
           {/* The play's score in the board's corner, for a phone: the panel
               that says so in full sits below the board there. Hidden from
@@ -976,6 +1109,13 @@ export function Game({
                   max={turns.length}
                   value={step}
                   aria-label="Turn"
+                  // The number alone is "Turn, 3": what that turn did is
+                  // what a sighted player reads beside it.
+                  aria-valuetext={
+                    lastTurn === undefined
+                      ? "Before the first turn"
+                      : `${step} of ${turns.length}: ${describeTurn(lastTurn)}`
+                  }
                   onChange={(e) => setStepAt(Number(e.target.value))}
                 />
                 <button
@@ -1017,20 +1157,28 @@ export function Game({
         */}
         {(() => {
           const rackShown = me?.letters != null && game.status !== "finished" && !reviewing;
-          const announcing = noteTurn !== undefined;
           const card = announcing && (
             <div
               // One element for the whole run of steps, not one per step: it
-              // stays up from one play to the next and changes colour between
+              // stays up from one play to the next and changes color between
               // players, rather than vanishing and fading back in each time.
               className={[styles.announce, rackShown ? styles.announceOverRack : ""].join(" ")}
               data-seat={seatOf.get(noteTurn.userId)}
-              role="status"
-              aria-live="polite"
+              // No role="status": the announcer says the play once, whole,
+              // rather than this card spot by spot.
               // A catch-up replay never stands between you and your turn.
               onPointerDown={recapActive ? skipRecap : undefined}
+              onFocus={() => {
+                cardHasFocus.current = true;
+              }}
+              // Only when focus went somewhere: some browsers blur an element
+              // as it is taken out, and that is the case this is here for.
+              onBlur={(e) => {
+                if (e.relatedTarget !== null) cardHasFocus.current = false;
+              }}
             >
               <button
+                ref={skipRef}
                 type="button"
                 className={styles.announceClose}
                 aria-label="Skip the replay"
@@ -1055,7 +1203,11 @@ export function Game({
           if (!rackShown || !me?.letters) return card;
           return (
             <div className={styles.rackSlot}>
-              <div className={announcing ? styles.rackHidden : undefined} inert={announcing}>
+              <div
+                ref={rackRef}
+                className={announcing ? styles.rackHidden : undefined}
+                inert={announcing}
+              >
               <Rack
                 seat={view.yourSeat}
                 letters={me.letters}
@@ -1182,7 +1334,7 @@ export function Game({
             ) : view.canJoin ? (
               <>
                 {" "}
-                Pick your colour:{" "}
+                Pick your color:{" "}
                 <SeatPicker
                   totalSeats={GAME.maxPlayers}
                   takenSeats={view.players.map((p) => p.seat)}
@@ -1219,15 +1371,23 @@ export function Game({
           </div>
         )}
 
-        {passing && myTurn && (
-          <div className={styles.tradeBar}>
+        {askingPass && (
+          <div
+            className={styles.tradeBar}
+            role="group"
+            aria-label="Pass your turn?"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") answered(() => setPassing(false));
+            }}
+          >
             <span>
               Pass your turn? A full round of passes ends the game.
             </span>
             <button
+              ref={passCancelRef}
               type="button"
               className={styles.secondary}
-              onClick={() => setPassing(false)}
+              onClick={() => answered(() => setPassing(false))}
             >
               Cancel
             </button>
@@ -1241,16 +1401,24 @@ export function Game({
           </div>
         )}
 
-        {swapping && myTurn && (
-          <div className={styles.tradeBar}>
+        {askingSwap && (
+          <div
+            className={styles.tradeBar}
+            role="group"
+            aria-label="Swap your letters?"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") answered(() => setSwapping(false));
+            }}
+          >
             <span>
               Swap all your letters for new ones? You get one swap a game, and
               you still play this turn.
             </span>
             <button
+              ref={swapCancelRef}
               type="button"
               className={styles.secondary}
-              onClick={() => setSwapping(false)}
+              onClick={() => answered(() => setSwapping(false))}
             >
               Cancel
             </button>
@@ -1264,7 +1432,18 @@ export function Game({
           </div>
         )}
 
-        {error && <div className={styles.error}>{error}</div>}
+        {/* An alert is read the moment it appears, content and all, which a
+            status region is not -- and a play the server refused is worth
+            interrupting for. */}
+        {error && (
+          <div className={styles.error} role="alert">
+            {error}
+          </div>
+        )}
+
+        <SrOnly>
+          <span ref={announcer} role="status" aria-live="polite" />
+        </SrOnly>
 
         <DevTools gameId={gameId} />
 
@@ -1345,7 +1524,7 @@ export function Game({
             </button>
 
             {/*
-              The same table over again: same people, same colours, same
+              The same table over again: same people, same colors, same
               machines. It is under way the moment it is asked for, on the
               seat of whoever asked -- so this button is the first turn of
               the new game as much as it is the end of the old one.
@@ -1397,7 +1576,7 @@ export function Game({
           Everything here comes from the placement itself — the words, their
           points, the squares, the total — so it is all drawn the moment a tile
           lands. Only whether a word is a word waits on the server, and that
-          changes a chip's colour rather than whether it is there. Swapping the
+          changes a chip's color rather than whether it is there. Swapping the
           whole panel for "checking…" and back was what made the page jump on
           every tile.
         */}

@@ -4,13 +4,13 @@ import styles from "./MiniBoard.module.css";
 interface MiniBoardProps {
   /** One string per row. A dot is an empty square, anything else is a tile. */
   rows: readonly string[];
-  /** Whose colour the tiles already on the board wear. */
+  /** Whose color the tiles already on the board wear. */
   seat?: number;
-  /** Squares laid this turn, as "x,y" — shown in a second player's colour. */
+  /** Squares laid this turn, as "x,y" — shown in a second player's color. */
   played?: readonly string[];
   /**
    * Whose tile each square is, as "x,y" to a seat number. For a position from
-   * a real game, where the colours are the players rather than "mine" and
+   * a real game, where the colors are the players rather than "mine" and
    * "theirs"; anything not named here falls back to `seat`.
    */
   seats?: Readonly<Record<string, number>>;
@@ -27,7 +27,7 @@ interface MiniBoardProps {
  * A board position, drawn rather than photographed.
  *
  * Built from the board's own stylesheet, like the swatch page: a screenshot
- * goes stale the moment a colour moves, and would need two of everything to
+ * goes stale the moment a color moves, and would need two of everything to
  * follow the theme. This follows by construction, and costs no image to load.
  *
  * Presentational only — nothing here is clickable, and it holds no state.

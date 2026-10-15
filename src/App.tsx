@@ -1,5 +1,5 @@
-import { Authenticated, Unauthenticated, useQuery } from "convex/react";
-import { useState } from "react";
+import { Authenticated, Unauthenticated, useConvexAuth, useQuery } from "convex/react";
+import { useEffect, useState } from "react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import styles from "./App.module.css";
@@ -20,7 +20,7 @@ import { promiseAGame, type PromisedGame } from "./lib/useStartGame";
 import { navigate, useRoute } from "./router";
 
 /*
- * The colour reference, kept out of the router on purpose.
+ * The color reference, kept out of the router on purpose.
  *
  * Read once at load: anything that navigates — the sign-in gate resolving, a
  * redirect — would otherwise take the page away mid-look, which is exactly
@@ -28,8 +28,31 @@ import { navigate, useRoute } from "./router";
  */
 const SHOWING_SWATCHES = window.location.pathname.startsWith("/swatches");
 
+/** What the browser tab and a screen reader call each page. */
+const TITLES = {
+  lobby: "Lobby",
+  game: "Game",
+  account: "Account",
+  friend: "Friend invite",
+} as const;
+
 export default function App() {
   const route = useRoute();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+
+  /*
+   * One title per page, not one for the whole app: the title is the first
+   * thing a screen reader says after a page changes, and the only way to
+   * tell the tabs apart.
+   */
+  useEffect(() => {
+    const page = SHOWING_SWATCHES
+      ? "Swatches"
+      : !isLoading && !isAuthenticated
+        ? "Sign in"
+        : TITLES[route.name];
+    document.title = `${page} · kraftwerd`;
+  }, [route.name, isAuthenticated, isLoading]);
 
   // Before the router and before the sign-in gate: nothing to steer it away.
   if (SHOWING_SWATCHES) return <Swatches />;
@@ -53,14 +76,18 @@ export default function App() {
           </Authenticated>
         </div>
 
-        <button
-          type="button"
-          className={styles.brandButton}
-          onClick={() => navigate({ name: "lobby" })}
-        >
-          {/* Two tiles, in the colours seats 2 and 1 play in: the mark is made
-              of the same pieces the game is. */}
-          <h1 className={styles.brand} aria-label="kraftwerd">
+        {/* The heading holds the button, not the other way round: a heading
+            inside a button is not allowed, and is not read as one. Named
+            for the word the tiles spell, then where it goes. */}
+        <h1 className={styles.brandHeading}>
+          <button
+            type="button"
+            className={styles.brand}
+            aria-label="kraftwerd, go to lobby"
+            onClick={() => navigate({ name: "lobby" })}
+          >
+            {/* Two tiles, in the colors seats 2 and 1 play in: the mark is
+                made of the same pieces the game is. */}
             <span
               className={styles.markTile}
               data-seat="2"
@@ -77,8 +104,8 @@ export default function App() {
             >
               W
             </span>
-          </h1>
-        </button>
+          </button>
+        </h1>
 
         <div className={[styles.side, styles.sideEnd].join(" ")}>
           {/* Beside the menu rather than beside the mark: the mark's centring
@@ -131,7 +158,7 @@ export default function App() {
 /*
  * A position from a real game, for the sign-in page.
  *
- * Kept exactly as it was played, colours included, because it says what the
+ * Kept exactly as it was played, colors included, because it says what the
  * game is better than a diagram drawn to say it: two players' tiles woven
  * into each other, squares built on until they are full, and solid blocks of
  * tiles that score again for being solid.
@@ -162,7 +189,7 @@ const DEMO_SEATS: Record<string, number> = {
 
 /**
  * Squares somebody has already built on: full, so the face goes back to bare
- * board and the letter lights up in the colour of whoever closed it.
+ * board and the letter lights up in the color of whoever closed it.
  */
 const DEMO_FULL = ["1,1", "0,2", "1,2", "1,3", "3,3", "2,4", "1,5", "3,5"];
 
@@ -221,13 +248,17 @@ function SignInForm({ canGuest }: { canGuest: boolean }) {
         Continue with Google
       </button>
       {!configured && (
-        <div className={styles.error}>
+        <div className={styles.error} role="alert">
           Google sign-in is not configured on this deployment yet. Set
           GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET with{" "}
           <code>npx convex env set</code> — see <code>docs/auth-setup.md</code>.
         </div>
       )}
-      {error && <div className={styles.error}>Could not sign in: {error}</div>}
+      {error && (
+        <div className={styles.error} role="alert">
+          Could not sign in: {error}
+        </div>
+      )}
 
       {/*
         A game before an account. Signing in is a lot to ask of somebody who

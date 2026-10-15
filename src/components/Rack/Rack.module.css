@@ -116,21 +116,49 @@
   z-index: 1;
 }
 
+/*
+ * Keyboard focus, inside the tile in the tile's own ink -- the page's ink is
+ * near-white on the dark theme, which a gold face all but swallows. Inside,
+ * too, so it never meets the selection ring outside the tile: a tile can be
+ * both, and the two must read as two things.
+ */
+.tile:focus-visible {
+  outline: 3px solid var(--tile-text);
+  outline-offset: -3px;
+  position: relative;
+  z-index: 2;
+}
+
+/*
+ * A ring round the tile, standing off it by a band of the rack's own
+ * surface so the green never touches the face. A shadow rather than an
+ * outline, which keyboard focus draws with: a selected tile had no focus ring
+ * to show. On top of the tile's own shadow, resting or lifted.
+ */
 .selected {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--surface-raised),
+    0 0 0 4px var(--accent),
+    var(--tile-shadow);
   transform: translateY(-3px);
   /*
    * Above its neighbours. Tiles glow, a glow spreads past the tile it belongs
    * to, and siblings paint in document order -- so the tile on the right threw
-   * its light over this one's outline and ate into its edge as well.
+   * its light over this one's ring and ate into its edge as well.
    */
   position: relative;
   z-index: 1;
 }
 
-/* Deliberately no glyph: a blank is blank. The face colour distinguishes it. */
-/* Its colour comes from data-face in index.css, like every other tile. */
+.selected:hover:not(:disabled) {
+  box-shadow:
+    0 0 0 2px var(--surface-raised),
+    0 0 0 4px var(--accent),
+    var(--tile-shadow-hover);
+}
+
+/* Deliberately no glyph: a blank is blank. The face color distinguishes it. */
+/* Its color comes from data-face in index.css, like every other tile. */
 .blank {
   border-color: var(--tile-edge);
 }

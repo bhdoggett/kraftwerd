@@ -1,6 +1,6 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
 import { authClient } from "../../lib/auth-client";
 import { navigate } from "../../router";
 import { Friends } from "../Friends/Friends";
@@ -20,6 +20,10 @@ const THEME_LABEL = { light: "Light", dark: "Dark", system: "Follow the system" 
  * These three sat loose in the header, which cost three slots of a bar that
  * has to hold a game name and a player's turn on a phone. A menu is one slot,
  * and it can afford words where an icon had to carry the meaning alone.
+ *
+ * A disclosure rather than an ARIA menu: a menu role promises arrow keys and
+ * nothing but menu items inside, and this holds a row of theme buttons too.
+ * Plain buttons that Tab walks through are what it actually is.
  */
 export function Menu() {
   const [open, setOpen] = useState(false);
@@ -30,6 +34,9 @@ export function Menu() {
   const viewer = useQuery(api.users.viewer);
   const [theme, setTheme] = useTheme();
   const wrap = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
+  const themeLabelId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -42,7 +49,9 @@ export function Menu() {
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      trigger.current?.focus();
     };
 
     window.addEventListener("pointerdown", onDown);
@@ -53,13 +62,27 @@ export function Menu() {
     };
   }, [open]);
 
+  /*
+   * Tabbing out of the panel closes it, the way pressing outside it does.
+   * Only when focus has somewhere to go: Safari leaves a pressed button
+   * unfocused, so a press on an item reads as focus going nowhere, and
+   * closing then would take the item away before its click lands.
+   */
+  const onBlur = (e: FocusEvent) => {
+    const next = e.relatedTarget;
+    if (open && next instanceof Node && wrap.current?.contains(next) !== true) {
+      setOpen(false);
+    }
+  };
+
   return (
-    <div className={styles.wrap} ref={wrap}>
+    <div className={styles.wrap} ref={wrap} onBlur={onBlur}>
       <button
+        ref={trigger}
         type="button"
         className={styles.trigger}
-        aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         aria-label="Menu"
         title="Menu"
         onClick={() => setOpen(!open)}
@@ -68,10 +91,9 @@ export function Menu() {
       </button>
 
       {open && (
-        <div className={styles.panel} role="menu">
+        <div className={styles.panel} id={panelId}>
           <button
             type="button"
-            role="menuitem"
             className={styles.item}
             onClick={() => {
               setRules(true);
@@ -86,7 +108,6 @@ export function Menu() {
               the game in front of you. */}
           <button
             type="button"
-            role="menuitem"
             className={styles.item}
             onClick={() => {
               setTwoLetterWords(true);
@@ -99,7 +120,6 @@ export function Menu() {
           {isAuthenticated && (
             <button
               type="button"
-              role="menuitem"
               className={styles.item}
               onClick={() => {
                 setFriends(true);
@@ -113,7 +133,6 @@ export function Menu() {
           {isAuthenticated && (
             <button
               type="button"
-              role="menuitem"
               className={styles.item}
               onClick={() => {
                 setOpen(false);
@@ -128,8 +147,10 @@ export function Menu() {
 
           {/* A row of three rather than a button that cycles: a menu has the
               room to show what the choices are, and which one is on. */}
-          <div className={styles.group}>
-            <span className={styles.groupLabel}>Theme</span>
+          <div className={styles.group} role="group" aria-labelledby={themeLabelId}>
+            <span className={styles.groupLabel} id={themeLabelId}>
+              Theme
+            </span>
             <div className={styles.choices}>
               {THEME_CHOICES.map((choice) => {
                 const Icon = THEME_ICON[choice];
@@ -137,8 +158,7 @@ export function Menu() {
                   <button
                     key={choice}
                     type="button"
-                    role="menuitemradio"
-                    aria-checked={theme === choice}
+                    aria-pressed={theme === choice}
                     className={[
                       styles.choice,
                       theme === choice ? styles.choiceOn : "",
@@ -159,7 +179,6 @@ export function Menu() {
               <div className={styles.divider} />
               <button
                 type="button"
-                role="menuitem"
                 className={styles.item}
                 onClick={() => {
                   setOpen(false);
@@ -180,7 +199,6 @@ export function Menu() {
               {viewer?.isGuest === true && (
                 <button
                   type="button"
-                  role="menuitem"
                   className={styles.item}
                   onClick={() => {
                     setOpen(false);
@@ -198,12 +216,19 @@ export function Menu() {
         </div>
       )}
 
-      {rules && <RulesDialog onClose={() => setRules(false)} />}
+      {/* Back to the trigger on close: the item that opened each of these
+          went with the menu, in the same press. */}
+      {rules && <RulesDialog onClose={() => setRules(false)} returnFocusTo={trigger} />}
 
-      {twoLetterWords && <TwoLetterWordsDialog onClose={() => setTwoLetterWords(false)} />}
+      {twoLetterWords && (
+        <TwoLetterWordsDialog
+          onClose={() => setTwoLetterWords(false)}
+          returnFocusTo={trigger}
+        />
+      )}
 
       {friends && (
-        <Modal onDismiss={() => setFriends(false)}>
+        <Modal onDismiss={() => setFriends(false)} returnFocusTo={trigger}>
           <div className={styles.dialogHead}>
             <h2 className={styles.dialogTitle}>Friends</h2>
             <button

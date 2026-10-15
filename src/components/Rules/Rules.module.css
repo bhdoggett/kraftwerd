@@ -113,7 +113,7 @@
 }
 
 /* Only the icon borrows the board's own (deliberately faint) ink -- the
-   text stays the dialog's ordinary reading colour, which --cell-line was
+   text stays the dialog's ordinary reading color, which --cell-line was
    never tuned for. */
 .markLegendRow svg {
   color: var(--cell-line);

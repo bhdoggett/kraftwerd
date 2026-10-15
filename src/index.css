@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------------------
    Design tokens. Everything visual in the app resolves to a variable here;
-   component CSS modules never hard-code a colour or a spacing value.
+   component CSS modules never hard-code a color or a spacing value.
    --------------------------------------------------------------------------- */
 
 /*
@@ -13,13 +13,13 @@
 :root,
 [data-theme="light"] {
   /*
-   * The three seat colours, one per GAME.maxPlayers, plus orange for
+   * The three seat colors, one per GAME.maxPlayers, plus orange for
    * `--pending` below (not a seat). Replaced the old cyan/magenta/lime/violet
    * set outright rather than reshuffling it -- Clinton picked this trio by
    * name (Tomato, Pacific Blue, Royal Gold) after comparing it against two
    * others on the real tile face. Measured the same way every palette change
    * here has been: all three pairs clear 12+ ΔE under simulated
-   * colourblindness (target is 8), well clear of the amber/lime pair that
+   * colorblindness (target is 8), well clear of the amber/lime pair that
    * used to fail at 3.2.
    */
   --full-tomato: #fe4a49;
@@ -29,9 +29,9 @@
   /*
    * Not seats any more -- cyan and amber retired outright, nothing left
    * using them. Magenta went the same way once the app's own accent moved
-   * to violet (see --accent below) -- it was the one seat-colour leftover
+   * to violet (see --accent below) -- it was the one seat-color leftover
    * still in use after the trio landed, unrelated to who is playing which
-   * colour. Lime is the other leftover still standing, for the menu mark
+   * color. Lime is the other leftover still standing, for the menu mark
    * below; not touched here.
    */
   --full-lime: #b8ff2b;
@@ -39,7 +39,7 @@
   /*
    * The same three, darkened to read as ink on paper rather than as a tube on
    * black. A tile solves contrast the other way round — bright face, dark
-   * letter — but a full square is bare, so the letter carries the colour
+   * letter — but a full square is bare, so the letter carries the color
    * itself and needs the contrast. Each targets 6.5:1 against white; Tomato
    * itself runs a little under that against black ink (5.9:1) at full
    * brightness, the same as this palette's predecessor did for magenta
@@ -70,6 +70,9 @@
   --text-muted: #61616b;
   --text-inverse: #ffffff;
 
+  /* Keyboard focus ring: the ink itself, so it clears 3:1 on every surface. */
+  --focus: var(--text);
+
   /* Board: "Ledger" -- pale ruled paper, like graph or engineering paper.
      Light theme's own identity rather than an import of dark theme's
      Blueprint: technical in the same spirit, native to ink on paper. */
@@ -94,7 +97,7 @@
   /*
    * Tiles are lit signs: a saturated face with the letter cut out of it in
    * black. Every face clears 6.5:1 against that ink, on either theme, which is
-   * what lets the same six colours sit on a white board and a black one.
+   * what lets the same six colors sit on a white board and a black one.
    */
   --tile-face: var(--seat-0);
   --tile-edge: #0b0b0d;
@@ -117,7 +120,7 @@
   --tile-shadow-hover:
     inset 0 1px 0 rgb(255 255 255 / 0.4), 0 4px 6px rgb(0 0 0 / 0.18);
 
-  /* Accent is Play's own green now, not a colour of its own: blue (tried
+  /* Accent is Play's own green now, not a color of its own: blue (tried
      as Cobalt) and violet before it both had the same "technically fine,
      doesn't actually feel right" problem, and a whole extra hue just for
      "primary action" turned out not to be necessary -- Play's green
@@ -132,7 +135,7 @@
   --danger: #c40036;
   --danger-soft: #ffdfe6;
   /*
-   * Word feedback. Its own pair, not the accent and the danger colour: the
+   * Word feedback. Its own pair, not the accent and the danger color: the
    * accent went magenta with the makeover, and a magenta "this word is fine"
    * next to a red "this one is not" is two shades of the same warning.
    */
@@ -161,10 +164,10 @@
   --play-soft: #e3f6d5;
 
   /*
-   * Player colours. A tile says whose it is by what it is lit in.
+   * Player colors. A tile says whose it is by what it is lit in.
    *
    * Softened towards white rather than made transparent: a translucent tile
-   * would take its colour from whatever is behind it, so the same tile would
+   * would take its color from whatever is behind it, so the same tile would
    * read differently on the black board and the white one. Mixing keeps them
    * opaque and identical on both.
    *
@@ -279,11 +282,15 @@
   --surface-raised: #121216;
   --surface-sunken: #000000;
   --border: #26262e;
-  --border-strong: #45454f;
+  /* #45454f was 2:1 against the surfaces, too faint for an input's edge;
+     this clears 3:1 on raised, plain and sunken alike. */
+  --border-strong: #6b6b78;
 
   --text: #f2f2f5;
   --text-muted: #8f8f9b;
   --text-inverse: #08080a;
+
+  --focus: var(--text);
 
   /*
    * Blueprint: a technical read rather than a warm one, closer to the
@@ -292,11 +299,11 @@
    * .tile in Board.module.css and Rack.module.css).
    */
   --cell-empty: #060608;
-  /* A hairline tinted with the seat-1 colour instead of neutral grey, so
-     the grid itself reads as lit rather than just ruled. 42% of the tube:
-     at 30% the lines and the multiplier marks, drawn in the same ink,
-     barely stood off the near-black squares. */
-  --cell-line: color-mix(in srgb, var(--full-pacific) 42%, #000);
+  /* A hairline tinted with the seat-1 color instead of neutral grey, so
+     the grid itself reads as lit rather than just ruled. 60% of the tube:
+     at 42% the lines and the multiplier marks, drawn in the same ink,
+     sat at 2.1:1 on the near-black squares, under the 3:1 a mark needs. */
+  --cell-line: color-mix(in srgb, var(--full-pacific) 60%, #000);
   --cell-blocked: #000000;
   /* A blocked square and an empty one are both near-black now that
      --cell-empty darkened to match the board; this ring is what still
@@ -311,7 +318,7 @@
   /*
    * No glow: a tile reads as a physical object catching light (see .tile
    * in Board.module.css) rather than a lit tube, so nothing here casts a
-   * coloured halo. Left as a hook rather than deleted, the way the light
+   * colored halo. Left as a hook rather than deleted, the way the light
    * theme's own "none" already does, in case a future look wants it back.
    */
   --tile-lit: none;
@@ -334,7 +341,7 @@
     0 2px 4px rgb(0 0 0 / 0.4);
 
   /*
-   * Accent is Play's own green, not a colour of its own -- blue (Cobalt)
+   * Accent is Play's own green, not a color of its own -- blue (Cobalt)
    * and violet before it were both technically fine and still didn't
    * feel right. Play's green already carries "primary action" weight
    * everywhere else; referenced rather than duplicated here so the two
@@ -370,21 +377,21 @@
  * "seat 2 is Royal Gold" is a fact about the game, not about the board.
  */
 [data-seat="0"] {
-  /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
+  /* The seat's color as a bare square reads it: ink on paper, tube on black. */
   --seat-lit: var(--ink-tomato);
   --seat-full: var(--full-tomato);
   --tile-face: var(--seat-0);
 }
 
 [data-seat="1"] {
-  /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
+  /* The seat's color as a bare square reads it: ink on paper, tube on black. */
   --seat-lit: var(--ink-pacific);
   --seat-full: var(--full-pacific);
   --tile-face: var(--seat-1);
 }
 
 [data-seat="2"] {
-  /* The seat's colour as a bare square reads it: ink on paper, tube on black. */
+  /* The seat's color as a bare square reads it: ink on paper, tube on black. */
   --seat-lit: var(--ink-gold);
   --seat-full: var(--full-gold);
   --tile-face: var(--seat-2);
@@ -397,12 +404,12 @@
  * Mixed here rather than by moving --tile-tint, which is what the first
  * attempt at this did. --seat-N is a color-mix defined at :root, so changing
  * the tint further down does not reliably re-resolve it; taking the seat's
- * raw full colour and mixing on the tile itself always does.
+ * raw full color and mixing on the tile itself always does.
  */
 /*
  * Full. The square goes back to reading as bare board and the letter lights
  * up in whoever played it — two things changing at once rather than a fifth
- * colour to tell apart from the four seats, which also means it reads without
+ * color to tell apart from the four seats, which also means it reads without
  * depending on which hues you can distinguish.
  *
  * Bare, not blocked: a blocked square is the board's own shape and was never
@@ -412,7 +419,7 @@
   --tile-face: var(--cell-empty);
 }
 
-/* Blanks show depth in grey: a full blank has no seat colour to light. */
+/* Blanks show depth in grey: a full blank has no seat color to light. */
 [data-face="blank"][data-stack="2"] {
   --tile-face: color-mix(in srgb, var(--tile-blank-face) 74%, var(--text-muted));
 }
@@ -506,4 +513,20 @@ button {
 
 input {
   font: inherit;
+}
+
+/* The browser's own placeholder grey falls under 4.5:1 on the surfaces. */
+input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+/*
+ * One keyboard focus ring for everything, so no control falls back to
+ * whatever the browser draws. Components that need the ring inside their
+ * box (board squares, rack tiles) override the offset.
+ */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }

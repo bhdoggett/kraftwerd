@@ -26,9 +26,9 @@
 
 /*
  * Nothing happens to it on hover or while open: no disc behind it, and no
- * change of colour. The tiles are the mark, and the menu appearing under them
+ * change of color. The tiles are the mark, and the menu appearing under them
  * is feedback enough — a disc read as a button nobody had styled, and a shift
- * of colour read as the mark itself changing.
+ * of color read as the mark itself changing.
  */
 
 .panel {

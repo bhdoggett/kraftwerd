@@ -47,7 +47,7 @@ describe("markCells", () => {
     ]);
     const { good } = markCells({ before, after: board }, [at(2, 0, "E")], valid("ATE"));
 
-    // The whole word is judged, but only this turn's tile is coloured.
+    // The whole word is judged, but only this turn's tile is colored.
     expect([...good]).toEqual(["2,0"]);
   });
 
@@ -92,7 +92,7 @@ describe("markCells", () => {
 
   /*
    * Paving over a word is refused by the rules (legality's "erased" fault),
-   * but the board used to colour these tiles green because the word they
+   * but the board used to color these tiles green because the word they
    * spell is a real one -- a green play sitting under a refusal message.
    */
   test("tiles that bury a word whole are marked wrong, however good their own word", () => {

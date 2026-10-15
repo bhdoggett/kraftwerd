@@ -25,7 +25,7 @@
   transform: translateY(-2px);
 }
 
-/* Ringed in the text colour, not the swatch's own: gold on a white page was
+/* Ringed in the text color, not the swatch's own: gold on a white page was
    1.4:1, so in light theme the chosen gold looked unchosen. */
 .selected {
   box-shadow:
