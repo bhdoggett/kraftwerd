@@ -451,8 +451,7 @@ export function Board({
                   : "open square",
             empty && bonusMultiplier !== undefined ? BONUS_NAME[bonusMultiplier] : undefined,
             empty && isCentre ? "centre" : undefined,
-            // The word rings are colored, and a dashed ring against a solid
-            // one is still a picture: whether the word stands is said too.
+            // The word rings say this in color alone, so it is said here too.
             badCells?.has(k)
               ? "in a word that is not valid"
               : goodCells?.has(k)

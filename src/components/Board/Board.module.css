@@ -83,10 +83,13 @@
   z-index: 2;
 }
 
-/* The board and its zoom buttons, one under the other. */
+/*
+ * The board and its zoom buttons, one under the other. A plain block, not a
+ * flex column: as a flex item the square frame took its content's height as a
+ * floor, and a zoomed-in board stretched it taller than it was wide.
+ */
 .board {
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 
 /*
@@ -228,16 +231,6 @@
  */
 .armed {
   background: color-mix(in srgb, var(--tile-face) 22%, var(--cell-empty));
-}
-
-/*
- * A bonus mark on a tinted square is drawn in the page's ink, not the grid's.
- * The grid line only just clears 3:1 against bare board, and any tint at all
- * pulled it under -- to 2:1 on gold in the dark. Paling the tint did not
- * rescue it either: on paper the line fails at any tint worth having.
- */
-.armed .bonusMark {
-  color: var(--text);
 }
 
 /* Only squares a click would actually fill respond to the pointer. */
@@ -383,9 +376,11 @@
  * Two-tone, the colored ring with a band of the tile's ink inside it. Green
  * or red alone measured 1.1 to 2.5:1 against the seat faces, and the ink
  * clears 6:1 on every one of them, so it is the ink that shows where the ring
- * is and the color that says which kind.
+ * is and the color that says which kind. Which kind is also in the square's
+ * label, for anyone the color does not reach.
  *
- * Words are tiles, so the tile's own shadow goes on underneath.
+ * Words are tiles, so the tile's own shadow goes on underneath. A square in
+ * one word of each kind shows red: .inBadWord comes second.
  */
 .inWord {
   box-shadow:
@@ -394,26 +389,11 @@
     var(--tile-shadow);
 }
 
-/*
- * A word that does not stand is dashed as well as red, so it does not rest on
- * telling red from green: a band of ink with red dashes laid along it. A box
- * shadow cannot dash, so the dashes are a border on a layer of their own.
- * Declared after .inWord, so a square in one word of each kind shows this.
- */
 .inBadWord {
   box-shadow:
+    inset 0 0 0 calc(var(--ring-at) + 2px) var(--invalid),
     inset 0 0 0 calc(var(--ring-at) + 4px) var(--tile-text),
     var(--tile-shadow);
-}
-
-.inBadWord::before {
-  content: "";
-  grid-area: cell;
-  align-self: stretch;
-  justify-self: stretch;
-  margin: var(--ring-at);
-  border: 3px dashed var(--invalid);
-  pointer-events: none;
 }
 
 /* The letter shifts up and left, and sets a little smaller, so the 2x has the
