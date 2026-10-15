@@ -157,6 +157,17 @@ export async function seatedAt(ctx: QueryCtx | MutationCtx, gameId: Id<"games">)
     .take(GAME.maxPlayers);
 }
 
+/**
+ * The lowest seat nobody holds. Not the head count: seats are colors chosen
+ * freely, so a maker who picked seat 1 leaves seat 0 empty, and counting
+ * heads would hand seat 1 out a second time.
+ */
+function freeSeat(taken: ReadonlySet<number>) {
+  return Array.from({ length: GAME.maxPlayers }, (_, i) => i).find(
+    (s) => !taken.has(s),
+  );
+}
+
 /** Whoever sits in `seat`, or null if nobody does. */
 async function inSeat(
   ctx: QueryCtx | MutationCtx,
@@ -483,7 +494,10 @@ export const joinGame = mutation({
     if (players.length >= game.playerCount)
       throw new ConvexError("Game is full");
 
-    const seat = args.seat ?? players.length;
+    const seat =
+      args.seat ??
+      freeSeat(new Set(players.map((p) => p.seat))) ??
+      GAME.maxPlayers;
     if (seat < 0 || seat >= GAME.maxPlayers) {
       throw new ConvexError("Not a color this game has");
     }
@@ -615,10 +629,13 @@ export const inviteToGame = mutation({
       players.map((p) => p.alias).filter((a): a is string => a !== undefined),
     );
 
-    let seat = players.length;
+    const seats = new Set(players.map((p) => p.seat));
     for (const friendId of args.friendIds) {
-      if (seat >= game.playerCount) throw new ConvexError("No seats left");
       if (players.some((p) => p.userId === friendId)) continue;
+      const seat = freeSeat(seats);
+      if (seat === undefined || seats.size >= game.playerCount) {
+        throw new ConvexError("No seats left");
+      }
       await requireFriendship(ctx, userId, friendId);
 
       /*
@@ -636,7 +653,7 @@ export const inviteToGame = mutation({
       if (alias !== undefined) taken.add(alias);
 
       await joinSeat(ctx, args.gameId, friendId, seat, "invited", alias);
-      seat++;
+      seats.add(seat);
     }
     return null;
   },

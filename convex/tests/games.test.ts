@@ -1014,6 +1014,29 @@ describe("game invitations", () => {
       asAna.mutation(api.games.respondToInvite, { gameId, accept: true }),
     ).rejects.toThrow("already answered");
   });
+
+  test("an invitation never lands on the color the maker chose", async () => {
+    const { t, asAna, bo } = await invitedGame();
+
+    // Seats are colors, picked freely. Counting heads to find a free one put
+    // Bo in seat 1 beside Ana, who had chosen it: the lobby said "Your turn"
+    // to her after every move, and the scoreboard ringed them both.
+    const { gameId } = await asAna.mutation(api.games.createGame, {
+      playerCount: 2,
+      seat: 1,
+    });
+    await asAna.mutation(api.games.inviteToGame, { gameId, friendIds: [bo] });
+
+    const seats = await t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("players")
+          .withIndex("by_game", (q) => q.eq("gameId", gameId))
+          .take(4)
+      ).map((p) => p.seat),
+    );
+    expect(new Set(seats).size).toBe(2);
+  });
 });
 
 describe("joining by link", () => {
@@ -1077,6 +1100,27 @@ describe("joining by link", () => {
         .take(4),
     );
     expect(seated).toHaveLength(3);
+  });
+
+  test("joining without a color takes one nobody has", async () => {
+    const { t, asHost, asGuest } = await lobbyGame(2);
+    const { gameId } = await asHost.mutation(api.games.createGame, {
+      playerCount: 2,
+      seat: 1,
+    });
+
+    // The host sat in seat 1, so a head count would have offered it again.
+    await asGuest.mutation(api.games.joinGame, { gameId });
+
+    const seats = await t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("players")
+          .withIndex("by_game", (q) => q.eq("gameId", gameId))
+          .take(4)
+      ).map((p) => p.seat),
+    );
+    expect(new Set(seats).size).toBe(2);
   });
 
   test("a full game cannot be joined", async () => {
