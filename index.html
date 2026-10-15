@@ -52,8 +52,8 @@
     <!--
       What a messaging app draws when someone shares a link. Its crawler does
       not run JavaScript, so these have to be in the served HTML rather than
-      set by the app — which also means every link shows the same card, invite
-      links included.
+      set by the app. Friend and game invite links get their own og:title from
+      copies of this file that the shareCards plugin in vite.config.ts writes.
     -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="kraftwerd" />

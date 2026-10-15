@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/friend/**", "destination": "/friend.html" },
+    { "source": "/game/**", "destination": "/game.html" },
+    { "source": "/:path([^.]+)", "destination": "/index.html" }
+  ]
+}

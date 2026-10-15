@@ -41,10 +41,14 @@ as a Coolify environment variable, which overrides detection outright.
 Coolify's **Static** build pack does not fit: it serves files already
 committed to the repo and runs no build, and `dist/` is gitignored.
 
-`npm start` is `serve -s dist --no-port-switching -l ${PORT:-3000}`:
+`npm start` is `serve dist -c ../serve.json --no-port-switching -l ${PORT:-3000}`:
 
-- `-s` is the SPA fallback. Without it `/game/<id>` 404s on refresh and every
-  shared invite link breaks.
+- `serve.json` (repo root, so it is not published) is the SPA fallback. Without
+  it `/game/<id>` 404s on refresh and every shared invite link breaks. It also
+  sends `/friend/*` and `/game/*` to `friend.html` and `game.html`, copies of
+  `index.html` that the build writes with their own link-preview title.
+- Do not add `-s`. It puts its catch-all rewrite ahead of the ones in
+  `serve.json`, so invite links would get the default card again.
 - `--no-port-switching` makes a port clash fail loudly. By default `serve`
   quietly binds some other random port, and the platform then health-checks a
   port nothing is listening on.
