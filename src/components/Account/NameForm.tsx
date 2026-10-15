@@ -14,6 +14,11 @@ interface NameFormProps {
   /** The button's label while the field still holds `initial` untouched. */
   keepLabel?: string;
   onSaved?: () => void;
+  /**
+   * Into the field on arrival. For the prompt, which asks for nothing else;
+   * on the account page it would skip the reader past everything above it.
+   */
+  autoFocus?: boolean;
 }
 
 /** The one field for choosing what other players see, wherever it is asked. */
@@ -23,10 +28,12 @@ export function NameForm({
   submitLabel,
   keepLabel,
   onSaved,
+  autoFocus = false,
 }: NameFormProps) {
   const save = useMutation(api.users.setDisplayName);
   // The prompt and the account page can both be up at once.
   const id = useId();
+  const noteId = `${id}-note`;
   const [value, setValue] = useState(initial ?? current ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -64,8 +71,10 @@ export function NameForm({
           className={styles.input}
           value={value}
           maxLength={DISPLAY_NAME_MAX + 8}
-          autoComplete="off"
-          autoFocus
+          autoComplete="nickname"
+          autoFocus={autoFocus}
+          aria-invalid={error !== null}
+          aria-describedby={noteId}
           placeholder="What should other players call you?"
           onChange={(e) => {
             setValue(e.target.value);
@@ -85,12 +94,18 @@ export function NameForm({
               : submitLabel}
         </button>
       </div>
+      {/* One id whichever is showing, so the field is always described by
+          what is under it. */}
       {error ? (
-        <p className={styles.error}>{error}</p>
+        <p className={styles.error} id={noteId} role="alert">
+          {error}
+        </p>
       ) : saved && unchanged ? (
-        <p className={styles.hint}>Saved.</p>
+        <p className={styles.hint} id={noteId}>
+          Saved.
+        </p>
       ) : (
-        <p className={styles.hint}>
+        <p className={styles.hint} id={noteId}>
           Everyone you play sees this name. It does not have to be your real one.
         </p>
       )}

@@ -1,9 +1,12 @@
+import type { RefObject } from "react";
 import TWO_LETTER_WORDS from "../../../shared/data/two-letter-words.json";
 import { Modal } from "../Modal/Modal";
 import styles from "./TwoLetterWords.module.css";
 
 interface TwoLetterWordsDialogProps {
   onClose: () => void;
+  /** Where focus goes on close, when the button that opened it is gone. */
+  returnFocusTo?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -11,9 +14,9 @@ interface TwoLetterWordsDialogProps {
  * getting told "not a word" — a 2x2 is four of these, so this list alone
  * decides how many squares exist at all (design.md §5.2).
  */
-export function TwoLetterWordsDialog({ onClose }: TwoLetterWordsDialogProps) {
+export function TwoLetterWordsDialog({ onClose, returnFocusTo }: TwoLetterWordsDialogProps) {
   return (
-    <Modal onDismiss={onClose}>
+    <Modal onDismiss={onClose} returnFocusTo={returnFocusTo}>
       <div className={styles.body}>
         <div className={styles.head}>
           <h2 className={styles.title}>Two-letter words</h2>

@@ -32,7 +32,8 @@ function Row({ seat }: { seat: number }) {
       <div className={styles.grid} style={{ gridTemplateColumns: "repeat(3, 42px)" }}>
         {cell({}, LETTERS[seat]!)}
         {cell({ "data-stack": "2" }, LETTERS[seat]!)}
-        {cell({ "data-face": "blank" }, "")}
+        {/* No letter to read out, so it says what it is instead. */}
+        {cell({ "data-face": "blank", "aria-label": `Blank, seat ${seat}` }, "")}
       </div>
     </div>
   );

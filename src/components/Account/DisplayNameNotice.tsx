@@ -42,6 +42,7 @@ export function DisplayNameNotice() {
           initial={suggested}
           submitLabel="Save"
           keepLabel="Keep"
+          autoFocus
         />
       </div>
     </Modal>

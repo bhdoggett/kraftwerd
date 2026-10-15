@@ -1,5 +1,5 @@
 import { useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { DIFFICULTIES, GAME, type Difficulty } from "../../../shared/config";
@@ -130,12 +130,26 @@ export function CreateGame({
       current.map((b, i) => (i === index ? { ...b, level } : b)),
     );
 
+  /*
+   * Onto the first thing on the new screen whenever the question changes.
+   * The button that was pressed goes with the screen it was on, and focus
+   * would go with it -- down onto the page, where a screen reader says
+   * nothing about what just appeared.
+   */
+  const body = useRef<HTMLDivElement>(null);
+  const shownPath = useRef(path);
+  useEffect(() => {
+    if (shownPath.current === path) return;
+    shownPath.current = path;
+    body.current?.querySelector<HTMLElement>("button:not([disabled])")?.focus();
+  }, [path]);
+
   /* A game of people needs somebody in it, even if only a seat held open. */
   const ready = path !== "people" || picked.length + open > 0;
 
   return (
     <Modal onDismiss={starting ? undefined : onCancel}>
-      <div className={styles.body}>
+      <div className={styles.body} ref={body}>
         <h2 className={styles.title}>New game with…</h2>
 
         {path === null && (
@@ -380,7 +394,11 @@ export function CreateGame({
           </div>
         )}
 
-        {error !== null && <p className={styles.error}>{error}</p>}
+        {error !== null && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
 
         <div className={styles.actions}>
           <button

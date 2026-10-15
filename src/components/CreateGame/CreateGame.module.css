@@ -112,6 +112,8 @@
 }
 
 .level {
+  /* Tall enough to hit with a thumb: the type is small, the target is not. */
+  min-height: 28px;
   padding: 4px var(--space-2);
   border: 1px solid var(--border-strong);
   background: transparent;
@@ -170,6 +172,9 @@
 /* The number of held seats, between the two buttons that change it. */
 .openCount {
   min-width: 30px;
+  /* Centred in the height the buttons either side of it set. */
+  display: grid;
+  place-items: center;
   padding: 4px var(--space-2);
   border-block: 1px solid var(--border-strong);
   text-align: center;

@@ -78,7 +78,11 @@ export function DeleteAccount() {
               autoFocus
               onChange={(e) => setTyped(e.target.value)}
             />
-            {error && <p className={styles.error}>{error}</p>}
+            {error && (
+              <p className={styles.error} role="alert">
+                {error}
+              </p>
+            )}
             <div className={styles.actions}>
               <button
                 type="button"

@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { FRIEND_LINK_DAYS } from "../../../shared/config";
@@ -7,6 +7,7 @@ import { userMessage } from "../../lib/errors";
 import { useStartGame, type BotSeat } from "../../lib/useStartGame";
 import styles from "./Friends.module.css";
 import { CreateGame } from "../CreateGame/CreateGame";
+import sr from "../SrOnly/SrOnly.module.css";
 
 /**
  * Desktop Firefox has no share sheet, and Chrome only offers one on some
@@ -41,6 +42,7 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const createLink = useMutation(api.friends.createFriendLink);
 
   const [email, setEmail] = useState("");
+  const emailId = useId();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** The friend whose Play button was pressed, while the game is being set up. */
@@ -155,13 +157,24 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
           >
             {copied ? "Copied" : canShare ? "Copy" : "Copy invite link"}
           </button>
+          {/* Always there, so the change is heard: a button whose own label
+              changes is not announced by every screen reader. */}
+          <span className={sr.srOnly} role="status">
+            {copied ? "Link copied" : ""}
+          </span>
         </div>
       </div>
 
       <form className={styles.add} onSubmit={(e) => void add(e)}>
+        {/* The placeholder says it on screen, but goes the moment you type. */}
+        <label className={sr.srOnly} htmlFor={emailId}>
+          Add by email
+        </label>
         <input
+          id={emailId}
           className={styles.input}
           type="email"
+          autoComplete="email"
           value={email}
           placeholder="Add by email"
           onChange={(e) => setEmail(e.target.value)}
@@ -175,7 +188,11 @@ export function Friends({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         </button>
       </form>
 
-      {error && <p className={styles.error}>{error}</p>}
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
 
       {data === undefined && <p className={styles.empty}>Loading…</p>}
 
