@@ -8,14 +8,14 @@ interface SeatPickerProps {
   /** The seat this picker is choosing for, or none yet. */
   value: number | null;
   onChange: (seat: number) => void;
-  /** A short label read by a screen reader before each seat's colour. */
+  /** A short label read by a screen reader before each seat's color. */
   label?: string;
 }
 
 /**
- * A row of the seat colours themselves, not swatches standing in for them —
- * same `data-seat` the board and rack already key their colour off, so the
- * choice made here is exactly the colour that shows up at the table.
+ * A row of the seat colors themselves, not swatches standing in for them —
+ * same `data-seat` the board and rack already key their color off, so the
+ * choice made here is exactly the color that shows up at the table.
  */
 export function SeatPicker({
   totalSeats,
@@ -27,7 +27,7 @@ export function SeatPicker({
   const taken = new Set(takenSeats);
 
   return (
-    <div className={styles.row} role="group" aria-label="Choose your colour">
+    <div className={styles.row} role="group" aria-label="Choose your color">
       {Array.from({ length: totalSeats }, (_, seat) => {
         const isTaken = taken.has(seat);
         return (

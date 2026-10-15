@@ -141,7 +141,7 @@
   cursor: default;
 }
 
-/* The chosen level lights up in the seat's own colour, like a played tile. */
+/* The chosen level lights up in the seat's own color, like a played tile. */
 .levelOn {
   background: var(--tile-face);
   border-color: var(--tile-edge);
@@ -269,7 +269,7 @@
   font-weight: 400;
 }
 
-/* The hint keeps its own colour when the button around it is being hovered. */
+/* The hint keeps its own color when the button around it is being hovered. */
 .choice:hover:not(:disabled) .choiceHint {
   color: var(--text-muted);
 }

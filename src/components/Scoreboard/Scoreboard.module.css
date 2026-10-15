@@ -55,7 +55,7 @@
 }
 
 /*
- * The score, in the seat's own colour. A circle for one or two digits; a three-digit score
+ * The score, in the seat's own color. A circle for one or two digits; a three-digit score
  * (this game runs long) stretches it into a pill rather than clipping or
  * shrinking the text.
  */
@@ -70,7 +70,7 @@
   font-size: var(--text-md);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  /* Dark ink on a bright seat colour, same pairing a tile itself uses. */
+  /* Dark ink on a bright seat color, same pairing a tile itself uses. */
   color: var(--tile-text);
 }
 
@@ -110,7 +110,7 @@
 
 /*
  * Asking somebody to be friends, beside their name. A plus rather than a
- * word: the row is a colour, a name and a count already, and "Add friend"
+ * word: the row is a color, a name and a count already, and "Add friend"
  * spelled out was the longest thing in it.
  */
 .invite {
@@ -170,7 +170,7 @@
  * move. An arrow used to sit between the name and the score, pointing at it;
  * once the score moved into the dot, the arrow was left at the end of the row
  * pointing at nothing, so the mark went onto the thing it is about. The gap in
- * the panel's colour keeps the ring clear of the pill's own.
+ * the panel's color keeps the ring clear of the pill's own.
  */
 .onTurn {
   box-shadow:
@@ -276,7 +276,7 @@
     flex: 1;
   }
 
-  /* The gap between the ring and the pill is drawn in the panel's colour
+  /* The gap between the ring and the pill is drawn in the panel's color
      here, not the card's: there is no card behind it. */
   .onTurn {
     box-shadow:

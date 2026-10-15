@@ -4,7 +4,7 @@ import own from "./Swatches.module.css";
 /**
  * Every tile the board can draw, in both themes at once, at /swatches.
  *
- * Built from the board's own classes, so the colours are the ones the browser
+ * Built from the board's own classes, so the colors are the ones the browser
  * really computes: a mock-up recreates color-mix by hand and is wrong the
  * moment a token moves. Each half sets data-theme for itself, which is how
  * both can be seen together — the page cannot be in two themes, but two
@@ -52,7 +52,7 @@ function Half({ theme }: { theme: "light" | "dark" }) {
       ))}
       <p className={own.note}>
         A full square goes back to bare board and lights its letter in the
-        colour of whoever played it — ink on paper here, the tube itself on
+        color of whoever played it — ink on paper here, the tube itself on
         black. A blank is white only while it is waiting to be told its
         letter; once it has one it scores and looks like any other tile.
       </p>

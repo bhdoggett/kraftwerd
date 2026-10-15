@@ -140,8 +140,8 @@ export function runsBuriedWhole(before: Board, placements: readonly Placement[])
 }
 
 /**
- * The runs above, named. Exported as runs as well because the board colours
- * the tiles doing the burying, and it must colour them by the same rule that
+ * The runs above, named. Exported as runs as well because the board colors
+ * the tiles doing the burying, and it must color them by the same rule that
  * refuses the play -- a second notion of "buried" would drift, and the board
  * would go green under a message saying the play is illegal.
  */

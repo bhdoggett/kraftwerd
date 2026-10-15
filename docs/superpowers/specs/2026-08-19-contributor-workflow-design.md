@@ -131,7 +131,7 @@ outcome is a conflict, and it never destroys committed work.
 
 **Conflicts are the agent's job.** He never sees a conflict marker. The agent
 resolves and then explains the resolution in his terms — "you and Ben both
-changed the tile colours; I kept your hover state and his border" — and asks,
+changed the tile colors; I kept your hover state and his border" — and asks,
 in plain English, only when the choice is genuinely ambiguous.
 
 ## Convex

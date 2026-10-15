@@ -50,7 +50,7 @@ function disconnectedCells(
  * Which squares to mark right and which to mark wrong while a play is staged.
  *
  * A run's verdict comes from the whole word, existing tiles included, but only
- * the tiles placed this turn are marked: colouring the others would suggest
+ * the tiles placed this turn are marked: coloring the others would suggest
  * this turn had put them there.
  */
 export function markCells(
@@ -91,7 +91,7 @@ export function markCells(
   // rules refuse (legality's "erased" fault). The tiles doing the burying are
   // marked, not the whole play: the rest of it may be perfectly good, and it is
   // the covering that has to be taken back. Judged by the engine's own rule, so
-  // the colour cannot disagree with the refusal underneath.
+  // the color cannot disagree with the refusal underneath.
   for (const run of runsBuriedWhole(before, placements)) {
     for (const cell of run.cells) {
       const key = cellKey(cell.x, cell.y);

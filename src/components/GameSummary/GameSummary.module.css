@@ -40,7 +40,7 @@
   white-space: nowrap;
 }
 
-/* The seat's colour, the same one its score wears on the scoreboard. */
+/* The seat's color, the same one its score wears on the scoreboard. */
 .swatch {
   display: inline-block;
   width: 8px;

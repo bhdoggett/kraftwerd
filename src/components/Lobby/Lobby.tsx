@@ -112,7 +112,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
     }
   }
 
-  /** Which open game's colour row is expanded, if any. */
+  /** Which open game's color row is expanded, if any. */
   const [pickingSeatFor, setPickingSeatFor] = useState<Id<"games"> | null>(
     null,
   );

@@ -20,7 +20,7 @@ import { promiseAGame, type PromisedGame } from "./lib/useStartGame";
 import { navigate, useRoute } from "./router";
 
 /*
- * The colour reference, kept out of the router on purpose.
+ * The color reference, kept out of the router on purpose.
  *
  * Read once at load: anything that navigates — the sign-in gate resolving, a
  * redirect — would otherwise take the page away mid-look, which is exactly
@@ -58,7 +58,7 @@ export default function App() {
           className={styles.brandButton}
           onClick={() => navigate({ name: "lobby" })}
         >
-          {/* Two tiles, in the colours seats 2 and 1 play in: the mark is made
+          {/* Two tiles, in the colors seats 2 and 1 play in: the mark is made
               of the same pieces the game is. */}
           <h1 className={styles.brand} aria-label="kraftwerd">
             <span
@@ -131,7 +131,7 @@ export default function App() {
 /*
  * A position from a real game, for the sign-in page.
  *
- * Kept exactly as it was played, colours included, because it says what the
+ * Kept exactly as it was played, colors included, because it says what the
  * game is better than a diagram drawn to say it: two players' tiles woven
  * into each other, squares built on until they are full, and solid blocks of
  * tiles that score again for being solid.
@@ -162,7 +162,7 @@ const DEMO_SEATS: Record<string, number> = {
 
 /**
  * Squares somebody has already built on: full, so the face goes back to bare
- * board and the letter lights up in the colour of whoever closed it.
+ * board and the letter lights up in the color of whoever closed it.
  */
 const DEMO_FULL = ["1,1", "0,2", "1,2", "1,3", "3,3", "2,4", "1,5", "3,5"];
 

@@ -67,15 +67,15 @@
 
 /*
  * A ring, not a fraction: --fill (0 to 1, set inline per letter, the share
- * still in the bag) draws a pie chart around each letter -- accent colour
- * for what's drawn, --surface-sunken (the tile's own resting colour, black
+ * still in the bag) draws a pie chart around each letter -- accent color
+ * for what's drawn, --surface-sunken (the tile's own resting color, black
  * on Blueprint and near-white on Ledger) for what's left, bent into a
  * circle so 26 of them read at one glance instead of as one bar chart each.
  * The unused wedge matching the disc behind the letter is deliberate: with
  * nothing drawn yet, the tile should read as plain and untouched in
- * whichever theme it is, not as a ring in a colour of its own -- only the
+ * whichever theme it is, not as a ring in a color of its own -- only the
  * drawn share should stand out. The letter itself sits on that same fixed
- * disc, painted over the ring rather than tinted by it, so its text colour
+ * disc, painted over the ring rather than tinted by it, so its text color
  * never has to fight a background that ranges from solid accent green to
  * solid black or white depending on the letter -- readable is worth more
  * here than the ring reaching all the way to the centre. A letter at zero
@@ -86,7 +86,7 @@
  * and a screen reader, rather than on the tile itself.
  *
  * It is a button because it is tapped, and it must not look like one. Every
- * affordance is stripped: no border, no padding, no press or hover colour,
+ * affordance is stripped: no border, no padding, no press or hover color,
  * and no tap highlight -- mobile browsers paint a grey overlay on tap unless
  * told not to, which is exactly the flash a gauge should not do. What is
  * left is the tile that was always here. Keyboard focus is the one exception

@@ -243,10 +243,10 @@ export const GAME = {
   /** 1 is a solo practice game: it starts immediately with no one to wait for. */
   minPlayers: 1,
   /**
-   * Three, one for each colour on the board -- see `--seat-0..2` in
-   * `src/index.css`. A colour is always one of those three regardless of how
+   * Three, one for each color on the board -- see `--seat-0..2` in
+   * `src/index.css`. A color is always one of those three regardless of how
    * many people are actually at the table (§ below), so the seat count and
-   * the colour count are the same number by construction, not by accident.
+   * the color count are the same number by construction, not by accident.
    */
   maxPlayers: 3,
 } as const;

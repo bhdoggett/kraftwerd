@@ -29,7 +29,7 @@ interface ReplayTile {
  * would be the same facts written twice and able to disagree with itself.
  *
  * A tile laid on another takes the square — the letter on top is the one that
- * reads, and it wears the colour of whoever laid it — while the count of what
+ * reads, and it wears the color of whoever laid it — while the count of what
  * has landed there carries on, since that is what closes a square.
  */
 export function boardAfter(

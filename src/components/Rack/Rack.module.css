@@ -129,8 +129,8 @@
   z-index: 1;
 }
 
-/* Deliberately no glyph: a blank is blank. The face colour distinguishes it. */
-/* Its colour comes from data-face in index.css, like every other tile. */
+/* Deliberately no glyph: a blank is blank. The face color distinguishes it. */
+/* Its color comes from data-face in index.css, like every other tile. */
 .blank {
   border-color: var(--tile-edge);
 }

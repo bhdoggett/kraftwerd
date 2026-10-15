@@ -79,7 +79,7 @@ export function CreateGame({
   );
 
   /**
-   * Your own colour. All of GAME.maxPlayers are always on offer, whatever
+   * Your own color. All of GAME.maxPlayers are always on offer, whatever
    * the table actually seats -- a two-player game is not limited to the
    * first two.
    */
@@ -187,7 +187,7 @@ export function CreateGame({
 
         {path !== null && (
           <div className={styles.field}>
-            <span className={styles.label}>Your colour</span>
+            <span className={styles.label}>Your color</span>
             <SeatPicker
               totalSeats={GAME.maxPlayers}
               takenSeats={[]}

@@ -101,7 +101,7 @@
 /*
  * The lines are this element's background showing through the gaps: a
  * hairline, so an empty grid stays light. What keeps two tiles apart is the
- * tone rather than the width — in the ink's own colour a hairline closed up
+ * tone rather than the width — in the ink's own color a hairline closed up
  * between two heavy edges and the tiles read as one.
  */
 .grid {
@@ -147,7 +147,7 @@
 
 /*
  * Tinted the whole time a tile is in hand, so it is obvious where the letter
- * can go — in the player's own colour, since that is the tile about to land
+ * can go — in the player's own color, since that is the tile about to land
  * there. Anything else here would be a third signal competing with the two
  * that mean something: a word that checks out, and one that does not.
  */
@@ -161,7 +161,7 @@
 }
 
 /*
- * The face is the player's colour and the letter is cut out of it in black.
+ * The face is the player's color and the letter is cut out of it in black.
  * No border: a tile reads as sitting above the board catching light, not as
  * a square cut out and inset into it, so the shadow is cast outward and
  * down rather than sunk inward. A thin bright line along the top inside
@@ -207,16 +207,16 @@
    read it follow the blank too. */
 /*
  * A square that has ever had a tile land on another: shaded darker so the
- * history reads at a glance, whatever colour or face is underneath. A filter
+ * history reads at a glance, whatever color or face is underneath. A filter
 /*
- * Depth is told by colour alone for now: a square gets more vivid the more it
+ * Depth is told by color alone for now: a square gets more vivid the more it
  * has been built on (see --tile-tint and [data-stack] in index.css). The
  * diagonal hatching that used to say the same thing is gone — two signals for
  * one fact, and the paler ramp reads better without it.
  */
 
 /*
- * A full square: the letter lights up in the colour of whoever played it,
+ * A full square: the letter lights up in the color of whoever played it,
  * against a face that has gone back to bare board. The pair is the signal —
  * a square nobody can play on again.
  */
@@ -312,12 +312,12 @@
  * A ring inside the square rather than anything that moves it: these are
  * tiles you are about to play around, and a square that grows or shifts is a
  * square you cannot aim at. Only the ring moves -- the tile underneath stays
- * exactly as it is. It fades from bare board into the colour of whoever
+ * exactly as it is. It fades from bare board into the color of whoever
  * played it, three times, and then it is gone: about two seconds, a reminder
  * rather than a state to dismiss.
  *
- * Into the seat colour, never the tile's own face: a full stack's face is
- * bare board, and a ring in the face's colour was black on black on one theme
+ * Into the seat color, never the tile's own face: a full stack's face is
+ * bare board, and a ring in the face's color was black on black on one theme
  * and white on white on the other.
  */
 .recent::after {
@@ -342,7 +342,7 @@
 
 /*
  * A stacked square's face is bare board, so the ring runs the other way:
- * seat colour out to board. Ending on the seat colour, as a fresh tile's
+ * seat color out to board. Ending on the seat color, as a fresh tile's
  * ring does, left it to snap back to black the moment the ring came off.
  */
 .recent[data-stack="2"]::after {
@@ -360,7 +360,7 @@
 
 /*
  * No fading where that is unwelcome: the ring simply sits there in the seat
- * colour instead, and is taken away on the same timer.
+ * color instead, and is taken away on the same timer.
  */
 @media (prefers-reduced-motion: reduce) {
   .recent::after {

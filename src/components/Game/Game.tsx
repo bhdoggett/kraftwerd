@@ -185,7 +185,7 @@ export function Game({
   const [stepAt, setStepAt] = useState<number | null>(null);
   /** The warning a Quit press is asking to be confirmed against, while it is asked. */
   const [quitting, setQuitting] = useState<string | null>(null);
-  /** Colour picked while taking an open seat at a game reached by link. */
+  /** Color picked while taking an open seat at a game reached by link. */
   const [joinSeatChoice, setJoinSeatChoice] = useState<number | null>(null);
 
   /** Live pointer drag: the tile that follows the finger/cursor. */
@@ -796,7 +796,7 @@ export function Game({
   /** Players who have been asked but have not taken their seat yet. */
   const invitees = view.players.filter((p) => p.invited === true).map((p) => p.name);
 
-  // Player id to seat, which is how a tile knows what colour to be.
+  // Player id to seat, which is how a tile knows what color to be.
   const seatOf = new Map(view.players.map((p) => [p.userId, p.seat]));
   const nameOf = new Map(
     view.players.map((p) => [p.userId, p.userId === view.viewerUserId ? "you" : p.name]),
@@ -1021,7 +1021,7 @@ export function Game({
           const card = announcing && (
             <div
               // One element for the whole run of steps, not one per step: it
-              // stays up from one play to the next and changes colour between
+              // stays up from one play to the next and changes color between
               // players, rather than vanishing and fading back in each time.
               className={[styles.announce, rackShown ? styles.announceOverRack : ""].join(" ")}
               data-seat={seatOf.get(noteTurn.userId)}
@@ -1182,7 +1182,7 @@ export function Game({
             ) : view.canJoin ? (
               <>
                 {" "}
-                Pick your colour:{" "}
+                Pick your color:{" "}
                 <SeatPicker
                   totalSeats={GAME.maxPlayers}
                   takenSeats={view.players.map((p) => p.seat)}
@@ -1345,7 +1345,7 @@ export function Game({
             </button>
 
             {/*
-              The same table over again: same people, same colours, same
+              The same table over again: same people, same colors, same
               machines. It is under way the moment it is asked for, on the
               seat of whoever asked -- so this button is the first turn of
               the new game as much as it is the end of the old one.
@@ -1397,7 +1397,7 @@ export function Game({
           Everything here comes from the placement itself — the words, their
           points, the squares, the total — so it is all drawn the moment a tile
           lands. Only whether a word is a word waits on the server, and that
-          changes a chip's colour rather than whether it is there. Swapping the
+          changes a chip's color rather than whether it is there. Swapping the
           whole panel for "checking…" and back was what made the page jump on
           every tile.
         */}

@@ -2,7 +2,7 @@
  * Line icons, drawn rather than typed.
  *
  * Emoji and arrow glyphs render differently on every platform — some in
- * colour, some at the wrong weight, some as a box — so buttons that used them
+ * color, some at the wrong weight, some as a box — so buttons that used them
  * looked accidental. These inherit `currentColor` and the button's size.
  */
 
@@ -173,7 +173,7 @@ export function QuadWordIcon({ size = 16 }: IconProps) {
 }
 
 /**
- * The menu: three tiles, drawn the way the board draws one — a coloured face
+ * The menu: three tiles, drawn the way the board draws one — a colored face
  * inside an ink edge, square like every tile in the game.
  */
 export function MoreIcon({ size = 16 }: IconProps) {

@@ -10,7 +10,7 @@ interface BoardTile {
   y: number;
   letter: string;
   isBlank: boolean;
-  /** Who put it there, so the board can light it in their colour. */
+  /** Who put it there, so the board can light it in their color. */
   placedBy: string;
   /** How many tiles have ever landed here, this one included. */
   stacked: number;
@@ -22,10 +22,10 @@ interface BoardProps {
   layout: string;
   tiles: readonly BoardTile[];
   pending: readonly Placement[];
-  /** Seat number per player id, which is what picks a tile's colour. */
+  /** Seat number per player id, which is what picks a tile's color. */
   seatOf: ReadonlyMap<string, number>;
   /**
-   * Name per player id, for screen readers: the colour that says whose tile
+   * Name per player id, for screen readers: the color that says whose tile
    * this is says nothing to them.
    */
   nameOf?: ReadonlyMap<string, string>;
@@ -352,10 +352,10 @@ export function Board({
       /* Not empty, but still somewhere a tile may go. */
       const playable = !blocked && stage === undefined;
 
-      // Whose colour this square is lit in. A tile being staged is not on the
-      // board yet, but it is the viewer's, so it takes their colour early.
+      // Whose color this square is lit in. A tile being staged is not on the
+      // board yet, but it is the viewer's, so it takes their color early.
       /*
-       * Whose colour the square wears. A tile staged this turn is yours, even
+       * Whose color the square wears. A tile staged this turn is yours, even
        * where it lands on somebody else's — showing the owner underneath made
        * your own play look like theirs until you pressed Play.
        */
@@ -367,7 +367,7 @@ export function Board({
       if (stage) classes.push(styles.pending, styles.tile);
       /*
        * How deep this square has been built, counting a staged tile as the
-       * next one down. It drives the colour: paler when fresh, the pure tube
+       * next one down. It drives the color: paler when fresh, the pure tube
        * when full. `tile.stacked` is what persists; the staged tile is a
        * preview of what the square becomes if the turn is played.
        */
@@ -397,7 +397,7 @@ export function Board({
           // Every square but a blocked one is a drop target now: a tile may
           data-cell={blocked ? undefined : k}
           data-seat={seat === undefined ? undefined : seat % 4}
-          // What kind of tile this is; index.css turns that into a colour.
+          // What kind of tile this is; index.css turns that into a color.
           data-stack={depth >= 2 ? Math.min(depth, 2) : undefined}
           // Only a blank still waiting for its letter reads as one: once it
           // has a letter it scores like any tile, so it looks like any tile.
@@ -407,7 +407,7 @@ export function Board({
           tabIndex={k === cursor ? 0 : -1}
           onFocus={() => setCursor(k)}
           aria-disabled={blocked || (!stage && !canPlace)}
-          // Everything the square shows by shape or colour alone, said in
+          // Everything the square shows by shape or color alone, said in
           // words: the multiplier, whose tile it is, and whether it is full.
           aria-label={[
             blocked

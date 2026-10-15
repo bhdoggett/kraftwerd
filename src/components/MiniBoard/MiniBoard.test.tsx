@@ -25,7 +25,7 @@ describe("a position drawn from a real game", () => {
     ]);
   });
 
-  test("falls back to the one colour where no seat is named", () => {
+  test("falls back to the one color where no seat is named", () => {
     const { container } = render(
       <MiniBoard rows={["AB"]} seat={3} seats={{ "1,0": 0 }} />,
     );
@@ -33,7 +33,7 @@ describe("a position drawn from a real game", () => {
     expect(squares(container).map((s) => s.seat)).toEqual(["3", "0"]);
   });
 
-  test("a square built on is full, whoever's colour it wears", () => {
+  test("a square built on is full, whoever's color it wears", () => {
     const { container } = render(
       <MiniBoard rows={["AB"]} seats={{ "0,0": 0, "1,0": 1 }} full={["1,0"]} />,
     );
@@ -41,7 +41,7 @@ describe("a position drawn from a real game", () => {
     expect(squares(container).map((s) => s.full)).toEqual([false, true]);
   });
 
-  test("named seats win over the played-this-turn colour", () => {
+  test("named seats win over the played-this-turn color", () => {
     const { container } = render(
       <MiniBoard rows={["AB"]} played={["0,0"]} seats={{ "0,0": 1 }} />,
     );
