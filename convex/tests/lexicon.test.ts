@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { lexicon } from "./lexicon";
+import { lexicon } from "../lexicon";
 
 describe("lexicon", () => {
   test("each vocabulary is built once and kept", () => {

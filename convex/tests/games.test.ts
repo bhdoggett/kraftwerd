@@ -1,16 +1,16 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
-import { BAG_SIZE, BLANKS_PER_GAME, RACK, RULES_VERSION } from "../shared/config";
-import { NAMES } from "../shared/names";
-import { api } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
-import schema from "./schema";
-import ALL_WORDS from "../shared/data/words.json" with { type: "json" };
+import { BAG_SIZE, BLANKS_PER_GAME, RACK, RULES_VERSION } from "../../shared/config";
+import { NAMES } from "../../shared/names";
+import { api } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import schema from "../schema";
+import ALL_WORDS from "../../shared/data/words.json" with { type: "json" };
 
 // Excludes test files: globbing them made each test module import the
 // others, which reads as a dependency cycle and loads them needlessly.
-const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
+const modules = import.meta.glob(["../**/*.ts", "!../**/*.test.ts"]);
 
 /** Only the words these tests actually need. */
 const WORDS = ["AD", "DO", "AT", "TO", "A", "I", "ACE", "CAM", "EMU", "EM"];

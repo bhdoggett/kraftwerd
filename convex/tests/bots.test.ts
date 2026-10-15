@@ -1,13 +1,13 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { api, internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
-import schema from "./schema";
+import { api, internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import schema from "../schema";
 
 // Excludes test files: globbing them made each test module import the
 // others, which reads as a dependency cycle and loads them needlessly.
-const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
+const modules = import.meta.glob(["../**/*.ts", "!../**/*.test.ts"]);
 
 const CENTRE = 7;
 

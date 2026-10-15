@@ -128,7 +128,7 @@ Google  ->  Better Auth component  ->  users table  ->  games/players/tiles
 
 ## Testing
 
-`convex/games.test.ts` inserts `users` rows directly with a synthetic
+`convex/tests/games.test.ts` inserts `users` rows directly with a synthetic
 `authId` and calls `t.withIdentity({ subject: authId })`. The game tests
 therefore exercise the real authorization path without standing up the auth
 component at all. If a test ever needs the component itself, the package ships

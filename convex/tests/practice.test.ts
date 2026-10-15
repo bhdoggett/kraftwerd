@@ -1,12 +1,12 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { NAMES } from "../shared/names";
-import { api } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
-import schema from "./schema";
+import { NAMES } from "../../shared/names";
+import { api } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import schema from "../schema";
 
-const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
+const modules = import.meta.glob(["../**/*.ts", "!../**/*.test.ts"]);
 const CENTRE = 7;
 const at = (x: number, letter: string) => ({
   x: CENTRE + x,

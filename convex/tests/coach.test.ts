@@ -1,13 +1,13 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import ALL_WORDS from "../shared/data/words.json" with { type: "json" };
-import { makeDictionary } from "../shared/engine/dictionary";
-import { NAMES } from "../shared/names";
-import { api } from "./_generated/api";
-import schema from "./schema";
+import ALL_WORDS from "../../shared/data/words.json" with { type: "json" };
+import { makeDictionary } from "../../shared/engine/dictionary";
+import { NAMES } from "../../shared/names";
+import { api } from "../_generated/api";
+import schema from "../schema";
 
-const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
+const modules = import.meta.glob(["../**/*.ts", "!../**/*.test.ts"]);
 const FULL = makeDictionary(ALL_WORDS);
 const RACK = ["C", "A", "T", "S", "E", "R", "O"];
 

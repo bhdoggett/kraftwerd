@@ -1,11 +1,11 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { RULES_VERSION } from "../shared/config";
-import { api } from "./_generated/api";
-import schema from "./schema";
+import { RULES_VERSION } from "../../shared/config";
+import { api } from "../_generated/api";
+import schema from "../schema";
 
-const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
+const modules = import.meta.glob(["../**/*.ts", "!../**/*.test.ts"]);
 
 describe("rules seen", () => {
   test("a row from before tracking reads as having seen version 9", async () => {

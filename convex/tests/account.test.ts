@@ -2,10 +2,10 @@
 import betterAuthTest from "@convex-dev/better-auth/test";
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { api, components } from "./_generated/api";
-import schema from "./schema";
+import { api, components } from "../_generated/api";
+import schema from "../schema";
 
-const modules = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"]);
+const modules = import.meta.glob(["../**/*.ts", "!../**/*.test.ts"]);
 
 /**
  * Two people, each with a Better Auth user, a session and a linked Google
