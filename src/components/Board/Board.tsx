@@ -47,6 +47,13 @@ interface BoardProps {
 
 const key = (x: number, y: number) => `${x},${y}`;
 
+/** How far the board zooms out and in, by any means: pinch, wheel or button. */
+const MIN_ZOOM = 0.75;
+const MAX_ZOOM = 2.5;
+/** One press of a zoom button: a quarter of the fitted size, so 0.75 to 2.5 is
+    seven presses and every stop is a round number. */
+const ZOOM_STEP = 0.25;
+
 const BONUS_NAME: Record<number, string> = { 2: "double word", 3: "triple word", 4: "quadruple word" };
 
 const ARROWS: Record<string, [number, number]> = {
@@ -182,7 +189,24 @@ export function Board({
     // Rounded to hundredths: a pinch reports a new distance every frame, and
     // re-laying out 225 squares for a change too small to see is most of what
     // made the gesture feel rough.
-    Math.round(Math.min(2.5, Math.max(0.75, value)) * 100) / 100;
+    Math.round(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)) * 100) / 100;
+
+  /**
+   * Zoom by button, aimed at the middle of what is showing.
+   *
+   * Pinch and ctrl+wheel are the only other ways in, and neither is there for
+   * a keyboard, a switch, or a hand that cannot pinch -- and on a phone,
+   * where the squares are at their smallest, zooming in is how a square
+   * becomes big enough to hit.
+   */
+  const zoomTo = (next: (current: number) => number) => {
+    const el = viewport.current;
+    if (el !== null) {
+      const box = el.getBoundingClientRect();
+      focus.current = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    }
+    setZoom((current) => clamp(next(current)));
+  };
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -427,6 +451,13 @@ export function Board({
                   : "open square",
             empty && bonusMultiplier !== undefined ? BONUS_NAME[bonusMultiplier] : undefined,
             empty && isCentre ? "centre" : undefined,
+            // The word rings are colored, and a dashed ring against a solid
+            // one is still a picture: whether the word stands is said too.
+            badCells?.has(k)
+              ? "in a word that is not valid"
+              : goodCells?.has(k)
+                ? "in a valid word"
+                : undefined,
             `column ${x + 1}, row ${y + 1}`,
           ]
             .filter(Boolean)
@@ -434,10 +465,13 @@ export function Board({
           onPointerDown={(e) => {
             if (stage && onGrabStaged) onGrabStaged(x, y, e);
           }}
-          onClick={() => {
+          onClick={(e) => {
             // Swallowed if this click ended a pan or a drag rather than
-            // being a tap on the square.
-            if (panned.current || dragged.current) return;
+            // being a tap on the square. Not from the keyboard, though:
+            // Enter and Space click with `detail` 0 and no pointerdown, so
+            // nothing ever cleared the flags for them, and the last pan
+            // went on swallowing every key press until the next tap.
+            if (e.detail !== 0 && (panned.current || dragged.current)) return;
             if (blocked) return;
             // Tapping your own staged tile takes it back; anything else is a
             // square you may play onto, whatever is already there.
@@ -461,49 +495,85 @@ export function Board({
   }
 
   return (
-    <div className={styles.frame}>
-      <div
-        ref={viewport}
-        className={styles.viewport}
-        style={{ "--cell-scale": zoom * fit } as React.CSSProperties}
-        onPointerDown={(e) => {
-          pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-          // Cleared for every press, not only for one starting on a staged
-          // tile: the flag outlived the drag that set it, and the click it went
-          // on swallowing was the next tap on any square -- which is how a tile
-          // is placed without dragging one.
-          dragged.current = false;
-          // A staged tile is dragged, not panned from.
-          if ((e.target as HTMLElement).closest("[data-staged]") !== null) {
-            press.current = { x: e.clientX, y: e.clientY };
-            return;
-          }
-          if (pointers.current.size > 1) return;
-
-          panned.current = false;
-          const el = viewport.current;
-          if (el === null) return;
-          pan.current = {
-            x: e.clientX,
-            y: e.clientY,
-            left: el.scrollLeft,
-            top: el.scrollTop,
-          };
-        }}
-      >
+    <div className={styles.board}>
+      <div className={styles.frame}>
         <div
-          ref={grid}
-          role="group"
-          aria-label="Board, use the arrow keys to move between squares"
-          onKeyDown={moveCursor}
-          className={styles.grid}
-          data-seat={yourSeat === null ? undefined : yourSeat % 4}
-          style={{ gridTemplateColumns: `repeat(${boardSize}, var(--cell-size))` }}
+          ref={viewport}
+          className={styles.viewport}
+          style={{ "--cell-scale": zoom * fit } as React.CSSProperties}
+          onPointerDown={(e) => {
+            pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            // Cleared for every press, not only for one starting on a staged
+            // tile: the flag outlived the drag that set it, and the click it went
+            // on swallowing was the next tap on any square -- which is how a tile
+            // is placed without dragging one.
+            dragged.current = false;
+            // A staged tile is dragged, not panned from.
+            if ((e.target as HTMLElement).closest("[data-staged]") !== null) {
+              press.current = { x: e.clientX, y: e.clientY };
+              return;
+            }
+            if (pointers.current.size > 1) return;
+
+            panned.current = false;
+            const el = viewport.current;
+            if (el === null) return;
+            pan.current = {
+              x: e.clientX,
+              y: e.clientY,
+              left: el.scrollLeft,
+              top: el.scrollTop,
+            };
+          }}
         >
-          {cells}
+          <div
+            ref={grid}
+            role="group"
+            aria-label="Board, use the arrow keys to move between squares"
+            onKeyDown={moveCursor}
+            className={styles.grid}
+            data-seat={yourSeat === null ? undefined : yourSeat % 4}
+            style={{ gridTemplateColumns: `repeat(${boardSize}, var(--cell-size))` }}
+          >
+            {cells}
+          </div>
         </div>
+        {zoom > 1 && <div className={styles.edge} aria-hidden="true" />}
       </div>
-      {zoom > 1 && <div className={styles.edge} aria-hidden="true" />}
+      {/* Under the board rather than over it: laid over a corner, the buttons
+          covered a square that, at the fitted size, could not be panned out
+          from under them. Off at either end by aria-disabled rather than
+          disabled, which would drop keyboard focus off the button just
+          pressed; a press there is clamped to nothing anyway. */}
+      <div className={styles.zoom} role="group" aria-label="Board zoom">
+        <button
+          type="button"
+          className={styles.zoomButton}
+          aria-label="Zoom out"
+          aria-disabled={zoom <= MIN_ZOOM}
+          onClick={() => zoomTo((z) => z - ZOOM_STEP)}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          className={styles.zoomButton}
+          aria-label="Fit the board"
+          aria-disabled={zoom === 1}
+          onClick={() => zoomTo(() => 1)}
+        >
+          Fit
+        </button>
+        <button
+          type="button"
+          className={styles.zoomButton}
+          aria-label="Zoom in"
+          aria-disabled={zoom >= MAX_ZOOM}
+          onClick={() => zoomTo((z) => z + ZOOM_STEP)}
+        >
+          +
+        </button>
+      </div>
     </div>
   );
 }

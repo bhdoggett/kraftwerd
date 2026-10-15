@@ -91,7 +91,7 @@
  * told not to, which is exactly the flash a gauge should not do. What is
  * left is the tile that was always here. Keyboard focus is the one exception
  * and shows a ring, because a control nobody can see themselves on is not
- * reachable without a pointer.
+ * reachable without a pointer -- see .letter:focus-visible below.
  */
 .letter {
   position: relative;
@@ -114,6 +114,18 @@
   font-synthesis-weight: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * The page's own focus ring (index.css), named here so stripping the button
+ * down can never take it with it, and lifted: the discs sit 3px apart, so the
+ * ring reaches over the next one, and a later sibling paints over an earlier
+ * one's ring unless it is raised.
+ */
+.letter:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  z-index: 1;
 }
 
 /*

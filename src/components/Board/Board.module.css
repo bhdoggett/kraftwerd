@@ -83,6 +83,48 @@
   z-index: 2;
 }
 
+/* The board and its zoom buttons, one under the other. */
+.board {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * Zoom by button, for anyone who cannot pinch or has no wheel. Right-aligned
+ * under the board's edge, in from it by the frame's own padding so the row
+ * lines up with the grid rather than with the room around it.
+ */
+.zoom {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  padding-inline: var(--space-3);
+}
+
+/* At least 24px each way, the smallest a target should be to hit reliably --
+   which is the point of having them, on a phone. */
+.zoomButton {
+  min-width: 32px;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.zoomButton:hover:not([aria-disabled="true"]) {
+  background: var(--surface-sunken);
+}
+
+.zoomButton[aria-disabled="true"] {
+  opacity: var(--disabled-opacity);
+  cursor: default;
+}
+
 /* 15 columns at full size overflow a phone, so the squares shrink instead. */
 @media (max-width: 640px) /* phone */ {
   .viewport {
@@ -115,6 +157,12 @@
 
 .cell {
   position: relative;
+  /*
+   * How far in from the edge the word rings start. Nothing, until the square
+   * has keyboard focus: the focus ring takes the outermost band then, and the
+   * word ring steps inside it rather than being painted over.
+   */
+  --ring-at: 0px;
   /* One named area: anything in a cell stacks rather than pushing the letter. */
   grid-template-areas: "cell";
   width: var(--cell-size);
@@ -141,6 +189,33 @@
   cursor: default;
 }
 
+/*
+ * Keyboard focus, inside the square rather than round it: the gap between
+ * squares is a hairline, so a ring outside would sit on the neighbours and be
+ * half hidden by them. Lifted above them all the same, so a neighbour's cast
+ * shadow does not fall across it.
+ *
+ * In the page's own ink on bare board, and in the tile's ink on a tile -- the
+ * page ink is near-white on the dark theme, which all but vanishes against a
+ * gold face.
+ */
+.cell:focus-visible {
+  --ring-at: 3px;
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+  z-index: 1;
+}
+
+.tile:focus-visible {
+  outline-color: var(--tile-text);
+}
+
+/* A full square's face is bare board again, so it takes the board's ink -- a
+   blank's grey face excepted, which is pale on both themes. */
+.tile[data-stack="2"]:not([data-face="blank"]):focus-visible {
+  outline-color: var(--focus);
+}
+
 .viewport:active {
   cursor: grabbing;
 }
@@ -153,6 +228,16 @@
  */
 .armed {
   background: color-mix(in srgb, var(--tile-face) 22%, var(--cell-empty));
+}
+
+/*
+ * A bonus mark on a tinted square is drawn in the page's ink, not the grid's.
+ * The grid line only just clears 3:1 against bare board, and any tint at all
+ * pulled it under -- to 2:1 on gold in the dark. Paling the tint did not
+ * rescue it either: on paper the line fails at any tint worth having.
+ */
+.armed .bonusMark {
+  color: var(--text);
 }
 
 /* Only squares a click would actually fill respond to the pointer. */
@@ -290,17 +375,45 @@
 }
 
 /*
- * Whole-word feedback. Marked with an outline rather than a border so the
- * tile's own edge is untouched and words that cross do not fight each other.
+ * Whole-word feedback. Inset shadows rather than a border, so the tile's own
+ * edge is untouched and words that cross do not fight each other -- and not
+ * an outline any more, which is what keyboard focus draws with: a square in a
+ * word had no focus ring to show.
+ *
+ * Two-tone, the colored ring with a band of the tile's ink inside it. Green
+ * or red alone measured 1.1 to 2.5:1 against the seat faces, and the ink
+ * clears 6:1 on every one of them, so it is the ink that shows where the ring
+ * is and the color that says which kind.
+ *
+ * Words are tiles, so the tile's own shadow goes on underneath.
  */
 .inWord {
-  outline: 2px solid var(--play);
-  outline-offset: -2px;
+  box-shadow:
+    inset 0 0 0 calc(var(--ring-at) + 2px) var(--play),
+    inset 0 0 0 calc(var(--ring-at) + 4px) var(--tile-text),
+    var(--tile-shadow);
 }
 
+/*
+ * A word that does not stand is dashed as well as red, so it does not rest on
+ * telling red from green: a band of ink with red dashes laid along it. A box
+ * shadow cannot dash, so the dashes are a border on a layer of their own.
+ * Declared after .inWord, so a square in one word of each kind shows this.
+ */
 .inBadWord {
-  outline: 2px solid var(--invalid);
-  outline-offset: -2px;
+  box-shadow:
+    inset 0 0 0 calc(var(--ring-at) + 4px) var(--tile-text),
+    var(--tile-shadow);
+}
+
+.inBadWord::before {
+  content: "";
+  grid-area: cell;
+  align-self: stretch;
+  justify-self: stretch;
+  margin: var(--ring-at);
+  border: 3px dashed var(--invalid);
+  pointer-events: none;
 }
 
 /* The letter shifts up and left, and sets a little smaller, so the 2x has the
@@ -312,13 +425,13 @@
  * A ring inside the square rather than anything that moves it: these are
  * tiles you are about to play around, and a square that grows or shifts is a
  * square you cannot aim at. Only the ring moves -- the tile underneath stays
- * exactly as it is. It fades from bare board into the color of whoever
- * played it, three times, and then it is gone: about two seconds, a reminder
- * rather than a state to dismiss.
+ * exactly as it is. It fades from bare board into the tile's own ink, four
+ * times, and then it is gone: about two seconds, a reminder rather than a
+ * state to dismiss.
  *
- * Into the seat color, never the tile's own face: a full stack's face is
- * bare board, and a ring in the face's color was black on black on one theme
- * and white on white on the other.
+ * Into the ink, not the seat color: a fresh tile's face is the seat color,
+ * all but exactly, so a ring that ended there ended invisible -- 1:1 at the
+ * very moment it was meant to be strongest. The ink clears 6:1 on every face.
  */
 .recent::after {
   content: "";
@@ -336,14 +449,15 @@
     border-color: var(--cell-empty);
   }
   to {
-    border-color: var(--seat-full);
+    border-color: var(--tile-text);
   }
 }
 
 /*
  * A stacked square's face is bare board, so the ring runs the other way:
- * seat color out to board. Ending on the seat color, as a fresh tile's
- * ring does, left it to snap back to black the moment the ring came off.
+ * seat color out to board. Ending on the seat color left it to snap back to
+ * black the moment the ring came off. The seat's color as bare board reads
+ * it (--seat-lit), not the raw tube: gold on paper was barely there.
  */
 .recent[data-stack="2"]::after {
   animation-name: recent-play-stacked;
@@ -351,7 +465,7 @@
 
 @keyframes recent-play-stacked {
   from {
-    border-color: var(--seat-full);
+    border-color: var(--seat-lit);
   }
   to {
     border-color: var(--cell-empty);
@@ -359,13 +473,21 @@
 }
 
 /*
- * No fading where that is unwelcome: the ring simply sits there in the seat
- * color instead, and is taken away on the same timer.
+ * No fading where that is unwelcome: the ring simply sits there instead, in
+ * whatever its animation was strongest in, and is taken away on the same
+ * timer.
  */
 @media (prefers-reduced-motion: reduce) {
   .recent::after {
     animation: none;
-    border-color: var(--seat-full);
+    border-color: var(--tile-text);
+  }
+
+  /* Named again here: the stacked rule above outranks the plain one, and
+     brought its fade back even with motion turned down. */
+  .recent[data-stack="2"]::after {
+    animation: none;
+    border-color: var(--seat-lit);
   }
 
   /* The pending border already says the blank is waiting; a pulse that never
