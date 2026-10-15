@@ -1,12 +1,21 @@
 <!--
-  The card a messaging app draws for a shared link: the two tiles as the board
-  shows them, side by side in adjoining squares with the grid running between
-  them, and the squares around cropped by the edge of the picture.
+  No double hyphens anywhere in these comments: XML forbids them, and an
+  image that fails to parse simply does not show.
 
-  Everything is the board's own proportion -- a hairline of grid at 1/36 of a
-  square, the tile's edge drawn inside at 0.083, the letter at 0.6 -- so the
-  card and the game show the same object. No glow: a tile glows in the rack
-  and in the header mark, never once it is down.
+  The card a messaging app draws for a shared link: the header's two tiles
+  as the board shows them, side by side in adjoining squares with the grid
+  running between them, and the squares around cropped by the edge of the
+  picture. Dark theme throughout, as the favicon is.
+
+  Everything is the board's own proportion: a hairline of grid at 1/36 of a
+  square, the tile's edge drawn inside at 0.083, a cap height of 0.41 of the
+  square, as in the header. No glow: a tile glows in the rack and in the
+  header mark, never once it is down.
+
+  Every letter is Readex Pro as an outline, not text: crawlers render this
+  without the web font, so text here fell back to whatever the machine had.
+  The tiles are Bold, the name under them Medium in the headings' caps and
+  0.14em tracking. Regenerate the paths from the font if the face changes.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
@@ -33,15 +42,17 @@
     </mask>
   </defs>
 
+  <!-- Dark theme's surface. -->
   <rect width="1200" height="630" fill="#08080a"/>
-  <rect x="0" y="0" width="1200" height="10" fill="#ff2bd1"/>
 
   <!-- The board around the play. Faded; the tiles on top are not, so nothing
        eats into a face or an edge. -->
   <g clip-path="url(#patch)" mask="url(#fade)">
-    <!-- The grid lines are this showing through the gaps between squares. -->
-    <rect x="362" y="80" width="477" height="276" fill="#35353e"/>
-    <g fill="#101014">
+    <!-- The grid lines are this showing through the gaps between squares:
+         dark theme's cell-line token, Pacific at 42% on black. -->
+    <rect x="362" y="80" width="477" height="276" fill="#124d55"/>
+    <!-- Dark theme's cell-empty token. -->
+    <g fill="#060608">
       <rect x="201" y="-81" width="196" height="196"/>
       <rect x="402" y="-81" width="196" height="196"/>
       <rect x="603" y="-81" width="196" height="196"/>
@@ -55,21 +66,17 @@
     </g>
   </g>
 
-  <!-- K, seat 2: lime. -->
+  <!-- K, seat 2: Royal Gold, the pure tube as the header mark wears it. -->
   <rect x="402" y="120" width="196" height="196" fill="#000000"/>
-  <rect x="418" y="136" width="164" height="164" fill="#b8ff2b"/>
-  <text x="500" y="260" font-family="Futura, Avenir Next, Century Gothic, Helvetica"
-        font-size="118" font-weight="bold" fill="#0b0b0d" text-anchor="middle">K</text>
+  <rect x="418" y="136" width="164" height="164" fill="#fed766"/>
+  <path fill="#0b0b0d" d="M477.4 234.6 472.3 218 511.9 178H535.1ZM462.9 258V178H482.4V258ZM514.3 258 484.7 218.9 497.8 207.6 537.1 258Z"/>
 
-  <!-- W, seat 1: magenta, in the square next door. -->
+  <!-- W, seat 1: Pacific, in the square next door. -->
   <rect x="603" y="120" width="196" height="196" fill="#000000"/>
-  <rect x="619" y="136" width="164" height="164" fill="#ff2bd1"/>
-  <text x="701" y="260" font-family="Futura, Avenir Next, Century Gothic, Helvetica"
-        font-size="118" font-weight="bold" fill="#0b0b0d" text-anchor="middle">W</text>
+  <rect x="619" y="136" width="164" height="164" fill="#2ab7ca"/>
+  <path fill="#0b0b0d" d="M668.7 258 644.6 178H664.5L676.6 220.1Q677.6 223.7 678.3 227.5Q679 231.4 679.5 234.6Q679.9 237.9 680 239.7L677.4 239.8Q678.2 235.5 678.7 232.2Q679.1 228.9 679.8 225.9Q680.5 223 681.5 220.1L693.5 188.4H709.2L720.9 220.1Q722.3 223.8 723.2 227.2Q724 230.6 724.5 233.5Q725.1 236.4 725.4 239.3L723 239.7Q723.2 237.5 723.4 235.8Q723.6 234.1 723.7 232.5Q723.8 230.8 724 229Q724.3 227.3 724.7 225Q725.2 222.8 726 219.9L737.9 178H757.4L733.3 258H718.4L699.3 212.1L701.5 212.3L684 258Z"/>
 
-  <!-- Medium, not the tiles' bold: set like a record sleeve, wide and light,
-       so the name reads as a caption under the mark rather than competing
-       with it. -->
-  <text x="600" y="512" font-family="Futura, Avenir Next, Century Gothic, Helvetica" font-size="82" font-weight="500" letter-spacing="16"
-        fill="#f2f2f5" text-anchor="middle">KRAFTWERD</text>
+  <!-- Medium, not the tiles' bold: a caption under the mark rather than
+       competing with it. -->
+  <path fill="#f2f2f5" d="M328.6 496.1 327.2 486.3 354.5 458.8H366.9ZM320.8 512V458.8H330.6V512ZM355.7 512 335.6 485.2 342.5 479.2 367.6 512ZM387.3 512V458.8H410.4Q415.2 458.8 419.1 461Q423 463.3 425.4 467.1Q427.7 470.9 427.7 475.8Q427.7 480.3 425.4 484.1Q423 487.9 419.1 490.2Q415.2 492.5 410.4 492.5H396.9V512ZM418.2 512 404.7 488 414.8 486.1 429.8 512.1ZM396.9 483.8H410.6Q412.7 483.8 414.3 482.8Q416 481.8 416.9 480Q417.9 478.2 417.9 476Q417.9 473.5 416.7 471.6Q415.5 469.8 413.5 468.7Q411.4 467.7 408.8 467.7H396.9ZM445.1 512 465.8 458.8H475.1L495.7 512H485.5L474 481.6Q473.7 480.7 473 478.8Q472.4 476.8 471.6 474.5Q470.9 472.1 470.2 470.1Q469.6 468.1 469.3 467.2L471.2 467.1Q470.8 468.6 470.2 470.5Q469.6 472.5 468.9 474.5Q468.2 476.6 467.5 478.5Q466.8 480.4 466.3 481.9L454.9 512ZM454.5 499.8 457.9 491.2H482.1L485.8 499.8ZM514.8 512V458.8H524.6V512ZM519.2 490.1V481.2H546.7V490.1ZM519.2 467.9V458.8H550V467.9ZM582.1 512V467.9H567V458.8H607.5V467.9H591.9V512ZM638.7 512 622.1 458.8H632.3L641.9 490.3Q642.5 492.2 642.9 494.6Q643.4 497 643.8 499.1Q644.2 501.2 644.3 502.4L642.3 502.4Q643.2 498.8 643.8 496.5Q644.3 494.3 644.7 492.9Q645.1 491.5 645.5 490.3L654.6 467.2H663L671.7 490.3Q672.6 492.3 673.1 494.3Q673.7 496.2 674.1 498Q674.5 499.9 675 501.8L673.1 502.3Q673.4 500.4 673.6 499.3Q673.7 498.1 673.9 497.2Q674 496.3 674.2 495.5Q674.3 494.6 674.6 493.3Q675 492.1 675.5 490.1L684.9 458.8H695.1L678.5 512H671.4L657.8 479.6L658.7 479.9L645.8 512ZM714.3 512V458.8H749V467.8H724V503H749.3V512ZM718.9 489.2V480.4H745.1V489.2ZM772.4 512V458.8H795.5Q800.3 458.8 804.2 461Q808.1 463.3 810.5 467.1Q812.8 470.9 812.8 475.8Q812.8 480.3 810.5 484.1Q808.1 487.9 804.2 490.2Q800.3 492.5 795.5 492.5H782V512ZM803.3 512 789.8 488 799.9 486.1 814.9 512.1ZM782 483.8H795.6Q797.8 483.8 799.4 482.8Q801.1 481.8 802 480Q802.9 478.2 802.9 476Q802.9 473.5 801.8 471.6Q800.6 469.8 798.6 468.7Q796.5 467.7 793.9 467.7H782ZM836.1 512V458.8H857.4Q863.2 458.8 867.9 460.7Q872.6 462.6 875.9 466.2Q879.2 469.7 881 474.6Q882.8 479.5 882.8 485.4Q882.8 491.3 881 496.2Q879.2 501.1 875.9 504.6Q872.6 508.2 867.9 510.1Q863.2 512 857.4 512ZM845.9 504.3 845.2 502.9H857.1Q860.8 502.9 863.7 501.7Q866.7 500.5 868.7 498.2Q870.7 495.9 871.8 492.7Q872.9 489.4 872.9 485.4Q872.9 481.4 871.8 478.1Q870.7 474.9 868.7 472.6Q866.6 470.3 863.7 469.1Q860.8 467.9 857.1 467.9H844.9L845.9 466.7Z"/>
 </svg>

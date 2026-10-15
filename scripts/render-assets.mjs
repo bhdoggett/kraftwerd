@@ -6,15 +6,16 @@
  * will not render an SVG at all, and iOS, which wants a fixed-size PNG for
  * a home-screen icon. Edit the SVG, run this, commit both.
  *
- * The renderer is the Chrome already on the machine rather than a library:
- * these marks are drawn in Futura, and matching a system font is the one
- * thing a bundled rasteriser cannot do.
+ * The renderer is the Chrome already on the machine rather than a library.
+ * It used to have to be: the marks were set in Futura, and matching a system
+ * font is the one thing a bundled rasteriser cannot do. Every letter in them
+ * is an outline now, so nothing here depends on what fonts are installed.
  *
- * Usage: node scripts/render-assets.mjs [--allow-font-fallback]
+ * Usage: node scripts/render-assets.mjs
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,14 +29,6 @@ const ASSETS = [
   // apple-touch-icon: what iOS puts on a home screen.
   { name: "favicon", width: 180, height: 180 },
 ];
-
-/**
- * The face the marks are set in. Futura ships on macOS and almost nowhere
- * else, so a machine without it renders the letters in whatever the browser
- * falls back to -- which still produces a perfectly good-looking PNG, and is
- * why this is checked rather than left to be noticed later in a link preview.
- */
-const FONT = "Futura";
 
 function findChrome() {
   const candidates = [
@@ -78,46 +71,10 @@ function shoot(url, ...flags) {
   );
 }
 
-/**
- * Whether the face is installed. Asked of the system rather than of the
- * browser: a headless Chrome reports nothing back except the picture it
- * draws, and a font that is missing is exactly what the picture would not
- * tell you.
- */
-function hasFont(family) {
-  const named = new RegExp(`^${family}`, "i");
-
-  try {
-    // Linux, where fontconfig is the answer for fonts installed anywhere.
-    const listed = execFileSync("fc-list", [":", "family"], { encoding: "utf8" });
-    return listed.split("\n").some((line) => named.test(line.trim()));
-  } catch {
-    // macOS, which has no fc-list: the places a font can be installed.
-    const dirs = [
-      "/System/Library/Fonts",
-      "/System/Library/Fonts/Supplemental",
-      "/Library/Fonts",
-      join(homedir(), "Library", "Fonts"),
-    ];
-    return dirs
-      .filter((dir) => existsSync(dir))
-      .some((dir) => readdirSync(dir).some((file) => named.test(file)));
-  }
-}
-
 /** The size a PNG says it is, read straight out of its IHDR header. */
 function pngSize(path) {
   const header = readFileSync(path).subarray(16, 24);
   return { width: header.readUInt32BE(0), height: header.readUInt32BE(4) };
-}
-
-if (!hasFont(FONT) && !process.argv.includes("--allow-font-fallback")) {
-  console.error(
-    `${FONT} is not installed, so the letters would come out in a fallback face.\n` +
-      "Render on a Mac, or pass --allow-font-fallback if that is what you want.",
-  );
-  rmSync(work, { recursive: true, force: true });
-  process.exit(1);
 }
 
 for (const { name, width, height } of ASSETS) {
