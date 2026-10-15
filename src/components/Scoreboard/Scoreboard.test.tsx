@@ -64,6 +64,7 @@ describe("asking somebody to be friends", () => {
   test("asks nobody you are already friends with", () => {
     drawWith([{ userId: "u2", state: "friends" }]);
 
+    expect(screen.queryByText(/friend invite/)).toBeNull();
     expect(screen.queryByLabelText(/friend invite/)).toBeNull();
   });
 
@@ -71,34 +72,40 @@ describe("asking somebody to be friends", () => {
     drawWith([{ userId: "u2", state: "asked" }]);
 
     expect(screen.queryByLabelText("Send friend invite to Bob")).toBeNull();
-    expect(screen.getByLabelText("Friend invite sent to Bob")).toBeTruthy();
+    expect(screen.getByText("Friend invite sent to Bob")).toBeTruthy();
   });
 
   test("says when they are the one waiting on you", () => {
     drawWith([{ userId: "u2", state: "asking" }]);
 
-    expect(screen.getByLabelText("Bob sent you a friend invite")).toBeTruthy();
+    expect(screen.getByText("Bob sent you a friend invite")).toBeTruthy();
   });
 
   test("offers nothing at a table it was given nothing about", () => {
     drawWith([]);
 
+    expect(screen.queryByText(/friend invite/)).toBeNull();
     expect(screen.queryByLabelText(/friend invite/)).toBeNull();
   });
 });
+
+/** The number on screen beside the words a screen reader is given for it. */
+function shownFor(said: string) {
+  return screen.getByText(said).parentElement?.querySelector('[aria-hidden="true"]')?.textContent;
+}
 
 describe("what everyone is holding", () => {
   test("says how many tiles each player has in hand once the bag is dry", () => {
     draw("active");
 
-    expect(screen.getByLabelText("7 tiles in hand").textContent).toBe("7");
-    expect(screen.getByLabelText("3 tiles in hand").textContent).toBe("3");
+    expect(shownFor("7 tiles in hand")).toBe("7");
+    expect(shownFor("3 tiles in hand")).toBe("3");
   });
 
   test("still says so once the game is over, when it decided the score", () => {
     draw("finished");
 
-    expect(screen.getByLabelText("3 tiles in hand").textContent).toBe("3");
+    expect(shownFor("3 tiles in hand")).toBe("3");
   });
 
   test("says nothing while the bag can still fill every hand", () => {
@@ -106,13 +113,13 @@ describe("what everyone is holding", () => {
     // every row and mean nothing.
     draw("active", 20);
 
-    expect(screen.queryByLabelText(/tiles in hand/)).toBeNull();
+    expect(screen.queryByText(/tiles? in hand/)).toBeNull();
   });
 
   test("says nothing about hands before the game has dealt any", () => {
     draw("lobby");
 
-    expect(screen.queryByLabelText(/tiles in hand/)).toBeNull();
+    expect(screen.queryByText(/tiles? in hand/)).toBeNull();
   });
 
   test("one tile is a tile, not tiles", () => {
@@ -127,7 +134,7 @@ describe("what everyone is holding", () => {
       />,
     );
 
-    expect(screen.getByLabelText("1 tile in hand").textContent).toBe("1");
+    expect(shownFor("1 tile in hand")).toBe("1");
   });
 
   test("says nothing for a hand it cannot honestly count", () => {
@@ -142,6 +149,6 @@ describe("what everyone is holding", () => {
       />,
     );
 
-    expect(screen.queryByLabelText(/tiles in hand/)).toBeNull();
+    expect(screen.queryByText(/tiles? in hand/)).toBeNull();
   });
 });

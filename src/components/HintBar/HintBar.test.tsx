@@ -77,7 +77,7 @@ describe("HintBar", () => {
     const { unmount } = bar({ result: null, onAsk });
     fireEvent.click(words());
     expect(onAsk).toHaveBeenCalledTimes(1);
-    expect(screen.getByLabelText("Thinking…")).toBeTruthy();
+    expect(screen.getAllByText("Thinking…").length).toBeGreaterThan(0);
     unmount();
 
     const again = vi.fn();

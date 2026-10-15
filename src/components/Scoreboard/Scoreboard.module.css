@@ -72,6 +72,10 @@
   font-variant-numeric: tabular-nums;
   /* Dark ink on a bright seat color, same pairing a tile itself uses. */
   color: var(--tile-text);
+  /* A hairline of that ink round the edge: a pale seat color on a pale card
+     is under 3:1, and the dot is how a seat is told apart. Inset, so it adds
+     nothing to the size; the on-turn ring below repeats it. */
+  box-shadow: inset 0 0 0 1px var(--tile-text);
 }
 
 /*
@@ -174,6 +178,7 @@
  */
 .onTurn {
   box-shadow:
+    inset 0 0 0 1px var(--tile-text),
     0 0 0 2px var(--surface-sunken),
     0 0 0 4px var(--accent);
 }
@@ -205,10 +210,12 @@
   gap: 2px;
 }
 
+/* Spent pips are outlined in the muted text color: --border-strong was 2.9:1
+   on a light card, too faint to count. */
 .pip {
   width: 7px;
   height: 7px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--text-muted);
   border-radius: 2px;
 }
 
@@ -280,6 +287,7 @@
      here, not the card's: there is no card behind it. */
   .onTurn {
     box-shadow:
+      inset 0 0 0 1px var(--tile-text),
       0 0 0 2px var(--surface-raised),
       0 0 0 4px var(--accent);
   }

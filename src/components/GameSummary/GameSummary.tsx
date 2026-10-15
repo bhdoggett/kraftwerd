@@ -1,5 +1,6 @@
 import type { PlayerSummary } from "../../../shared/summary";
 import { average } from "./figures";
+import { SrOnly } from "../SrOnly/SrOnly";
 import styles from "./GameSummary.module.css";
 
 interface SummaryPlayer {
@@ -50,7 +51,7 @@ export function GameSummary({ summary, players }: GameSummaryProps) {
         <thead>
           <tr>
             <th scope="col">
-              <span className={styles.srOnly}>Figure</span>
+              <SrOnly>Figure</SrOnly>
             </th>
             {rows.map(({ player }) => (
               <th

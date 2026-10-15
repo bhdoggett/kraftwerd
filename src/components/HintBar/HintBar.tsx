@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { HintMove, HintResult } from "../../../shared/sim/coach";
 import { blanksLabel, reasonsOf } from "../../lib/hintReasons";
 import { Modal } from "../Modal/Modal";
+import { SrOnly } from "../SrOnly/SrOnly";
 import styles from "./HintBar.module.css";
 
 interface HintBarProps {
@@ -25,17 +26,21 @@ interface HintBarProps {
  * "Thinking" with its dots counting up, none to three and round again, so
  * a wait that runs a few seconds still looks alive. Every dot is always laid
  * out and only shown in turn, so the button does not change width as they
- * come and go. Read out once, as plain "Thinking…".
+ * come and go. Read as plain "Thinking…": an aria-label on a span is ignored,
+ * so the words are there in full for a screen reader instead. Saying it aloud
+ * is the bar's status region's job -- one that mounts already holding its
+ * words is often not read.
  */
 function Thinking() {
   return (
-    <span className={styles.thinking} aria-label="Thinking…" role="status">
+    <span className={styles.thinking}>
       <span aria-hidden="true">
         Thinking
         <span className={styles.dot}>.</span>
         <span className={styles.dot}>.</span>
         <span className={styles.dot}>.</span>
       </span>
+      <SrOnly>Thinking…</SrOnly>
     </span>
   );
 }
@@ -71,6 +76,10 @@ export function HintBar({
   return (
     <div className={styles.bar} aria-label="Hints" role="group">
       <span className={styles.tag}>Practice</span>
+      {/* Always here, so the wait is heard as it starts. */}
+      <SrOnly>
+        <span role="status">{loading ? "Thinking…" : ""}</span>
+      </SrOnly>
       {active && (
         <div className={styles.actions}>
           <button
@@ -103,7 +112,11 @@ export function HintBar({
           {result === null && error === null && <p className={styles.note}>
               <Thinking />
             </p>}
-          {error !== null && <p className={styles.error}>{error}</p>}
+          {error !== null && (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          )}
 
           {showing === "hints" && result !== null && (
             <>
