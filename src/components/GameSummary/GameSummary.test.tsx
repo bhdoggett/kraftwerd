@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import type { PlayerSummary } from "../../../shared/summary";
-import { average } from "./figures";
+import { average, perTile } from "./figures";
 import { GameSummary } from "./GameSummary";
 
 afterEach(cleanup);
@@ -34,6 +34,16 @@ describe("average", () => {
 
   test("is a dash for nobody who moved", () => {
     expect(average({ points: 0, turns: 0 })).toBe("–");
+  });
+});
+
+describe("perTile", () => {
+  test("is points a tile played, to one place", () => {
+    expect(perTile({ points: 30, tilesPlayed: 12 })).toBe("2.5");
+  });
+
+  test("is a dash for somebody who played no tiles", () => {
+    expect(perTile({ points: 0, tilesPlayed: 0 })).toBe("–");
   });
 });
 

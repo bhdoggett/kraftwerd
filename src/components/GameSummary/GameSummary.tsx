@@ -1,5 +1,5 @@
 import type { PlayerSummary } from "../../../shared/summary";
-import { average } from "./figures";
+import { average, perTile } from "./figures";
 import { SrOnly } from "../SrOnly/SrOnly";
 import styles from "./GameSummary.module.css";
 
@@ -40,6 +40,7 @@ export function GameSummary({ summary, players }: GameSummaryProps) {
     { label: "Turns", value: (row) => row.turns },
     { label: "Avg / turn", value: average },
     { label: "Tiles played", value: (row) => row.tilesPlayed },
+    { label: "Avg / tile", value: perTile },
     { label: "Stacks", value: (row) => row.stacks },
     { label: "3x3s", value: (row) => row.squares },
     { label: "Best play", value: (row) => row.bestPlay?.score ?? "–" },
