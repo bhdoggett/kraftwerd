@@ -14,6 +14,10 @@
 # One at a time: a rebase commits in quick succession, and a commit that lands
 # while a refresh is running skips its own. The index can then sit a commit
 # behind until the next one, which the stale-index notice still reports.
+#
+# --skip-agents-md: analyze otherwise writes its rules into AGENTS.md and
+# CLAUDE.md, which are checked in and would hand them to contributors who do
+# not have GitNexus. The owner's copy lives in CLAUDE.local.md instead.
 set -uo pipefail
 
 [ "$(git config user.email)" = "bdoggett@gmail.com" ] || exit 0
@@ -32,7 +36,7 @@ mkdir "$lock" 2>/dev/null || exit 0
 
 (
   trap 'rmdir "$lock" 2>/dev/null' EXIT
-  node .gitnexus/run.cjs analyze --index-only >.gitnexus/post-commit.log 2>&1
+  node .gitnexus/run.cjs analyze --index-only --skip-agents-md >.gitnexus/post-commit.log 2>&1
 ) </dev/null >/dev/null 2>&1 &
 disown 2>/dev/null
 
