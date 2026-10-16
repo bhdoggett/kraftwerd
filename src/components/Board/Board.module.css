@@ -405,13 +405,14 @@
  * A ring inside the square rather than anything that moves it: these are
  * tiles you are about to play around, and a square that grows or shifts is a
  * square you cannot aim at. Only the ring moves -- the tile underneath stays
- * exactly as it is. It fades from bare board into the tile's own ink, four
- * times, and then it is gone: about two seconds, a reminder rather than a
- * state to dismiss.
+ * exactly as it is. It fades from bare board into the color of whoever
+ * played it, four times, and then it is gone: about two seconds, a reminder
+ * rather than a state to dismiss.
  *
- * Into the ink, not the seat color: a fresh tile's face is the seat color,
- * all but exactly, so a ring that ended there ended invisible -- 1:1 at the
- * very moment it was meant to be strongest. The ink clears 6:1 on every face.
+ * Into the seat color, not the ink: on the dark board the ink (#0b0b0d) and
+ * bare board (#060608) are both black, so a ring between them never moved.
+ * The pulse is the ring arriving out of the tile's own face and melting back
+ * into it. replayRing.test.ts checks both ends stay apart on every theme.
  */
 .recent::after {
   content: "";
@@ -429,7 +430,7 @@
     border-color: var(--cell-empty);
   }
   to {
-    border-color: var(--tile-text);
+    border-color: var(--seat-full);
   }
 }
 
