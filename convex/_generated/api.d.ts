@@ -19,7 +19,6 @@ import type * as games from "../games.js";
 import type * as hintResult from "../hintResult.js";
 import type * as http from "../http.js";
 import type * as lexicon from "../lexicon.js";
-import type * as migrations from "../migrations.js";
 import type * as seats from "../seats.js";
 import type * as users from "../users.js";
 
@@ -41,7 +40,6 @@ declare const fullApi: ApiFromModules<{
   hintResult: typeof hintResult;
   http: typeof http;
   lexicon: typeof lexicon;
-  migrations: typeof migrations;
   seats: typeof seats;
   users: typeof users;
 }>;
