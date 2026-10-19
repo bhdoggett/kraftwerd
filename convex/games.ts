@@ -775,6 +775,56 @@ export const passTurn = mutation({
   },
 });
 
+/**
+ * Sit down in a seat that was held for you: the yes to an invitation, from
+ * the lobby or from asking for a rematch somebody else already made.
+ */
+async function takeInvitedSeat(
+  ctx: MutationCtx,
+  game: Doc<"games">,
+  me: Doc<"players">,
+) {
+  /*
+   * Seats fill in the order invitations are accepted. Turns go round in
+   * seat order, so taking the lowest seat still held for somebody who has
+   * not answered puts this player's turn before theirs: the round goes
+   * through everyone who has accepted, then waits on whoever has not. They
+   * swap, rack and all -- nobody invited has played yet, so a seat is only
+   * a color and a place in the round.
+   */
+  const ahead = (await seatedAt(ctx, game._id))
+    .filter((p) => p.status === "invited" && p._id !== me._id && p.seat < me.seat)
+    .sort((a, b) => a.seat - b.seat)[0];
+  if (ahead !== undefined) {
+    await ctx.db.patch("players", ahead._id, { seat: me.seat });
+    await ctx.db.patch("players", me._id, { seat: ahead.seat });
+    me.seat = ahead.seat;
+  }
+
+  await ctx.db.patch("players", me._id, { status: "joined" });
+
+  const players = await seatedAt(ctx, game._id);
+
+  // Everyone in: a game that was waiting on its last answer starts.
+  const waiting = players.filter((p) => p.status === "invited");
+  if (waiting.length === 0 && players.length === game.playerCount) {
+    await ctx.db.patch("games", game._id, { status: "active" });
+  }
+
+  /*
+   * Accepting is sitting down, so it takes a held turn the same way joining
+   * by link does -- the seat was already yours, and the game was waiting on
+   * somebody to fill it.
+   */
+  if (game.turnHeld === true) {
+    await ctx.db.patch("games", game._id, {
+      currentSeat: me.seat,
+      turnHeld: false,
+    });
+    await wakeBot(ctx, game._id);
+  }
+}
+
 /** Accept or decline an invitation to a game. */
 export const respondToInvite = mutation({
   args: { gameId: v.id("games"), accept: v.boolean() },
@@ -809,48 +859,17 @@ export const respondToInvite = mutation({
       return null;
     }
 
-    /*
-     * Seats fill in the order invitations are accepted. Turns go round in
-     * seat order, so taking the lowest seat still held for somebody who has
-     * not answered puts this player's turn before theirs: the round goes
-     * through everyone who has accepted, then waits on whoever has not. They
-     * swap, rack and all -- nobody invited has played yet, so a seat is only
-     * a color and a place in the round.
-     */
-    const ahead = (await seatedAt(ctx, args.gameId))
-      .filter((p) => p.status === "invited" && p._id !== me._id && p.seat < me.seat)
-      .sort((a, b) => a.seat - b.seat)[0];
-    if (ahead !== undefined) {
-      await ctx.db.patch("players", ahead._id, { seat: me.seat });
-      await ctx.db.patch("players", me._id, { seat: ahead.seat });
-      me.seat = ahead.seat;
-    }
-
-    await ctx.db.patch("players", me._id, { status: "joined" });
-
-    const players = await seatedAt(ctx, args.gameId);
-
-    // Everyone in: a game that was waiting on its last answer starts.
-    const waiting = players.filter((p) => p.status === "invited");
-    if (waiting.length === 0 && players.length === game.playerCount) {
-      await ctx.db.patch("games", args.gameId, { status: "active" });
-    }
-
-    /*
-     * Accepting is sitting down, so it takes a held turn the same way joining
-     * by link does -- the seat was already yours, and the game was waiting on
-     * somebody to fill it.
-     */
-    if (game.turnHeld === true) {
-      await ctx.db.patch("games", args.gameId, {
-        currentSeat: me.seat,
-        turnHeld: false,
-      });
-      await wakeBot(ctx, args.gameId);
-    }
+    await takeInvitedSeat(ctx, game, me);
     return null;
   },
 });
+
+/** The rematch made from `game`, unless there is none or it was turned down. */
+async function liveRematch(ctx: QueryCtx, game: Doc<"games">) {
+  if (game.rematchId === undefined) return null;
+  const again = await ctx.db.get("games", game.rematchId);
+  return again === null || again.declinedBy !== undefined ? null : again;
+}
 
 /**
  * Play the same people again.
@@ -890,8 +909,21 @@ export const rematch = mutation({
       throw new ConvexError("That game never got going");
     }
 
-    // Somebody at this table got there first. Theirs is the rematch.
-    if (before.rematchId !== undefined) return { gameId: before.rematchId };
+    /*
+     * Somebody at this table got there first. Theirs is the rematch, and
+     * asking for it is sitting down at it: the seat held for you there is an
+     * invitation, and this is the answer. Unless it was turned down -- then
+     * there is no table left to join, and this asks for a new one.
+     */
+    const made = await liveRematch(ctx, before);
+    if (made !== null) {
+      const seat = await seatOf(ctx, made._id, userId);
+      if (seat?.status === "invited") {
+        refuseGuest(me);
+        await takeInvitedSeat(ctx, made, seat);
+      }
+      return { gameId: made._id };
+    }
 
     const gameId = await ctx.db.insert("games", {
       layout: pickLayout(),
@@ -1668,6 +1700,9 @@ export const getGame = query({
     // player, every turn, live.
     const names = await namesAt(ctx, userId, game, players);
 
+    const again = await liveRematch(ctx, game);
+    const yoursThere = again === null ? null : await seatOf(ctx, again._id, userId);
+
     return {
       layout: OPEN_BOARD,
       /**
@@ -1682,6 +1717,15 @@ export const getGame = query({
       seatsFilled: seated.length,
       /** The turn is waiting for somebody to take the seat it landed on. */
       turnHeld: game.turnHeld === true,
+      /**
+       * The game made to play this table again, once somebody has asked for
+       * it: null until then, and null again if it was turned down. `joined`
+       * is whether the viewer is sitting at it yet or still owes an answer.
+       */
+      rematch:
+        again === null
+          ? null
+          : { gameId: again._id, joined: yoursThere?.status !== "invited" },
       game,
       /**
        * How many tiles nobody has drawn yet. The count, never the contents —

@@ -2857,6 +2857,51 @@ describe("playing the same people again", () => {
     expect(games).toHaveLength(2);
   });
 
+  test("the second person to ask sits down at the first one's table", async () => {
+    // Their seat was held for them as an invitation. Asking again is the
+    // answer to it, rather than a second answer still owed from the lobby.
+    const { t, gameId, asAlice, asBob, alice } = await played();
+
+    const bobs = await asBob.mutation(api.games.rematch, { gameId });
+    await asAlice.mutation(api.games.rematch, { gameId });
+
+    const seats = await seatsAt(t, bobs.gameId);
+    expect(seats.find((p) => p.userId === alice)?.status).toBe("joined");
+  });
+
+  test("the finished game says whether there is a rematch to join", async () => {
+    const { gameId, asAlice, asBob } = await played();
+
+    expect((await asAlice.query(api.games.getGame, { gameId }))?.rematch).toBeNull();
+
+    const again = await asBob.mutation(api.games.rematch, { gameId });
+
+    expect((await asAlice.query(api.games.getGame, { gameId }))?.rematch).toEqual({
+      gameId: again.gameId,
+      joined: false,
+    });
+    expect((await asBob.query(api.games.getGame, { gameId }))?.rematch).toEqual({
+      gameId: again.gameId,
+      joined: true,
+    });
+  });
+
+  test("a rematch turned down leaves the table free to ask again", async () => {
+    // Declining ends the rematch, so there is nothing left to join: asking
+    // again makes a new one rather than sending everybody to a closed game.
+    const { gameId, asAlice, asBob } = await played();
+
+    const first = await asBob.mutation(api.games.rematch, { gameId });
+    await asAlice.mutation(api.games.respondToInvite, {
+      gameId: first.gameId,
+      accept: false,
+    });
+
+    expect((await asBob.query(api.games.getGame, { gameId }))?.rematch).toBeNull();
+    const second = await asBob.mutation(api.games.rematch, { gameId });
+    expect(second.gameId).not.toBe(first.gameId);
+  });
+
   test("a game still being played cannot be asked for again", async () => {
     const { gameId, asBob, t } = await played();
     await t.run(async (ctx) => {

@@ -25,6 +25,7 @@ import styles from "./Game.module.css";
 import { withoutLevel } from "../../../shared/names";
 import { useTurnReplay } from "./useTurnReplay";
 import { Rack, type Selection } from "../Rack/Rack";
+import { rematchLabel } from "./rematch";
 import { userMessage } from "../../lib/errors";
 import { HintBar } from "../HintBar/HintBar";
 import { hintFor, NO_HINT, shownHint, stageHint, type HintState } from "../../lib/stageHint";
@@ -1531,6 +1532,10 @@ export function Game({
 
               Only with somebody else to play: against machines alone,
               starting a fresh game from the lobby is the same thing.
+
+              Once somebody has asked, there is one table: everybody else is
+              asked to join it, and pressing is their yes to the seat held
+              for them (see `rematch` in convex/games.ts).
             */}
             {view.players.some((p) => !p.isBot && p.userId !== view.viewerUserId) && (
               <button
@@ -1542,7 +1547,7 @@ export function Game({
                     .catch((err: unknown) => refuse(userMessage(err)));
                 }}
               >
-                Play again
+                {rematchLabel(view.rematch)}
               </button>
             )}
           </>
