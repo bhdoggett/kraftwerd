@@ -864,11 +864,34 @@ export const respondToInvite = mutation({
   },
 });
 
-/** The rematch made from `game`, unless there is none or it was turned down. */
+/**
+ * The newest game in the series `game` belongs to, or `game` itself when
+ * nothing has followed it.
+ *
+ * Rematches made before series were recorded carry no `seriesId`; for those
+ * the one game `rematchId` points at is as far as this can see.
+ */
+async function newestInSeries(ctx: QueryCtx, game: Doc<"games">) {
+  const newest = await ctx.db
+    .query("games")
+    .withIndex("by_series", (q) => q.eq("seriesId", game.seriesId ?? game._id))
+    .order("desc")
+    .first();
+  if (newest !== null) return newest;
+  if (game.rematchId !== undefined) {
+    return (await ctx.db.get("games", game.rematchId)) ?? game;
+  }
+  return game;
+}
+
+/**
+ * The game of this series being played now, if there is one: the table a
+ * finished game's button should lead to. Null once the newest game is over
+ * too -- declined counts as over -- and then the button plays on instead.
+ */
 async function liveRematch(ctx: QueryCtx, game: Doc<"games">) {
-  if (game.rematchId === undefined) return null;
-  const again = await ctx.db.get("games", game.rematchId);
-  return again === null || again.declinedBy !== undefined ? null : again;
+  const newest = await newestInSeries(ctx, game);
+  return newest._id === game._id || newest.status === "finished" ? null : newest;
 }
 
 /**
@@ -895,7 +918,33 @@ export const rematch = mutation({
       throw new ConvexError("That game is not over yet");
     }
 
-    const players = await seatedAt(ctx, args.gameId);
+    const newest = await newestInSeries(ctx, before);
+
+    /*
+     * Somebody at this table got there first, and that game is still being
+     * played. Theirs is the rematch, and asking for it is sitting down at it:
+     * the seat held for you there is an invitation, and this is the answer.
+     */
+    if (newest._id !== before._id && newest.status !== "finished") {
+      const seat = await seatOf(ctx, newest._id, userId);
+      if (seat?.status === "invited") {
+        refuseGuest(me);
+        await takeInvitedSeat(ctx, newest, seat);
+      }
+      return { gameId: newest._id };
+    }
+
+    /*
+     * Played on from the newest game of the series, wherever it was asked
+     * from: an old game opened to look back at is the same table, and making
+     * the next game from it would start a second line beside the first. A
+     * rematch somebody turned down is a seat short, so for that one it is
+     * played on from the game it was asked from instead.
+     */
+    const from = newest.declinedBy === undefined ? newest : before;
+    const seriesId = before.seriesId ?? before._id;
+
+    const players = await seatedAt(ctx, from._id);
     const mine = players.find((p) => p.userId === userId);
     if (mine === undefined) throw new ConvexError("You were not in this game");
 
@@ -905,24 +954,8 @@ export const rematch = mutation({
      * Playing "again" what nobody played would seat whoever is left against a
      * gap, and a rematch is supposed to be the same table over again.
      */
-    if (players.length !== before.playerCount) {
+    if (players.length !== from.playerCount) {
       throw new ConvexError("That game never got going");
-    }
-
-    /*
-     * Somebody at this table got there first. Theirs is the rematch, and
-     * asking for it is sitting down at it: the seat held for you there is an
-     * invitation, and this is the answer. Unless it was turned down -- then
-     * there is no table left to join, and this asks for a new one.
-     */
-    const made = await liveRematch(ctx, before);
-    if (made !== null) {
-      const seat = await seatOf(ctx, made._id, userId);
-      if (seat?.status === "invited") {
-        refuseGuest(me);
-        await takeInvitedSeat(ctx, made, seat);
-      }
-      return { gameId: made._id };
     }
 
     const gameId = await ctx.db.insert("games", {
@@ -930,7 +963,7 @@ export const rematch = mutation({
       status: "active",
       boardSize: GAME.boardSize,
       endThreshold: GAME.endThreshold,
-      playerCount: before.playerCount,
+      playerCount: from.playerCount,
       currentSeat: mine.seat,
       turnNumber: 0,
       tileCount: 0,
@@ -943,10 +976,11 @@ export const rematch = mutation({
        * game to nobody: only a game still in its lobby is offered around, and
        * this one is under way from the moment it exists.
        */
-      isPublic: before.isPublic,
+      isPublic: from.isPublic,
       rulesVersion: RULES_VERSION,
       // Practice stays practice: a rematch is the same table over again.
-      ...(before.hints === true ? { hints: true } : {}),
+      ...(from.hints === true ? { hints: true } : {}),
+      seriesId,
     });
 
     for (const player of players) {
@@ -964,7 +998,7 @@ export const rematch = mutation({
       );
     }
 
-    await ctx.db.patch("games", args.gameId, { rematchId: gameId });
+    await ctx.db.patch("games", from._id, { rematchId: gameId });
     await wakeBot(ctx, gameId);
     return { gameId };
   },
@@ -1700,7 +1734,9 @@ export const getGame = query({
     // player, every turn, live.
     const names = await namesAt(ctx, userId, game, players);
 
-    const again = await liveRematch(ctx, game);
+    // Only a finished game has a button that leads anywhere: every other
+    // read of this, live and every turn, skips the lookup.
+    const again = game.status === "finished" ? await liveRematch(ctx, game) : null;
     const yoursThere = again === null ? null : await seatOf(ctx, again._id, userId);
 
     return {

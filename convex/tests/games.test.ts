@@ -2902,6 +2902,60 @@ describe("playing the same people again", () => {
     expect(second.gameId).not.toBe(first.gameId);
   });
 
+  test("an old game in the series points at the one being played now", async () => {
+    // A, then B, then C. Opening A to look back at it should lead to C, not
+    // to B -- which is over too, and would only lead on one game at a time.
+    const { t, gameId, asAlice, asBob } = await played();
+
+    const b = await asBob.mutation(api.games.rematch, { gameId });
+    await asAlice.mutation(api.games.rematch, { gameId });
+    await t.run(async (ctx) => {
+      await ctx.db.patch("games", b.gameId, {
+        status: "finished",
+        winnerIds: [],
+        finishedAt: Date.now(),
+      });
+    });
+    const c = await asAlice.mutation(api.games.rematch, { gameId: b.gameId });
+
+    expect((await asBob.query(api.games.getGame, { gameId }))?.rematch).toEqual({
+      gameId: c.gameId,
+      joined: false,
+    });
+
+    // And asking from A sits Bob down at C rather than starting a rival.
+    expect((await asBob.mutation(api.games.rematch, { gameId })).gameId).toBe(c.gameId);
+  });
+
+  test("once the newest game is over, asking from an old one plays on from it", async () => {
+    const { t, gameId, asAlice, asBob } = await played();
+
+    const b = await asBob.mutation(api.games.rematch, { gameId });
+    await asAlice.mutation(api.games.rematch, { gameId });
+    await t.run(async (ctx) => {
+      await ctx.db.patch("games", b.gameId, {
+        status: "finished",
+        winnerIds: [],
+        finishedAt: Date.now(),
+      });
+    });
+
+    // Nothing is being played, so the old game offers to play again.
+    expect((await asAlice.query(api.games.getGame, { gameId }))?.rematch).toBeNull();
+
+    const c = await asAlice.mutation(api.games.rematch, { gameId });
+    expect([gameId, b.gameId]).not.toContain(c.gameId);
+
+    // One series, named for the game it started with.
+    const series = await t.run(async (ctx) =>
+      Promise.all([b.gameId, c.gameId].map((id) => ctx.db.get("games", id))),
+    );
+    expect(series.map((g) => g?.seriesId)).toEqual([gameId, gameId]);
+    // Played on from B, the newest: B is where it says the table went next.
+    const bAfter = await t.run(async (ctx) => ctx.db.get("games", b.gameId));
+    expect(bAfter?.rematchId).toBe(c.gameId);
+  });
+
   test("a game still being played cannot be asked for again", async () => {
     const { gameId, asBob, t } = await played();
     await t.run(async (ctx) => {

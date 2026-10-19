@@ -232,6 +232,13 @@ export default defineSchema({
      */
     rematchId: v.optional(v.id("games")),
     /**
+     * The game a run of rematches began with, on every rematch in it; absent
+     * on the first game, whose own id is the series. Every game in the run
+     * can find the newest one from this, so an old game opened to look back
+     * at leads to the table being played now rather than one step along.
+     */
+    seriesId: v.optional(v.id("games")),
+    /**
      * The rules in force when this game was created. Absent on games from
      * before it was recorded, which are older than the current rules by
      * definition and so count for nothing.
@@ -253,7 +260,8 @@ export default defineSchema({
     .index("by_status", ["status"])
     // Public games still in their lobby, without reading every game ever
     // played to find them.
-    .index("by_public_and_status", ["isPublic", "status"]),
+    .index("by_public_and_status", ["isPublic", "status"])
+    .index("by_series", ["seriesId"]),
 
   /** One row per player per game: seat, score, and their private rack. */
   players: defineTable({
