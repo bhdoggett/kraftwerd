@@ -40,6 +40,12 @@ const socialProviders = googleConfigured
       google: {
         clientId: env.GOOGLE_CLIENT_ID as string,
         clientSecret: env.GOOGLE_CLIENT_SECRET as string,
+        /*
+         * Always ask which account. Without it Google signs straight back in
+         * with whichever account the browser last used, and there is no way
+         * from here to pick a different one.
+         */
+        prompt: "select_account" as const,
       },
     }
   : {};
