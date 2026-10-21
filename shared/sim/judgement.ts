@@ -185,11 +185,13 @@ export function bagAtDeal(players: number): number {
  *     40       -13 ± 7       44     7, 9, 10
  *
  * Holding a blank does not win the bot points on average -- dearer than 20
- * starts to cost them. Twenty is the dearest that costs nothing, and it is
- * chosen for how it plays: three blanks gone by the third turn fell from 8
- * seats in 100 to 2.
+ * starts to cost them. Twenty was first chosen for how it plays: three
+ * blanks gone by the third turn fell from 8 seats in 100 to 2. It held
+ * blanks back a little too hard in play, both on hints and on bot turns, so
+ * it is now 15: between two measured prices, neither of which cost points.
+ * Fifteen itself has not been measured.
  */
-export const BLANK_PRICE = 20;
+export const BLANK_PRICE = 15;
 
 /**
  * What spending a blank costs beyond the tiles it lays.
