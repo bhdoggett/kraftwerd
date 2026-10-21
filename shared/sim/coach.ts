@@ -10,7 +10,7 @@
  */
 import type { BoardShape } from "../boards.js";
 import type { Board } from "../engine/board.js";
-import { applyPlacements } from "../engine/legality.js";
+import { applyPlacements, type Dictionary } from "../engine/legality.js";
 import { nearSquares } from "../engine/nearSquares.js";
 import { scoreTurn, type Placement } from "../engine/score.js";
 import { rank } from "./bot.js";
@@ -44,6 +44,12 @@ export interface Coaching {
   moves: HintMove[];
   /** Common words the rack's own letters spell, ignoring the board. */
   rackWords: string[];
+  /**
+   * The rest of what the rack spells: in the game's dictionary but not the
+   * common list, so a hint can play them. Missing from hints kept before
+   * there was such a list.
+   */
+  rareRackWords?: string[];
 }
 
 /** What the coach action answers with: coaching for one turn of one game. */
@@ -104,12 +110,20 @@ export function explain(
   };
 }
 
-export function rackWordsOf(letters: readonly string[], common: Lexicon): string[] {
+/** What the rack spells from `lexicon`, leaving out any word `except` has. */
+export function rackWordsOf(
+  letters: readonly string[],
+  lexicon: Lexicon,
+  except?: Dictionary,
+): string[] {
   const found = new Set<string>();
   for (let length = Math.min(letters.length, 7); length >= 3; length--) {
-    const index = common.words.byLength.get(length);
+    const index = lexicon.words.byLength.get(length);
     if (index === undefined) continue;
-    for (const i of rackWords(index, letters, length)) found.add(index.words[i]);
+    for (const i of rackWords(index, letters, length)) {
+      const word = index.words[i];
+      if (except === undefined || !except.has(word)) found.add(word);
+    }
   }
   return [...found]
     .sort((a, b) => b.length - a.length || a.localeCompare(b))
@@ -194,5 +208,6 @@ export function coach(
   return {
     moves: choose(ranked, (m) => mainWord(explainOnce(m))).map(explainOnce),
     rackWords: rackWordsOf(hand.letters, common),
+    rareRackWords: rackWordsOf(hand.letters, full, common.dictionary),
   };
 }

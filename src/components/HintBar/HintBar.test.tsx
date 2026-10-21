@@ -72,6 +72,13 @@ describe("HintBar", () => {
     expect(screen.queryByRole("button", { name: /39/ })).toBeNull();
   });
 
+  test("words in your rack lists the rare ones after, tagged", () => {
+    bar({ result: { ...RESULT, rareRackWords: ["SCAT"] } });
+    fireEvent.click(words());
+    expect(screen.getByText("CATS, ACT").textContent).toBe("CATS, ACT, SCATrare");
+    expect(screen.getByText("rare")).toBeTruthy();
+  });
+
   test("the first press asks; a press with an answer in hand does not", () => {
     const onAsk = vi.fn();
     const { unmount } = bar({ result: null, onAsk });

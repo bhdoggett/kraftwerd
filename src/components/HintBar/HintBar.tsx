@@ -45,6 +45,29 @@ function Thinking() {
   );
 }
 
+/**
+ * What the rack spells: the common words first, then the rest of the
+ * dictionary, tagged rare as they are on a hint, so a word a hint plays is
+ * never missing here.
+ */
+function RackWords({ common, rare }: { common: string[]; rare: string[] }) {
+  if (common.length === 0 && rare.length === 0) {
+    return <p className={styles.rackWords}>No words of three letters or more in this rack.</p>;
+  }
+  return (
+    <p className={styles.rackWords}>
+      {common.join(", ")}
+      {rare.map((word, i) => (
+        <span key={word}>
+          {common.length > 0 || i > 0 ? ", " : ""}
+          {word}
+          <span className={styles.rare}>rare</span>
+        </span>
+      ))}
+    </p>
+  );
+}
+
 type Open = { kind: "hints" | "words"; key: string } | null;
 
 /**
@@ -157,11 +180,7 @@ export function HintBar({
           )}
 
           {showing === "words" && result !== null && (
-            <p className={styles.rackWords}>
-              {result.rackWords.length > 0
-                ? result.rackWords.join(", ")
-                : "No words of three letters or more in this rack."}
-            </p>
+            <RackWords common={result.rackWords} rare={result.rareRackWords ?? []} />
           )}
 
           <button type="button" className={styles.secondary} onClick={close}>

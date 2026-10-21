@@ -23,4 +23,5 @@ export const hintResult = v.object({
     }),
   ),
   rackWords: v.array(v.string()),
+  rareRackWords: v.optional(v.array(v.string())),
 });

@@ -17,6 +17,10 @@ describe("rack words", () => {
     expect(rackWordsOf(["C", "A", "T", "S"], COMMON)).toEqual(["ACTS", "CATS", "ACT", "CAT", "SAT"]);
   });
 
+  test("the rest of the dictionary, without the common words", () => {
+    expect(rackWordsOf(["C", "A", "T", "S"], FULL, COMMON.dictionary)).toEqual(["SCAT", "TAS"]);
+  });
+
   test("blanks are not letters", () => {
     expect(rackWordsOf(["C", "A"], COMMON)).toEqual([]);
   });
