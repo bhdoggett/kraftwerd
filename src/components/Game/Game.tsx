@@ -645,6 +645,19 @@ export function Game({
     requestAnimationFrame(() => refocus(from));
   }
 
+  /*
+   * In a practice game, the hint is asked for as soon as the turn comes
+   * round, so it is usually ready by the time the button is pressed. Not held
+   * back while other players' plays are still being shown: the search reads
+   * the board they left, which the server already has. Once a turn and rack:
+   * a failed search waits for the button rather than trying again by itself.
+   */
+  const preloadHint = view?.game.hints === true && myTurn;
+  useEffect(() => {
+    if (preloadHint) void ask();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per rack, keyed by hintKey
+  }, [preloadHint, hintKey]);
+
   if (view === undefined) return <p className={styles.notice}>Loading game…</p>;
   if (view === null) return <p className={styles.notice}>Game not found.</p>;
 
@@ -750,12 +763,16 @@ export function Game({
 
   async function ask() {
     const key = hintKey;
+    // An answer for a rack since swapped away must not overwrite the search
+    // for the new one.
+    const settle = (next: HintState) =>
+      setHintState((current) => (current.key === key ? next : current));
     setHintState({ key, result: null, loading: true, error: null });
     try {
       const result = await askHints({ gameId });
-      setHintState({ key, result, loading: false, error: null });
+      settle({ key, result, loading: false, error: null });
     } catch (err) {
-      setHintState({ key, result: null, loading: false, error: userMessage(err) });
+      settle({ key, result: null, loading: false, error: userMessage(err) });
     }
   }
 

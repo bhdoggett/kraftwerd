@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest";
 import ALL_WORDS from "../../shared/data/words.json" with { type: "json" };
 import { makeDictionary } from "../../shared/engine/dictionary";
 import { NAMES } from "../../shared/names";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 
 const modules = import.meta.glob(["../**/*.ts", "!../**/*.test.ts"]);
@@ -70,6 +70,25 @@ describe("coach.hints", () => {
     expect(await t.run(async (ctx) => await ctx.db.query("hints").collect())).toHaveLength(1);
 
     await asAlice.mutation(api.games.swapTiles, { gameId });
+    expect(await t.run(async (ctx) => await ctx.db.query("hints").collect())).toHaveLength(0);
+  }, 120_000);
+
+  test("a search for a rack swapped away while it ran is not kept", async () => {
+    const { t, asAlice, gameId } = await table(true);
+    const result = await asAlice.action(api.coach.hints, { gameId });
+    await asAlice.mutation(api.games.swapTiles, { gameId });
+
+    const userId = await t.run(async (ctx) =>
+      (await ctx.db.query("users").collect()).find((u) => u.authId === "auth|alice")!._id,
+    );
+    await t.mutation(internal.coach.saveHint, {
+      gameId,
+      userId,
+      turnNumber: 0,
+      letters: [...RACK],
+      blanks: 0,
+      result,
+    });
     expect(await t.run(async (ctx) => await ctx.db.query("hints").collect())).toHaveLength(0);
   }, 120_000);
 

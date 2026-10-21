@@ -83,22 +83,41 @@ type HintState =
       tiles: TileSpec[];
     };
 
-/** Keep a turn's hints. A second search for the same turn (two tabs) loses quietly. */
+/**
+ * Keep a turn's hints. A second search for the same turn (two tabs) loses
+ * quietly, and so does one for a rack that is no longer held: hints are asked
+ * for as soon as the turn comes round, so a swap can land while the search
+ * for the old rack is still running, and its answer must not stand in for
+ * the new rack's.
+ */
 export const saveHint = internalMutation({
   args: {
     gameId: v.id("games"),
     userId: v.id("users"),
     turnNumber: v.number(),
+    letters: v.array(v.string()),
+    blanks: v.number(),
     result: hintResult,
   },
   handler: async (ctx, args) => {
+    const { letters, blanks, ...hint } = args;
+    const me = await seatOf(ctx, args.gameId, args.userId);
+    if (
+      me === null ||
+      blanksLeft(me) !== blanks ||
+      me.letters.length !== letters.length ||
+      me.letters.some((letter, i) => letter !== letters[i])
+    ) {
+      return null;
+    }
+
     const existing = await ctx.db
       .query("hints")
       .withIndex("by_game_user_turn", (q) =>
         q.eq("gameId", args.gameId).eq("userId", args.userId).eq("turnNumber", args.turnNumber),
       )
       .unique();
-    if (existing === null) await ctx.db.insert("hints", args);
+    if (existing === null) await ctx.db.insert("hints", hint);
     return null;
   },
 });
@@ -132,6 +151,8 @@ export const hints = action({
       gameId: args.gameId,
       userId: state.userId,
       turnNumber: state.turnNumber,
+      letters: state.letters,
+      blanks: state.blanks,
       result,
     });
     return result;
