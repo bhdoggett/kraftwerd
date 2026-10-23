@@ -3,6 +3,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import type { PlayerSummary } from "../../../shared/summary";
 import { average, perTile } from "./figures";
 import { GameSummary } from "./GameSummary";
+import { axeViolations } from "../../test/axe";
 
 afterEach(cleanup);
 
@@ -68,5 +69,12 @@ describe("GameSummary", () => {
     const squares = screen.getByRole("row", { name: /3x3s/ });
     expect(within(squares).getAllByRole("cell")[0].textContent).toBe("2");
     expect(screen.getByText("You")).toBeTruthy();
+  });
+});
+
+describe("accessibility", () => {
+  test("the summary table has no axe violations", async () => {
+    render(<GameSummary summary={[row("a"), row("b")]} players={players} />);
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

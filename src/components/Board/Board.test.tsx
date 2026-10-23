@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Board } from "./Board";
+import { axeViolations } from "../../test/axe";
 
 afterEach(cleanup);
 
@@ -256,5 +257,22 @@ describe("zooming by button", () => {
 
     expect(off("Zoom in")).toBe(true);
     expect(off("Zoom out")).toBe(false);
+  });
+});
+
+describe("accessibility", () => {
+  test("a board with played, staged and checked tiles has no axe violations", async () => {
+    draw({
+      tiles: [
+        { x: 1, y: 2, letter: "A", isBlank: false, placedBy: "u1", stacked: 1 },
+        { x: 2, y: 2, letter: "T", isBlank: false, placedBy: "u1", stacked: 2 },
+      ],
+      pending: [{ x: 3, y: 2, letter: "E", isBlank: false }],
+      seatOf: new Map([["u1", 1]]),
+      nameOf: new Map([["u1", "Bo"]]),
+      goodCells: new Set(["1,2", "2,2"]),
+      badCells: new Set(["3,2"]),
+    });
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

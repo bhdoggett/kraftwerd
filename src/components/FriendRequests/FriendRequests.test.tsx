@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { FriendRequestsDialog } from "./FriendRequests";
+import { axeViolations } from "../../test/axe";
 
 afterEach(cleanup);
 
@@ -33,5 +34,12 @@ describe("the friend requests reminder", () => {
     render(<FriendRequestsDialog requests={requests} onAnswer={vi.fn()} onLater={onLater} />);
     fireEvent.click(screen.getByRole("button", { name: "Later" }));
     expect(onLater).toHaveBeenCalled();
+  });
+});
+
+describe("accessibility", () => {
+  test("the reminder has no axe violations", async () => {
+    render(<FriendRequestsDialog requests={requests} onAnswer={vi.fn()} onLater={vi.fn()} />);
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

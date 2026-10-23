@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { drawnFrom } from "../../lib/drawn";
 import { Rack } from "./Rack";
+import { axeViolations } from "../../test/axe";
 
 afterEach(cleanup);
 
@@ -96,5 +97,12 @@ describe("working out the fresh draw", () => {
 
   test("a whole new rack is all drawn", () => {
     expect(drawnFrom(["C", "A"], ["X", "Y"])).toBe(0);
+  });
+});
+
+describe("accessibility", () => {
+  test("a rack with a tile selected has no axe violations", async () => {
+    draw({ selected: { kind: "letter", index: 0 }, canRecall: true, canPlay: true });
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

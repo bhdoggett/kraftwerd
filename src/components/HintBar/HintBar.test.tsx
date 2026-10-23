@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { HintBar } from "./HintBar";
+import { axeViolations } from "../../test/axe";
 
 afterEach(cleanup);
 
@@ -120,5 +121,14 @@ describe("HintBar", () => {
     bar({ active: false });
     expect(screen.getByText("Practice")).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
+  });
+});
+
+describe("accessibility", () => {
+  test("the bar and its open popover have no axe violations", async () => {
+    bar();
+    expect(await axeViolations(document.body)).toEqual([]);
+    fireEvent.click(hint());
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });
