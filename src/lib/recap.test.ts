@@ -208,7 +208,7 @@ describe("a turn as replay steps", () => {
     expect(steps.map((s) => s.total)).toEqual([false, true]);
     expect(steps[0]?.words).toEqual(["AT"]);
     expect(steps[1]?.words).toEqual([]);
-    expect([...steps[1]!.cells].sort()).toEqual(["0,0", "1,0"]);
+    expect([...steps[1].cells].sort()).toEqual(["0,0", "1,0"]);
   });
 });
 

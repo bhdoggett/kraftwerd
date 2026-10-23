@@ -22,9 +22,9 @@ describe("the friend requests reminder", () => {
     const onAnswer = vi.fn();
     render(<FriendRequestsDialog requests={requests} onAnswer={onAnswer} onLater={vi.fn()} />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Accept" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Accept" })[0]);
     expect(onAnswer).toHaveBeenCalledWith("f1", true);
-    fireEvent.click(screen.getAllByRole("button", { name: "Decline" })[1]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Decline" })[1]);
     expect(onAnswer).toHaveBeenCalledWith("f2", false);
   });
 

@@ -52,7 +52,7 @@ export function rackSlotUnder(clientX: number, clientY: number): RackTarget {
   // a fixed page order and slides each into its slot by transform, so the
   // i-th element's layout box is the i-th slot whichever tile is showing there.
   const localX = clientX - bounds.left + rack.scrollLeft;
-  if (localX < tiles[0]!.offsetLeft) return { overRack: true, position: 0 };
+  if (localX < tiles[0].offsetLeft) return { overRack: true, position: 0 };
 
   for (const [position, el] of tiles.entries()) {
     if (localX < el.offsetLeft + el.offsetWidth) return { overRack: true, position };
@@ -86,7 +86,7 @@ export function shuffled(order: readonly number[]): number[] {
   const next = [...order];
   for (let i = next.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [next[i], next[j]] = [next[j]!, next[i]!];
+    [next[i], next[j]] = [next[j], next[i]];
   }
   return next;
 }

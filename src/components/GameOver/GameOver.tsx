@@ -3,21 +3,13 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Modal } from "../Modal/Modal";
 import styles from "./GameOver.module.css";
+import { headline } from "./headline";
 
 export interface GameResult {
   gameId: Id<"games">;
   youWon: boolean;
   winners: string[];
   scores: { name: string; score: number; you: boolean }[];
-}
-
-/** The headline: who won, said the way the viewer would say it. */
-export function headline(result: Pick<GameResult, "youWon" | "winners">) {
-  const { youWon, winners } = result;
-  if (youWon) return winners.length > 1 ? "You tied for the win!" : "You won!";
-  if (winners.length === 0) return "Game over";
-  if (winners.length === 1) return `${winners[0]} won`;
-  return `${winners.slice(0, -1).join(", ")} and ${winners[winners.length - 1]} tied`;
 }
 
 interface GameOverDialogProps {

@@ -35,7 +35,7 @@ function disconnectedCells(
   while (queue.length > 0) {
     const [x, y] = queue.pop()!.split(",").map(Number);
     for (const [dx, dy] of NEIGHBOURS) {
-      const key = `${x! + dx},${y! + dy}`;
+      const key = `${x + dx},${y + dy}`;
       if (!board.has(key) || seen.has(key)) continue;
       seen.add(key);
       queue.push(key);

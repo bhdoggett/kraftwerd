@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { GameOverDialog, headline } from "./GameOver";
+import { GameOverDialog } from "./GameOver";
+import { headline } from "./headline";
 
 afterEach(cleanup);
 
