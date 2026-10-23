@@ -292,3 +292,11 @@
       0 0 0 4px var(--accent);
   }
 }
+
+/* High-contrast modes drop the shadow that rings the seat on the move. */
+@media (forced-colors: active) {
+  .onTurn {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}

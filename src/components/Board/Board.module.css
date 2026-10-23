@@ -483,3 +483,28 @@
     animation: none;
   }
 }
+
+/*
+ * High-contrast modes (Windows contrast themes) throw box shadows away and
+ * repaint every background in the system's colors, which took the word rings,
+ * and the blocked squares' fill, with them. Outlines and system colors are
+ * kept, so the rings come back as outlines -- dashed for a bad word, since
+ * the theme decides the color and red against green is gone -- and a blocked
+ * square is filled in the theme's own ink.
+ */
+@media (forced-colors: active) {
+  .inWord {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  .inBadWord {
+    outline: 3px dashed Mark;
+    outline-offset: -3px;
+  }
+
+  .blocked {
+    forced-color-adjust: none;
+    background: GrayText;
+  }
+}

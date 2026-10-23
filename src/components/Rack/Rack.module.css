@@ -365,3 +365,12 @@
   }
 }
 
+
+/* High-contrast modes drop the shadow the selection ring is drawn with, so it
+   comes back as an outline, standing off the tile the way the ring does. */
+@media (forced-colors: active) {
+  .selected {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}
