@@ -43,10 +43,16 @@
    * A fixed box, not one that grows to fit. Zooming has to change what is
    * inside the board, never the space the board takes: a container that grew
    * with the zoom pushed the rack down the page and left you scrolling the
-   * document to get back to it. It fills `.frame`, below.
+   * document to get back to it. It fills `.frame`, below, inside its padding.
+   *
+   * Laid over the frame like `.edge`, not in its flow. Safari resolved
+   * `height: 100%` here against the frame's whole height, padding and all,
+   * so the box came out taller than wide and stretched the square frame to
+   * hold it: zoomed in a little, the board was cut off at the sides while a
+   * band of empty frame showed above and below.
    */
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: var(--space-3);
   display: grid;
   place-items: center;
 }
