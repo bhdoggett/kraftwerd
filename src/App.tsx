@@ -16,6 +16,7 @@ import { GameOverNotice } from "./components/GameOver/GameOver";
 import { RuleChangesNotice } from "./components/RuleChanges/RuleChanges";
 import { RulesDialog } from "./components/Rules/Rules";
 import { authClient } from "./lib/auth-client";
+import { signInWithGoogle } from "./lib/googleSignIn";
 import { promiseAGame, type PromisedGame } from "./lib/useStartGame";
 import { navigate, useRoute } from "./router";
 
@@ -231,17 +232,9 @@ function SignInForm({ canGuest }: { canGuest: boolean }) {
         disabled={!configured}
         onClick={() => {
           setError(null);
-          void authClient.signIn
-            .social({
-              provider: "google",
-              // Back to the page they were on, not the root: someone opening
-              // an invite link signs in first, and sending them to the lobby
-              // afterwards loses the game they were invited to.
-              callbackURL: window.location.href,
-            })
-            .catch((err: unknown) => {
-              setError(err instanceof Error ? err.message : String(err));
-            });
+          signInWithGoogle().catch((err: unknown) => {
+            setError(err instanceof Error ? err.message : String(err));
+          });
         }}
       >
         <GoogleMark />

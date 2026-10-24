@@ -17,6 +17,13 @@ const app = defineApp({
     GOOGLE_CLIENT_ID: v.optional(v.string()),
     GOOGLE_CLIENT_SECRET: v.optional(v.string()),
     /**
+     * The iOS app's own Google OAuth client. Its sign-in sheet hands over an
+     * ID token issued to this client rather than the web one, so the server
+     * has to accept both as the token's audience. Not a secret: it ships
+     * inside the app. Optional so the website deploys without it.
+     */
+    GOOGLE_IOS_CLIENT_ID: v.optional(v.string()),
+    /**
      * Set to "1" on a development deployment to expose the helpers in dev.ts.
      * Absent everywhere else, so production cannot be seeded or fast-forwarded.
      */
