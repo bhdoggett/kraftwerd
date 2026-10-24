@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { BagContents } from "./BagContents";
+import { axeViolations } from "../../test/axe";
 
 afterEach(cleanup);
 
@@ -65,5 +66,13 @@ describe("reading a letter's count", () => {
       .map((b) => b.textContent);
     expect(letters).toEqual([...letters].sort());
     expect(letters[0]).toBe("A");
+  });
+});
+
+describe("accessibility", () => {
+  test("the open bag has no axe violations", async () => {
+    open({ E: 4, K: 1 });
+    fireEvent.click(screen.getByRole("button", { name: /^E:/ }));
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

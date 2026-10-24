@@ -827,3 +827,12 @@
     animation-name: announce-in;
   }
 }
+
+/* High-contrast modes drop the shadow that rings a score with nothing to
+   bank, so it is drawn as an outline instead. */
+@media (forced-colors: active) {
+  .previewInvalid {
+    outline: 2px dashed Mark;
+    outline-offset: -2px;
+  }
+}

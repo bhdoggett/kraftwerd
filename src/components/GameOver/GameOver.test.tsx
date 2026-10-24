@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { GameOverDialog, headline } from "./GameOver";
+import { GameOverDialog } from "./GameOver";
+import { headline } from "./headline";
+import { axeViolations } from "../../test/axe";
 
 afterEach(cleanup);
 
@@ -47,5 +49,26 @@ describe("the game-over dialog", () => {
     expect(onView).toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("accessibility", () => {
+  test("the dialog has no axe violations", async () => {
+    render(
+      <GameOverDialog
+        result={{
+          gameId: "g1" as Id<"games">,
+          youWon: true,
+          winners: ["Ana"],
+          scores: [
+            { name: "Ana", score: 120, you: true },
+            { name: "Bo", score: 98, you: false },
+          ],
+        }}
+        onView={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { RuleChangesDialog } from "./RuleChanges";
+import { axeViolations } from "../../test/axe";
 
 afterEach(cleanup);
 
@@ -18,5 +19,17 @@ describe("the rule changes dialog", () => {
     expect(screen.getByText("No rack bonus.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Got it" }));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+});
+
+describe("accessibility", () => {
+  test("the dialog has no axe violations", async () => {
+    render(
+      <RuleChangesDialog
+        changes={[{ version: 8, changes: ["No stack bonus."] }]}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

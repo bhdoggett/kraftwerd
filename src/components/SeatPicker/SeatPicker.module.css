@@ -32,3 +32,11 @@
     0 0 0 2px var(--surface-raised),
     0 0 0 4px var(--text);
 }
+
+/* High-contrast modes drop the shadow that rings the chosen seat. */
+@media (forced-colors: active) {
+  .selected {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}

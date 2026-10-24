@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import { MiniBoard } from "./MiniBoard";
+import { axeViolations } from "../../test/axe";
 
 afterEach(cleanup);
 
@@ -47,5 +48,12 @@ describe("a position drawn from a real game", () => {
     );
 
     expect(squares(container)[0]?.seat).toBe("1");
+  });
+});
+
+describe("accessibility", () => {
+  test("a position has no axe violations", async () => {
+    render(<MiniBoard rows={["AB"]} seats={{ "0,0": 0, "1,0": 1 }} full={["1,0"]} />);
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

@@ -91,21 +91,21 @@ export function FriendRequestsNotice() {
   const data = useQuery(api.friends.listFriends);
   const results = useQuery(api.games.pendingResults);
   const respond = useMutation(api.friends.respondToRequest);
-  const [hiddenUntil, setHiddenUntil] = useState(snoozedUntil);
+  // Read once, on load: the clock is not something to consult while rendering.
+  const [snoozed, setSnoozed] = useState(() => Date.now() < snoozedUntil());
 
   const incoming = data?.incoming ?? [];
   if (incoming.length === 0) return null;
   if (results === undefined || results.length > 0) return null;
-  if (Date.now() < hiddenUntil) return null;
+  if (snoozed) return null;
 
   return (
     <FriendRequestsDialog
       requests={incoming}
       onAnswer={(friendshipId, accept) => void respond({ friendshipId, accept })}
       onLater={() => {
-        const now = Date.now();
-        snooze(now);
-        setHiddenUntil(now + SNOOZE_MS);
+        snooze(Date.now());
+        setSnoozed(true);
       }}
     />
   );

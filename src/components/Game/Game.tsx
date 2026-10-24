@@ -1,5 +1,5 @@
 import { useAction, useMutation, useQuery } from "convex/react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -47,6 +47,8 @@ import { SeatPicker } from "../SeatPicker/SeatPicker";
 import { SrOnly } from "../SrOnly/SrOnly";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+/** How long a new live region is left empty before anything is said into it. */
+const ANNOUNCER_SETTLE_MS = 500;
 
 
 /**
@@ -290,10 +292,14 @@ export function Game({
   const rackSignature = (view?.players.find((p) => p.letters !== null)?.letters ?? []).join(
     ",",
   );
-  useEffect(() => {
+  // A new rack starts in dealt order. Reset while rendering, not in an
+  // effect, so the old order is never drawn against the new letters.
+  const [orderedRack, setOrderedRack] = useState<string | null>(null);
+  if (orderedRack !== rackSignature) {
+    setOrderedRack(rackSignature);
     const count = rackSignature === "" ? 0 : rackSignature.split(",").length;
     setRackOrder(Array.from({ length: count }, (_, i) => i));
-  }, [rackSignature]);
+  }
 
   function shuffleRack() {
     setRackOrder(shuffled);
@@ -408,13 +414,17 @@ export function Game({
   const playable =
     view !== undefined && view !== null && view.game.status !== "finished";
 
-  // Load the draft for this turn, and drop it when the turn moves on.
-  useEffect(() => {
-    if (turnNumber === undefined) return;
+  // Load the draft for this turn, and drop it when the turn moves on. Done
+  // while rendering rather than in an effect, so the save below never sees
+  // the last turn's tiles under this turn's key.
+  const draftKey = turnNumber === undefined ? null : `${gameId}:${turnNumber}:${playable}`;
+  const [loadedDraft, setLoadedDraft] = useState<string | null>(null);
+  if (turnNumber !== undefined && draftKey !== loadedDraft) {
+    setLoadedDraft(draftKey);
     setPending(readDraft<Staged>(gameId, turnNumber, playable));
     setSelected(null);
     setBlankAt(null);
-  }, [gameId, turnNumber, playable]);
+  }
 
   useEffect(() => {
     if (turnNumber === undefined) return;
@@ -523,13 +533,31 @@ export function Game({
    * renders it empty and never touches it again, and a message is not worth
    * a render of the whole game. A repeat gets a trailing space, so the same
    * refusal twice in a row is still a change.
+   *
+   * Not straight away, though, on a region that has only just appeared: the
+   * page and the region arrive together when a game opens, and a message
+   * written in that same moment is the one a reader misses -- which was
+   * "Your turn." on opening a game it was your turn in. Anything said before
+   * the region has been there half a second waits until it has.
    */
-  const announcer = useRef<HTMLSpanElement>(null);
-  const announce = (text: string) => {
+  const announcer = useRef<HTMLSpanElement | null>(null);
+  const announcerSince = useRef(0);
+  // Stable, or React would detach and reattach it every render and the clock
+  // would never run out.
+  const attachAnnouncer = useCallback((region: HTMLSpanElement | null) => {
+    announcer.current = region;
+    if (region !== null) announcerSince.current = performance.now();
+  }, []);
+  const announce = useCallback(function say(text: string) {
     const region = announcer.current;
     if (region === null) return;
+    const settle = announcerSince.current + ANNOUNCER_SETTLE_MS - performance.now();
+    if (settle > 0) {
+      window.setTimeout(() => say(text), settle);
+      return;
+    }
     region.textContent = region.textContent === text ? `${text}\u00a0` : text;
-  };
+  }, []);
 
   // Each play by somebody else once, as its card goes up -- not once a spot.
   const saidTurn = useRef<number | null>(null);
@@ -537,7 +565,7 @@ export function Game({
     if (noteTurn === undefined || saidTurn.current === noteTurn.turnNumber) return;
     saidTurn.current = noteTurn.turnNumber;
     announce(describeTurn({ ...noteTurn, name: withoutLevel(noteTurn.name) }));
-  }, [noteTurn]);
+  }, [noteTurn, announce]);
 
   /*
    * Your turn, once the plays that led to it have been shown: said while the
@@ -547,7 +575,7 @@ export function Game({
   const turnComesRound = myTurn && noteTurn === undefined;
   useEffect(() => {
     if (turnComesRound) announce("Your turn.");
-  }, [turnComesRound]);
+  }, [turnComesRound, announce]);
 
   const finalRound =
     playingOut && !reviewing
@@ -564,7 +592,7 @@ export function Game({
   const finalRoundSays = finalRound === null ? null : `${finalRound.title}. ${finalRound.body}`;
   useEffect(() => {
     if (finalRoundSays !== null) announce(finalRoundSays);
-  }, [finalRoundSays]);
+  }, [finalRoundSays, announce]);
 
   /*
    * The rack goes inert while another player's play is shown in its place,
@@ -1460,7 +1488,7 @@ export function Game({
         )}
 
         <SrOnly>
-          <span ref={announcer} role="status" aria-live="polite" />
+          <span ref={attachAnnouncer} role="status" aria-live="polite" />
         </SrOnly>
 
         <DevTools gameId={gameId} />

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { Scoreboard } from "./Scoreboard";
+import { axeViolations } from "../../test/axe";
 
 afterEach(cleanup);
 
@@ -150,5 +151,12 @@ describe("what everyone is holding", () => {
     );
 
     expect(screen.queryByText(/tiles? in hand/)).toBeNull();
+  });
+});
+
+describe("accessibility", () => {
+  test("a game in play has no axe violations", async () => {
+    draw("active", 20);
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

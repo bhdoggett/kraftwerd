@@ -43,10 +43,16 @@
    * A fixed box, not one that grows to fit. Zooming has to change what is
    * inside the board, never the space the board takes: a container that grew
    * with the zoom pushed the rack down the page and left you scrolling the
-   * document to get back to it. It fills `.frame`, below.
+   * document to get back to it. It fills `.frame`, below, inside its padding.
+   *
+   * Laid over the frame like `.edge`, not in its flow. Safari resolved
+   * `height: 100%` here against the frame's whole height, padding and all,
+   * so the box came out taller than wide and stretched the square frame to
+   * hold it: zoomed in a little, the board was cut off at the sides while a
+   * band of empty frame showed above and below.
    */
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: var(--space-3);
   display: grid;
   place-items: center;
 }
@@ -475,5 +481,30 @@
      stops is the one thing a reduced-motion setting most wants gone. */
   .awaiting {
     animation: none;
+  }
+}
+
+/*
+ * High-contrast modes (Windows contrast themes) throw box shadows away and
+ * repaint every background in the system's colors, which took the word rings,
+ * and the blocked squares' fill, with them. Outlines and system colors are
+ * kept, so the rings come back as outlines -- dashed for a bad word, since
+ * the theme decides the color and red against green is gone -- and a blocked
+ * square is filled in the theme's own ink.
+ */
+@media (forced-colors: active) {
+  .inWord {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  .inBadWord {
+    outline: 3px dashed Mark;
+    outline-offset: -3px;
+  }
+
+  .blocked {
+    forced-color-adjust: none;
+    background: GrayText;
   }
 }

@@ -83,6 +83,13 @@ export function RulesDialog({ onClose, returnFocusTo }: RulesDialogProps) {
               dictionary happens to offer instead.
             </li>
             <li>
+              <strong>UK English plays too</strong> — British spellings
+              alongside American ones (<strong>COLOUR</strong> and{" "}
+              <strong>COLOR</strong>, <strong>CENTRE</strong> and{" "}
+              <strong>CENTER</strong>), and British words like{" "}
+              <strong>LORRY</strong> and <strong>BONCE</strong>.
+            </li>
+            <li>
               Loanwords play by the plain-letter spelling a tile can actually
               make — <strong>CAFE</strong>, <strong>CLICHE</strong>,{" "}
               <strong>ENTREE</strong> — since accents aren't filtered, they're
