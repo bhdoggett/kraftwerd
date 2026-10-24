@@ -20,9 +20,14 @@
     "build:dictionary": "node scripts/build-dictionary.mjs",
     "render:assets": "node scripts/render-assets.mjs",
     "seed:dictionary": "convex import --table words --replace shared/data/words.jsonl",
-    "start": "serve dist -c ../serve.json --no-port-switching -l ${PORT:-3000}"
+    "start": "serve dist -c ../serve.json --no-port-switching -l ${PORT:-3000}",
+    "cap:sync": "npm run build && node scripts/ios-google-config.ts && cap sync"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "@capgo/capacitor-social-login": "8.5.14",
     "@convex-dev/better-auth": "^0.12.5",
     "better-auth": "~1.6.15",
     "convex": "^1.44.0",
@@ -31,6 +36,7 @@
     "serve": "^14.2.6"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@convex-dev/eslint-plugin": "^4.0.0",
     "@edge-runtime/vm": "^5.0.0",
     "@eslint/js": "^9.39.5",

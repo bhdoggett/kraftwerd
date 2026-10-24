@@ -1,0 +1,3 @@
+// Release builds only need what the Debug one shares with them: the Google
+// URL scheme. The `?` lets the project build before that file exists.
+#include? "google.xcconfig"

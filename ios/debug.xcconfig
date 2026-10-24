@@ -1,0 +1,3 @@
+CAPACITOR_DEBUG = true
+
+#include? "google.xcconfig"
