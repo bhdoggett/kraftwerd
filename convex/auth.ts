@@ -38,7 +38,14 @@ export const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIEN
 const socialProviders = googleConfigured
   ? {
       google: {
-        clientId: env.GOOGLE_CLIENT_ID as string,
+        /*
+         * The web client first: Better Auth uses the first entry for the
+         * redirect flow. The rest are only accepted as the audience of an ID
+         * token, which is what the iOS app's native sign-in sends.
+         */
+        clientId: [env.GOOGLE_CLIENT_ID as string, env.GOOGLE_IOS_CLIENT_ID].filter(
+          (id): id is string => Boolean(id),
+        ),
         clientSecret: env.GOOGLE_CLIENT_SECRET as string,
         /*
          * Always ask which account. Without it Google signs straight back in
