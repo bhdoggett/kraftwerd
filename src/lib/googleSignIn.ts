@@ -6,10 +6,11 @@ import { authClient } from "./auth-client";
  * Sign in with Google, the way that works where the app is running.
  *
  * On the website that is Better Auth's redirect to Google and back. Inside
- * the iOS app it cannot be: the page is served from capacitor://localhost,
- * which no browser can redirect back to. There Google's native sheet signs
- * the player in and hands over an ID token, and Better Auth turns that into
- * a session without leaving the app.
+ * the apps it cannot be: the page is served from capacitor://localhost on
+ * iOS and https://localhost on Android, neither of which a browser can
+ * redirect back to. There Google's native sheet signs the player in and
+ * hands over an ID token, and Better Auth turns that into a session without
+ * leaving the app.
  *
  * Rejects with a message fit to show the player.
  */
@@ -23,10 +24,6 @@ export async function signInWithGoogle(): Promise<void> {
       callbackURL: window.location.href,
     });
     return;
-  }
-
-  if (Capacitor.getPlatform() !== "ios") {
-    throw new Error("Google sign-in is not set up for Android yet.");
   }
 
   await initialized();
@@ -56,16 +53,27 @@ export async function signInWithGoogle(): Promise<void> {
 
 let initializing: Promise<void> | undefined;
 
-/** The plugin wants configuring once, before its first sign-in. */
+/**
+ * The plugin wants configuring once, before its first sign-in.
+ *
+ * Each platform names a different client. iOS signs in as the iOS client,
+ * so its tokens are addressed to that. Android signs in as the web client:
+ * Google recognises the app itself by its package name and signing key,
+ * registered as an Android client, but addresses the token to the web
+ * client named here. The server accepts both.
+ */
 function initialized(): Promise<void> {
-  const iOSClientId = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID as string | undefined;
-  if (!iOSClientId) {
-    return Promise.reject(
-      new Error("This build has no VITE_GOOGLE_IOS_CLIENT_ID, so Google sign-in cannot start."),
-    );
+  const ios = Capacitor.getPlatform() === "ios";
+  const name = ios ? "VITE_GOOGLE_IOS_CLIENT_ID" : "VITE_GOOGLE_WEB_CLIENT_ID";
+  const clientId = (
+    ios ? import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID : import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID
+  ) as string | undefined;
+  if (!clientId) {
+    return Promise.reject(new Error(`This build has no ${name}, so Google sign-in cannot start.`));
   }
 
-  initializing ??= SocialLogin.initialize({ google: { iOSClientId } }).catch((err: unknown) => {
+  const google = ios ? { iOSClientId: clientId } : { webClientId: clientId };
+  initializing ??= SocialLogin.initialize({ google }).catch((err: unknown) => {
     // Let the next tap try again rather than failing forever.
     initializing = undefined;
     throw err;
