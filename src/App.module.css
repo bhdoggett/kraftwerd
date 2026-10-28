@@ -41,9 +41,6 @@
   background: none;
   display: flex;
   gap: 7px;
-  /* Lifted off the header just enough to have an edge, now that it has no
-     frame drawing one for it. */
-  box-shadow: var(--shadow);
 }
 
 .markTile {
@@ -64,6 +61,10 @@
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
   filter: var(--tile-lit);
+  /* Each tile lifted off the header just enough to have an edge, now that it
+     has no frame drawing one for it. On the pair as a whole, the shadow drew
+     round the gap between them too, which read as a plate they sat on. */
+  box-shadow: var(--shadow);
 }
 
 /*
