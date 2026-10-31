@@ -17,6 +17,7 @@ import { RuleChangesNotice } from "./components/RuleChanges/RuleChanges";
 import { RulesDialog } from "./components/Rules/Rules";
 import { authClient } from "./lib/auth-client";
 import { signInWithGoogle } from "./lib/googleSignIn";
+import { useStatusBarForLandscape } from "./lib/statusBar";
 import { promiseAGame, type PromisedGame } from "./lib/useStartGame";
 import { navigate, useRoute } from "./router";
 
@@ -38,6 +39,7 @@ const TITLES = {
 } as const;
 
 export default function App() {
+  useStatusBarForLandscape();
   const route = useRoute();
   const { isAuthenticated, isLoading } = useConvexAuth();
 
