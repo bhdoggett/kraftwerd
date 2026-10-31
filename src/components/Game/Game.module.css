@@ -882,7 +882,13 @@
   grid-column: 1;
 }
 
+/*
+ * Positioned so it clips what is absolutely positioned inside it, the
+ * screen-reader text among it: otherwise that lies outside the column's scroll
+ * and gives the page something to scroll to.
+ */
 .landscape .side {
+  position: relative;
   grid-column: 3;
   grid-row: 1;
   width: auto;
@@ -896,18 +902,18 @@
   grid-column: 2;
 }
 
-/* The rack's tiles are 40px here. Both are set: the height is resolved on
+/* The rack's tiles are 36px here. Both are set: the height is resolved on
    :root, so overriding the width alone would leave it at the page's size. */
 .landscape .dragTile {
-  --rack-tile-width: 40px;
-  --rack-tile-height: 40px;
+  --rack-tile-width: 36px;
+  --rack-tile-height: 36px;
 }
 
 /* Stands where the rack's buttons were, so its answers are under the thumb. */
 .tradeBarCompact {
   display: grid;
   gap: var(--space-1);
-  margin-top: var(--space-2);
+  margin-top: var(--space-1);
   padding: var(--space-1);
   text-align: center;
 }

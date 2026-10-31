@@ -54,13 +54,14 @@ interface RackProps {
   playing: boolean;
   /**
    * Stack the letters this many to a row, with the blank as the cell after the
-   * last of them and the buttons as icons in a row beneath. Left out, the rack
-   * is the single row it has always been.
+   * last of them and the buttons as icons two by two beneath, then Play. Left
+   * out, the rack is the single row it has always been.
    */
   columns?: number;
   /**
-   * Take the buttons away while a question stands in their place. Hidden rather
-   * than left out, so focus can go back to the button that asked.
+   * Take the buttons away, Play included, while a question stands in their
+   * place. Hidden rather than left out, so focus can go back to the button that
+   * asked.
    */
   actionsHidden?: boolean;
 }

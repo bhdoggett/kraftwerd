@@ -54,8 +54,8 @@
   cursor: default;
 }
 
-/* In the side column of a phone held sideways, which is 170px: the two
-   buttons take a line each if they must. This is SHORT_LANDSCAPE in
+/* In the side column of a phone held sideways, which is 170px: the tag and
+   Hint share a line, and the other button takes the next. This is SHORT_LANDSCAPE in
    src/lib/useShortLandscape.ts, repeated verbatim. */
 @media (orientation: landscape) and (max-height: 500px) {
   .bar {
@@ -63,7 +63,7 @@
   }
 
   .actions {
-    flex-wrap: wrap;
+    display: contents;
   }
 
   .ask,

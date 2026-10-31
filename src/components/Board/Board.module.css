@@ -86,7 +86,9 @@
  * flex column, for the reason `.board` gives: the frame takes the row left
  * over once the buttons have their own, and never its content's height.
  */
-.boardFill {
+.board.boardFill {
+  /* Two classes, because `.board` below sets `display` too and comes later:
+     at equal weight it won, and the zoom buttons fell off the bottom. */
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;

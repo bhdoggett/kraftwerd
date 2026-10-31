@@ -274,30 +274,34 @@
  * A rack standing as a column (the `columns` prop): the letters in a grid a
  * few tiles wide with the blank as the cell after the last, then the buttons
  * as icons two by two, then Play. Sized so two tiles across fit a column about
- * 104px wide. Four across that left each button 19px wide, too small to tap;
- * two across makes them 41 by 32, and the rack still fits a 360px-tall screen.
+ * 104px wide. Four across that left each button 19px wide, too small to tap.
+ *
+ * Tall as well as narrow: 274px in all, for the 291px a 360px-tall Android
+ * phone leaves once the header, the padding and its 24px gesture bar are gone.
  *
  * Positioned so the tiles' offsetParent is the rack, the box `rackSlotUnder`
  * measures the pointer against. It never scrolls, which that also relies on,
  * and every tile is the same size so the rows line up exactly for `slotAt`.
  */
 .columns {
-  --rack-tile-width: 40px;
+  --rack-tile-width: 36px;
   /*
    * Set here too. index.css declares the height as `var(--rack-tile-width)` on
    * :root, so it was resolved there, at the page's width, and overriding the
-   * width alone left tiles 40 wide and 46, 34 or 30 tall. Declared on this
+   * width alone left tiles 36 wide and 46, 34 or 30 tall. Declared on this
    * element, --rack-step-y above resolves against it as well.
    */
-  --rack-tile-height: 40px;
+  --rack-tile-height: 36px;
   --rack-gap: 4px;
+  gap: var(--space-1);
   position: relative;
   overflow: clip;
   grid-template-columns: 1fr;
   grid-template-areas:
     "tiles"
     "actions";
-  padding: var(--space-2);
+  /* More above: a selected tile lifts 3px and rings 4px, and this box clips. */
+  padding: var(--space-2) var(--space-1) var(--space-1);
 }
 
 .columns .tiles {
@@ -327,7 +331,7 @@
 .columns .action {
   width: auto;
   min-width: 0;
-  height: 32px;
+  height: 30px;
 }
 
 .columns .actionLabel {
@@ -336,7 +340,7 @@
 
 .columns .play {
   grid-column: 1 / -1;
-  height: 34px;
+  height: 32px;
   /* "Playing…" has to stay on one line in the narrow column. */
   padding: 0 var(--space-1);
 }
