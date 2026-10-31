@@ -307,6 +307,12 @@
 .columns .tiles {
   display: grid;
   grid-template-columns: repeat(var(--rack-columns), var(--rack-tile-width));
+  /*
+   * Four rows held open: seven letters and the blank are eight cells, which
+   * is four rows of two. Without them the grid shrank as tiles left it and
+   * Play, beneath, rose by a row under the finger that had just pressed it.
+   */
+  grid-template-rows: repeat(4, var(--rack-tile-height));
   grid-auto-rows: var(--rack-tile-height);
   justify-content: center;
   align-items: start;

@@ -59,8 +59,8 @@ Mockup: `.superpowers/brainstorm/67783-1793243551/content/landscape-layout-v4.ht
 - The rack's tiles stacked in a grid two tiles wide, instead of one row.
   Seven letters plus the blank tile fill two columns of four.
 - The blank tile keeps its count of blanks left, as it does today.
-- Below the tiles: the action buttons (shuffle, recall, swap, pass) in a row,
-  **icons only**. The rack already hides the text labels below a container
+- Below the tiles: the action buttons (shuffle, recall, swap, pass) two by
+  two, **icons only**. (Icons in a row came out 19px wide, too small to tap.) The rack already hides the text labels below a container
   width; the narrow column should land in that case. Every button keeps its
   `aria-label`.
 - Below those: the Play button.
@@ -73,7 +73,8 @@ Mockup: `.superpowers/brainstorm/67783-1793243551/content/landscape-layout-v4.ht
   height left under the header. It is a rectangle.
 - Zoomed all the way out ("fit"), the whole board shows. Because the board is
   square and the viewport is wider than tall, it fits the height and leaves
-  space at the sides. The board sits centred in that space.
+  space at the sides. The board sits centred in that space. The low zoom steps
+  also leave bands at the sides, until the board is wider than the viewport.
 - Zoomed in, the board fills the rectangle and you drag to pan, as today.
 - `Board.tsx` already measures its box and fits with `min(width, height)`.
   Today the box is forced square by `.boardArea` (`width: min(100%, 72vh)`).

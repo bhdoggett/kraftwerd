@@ -7,7 +7,7 @@ import { Game } from "./Game";
 import styles from "./Game.module.css";
 
 /** What the server has to say, swapped per test. */
-const server = vi.hoisted(() => ({ view: null as unknown }));
+const server = vi.hoisted(() => ({ view: null as unknown, refuse: false }));
 /** How many times each stand-in has mounted, and the props it last drew with. */
 const seen = vi.hoisted(() => ({
   boardMounts: 0,
@@ -19,7 +19,8 @@ const seen = vi.hoisted(() => ({
 vi.mock("convex/react", () => ({
   useQuery: (ref: Parameters<typeof getFunctionName>[0]) =>
     getFunctionName(ref) === "games:getGame" ? server.view : undefined,
-  useMutation: () => vi.fn(),
+  useMutation: () =>
+    vi.fn(() => (server.refuse ? Promise.reject(new Error("Not your turn")) : undefined)),
   useAction: () => vi.fn(() => new Promise(() => {})),
 }));
 
@@ -134,6 +135,7 @@ beforeEach(() => {
   seen.boardMounts = 0;
   seen.rackMounts = 0;
   server.view = gameView();
+  server.refuse = false;
 });
 
 afterEach(() => {
@@ -198,6 +200,23 @@ describe("a phone held sideways", () => {
 
     expect(side().firstElementChild?.contains(final)).toBe(true);
     expect(side().children[1]?.contains(waiting)).toBe(true);
+  });
+
+  test("shows a refused move in the side column, where it can be seen", async () => {
+    stubScreen(true);
+    server.refuse = true;
+    draw();
+
+    fireEvent.click(screen.getByText("ask pass"));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Pass your turn?" })).getByRole("button", {
+        name: "Pass",
+      }),
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(side().contains(alert)).toBe(true);
+    expect(main().contains(alert)).toBe(false);
   });
 
   test("marks a screen with no rack, and leaves the rack out", () => {

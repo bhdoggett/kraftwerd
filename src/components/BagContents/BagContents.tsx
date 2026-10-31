@@ -72,6 +72,10 @@ export function BagContents({
    * panel, and 26 popovers at once is the wall of text the gauges replaced.
    */
   const [asked, setAsked] = useState<string | null>(null);
+  const close = () => {
+    setOpen(false);
+    setAsked(null);
+  };
   const full = newBag(RACK);
   const total = tilesLeft(full);
 
@@ -98,7 +102,7 @@ export function BagContents({
 
       {open && (
         <Modal
-          onDismiss={() => setOpen(false)}
+          onDismiss={close}
           label="Still out there"
           returnFocusTo={summaryRef}
         >
@@ -138,7 +142,7 @@ export function BagContents({
             <button
               type="button"
               className={styles.close}
-              onClick={() => setOpen(false)}
+              onClick={close}
             >
               Close
             </button>

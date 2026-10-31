@@ -1069,11 +1069,12 @@ export function Game({
    * or under the board, or in the side column, which is what keeps the board
    * its full height. `Board` and `Rack` never move, so turning the phone does
    * not remount them.
+   *
+   * The final-round notice stands for the whole round, so it sits above the
+   * board rather than floating over it: it must not cover a square somebody
+   * is aiming at, and it must not disappear the way the refusal does. It is
+   * said aloud through the game's announcer, not from here: see `announce`.
    */
-  /* Above the board rather than floating over it: this one stands for
-      the whole round, so it must not cover a square somebody is aiming
-      at, and it must not disappear the way the refusal does. */
-  /* Said aloud through the game's announcer, not from here: see `announce`. */
   const finalRoundNotice = finalRound !== null && (
     <div className={styles.finalRound}>
       <strong className={styles.finalRoundTitle}>{finalRound.title}</strong>
@@ -1081,7 +1082,8 @@ export function Game({
     </div>
   );
 
-  /* Above the board, so a hint is in reach without scrolling. */
+  /* Upright, above the board, so a hint is in reach without scrolling;
+     sideways, at the foot of the side column, after the play panel. */
   const hintBar = game.hints === true && (
     <HintBar
       // Not while other players' plays are still going down: the hint
@@ -1549,7 +1551,7 @@ export function Game({
         </SrOnly>
 
         {/* A grid item of its own sideways, which would take a row from the
-            board, so it goes to the foot of the side column instead. */}
+            board, so it goes to the side column instead, above the key. */}
         {!shortLandscape && <DevTools gameId={gameId} />}
 
         {drag && (

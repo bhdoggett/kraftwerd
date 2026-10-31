@@ -941,6 +941,18 @@
   font-size: var(--text-xs);
 }
 
+/* The side column scrolls by itself and a player is usually scrolled down
+   when pressing Play, so a refusal at the top would fail with nothing to see.
+   Stuck to the top, over an opaque ground so the text under it stays hidden. */
+.landscape .error {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background:
+    linear-gradient(var(--danger-soft), var(--danger-soft)),
+    var(--surface);
+}
+
 /* Upright this goes above the scores; here it stays under them. */
 .landscape .play {
   order: 0;
