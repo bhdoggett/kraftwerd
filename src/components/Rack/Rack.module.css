@@ -282,6 +282,13 @@
  */
 .columns {
   --rack-tile-width: 40px;
+  /*
+   * Set here too. index.css declares the height as `var(--rack-tile-width)` on
+   * :root, so it was resolved there, at the page's width, and overriding the
+   * width alone left tiles 40 wide and 46, 34 or 30 tall. Declared on this
+   * element, --rack-step-y above resolves against it as well.
+   */
+  --rack-tile-height: 40px;
   --rack-gap: 4px;
   position: relative;
   overflow: clip;
