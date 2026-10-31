@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   cleanup,
   fireEvent,
@@ -9,7 +9,10 @@ import {
 import { BagContents } from "./BagContents";
 import { axeViolations } from "../../test/axe";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 /** Open the panel, the way a player does before reading any of it. */
 function open(unseen: Record<string, number>) {
@@ -128,5 +131,47 @@ describe("accessibility", () => {
       within(screen.getByRole("dialog")).getByRole("button", { name: /^E:/ }),
     );
     expect(await axeViolations(document.body)).toEqual([]);
+  });
+});
+
+/*
+ * The dialog's panel scrolls, so a popover past its edge is cut off. A sat on
+ * the left edge and read "of 9 still out there".
+ */
+describe("a popover at the edge of the letters", () => {
+  /** The row of letters runs 100 to 300; the popover is 150 wide. */
+  function measuring(popoverLeft: number) {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const isPopover = this.getAttribute("role") === "status";
+      const left = isPopover ? popoverLeft : 100;
+      const right = isPopover ? popoverLeft + 150 : 300;
+      return { left, right } as DOMRect;
+    });
+  }
+
+  const nudgeOf = () => {
+    open({ A: 9 });
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: /^A:/ }),
+    );
+    return screen.getByText(/still out there$/, { selector: "[role=status]" }).style
+      .getPropertyValue("--nudge");
+  };
+
+  test("is moved in from the left edge", () => {
+    measuring(60);
+    expect(nudgeOf()).toBe("40px");
+  });
+
+  test("is moved in from the right edge", () => {
+    measuring(180);
+    expect(nudgeOf()).toBe("-30px");
+  });
+
+  test("stays centred with room either side", () => {
+    measuring(120);
+    expect(nudgeOf()).toBe("0px");
   });
 });

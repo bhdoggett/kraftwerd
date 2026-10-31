@@ -1,9 +1,39 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { RACK } from "../../../shared/config";
 import { newBag, tilesLeft } from "../../../shared/engine/bag";
 import { ChevronIcon } from "../Icons/Icons";
 import { Modal } from "../Modal/Modal";
 import styles from "./BagContents.module.css";
+
+/**
+ * A letter's number, over its tile. Centred on the tile, then nudged back in
+ * if that takes it past the edge of the letters: the dialog's panel scrolls,
+ * so anything past its edge is cut off, and A and Z sit right beside one.
+ */
+function LetterPopover({
+  says,
+  within,
+}: {
+  says: string;
+  /** The row of letters, which is as wide as the popover may reach. */
+  within: RefObject<HTMLDivElement | null>;
+}) {
+  const popover = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const room = within.current?.getBoundingClientRect();
+    const box = popover.current?.getBoundingClientRect();
+    if (room === undefined || box === undefined) return;
+    const nudge = Math.max(room.left - box.left, 0) + Math.min(room.right - box.right, 0);
+    popover.current?.style.setProperty("--nudge", `${nudge}px`);
+  }, [within]);
+
+  return (
+    <span ref={popover} className={styles.popover} role="status">
+      {says}
+    </span>
+  );
+}
 
 /**
  * What is still out there, letter by letter, against the full starting count
@@ -36,6 +66,7 @@ export function BagContents({
   // Where focus goes back to on close: the summary is not unmounted while the
   // dialog is up, but Modal is told outright rather than left to guess.
   const summaryRef = useRef<HTMLButtonElement>(null);
+  const lettersRef = useRef<HTMLDivElement>(null);
   /**
    * Which letter is showing its number. One at a time: this sits in a narrow
    * panel, and 26 popovers at once is the wall of text the gauges replaced.
@@ -75,7 +106,7 @@ export function BagContents({
             <p className={styles.note}>
               Still out there — in the bag or in somebody's hand:
             </p>
-            <div className={styles.letters}>
+            <div ref={lettersRef} className={styles.letters}>
               {letters.map(([letter, startingCount]) => {
                 const outThere = unseen[letter] ?? 0;
                 const fill = startingCount === 0 ? 0 : outThere / startingCount;
@@ -99,11 +130,7 @@ export function BagContents({
                     onClick={() => setAsked(asked === letter ? null : letter)}
                   >
                     {letter}
-                    {asked === letter && (
-                      <span className={styles.popover} role="status">
-                        {says}
-                      </span>
-                    )}
+                    {asked === letter && <LetterPopover says={says} within={lettersRef} />}
                   </button>
                 );
               })}
