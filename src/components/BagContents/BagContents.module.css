@@ -37,20 +37,22 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A plain mark that the row opens something; it no longer turns. */
 .chevron {
   display: flex;
   color: var(--text);
-  transition: transform 150ms ease;
 }
 
-.chevronOpen {
-  transform: rotate(180deg);
+/* The contents of the dialog's panel, which supplies its own padding. */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .chevron {
-    transition: none;
-  }
+.close {
+  composes: close from "../Button/Button.module.css";
+  align-self: flex-end;
 }
 
 .note {
@@ -62,7 +64,8 @@
 .letters {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  justify-content: center;
+  gap: var(--space-1);
 }
 
 /*

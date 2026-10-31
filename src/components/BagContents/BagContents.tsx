@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { RACK } from "../../../shared/config";
 import { newBag, tilesLeft } from "../../../shared/engine/bag";
 import { ChevronIcon } from "../Icons/Icons";
+import { Modal } from "../Modal/Modal";
 import styles from "./BagContents.module.css";
 
 /**
@@ -32,6 +33,9 @@ export function BagContents({
   unseen: Record<string, number>;
 }) {
   const [open, setOpen] = useState(false);
+  // Where focus goes back to on close: the summary is not unmounted while the
+  // dialog is up, but Modal is told outright rather than left to guess.
+  const summaryRef = useRef<HTMLButtonElement>(null);
   /**
    * Which letter is showing its number. One at a time: this sits in a narrow
    * panel, and 26 popovers at once is the wall of text the gauges replaced.
@@ -48,57 +52,71 @@ export function BagContents({
     <div className={styles.bag}>
       <button
         type="button"
+        ref={summaryRef}
         className={styles.summary}
-        aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={() => setOpen(!open)}
       >
         <span>
           <strong>{left}</strong> of {total} tiles left
         </span>
-        <span className={[styles.chevron, open ? styles.chevronOpen : ""].join(" ")}>
+        <span className={styles.chevron}>
           <ChevronIcon />
         </span>
       </button>
 
       {open && (
-        <>
-          <p className={styles.note}>
-            Still out there — in the bag or in somebody's hand:
-          </p>
-          <div className={styles.letters}>
-            {letters.map(([letter, startingCount]) => {
-              const outThere = unseen[letter] ?? 0;
-              const fill = startingCount === 0 ? 0 : outThere / startingCount;
-              const says = `${outThere} of ${startingCount} still out there`;
-              return (
-                /*
-                 * A button because it is tapped, not because it looks like
-                 * one: the count lived in `title` alone, which is a tooltip,
-                 * and a tooltip needs a pointer to hover. On a phone the
-                 * gauges could say "some" and "hardly any" and nothing else.
-                 * The styling deliberately keeps it a tile -- see .letter in
-                 * the stylesheet, which strips every button affordance.
-                 */
-                <button
-                  type="button"
-                  key={letter}
-                  className={styles.letter}
-                  style={{ "--fill": fill } as React.CSSProperties}
-                  title={says}
-                  aria-label={`${letter}: ${says}`}
-                  onClick={() => setAsked(asked === letter ? null : letter)}
-                >
-                  {letter}
-                  {asked === letter && (
-                    <span className={styles.popover} role="status">
-                      {says}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+        <Modal
+          onDismiss={() => setOpen(false)}
+          label="Still out there"
+          returnFocusTo={summaryRef}
+        >
+          <div className={styles.body}>
+            <p className={styles.note}>
+              Still out there — in the bag or in somebody's hand:
+            </p>
+            <div className={styles.letters}>
+              {letters.map(([letter, startingCount]) => {
+                const outThere = unseen[letter] ?? 0;
+                const fill = startingCount === 0 ? 0 : outThere / startingCount;
+                const says = `${outThere} of ${startingCount} still out there`;
+                return (
+                  /*
+                   * A button because it is tapped, not because it looks like
+                   * one: the count lived in `title` alone, which is a tooltip,
+                   * and a tooltip needs a pointer to hover. On a phone the
+                   * gauges could say "some" and "hardly any" and nothing else.
+                   * The styling deliberately keeps it a tile -- see .letter in
+                   * the stylesheet, which strips every button affordance.
+                   */
+                  <button
+                    type="button"
+                    key={letter}
+                    className={styles.letter}
+                    style={{ "--fill": fill } as React.CSSProperties}
+                    title={says}
+                    aria-label={`${letter}: ${says}`}
+                    onClick={() => setAsked(asked === letter ? null : letter)}
+                  >
+                    {letter}
+                    {asked === letter && (
+                      <span className={styles.popover} role="status">
+                        {says}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              className={styles.close}
+              onClick={() => setOpen(false)}
+            >
+              Close
+            </button>
           </div>
-        </>
+        </Modal>
       )}
     </div>
   );
