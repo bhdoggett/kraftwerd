@@ -139,6 +139,13 @@ describe("a rack standing as a column", () => {
     }
   });
 
+  test("a question hides the buttons but keeps them, so focus can go back", () => {
+    const { play } = draw({ ...slid, columns: 2, actionsHidden: true });
+
+    expect(play.parentElement?.className).toMatch(/actionsHidden/);
+    expect(document.contains(play)).toBe(true);
+  });
+
   test("the blank tile sits in the grid after the last letter, with its count", () => {
     draw({ ...slid, columns: 2, blanks: 2 });
 

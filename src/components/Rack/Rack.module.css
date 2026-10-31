@@ -273,8 +273,9 @@
 /*
  * A rack standing as a column (the `columns` prop): the letters in a grid a
  * few tiles wide with the blank as the cell after the last, then the buttons
- * as icons in one row, then Play. Sized so two tiles across fit a column about
- * 104px wide.
+ * as icons two by two, then Play. Sized so two tiles across fit a column about
+ * 104px wide. Four across that left each button 19px wide, too small to tap;
+ * two across makes them 41 by 32, and the rack still fits a 360px-tall screen.
  *
  * Positioned so the tiles' offsetParent is the rack, the box `rackSlotUnder`
  * measures the pointer against. It never scrolls, which that also relies on,
@@ -314,15 +315,19 @@
 
 .columns .actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   justify-self: stretch;
-  gap: 2px;
+  gap: 4px;
+}
+
+.columns .actionsHidden {
+  display: none;
 }
 
 .columns .action {
   width: auto;
   min-width: 0;
-  height: 28px;
+  height: 32px;
 }
 
 .columns .actionLabel {
@@ -332,6 +337,8 @@
 .columns .play {
   grid-column: 1 / -1;
   height: 34px;
+  /* "Playing…" has to stay on one line in the narrow column. */
+  padding: 0 var(--space-1);
 }
 
 /*

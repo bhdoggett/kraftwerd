@@ -58,6 +58,11 @@ interface RackProps {
    * is the single row it has always been.
    */
   columns?: number;
+  /**
+   * Take the buttons away while a question stands in their place. Hidden rather
+   * than left out, so focus can go back to the button that asked.
+   */
+  actionsHidden?: boolean;
 }
 
 /** How long a shuffle's slide takes; matches `.shuffling` in Rack.module.css. */
@@ -89,6 +94,7 @@ export function Rack({
   playAnswers = false,
   playing,
   columns,
+  actionsHidden = false,
 }: RackProps) {
   /*
    * The tiles just drawn from the bag, which rise into the rack one after
@@ -260,7 +266,7 @@ export function Rack({
 
         {columns ? null : blankCell}
 
-        <div className={styles.actions}>
+        <div className={actionsHidden ? `${styles.actions} ${styles.actionsHidden}` : styles.actions}>
           <button
             type="button"
             className={styles.action}
