@@ -43,6 +43,12 @@ interface BoardProps {
   onPickUp: (x: number, y: number) => void;
   /** Begin dragging a tile staged this turn to another square. */
   onGrabStaged?: (x: number, y: number, event: React.PointerEvent) => void;
+  /**
+   * Fill the height the parent gives it instead of being square. The board
+   * still fits by its shorter side, so zoomed out it sits centred in a
+   * rectangle; zoomed in it fills the rectangle and pans.
+   */
+  fill?: boolean;
 }
 
 const key = (x: number, y: number) => `${x},${y}`;
@@ -86,6 +92,7 @@ export function Board({
   onPlace,
   onPickUp,
   onGrabStaged,
+  fill = false,
 }: BoardProps) {
   // Resolved by name rather than looked up: an unknown name means an open
   // board, where layoutByName would fall back to the first drawn layout and
@@ -494,8 +501,11 @@ export function Board({
   }
 
   return (
-    <div className={styles.board}>
-      <div className={styles.frame}>
+    <div className={fill ? `${styles.board} ${styles.boardFill}` : styles.board}>
+      <div
+        className={fill ? `${styles.frame} ${styles.frameFill}` : styles.frame}
+        data-board-frame
+      >
         <div
           ref={viewport}
           className={styles.viewport}

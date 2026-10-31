@@ -276,3 +276,20 @@ describe("accessibility", () => {
     expect(await axeViolations(document.body)).toEqual([]);
   });
 });
+
+describe("the board's frame", () => {
+  test("a filling board drops the square frame", () => {
+    draw({ fill: true });
+
+    const frame = document.querySelector("[data-board-frame]");
+    expect(frame?.className).toMatch(/frameFill/);
+  });
+
+  test("without fill the frame stays square", () => {
+    draw();
+
+    const frame = document.querySelector("[data-board-frame]");
+    expect(frame).not.toBeNull();
+    expect(frame?.className).not.toMatch(/frameFill/);
+  });
+});
