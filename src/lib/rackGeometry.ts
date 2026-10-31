@@ -46,18 +46,76 @@ export function rackSlotUnder(clientX: number, clientY: number): RackTarget {
   }
   if (!insideRack) return miss;
 
-  // The tiles are centred, so there is empty rack either side of them. Left of
-  // them means the start, right of them the end.
-  // Layout positions (offsetLeft), not drawn ones: the rack keeps its tiles in
-  // a fixed page order and slides each into its slot by transform, so the
-  // i-th element's layout box is the i-th slot whichever tile is showing there.
-  const localX = clientX - bounds.left + rack.scrollLeft;
-  if (localX < tiles[0].offsetLeft) return { overRack: true, position: 0 };
+  // Layout positions (offsetLeft, offsetTop), not drawn ones: the rack keeps
+  // its tiles in a fixed page order and slides each into its slot by
+  // transform, so the i-th element's layout box is the i-th slot whichever
+  // tile is showing there.
+  const position = slotAt(
+    clientX - bounds.left + rack.scrollLeft,
+    clientY - bounds.top + rack.scrollTop,
+    tiles.map((el) => ({
+      left: el.offsetLeft,
+      top: el.offsetTop,
+      width: el.offsetWidth,
+      height: el.offsetHeight,
+    })),
+  );
+  return { overRack: true, position };
+}
 
-  for (const [position, el] of tiles.entries()) {
-    if (localX < el.offsetLeft + el.offsetWidth) return { overRack: true, position };
+interface SlotBox {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * The position a drop at (x, y) aims at, in the rack's own coordinates.
+ *
+ * The row is picked by `top` first and the column within it by `left`, so a
+ * single row reads exactly as it always did: only x matters, because the tiles
+ * are centred and there is empty rack either side of them. With several rows,
+ * above the first or below the last means the start or the end.
+ */
+export function slotAt(x: number, y: number, slots: readonly SlotBox[]): number {
+  if (slots.length === 0) return 0;
+
+  const rowTops = [...new Set(slots.map((slot) => slot.top))].sort((a, b) => a - b);
+  let top = rowTops[0];
+  if (rowTops.length > 1) {
+    const last = slots.filter((slot) => slot.top === rowTops[rowTops.length - 1]);
+    if (y < rowTops[0]) return 0;
+    if (y >= rowTops[rowTops.length - 1] + Math.max(...last.map((slot) => slot.height))) {
+      return slots.length;
+    }
+    // The gap between two rows belongs to the row above it.
+    top = rowTops.filter((rowTop) => rowTop <= y).pop() ?? rowTops[0];
   }
-  return { overRack: true, position: tiles.length };
+
+  const row = slots.flatMap((slot, index) => (slot.top === top ? [{ slot, index }] : []));
+  if (x < row[0].slot.left) return row[0].index;
+  for (const { slot, index } of row) {
+    if (x < slot.left + slot.width) return index;
+  }
+  return row[row.length - 1].index + 1;
+}
+
+/**
+ * How many slots across and down a tile travels going from slot `from` to slot
+ * `to`, with the slots laid out row by row `columns` to a row. With no columns
+ * everything is one row, which is the single-row rack.
+ */
+export function slotOffset(
+  from: number,
+  to: number,
+  columns: number,
+): { x: number; y: number } {
+  if (columns <= 0) return { x: to - from, y: 0 };
+  return {
+    x: (to % columns) - (from % columns),
+    y: Math.floor(to / columns) - Math.floor(from / columns),
+  };
 }
 
 /**
