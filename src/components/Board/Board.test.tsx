@@ -292,4 +292,23 @@ describe("the board's frame", () => {
     expect(frame).not.toBeNull();
     expect(frame?.className).not.toMatch(/frameFill/);
   });
+
+  test("only the sides with more board beyond them fade", () => {
+    draw();
+    const grid = screen.getByRole("group", { name: /^Board,/ });
+    const rect = (top: number, right: number, bottom: number, left: number) =>
+      ({ top, right, bottom, left }) as DOMRect;
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: Element,
+    ) {
+      return this === grid ? rect(-50, 100, 100, -50) : rect(0, 100, 100, 0);
+    });
+
+    fireEvent.scroll(grid.parentElement!);
+
+    expect(document.querySelector("[data-clipped]")?.getAttribute("data-clipped")).toBe(
+      "top left",
+    );
+    vi.restoreAllMocks();
+  });
 });

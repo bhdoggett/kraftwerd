@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { boardShapeNamed } from "../../../shared/boards";
 import type { Placement } from "../../../shared/engine/score";
 import { followPointer } from "../../lib/followPointer";
@@ -335,6 +335,31 @@ export function Board({
     el.scrollTop = (el.scrollTop + y) * ratio - y;
   }, [zoom]);
 
+  /**
+   * The sides with more board beyond them, as a space-separated list. Measured
+   * from where the grid is drawn against the box, so a side the player has
+   * panned all the way to counts as the board's real edge.
+   */
+  const [clipped, setClipped] = useState("");
+
+  const measureClipped = useCallback(() => {
+    if (viewport.current === null || grid.current === null) return;
+    const box = viewport.current.getBoundingClientRect();
+    const board = grid.current.getBoundingClientRect();
+    setClipped(
+      [
+        board.top < box.top - 1 && "top",
+        board.right > box.right + 1 && "right",
+        board.bottom > box.bottom + 1 && "bottom",
+        board.left < box.left - 1 && "left",
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+  }, []);
+
+  useLayoutEffect(measureClipped, [measureClipped, zoom, fit]);
+
   const committed = useMemo(() => {
     const map = new Map<string, BoardTile>();
     for (const t of tiles) map.set(key(t.x, t.y), t);
@@ -510,6 +535,7 @@ export function Board({
           ref={viewport}
           className={styles.viewport}
           style={{ "--cell-scale": zoom * fit } as React.CSSProperties}
+          onScroll={measureClipped}
           onPointerDown={(e) => {
             pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
             // Cleared for every press, not only for one starting on a staged
@@ -547,7 +573,9 @@ export function Board({
             {cells}
           </div>
         </div>
-        {zoom > 1 && <div className={styles.edge} aria-hidden="true" />}
+        {clipped !== "" && (
+          <div className={styles.edge} data-clipped={clipped} aria-hidden="true" />
+        )}
       </div>
       {/* Under the board rather than over it: laid over a corner, the buttons
           covered a square that, at the fitted size, could not be panned out
