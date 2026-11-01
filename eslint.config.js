@@ -10,6 +10,7 @@ export default defineConfig([
   {
     ignores: [
       "dist",
+      "android/app/build",
       "eslint.config.js",
       "convex/_generated",
       "postcss.config.js",

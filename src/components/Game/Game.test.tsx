@@ -7,14 +7,19 @@ import { Game } from "./Game";
 import styles from "./Game.module.css";
 
 /** What the server has to say, swapped per test. */
-const server = vi.hoisted(() => ({ view: null as unknown, refuse: false }));
-/** How many times each stand-in has mounted, and the props it last drew with. */
-const seen = vi.hoisted(() => ({
-  boardMounts: 0,
-  rackMounts: 0,
-  board: {} as Record<string, unknown>,
-  rack: {} as Record<string, unknown>,
+const server = vi.hoisted((): { view: unknown; refuse: boolean } => ({
+  view: null,
+  refuse: false,
 }));
+/** How many times each stand-in has mounted, and the props it last drew with. */
+const seen = vi.hoisted(
+  (): {
+    boardMounts: number;
+    rackMounts: number;
+    board: Record<string, unknown>;
+    rack: Record<string, unknown>;
+  } => ({ boardMounts: 0, rackMounts: 0, board: {}, rack: {} }),
+);
 
 vi.mock("convex/react", () => ({
   useQuery: (ref: Parameters<typeof getFunctionName>[0]) =>
@@ -152,7 +157,7 @@ describe("a phone held upright", () => {
     expect(seen.board.fill).toBe(false);
     expect(seen.rack.columns).toBeUndefined();
     expect(seen.rack.actionsHidden).toBe(false);
-    expect(main().contains(hintBars()[0]!)).toBe(true);
+    expect(main().contains(hintBars()[0])).toBe(true);
   });
 
   test("asks about a pass in the full sentence, under the rack", () => {
@@ -182,8 +187,8 @@ describe("a phone held sideways", () => {
     draw();
 
     expect(hintBars()).toHaveLength(1);
-    expect(side().contains(hintBars()[0]!)).toBe(true);
-    expect(main().contains(hintBars()[0]!)).toBe(false);
+    expect(side().contains(hintBars()[0])).toBe(true);
+    expect(main().contains(hintBars()[0])).toBe(false);
   });
 
   test("puts each notice once, at the top of the side, in order", () => {
@@ -295,7 +300,7 @@ describe("turning the phone", () => {
     turn(true);
 
     expect(hintBars()).toHaveLength(1);
-    expect(side().contains(hintBars()[0]!)).toBe(true);
+    expect(side().contains(hintBars()[0])).toBe(true);
   });
 
   test("a question stays open and Cancel keeps focus", () => {
