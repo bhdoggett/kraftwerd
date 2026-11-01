@@ -861,7 +861,7 @@
 .landscape .rackSlot {
   grid-column: 1;
   grid-row: 1;
-  align-self: start;
+  align-self: center;
   width: 104px;
   max-height: 100%;
   overflow-y: auto;
@@ -924,14 +924,43 @@
   padding: 0;
 }
 
-/* The card takes the rack's narrow column, or the side's, so it gives up the
-   room kept either side of its words and keeps only the skip button's row. */
+/*
+ * One line in the empty stretch beside the zoom buttons, under the board: it
+ * covers no square, moves nothing, and leaves the rack in view. Its height and
+ * its gap on the right are the zoom row's. Long words give way to the name and
+ * the points.
+ */
 .landscape .announce {
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-6) var(--space-1) var(--space-1);
+  position: absolute;
+  bottom: 0;
+  left: var(--space-3);
+  right: 8rem;
+  height: 28px;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  padding: 0 1.75rem 0 var(--space-2);
   font-size: var(--text-sm);
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+}
+
+.landscape .announce .announceName {
+  flex: none;
+}
+
+.landscape .recapWords {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landscape .announce .recapPoints {
+  flex: none;
+  font-size: var(--text-sm);
+}
+
+.landscape .announceClose {
+  top: 0;
+  right: 0;
 }
 
 .landscape .finalRound,

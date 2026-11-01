@@ -1316,7 +1316,10 @@ export function Game({
       // One element for the whole run of steps, not one per step: it
       // stays up from one play to the next and changes color between
       // players, rather than vanishing and fading back in each time.
-      className={[styles.announce, rackShown ? styles.announceOverRack : ""].join(" ")}
+      className={[
+        styles.announce,
+        rackShown && !shortLandscape ? styles.announceOverRack : "",
+      ].join(" ")}
       data-seat={seatOf.get(noteTurn.userId)}
       // No role="status": the announcer says the play once, whole,
       // rather than this card spot by spot.
@@ -1398,6 +1401,8 @@ export function Game({
             onGrabStaged={!reviewing ? grabStaged : undefined}
             fill={shortLandscape}
           />
+          {/* Sideways the rack's column is too narrow for it. See `.landscape .announce`. */}
+          {shortLandscape && card}
 
           {/* Floats over the board rather than sitting in the column: a message
               that pushed the layout down would move the square you were aiming
@@ -1425,13 +1430,13 @@ export function Game({
           so the page does not jump when the card comes and goes.
         */}
         {(() => {
-          // Sideways with no rack, the card has no column here: see `.side`.
+          // Sideways the card goes with the board, rack or no rack.
           if (!rackShown || !me?.letters) return shortLandscape ? null : card;
           return (
             <div className={styles.rackSlot}>
               <div
                 ref={rackRef}
-                className={announcing ? styles.rackHidden : undefined}
+                className={announcing && !shortLandscape ? styles.rackHidden : undefined}
                 inert={announcing}
               >
               <Rack
@@ -1570,7 +1575,6 @@ export function Game({
         {shortLandscape && finalRoundNotice}
         {shortLandscape && waitingNotice}
         {shortLandscape && errorNotice}
-        {shortLandscape && !rackShown && card}
 
         <Scoreboard
           onQuit={

@@ -53,8 +53,8 @@ interface RackProps {
   playAnswers?: boolean;
   playing: boolean;
   /**
-   * Stack the letters this many to a row, with the blank as the cell after the
-   * last of them and the buttons as icons two by two beneath, then Play. Left
+   * Stack the letters this many to a row, with the blank on the bottom row
+   * and the buttons as icons two by two beneath, then Play. Left
    * out, the rack is the single row it has always been.
    */
   columns?: number;
@@ -261,7 +261,7 @@ export function Rack({
               );
             })}
 
-          {/* In the grid, the blank is the cell after the last letter. */}
+          {/* After the letters in the page; `.columns .blank` pins it to the bottom row. */}
           {columns ? blankCell : null}
         </div>
 

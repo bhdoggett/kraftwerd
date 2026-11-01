@@ -58,7 +58,10 @@ Mockup: `.superpowers/brainstorm/67783-1793243551/content/landscape-layout-v4.ht
 
 - The rack's tiles stacked in a grid two tiles wide, instead of one row.
   Seven letters plus the blank tile fill two columns of four.
-- The blank tile keeps its count of blanks left, as it does today.
+- The blank tile keeps its count of blanks left, as it does today. It stays
+  on the bottom row: beside the seventh letter, and centred once that letter
+  has left.
+- The rack sits vertically centred in its column.
 - Below the tiles: the action buttons (shuffle, recall, swap, pass) two by
   two, **icons only**. (Icons in a row came out 19px wide, too small to tap.) The rack already hides the text labels below a container
   width; the narrow column should land in that case. Every button keeps its
@@ -109,6 +112,12 @@ Today each is a sentence plus two buttons under the rack. In landscape, the
 confirmation replaces the action buttons in the rack column, as a short line
 with a confirm button and a cancel button, so the thumb stays where it was.
 The full sentence stays available to screen readers.
+
+### The turn announcement
+
+Who played what shows on one line in the empty stretch beside the zoom
+buttons, under the board. It covers no square and the rack stays in view, not
+usable until the announcement ends, as in the other layouts.
 
 ### When there is no rack
 

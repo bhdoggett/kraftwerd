@@ -104,6 +104,7 @@
   --tile-text: #0b0b0d;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #0b0b0d;
+  --tile-blank-border: #b4b4bc;
   /* A tube glows against black and does nothing against paper. */
   --tile-lit: none;
   /* Ledger is flat ruled paper, not sunken material -- a shadow on every
@@ -315,6 +316,7 @@
   --tile-edge: #000000;
   --tile-blank-face: #ffffff;
   --tile-blank-edge: #000000;
+  --tile-blank-border: transparent;
   /*
    * No glow: a tile reads as a physical object catching light (see .tile
    * in Board.module.css) rather than a lit tube, so nothing here casts a

@@ -162,7 +162,8 @@
 /* Deliberately no glyph: a blank is blank. The face color distinguishes it. */
 /* Its color comes from data-face in index.css, like every other tile. */
 .blank {
-  border-color: var(--tile-edge);
+  /* White on the white rack, so on paper it takes the one border a tile has. */
+  border: 1px solid var(--tile-blank-border);
 }
 
 
@@ -272,7 +273,7 @@
 
 /*
  * A rack standing as a column (the `columns` prop): the letters in a grid a
- * few tiles wide with the blank as the cell after the last, then the buttons
+ * few tiles wide with the blank on the bottom row, then the buttons
  * as icons two by two, then Play. Sized so two tiles across fit a column about
  * 104px wide. Four across that left each button 19px wide, too small to tap.
  *
@@ -321,6 +322,19 @@
 /* The wrapper steps aside so the blank is a cell of the grid itself. */
 .columns .blanks {
   display: contents;
+}
+
+/* Centred along the bottom row, once the letters have left that row to it. */
+.columns .blank {
+  grid-column: 1 / -1;
+  grid-row: -2;
+  justify-self: center;
+}
+
+/* A seventh letter takes the bottom row's first cell, so the blank has the
+   other. Only the letters count: the blank's own wrapper is a child too. */
+.columns .tiles:has(> [data-rack-slot]:nth-child(7)) .blank {
+  grid-column: -2;
 }
 
 .columns .actions {
