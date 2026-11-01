@@ -96,19 +96,19 @@
 
 /*
  * The board's edge while zoomed in. The grid's own border scrolls out of
- * sight then, and the board read as an open tic-tac-toe grid; this stays on
- * the edge the board is clipped to. Its own element, laid over the board,
- * because an outline on the scrolling box was painted under the board and
- * hidden by it. Not there at all unzoomed or zoomed out, where the grid's own
- * border is the edge.
+ * sight then, and a board cut off at a hard line reads as an open tic-tac-toe
+ * grid; this melts it into the page instead, so it reads as running on past
+ * what shows. A shadow in the page's own color, solid at the clipped edge
+ * (the spread is half the blur) and laid over the board, which also leaves
+ * nothing to see over the empty space beside a board narrower than its box.
+ * Its own element, because a shadow on the scrolling box was painted under
+ * the board and hidden by it. Not there at all unzoomed or zoomed out, where
+ * the grid's own border is the edge.
  */
 .edge {
   position: absolute;
   inset: var(--space-3);
-  border: 1px solid var(--board-frame);
-  /* A soft shadow falling inward off the edge, so the board reads as running
-     on under the frame rather than stopping at it. */
-  box-shadow: inset 0 0 8px rgb(0 0 0 / 0.22);
+  box-shadow: inset 0 0 var(--space-6) calc(var(--space-6) / 2) var(--surface);
   pointer-events: none;
   z-index: 2;
 }
