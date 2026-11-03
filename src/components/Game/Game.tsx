@@ -37,7 +37,6 @@ import { squareBreakdown } from "../../lib/breakdown";
 import { moveToPosition, rackSlotUnder, shuffled } from "../../lib/rackGeometry";
 import { readDraft, writeDraft } from "../../lib/draft";
 import { moveStagedTo, stageAt } from "../../lib/staging";
-import { useShortLandscape } from "../../lib/useShortLandscape";
 import { useWakeLock } from "../../lib/useWakeLock";
 import { followPointer } from "../../lib/followPointer";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
@@ -140,8 +139,6 @@ export function Game({
   const joinGame = useMutation(api.games.joinGame);
   const rematch = useMutation(api.games.rematch);
   const askHints = useAction(api.coach.hints);
-  /** A phone held sideways: three columns, and nothing above or under the board. */
-  const shortLandscape = useShortLandscape();
   const [hintState, setHintState] = useState<HintState>(NO_HINT);
   const [copied, setCopied] = useState(false);
 
@@ -654,14 +651,12 @@ export function Game({
   const swapCancelRef = useRef<HTMLButtonElement>(null);
   const askingPass = passing && myTurn;
   const askingSwap = swapping && myTurn;
-  // Turning the phone moves the question, which takes focus down with it, so
-  // it is given back to the Cancel in the question's new place.
   useEffect(() => {
     if (askingPass) passCancelRef.current?.focus();
-  }, [askingPass, shortLandscape]);
+  }, [askingPass]);
   useEffect(() => {
     if (askingSwap) swapCancelRef.current?.focus();
-  }, [askingSwap, shortLandscape]);
+  }, [askingSwap]);
 
   /** Remember what opened a question, so answering it can go back there. */
   function noteAsker() {
@@ -1060,316 +1055,35 @@ export function Game({
     </span>
   );
 
-  /** Whether the rack is on screen: a seat, a game still on, not looking back. */
-  const rackShown = me?.letters != null && game.status !== "finished" && !reviewing;
-
-  /*
-   * What sits in one place upright and another held sideways. Each is built
-   * here once, and the markup below puts it in exactly one of the two: above
-   * or under the board, or in the side column, which is what keeps the board
-   * its full height. `Board` and `Rack` never move, so turning the phone does
-   * not remount them.
-   *
-   * The final-round notice stands for the whole round, so it sits above the
-   * board rather than floating over it: it must not cover a square somebody
-   * is aiming at, and it must not disappear the way the refusal does. It is
-   * said aloud through the game's announcer, not from here: see `announce`.
-   */
-  const finalRoundNotice = finalRound !== null && (
-    <div className={styles.finalRound}>
-      <strong className={styles.finalRoundTitle}>{finalRound.title}</strong>
-      <span>{finalRound.body}</span>
-    </div>
-  );
-
-  /* Upright, above the board, so a hint is in reach without scrolling;
-     sideways, at the foot of the side column, after the play panel. */
-  const hintBar = game.hints === true && (
-    <HintBar
-      // Not while other players' plays are still going down: the hint
-      // is for the board they leave, which is not on screen yet.
-      canAsk={myTurn && replayBoard === null}
-      turnKey={hintKey}
-      result={shownHint(hint.result, game.turnNumber)}
-      active={game.status === "active"}
-      loading={hint.loading}
-      error={hint.error}
-      onAsk={() => void ask()}
-      onPick={pick}
-    />
-  );
-
-  /* Nothing left to play once it is over: the rack would be a row of
-      tiles the game will never take. The scores stay. */
-  const reviewBar = reviewing && (
-    <div className={styles.review}>
-      {!ready ? (
-        <span className={styles.reviewSays}>Fetching the turns…</span>
-      ) : (
-        <>
-          <button
-            type="button"
-            className={styles.reviewStep}
-            aria-label="Back a turn"
-            disabled={step === 0}
-            onClick={() => setStepAt(Math.max(0, step - 1))}
-          >
-            ◀
-          </button>
-          <input
-            type="range"
-            className={styles.scrubber}
-            min={0}
-            max={turns.length}
-            value={step}
-            aria-label="Turn"
-            // The number alone is "Turn, 3": what that turn did is
-            // what a sighted player reads beside it.
-            aria-valuetext={
-              lastTurn === undefined
-                ? "Before the first turn"
-                : `${step} of ${turns.length}: ${describeTurn(lastTurn)}`
-            }
-            onChange={(e) => setStepAt(Number(e.target.value))}
-          />
-          <button
-            type="button"
-            className={styles.reviewStep}
-            aria-label="On a turn"
-            disabled={step === turns.length}
-            onClick={() => setStepAt(Math.min(turns.length, step + 1))}
-          >
-            ▶
-          </button>
-          <button
-            type="button"
-            className={styles.reviewDone}
-            onClick={() => {
-              setReviewing(false);
-              setStepAt(null);
-            }}
-          >
-            Done
-          </button>
-          <span className={styles.reviewSays}>
-            {lastTurn === undefined
-              ? "Before the first turn"
-              : describeTurn(lastTurn)}
-          </span>
-        </>
-      )}
-
-    </div>
-  );
-
-  const waitingNotice = view.seatsFilled < game.playerCount && (
-    <div className={styles.waiting}>
-      {/* Name who has not arrived: "2 of 3 seats filled" says how many
-          are missing, never which. */}
-      <strong>Waiting for players.</strong> {view.seatsFilled} of{" "}
-      {game.playerCount} seats filled
-      {invitees.length > 0 && <> — yet to accept: {invitees.join(", ")}</>}
-      {game.status === "lobby" ? (
-        // Offered to strangers: nobody has agreed to anything yet, so
-        // the game waits for the table to fill before it begins.
-        <>. Nobody can place tiles until the game is full.</>
-      ) : view.turnHeld ? (
-        // Among friends the game is already under way, and has come
-        // round to a seat nobody is in.
-        <>. The turn is waiting for whoever takes the next seat.</>
-      ) : (
-        <>. The game is under way — play carries on as seats fill.</>
-      )}
-      {view.canJoin && viewer?.isGuest === true ? (
-        // A guest cannot hold a seat: the mutation refuses it, and being
-        // told why here beats pressing a button that says no.
-        <> Playing with people needs an account — make one from the menu.</>
-      ) : view.canJoin ? (
-        <>
-          {" "}
-          Pick your color:{" "}
-          <SeatPicker
-            totalSeats={GAME.maxPlayers}
-            takenSeats={view.players.map((p) => p.seat)}
-            value={joinSeatChoice}
-            onChange={(seat) => {
-              setJoinSeatChoice(seat);
-              setError(null);
-              joinGame({ gameId, seat }).catch((e: unknown) => {
-                // Somebody may have just taken it -- back to picking
-                // rather than showing a seat that didn't take.
-                setJoinSeatChoice(null);
-                setError(userMessage(e));
-              });
-            }}
-          />
-        </>
-      ) : (
-        <>
-          {" "}
-          <button
-            type="button"
-            className={styles.inline}
-            onClick={() => {
-              void navigator.clipboard.writeText(window.location.href).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              });
-            }}
-          >
-            {copied ? "Link copied" : "Copy the link to invite someone"}
-          </button>
-        </>
-      )}
-    </div>
-  );
-
-  /* An alert is read the moment it appears, content and all, which a
-      status region is not -- and a play the server refused is worth
-      interrupting for. */
-  const errorNotice = error && (
-    <div className={styles.error} role="alert">
-      {error}
-    </div>
-  );
-
-  /*
-   * The pass and swap questions. Upright, a sentence and two buttons under the
-   * rack; held sideways, a word or two in the rack's own column, where the
-   * thumb that pressed the button still is. Only the wording differs, so a
-   * screen reader hears the whole sentence either way.
-   */
-  const questionClass = shortLandscape
-    ? `${styles.tradeBar} ${styles.tradeBarCompact}`
-    : styles.tradeBar;
-  const questionWords = (sentence: string, short: string) =>
-    shortLandscape ? (
-      <>
-        <span aria-hidden="true">{short}</span>
-        <SrOnly>{sentence}</SrOnly>
-      </>
-    ) : (
-      <span>{sentence}</span>
-    );
-
-  const passQuestion = askingPass && (
-    <div
-      className={questionClass}
-      role="group"
-      aria-label="Pass your turn?"
-      onKeyDown={(e) => {
-        if (e.key === "Escape") answered(() => setPassing(false));
-      }}
-    >
-      {questionWords("Pass your turn? A full round of passes ends the game.", "Pass?")}
-      <button
-        ref={passCancelRef}
-        type="button"
-        className={styles.secondary}
-        onClick={() => answered(() => setPassing(false))}
-      >
-        Cancel
-      </button>
-      <button
-        type="button"
-        className={styles.button}
-        onClick={() => void confirmPass()}
-      >
-        Pass
-      </button>
-    </div>
-  );
-
-  const swapQuestion = askingSwap && (
-    <div
-      className={questionClass}
-      role="group"
-      aria-label="Swap your letters?"
-      onKeyDown={(e) => {
-        if (e.key === "Escape") answered(() => setSwapping(false));
-      }}
-    >
-      {questionWords(
-        "Swap all your letters for new ones? You get one swap a game, and you still play this turn.",
-        "Swap rack?",
-      )}
-      <button
-        ref={swapCancelRef}
-        type="button"
-        className={styles.secondary}
-        onClick={() => answered(() => setSwapping(false))}
-      >
-        Cancel
-      </button>
-      <button
-        type="button"
-        className={styles.button}
-        onClick={() => void confirmSwap()}
-      >
-        Swap
-      </button>
-    </div>
-  );
-
-  const card = announcing && (
-    <div
-      // One element for the whole run of steps, not one per step: it
-      // stays up from one play to the next and changes color between
-      // players, rather than vanishing and fading back in each time.
-      className={[
-        styles.announce,
-        rackShown && !shortLandscape ? styles.announceOverRack : "",
-      ].join(" ")}
-      data-seat={seatOf.get(noteTurn.userId)}
-      // No role="status": the announcer says the play once, whole,
-      // rather than this card spot by spot.
-      // A catch-up replay never stands between you and your turn.
-      onPointerDown={recapActive ? skipRecap : undefined}
-      onFocus={() => {
-        cardHasFocus.current = true;
-      }}
-      // Only when focus went somewhere: some browsers blur an element
-      // as it is taken out, and that is the case this is here for.
-      onBlur={(e) => {
-        if (e.relatedTarget !== null) cardHasFocus.current = false;
-      }}
-    >
-      <button
-        ref={skipRef}
-        type="button"
-        className={styles.announceClose}
-        aria-label="Skip the replay"
-        title="Skip"
-        // Its own press, not the card's, which only cuts a catch-up short.
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={skipAll}
-      >
-        ×
-      </button>
-      {/* A machine's level is noise here; the scoreboard still says it. */}
-      <span className={styles.announceName}>{withoutLevel(noteTurn.name)}</span>
-      {noteSpot !== undefined && !noteSpot.total && noteSpot.words.length > 0 && (
-        <span className={styles.recapWords}>{noteSpot.words.join(", ")}</span>
-      )}
-      {/* The points are their own last step, once every spot is down. */}
-      {(noteSpot === undefined || noteSpot.total) && (
-        <span className={styles.recapPoints}>+{noteTurn.score}</span>
-      )}
-    </div>
-  );
-
   return (
-    <div
-      className={[
-        styles.layout,
-        shortLandscape ? styles.landscape : "",
-        rackShown ? "" : styles.noRack,
-      ].join(" ")}
-    >
+    <div className={styles.layout}>
       <div className={styles.main}>
-        {!shortLandscape && finalRoundNotice}
+        {/* Above the board rather than floating over it: this one stands for
+            the whole round, so it must not cover a square somebody is aiming
+            at, and it must not disappear the way the refusal does. */}
+        {/* Said aloud through the game's announcer, not from here: see `announce`. */}
+        {finalRound !== null && (
+          <div className={styles.finalRound}>
+            <strong className={styles.finalRoundTitle}>{finalRound.title}</strong>
+            <span>{finalRound.body}</span>
+          </div>
+        )}
 
-        {!shortLandscape && hintBar}
+        {/* Above the board, so a hint is in reach without scrolling. */}
+        {game.hints === true && (
+          <HintBar
+            // Not while other players' plays are still going down: the hint
+            // is for the board they leave, which is not on screen yet.
+            canAsk={myTurn && replayBoard === null}
+            turnKey={hintKey}
+            result={shownHint(hint.result, game.turnNumber)}
+            active={game.status === "active"}
+            loading={hint.loading}
+            error={hint.error}
+            onAsk={() => void ask()}
+            onPick={pick}
+          />
+        )}
 
         {/* The refusal floats over the board, so the board is what it is
             measured against. */}
@@ -1399,10 +1113,7 @@ export function Game({
             // the whole play replayed the first spot's rings a second time.
             recentCells={noteSpot?.total === true ? undefined : noteSpot?.cells}
             onGrabStaged={!reviewing ? grabStaged : undefined}
-            fill={shortLandscape}
           />
-          {/* Sideways the rack's column is too narrow for it. See `.landscape .announce`. */}
-          {shortLandscape && card}
 
           {/* Floats over the board rather than sitting in the column: a message
               that pushed the layout down would move the square you were aiming
@@ -1420,7 +1131,68 @@ export function Game({
           )}
         </div>
 
-        {!shortLandscape && reviewBar}
+        {/* Nothing left to play once it is over: the rack would be a row of
+            tiles the game will never take. The scores stay. */}
+        {reviewing && (
+          <div className={styles.review}>
+            {!ready ? (
+              <span className={styles.reviewSays}>Fetching the turns…</span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={styles.reviewStep}
+                  aria-label="Back a turn"
+                  disabled={step === 0}
+                  onClick={() => setStepAt(Math.max(0, step - 1))}
+                >
+                  ◀
+                </button>
+                <input
+                  type="range"
+                  className={styles.scrubber}
+                  min={0}
+                  max={turns.length}
+                  value={step}
+                  aria-label="Turn"
+                  // The number alone is "Turn, 3": what that turn did is
+                  // what a sighted player reads beside it.
+                  aria-valuetext={
+                    lastTurn === undefined
+                      ? "Before the first turn"
+                      : `${step} of ${turns.length}: ${describeTurn(lastTurn)}`
+                  }
+                  onChange={(e) => setStepAt(Number(e.target.value))}
+                />
+                <button
+                  type="button"
+                  className={styles.reviewStep}
+                  aria-label="On a turn"
+                  disabled={step === turns.length}
+                  onClick={() => setStepAt(Math.min(turns.length, step + 1))}
+                >
+                  ▶
+                </button>
+                <button
+                  type="button"
+                  className={styles.reviewDone}
+                  onClick={() => {
+                    setReviewing(false);
+                    setStepAt(null);
+                  }}
+                >
+                  Done
+                </button>
+                <span className={styles.reviewSays}>
+                  {lastTurn === undefined
+                    ? "Before the first turn"
+                    : describeTurn(lastTurn)}
+                </span>
+              </>
+            )}
+
+          </div>
+        )}
 
         {/*
           Who just played, what it made and what it scored. It takes the
@@ -1430,13 +1202,56 @@ export function Game({
           so the page does not jump when the card comes and goes.
         */}
         {(() => {
-          // Sideways the card goes with the board, rack or no rack.
-          if (!rackShown || !me?.letters) return shortLandscape ? null : card;
+          const rackShown = me?.letters != null && game.status !== "finished" && !reviewing;
+          const card = announcing && (
+            <div
+              // One element for the whole run of steps, not one per step: it
+              // stays up from one play to the next and changes color between
+              // players, rather than vanishing and fading back in each time.
+              className={[styles.announce, rackShown ? styles.announceOverRack : ""].join(" ")}
+              data-seat={seatOf.get(noteTurn.userId)}
+              // No role="status": the announcer says the play once, whole,
+              // rather than this card spot by spot.
+              // A catch-up replay never stands between you and your turn.
+              onPointerDown={recapActive ? skipRecap : undefined}
+              onFocus={() => {
+                cardHasFocus.current = true;
+              }}
+              // Only when focus went somewhere: some browsers blur an element
+              // as it is taken out, and that is the case this is here for.
+              onBlur={(e) => {
+                if (e.relatedTarget !== null) cardHasFocus.current = false;
+              }}
+            >
+              <button
+                ref={skipRef}
+                type="button"
+                className={styles.announceClose}
+                aria-label="Skip the replay"
+                title="Skip"
+                // Its own press, not the card's, which only cuts a catch-up short.
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={skipAll}
+              >
+                ×
+              </button>
+              {/* A machine's level is noise here; the scoreboard still says it. */}
+              <span className={styles.announceName}>{withoutLevel(noteTurn.name)}</span>
+              {noteSpot !== undefined && !noteSpot.total && noteSpot.words.length > 0 && (
+                <span className={styles.recapWords}>{noteSpot.words.join(", ")}</span>
+              )}
+              {/* The points are their own last step, once every spot is down. */}
+              {(noteSpot === undefined || noteSpot.total) && (
+                <span className={styles.recapPoints}>+{noteTurn.score}</span>
+              )}
+            </div>
+          );
+          if (!rackShown || !me?.letters) return card;
           return (
             <div className={styles.rackSlot}>
               <div
                 ref={rackRef}
-                className={announcing && !shortLandscape ? styles.rackHidden : undefined}
+                className={announcing ? styles.rackHidden : undefined}
                 inert={announcing}
               >
               <Rack
@@ -1473,13 +1288,9 @@ export function Game({
                 canPlay={myTurn && pending.length > 0 && !submitting && legality?.ok === true}
                 playAnswers={!myTurn}
                 playing={submitting}
-                columns={shortLandscape ? 2 : undefined}
-                actionsHidden={shortLandscape && (askingPass || askingSwap)}
               />
               </div>
               {card}
-              {shortLandscape && passQuestion}
-              {shortLandscape && swapQuestion}
             </div>
           );
         })()}
@@ -1544,20 +1355,143 @@ export function Game({
           </Modal>
         )}
 
-        {!shortLandscape && waitingNotice}
+        {view.seatsFilled < game.playerCount && (
+          <div className={styles.waiting}>
+            {/* Name who has not arrived: "2 of 3 seats filled" says how many
+                are missing, never which. */}
+            <strong>Waiting for players.</strong> {view.seatsFilled} of{" "}
+            {game.playerCount} seats filled
+            {invitees.length > 0 && <> — yet to accept: {invitees.join(", ")}</>}
+            {game.status === "lobby" ? (
+              // Offered to strangers: nobody has agreed to anything yet, so
+              // the game waits for the table to fill before it begins.
+              <>. Nobody can place tiles until the game is full.</>
+            ) : view.turnHeld ? (
+              // Among friends the game is already under way, and has come
+              // round to a seat nobody is in.
+              <>. The turn is waiting for whoever takes the next seat.</>
+            ) : (
+              <>. The game is under way — play carries on as seats fill.</>
+            )}
+            {view.canJoin && viewer?.isGuest === true ? (
+              // A guest cannot hold a seat: the mutation refuses it, and being
+              // told why here beats pressing a button that says no.
+              <> Playing with people needs an account — make one from the menu.</>
+            ) : view.canJoin ? (
+              <>
+                {" "}
+                Pick your color:{" "}
+                <SeatPicker
+                  totalSeats={GAME.maxPlayers}
+                  takenSeats={view.players.map((p) => p.seat)}
+                  value={joinSeatChoice}
+                  onChange={(seat) => {
+                    setJoinSeatChoice(seat);
+                    setError(null);
+                    joinGame({ gameId, seat }).catch((e: unknown) => {
+                      // Somebody may have just taken it -- back to picking
+                      // rather than showing a seat that didn't take.
+                      setJoinSeatChoice(null);
+                      setError(userMessage(e));
+                    });
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className={styles.inline}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(window.location.href).then(() => {
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    });
+                  }}
+                >
+                  {copied ? "Link copied" : "Copy the link to invite someone"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
-        {!shortLandscape && passQuestion}
-        {!shortLandscape && swapQuestion}
+        {askingPass && (
+          <div
+            className={styles.tradeBar}
+            role="group"
+            aria-label="Pass your turn?"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") answered(() => setPassing(false));
+            }}
+          >
+            <span>
+              Pass your turn? A full round of passes ends the game.
+            </span>
+            <button
+              ref={passCancelRef}
+              type="button"
+              className={styles.secondary}
+              onClick={() => answered(() => setPassing(false))}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => void confirmPass()}
+            >
+              Pass
+            </button>
+          </div>
+        )}
 
-        {!shortLandscape && errorNotice}
+        {askingSwap && (
+          <div
+            className={styles.tradeBar}
+            role="group"
+            aria-label="Swap your letters?"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") answered(() => setSwapping(false));
+            }}
+          >
+            <span>
+              Swap all your letters for new ones? You get one swap a game, and
+              you still play this turn.
+            </span>
+            <button
+              ref={swapCancelRef}
+              type="button"
+              className={styles.secondary}
+              onClick={() => answered(() => setSwapping(false))}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => void confirmSwap()}
+            >
+              Swap
+            </button>
+          </div>
+        )}
+
+        {/* An alert is read the moment it appears, content and all, which a
+            status region is not -- and a play the server refused is worth
+            interrupting for. */}
+        {error && (
+          <div className={styles.error} role="alert">
+            {error}
+          </div>
+        )}
 
         <SrOnly>
           <span ref={attachAnnouncer} role="status" aria-live="polite" />
         </SrOnly>
 
-        {/* A grid item of its own sideways, which would take a row from the
-            board, so it goes to the side column instead, above the key. */}
-        {!shortLandscape && <DevTools gameId={gameId} />}
+        <DevTools gameId={gameId} />
 
         {drag && (
           <div
@@ -1572,10 +1506,6 @@ export function Game({
       </div>
 
       <div className={styles.side}>
-        {shortLandscape && finalRoundNotice}
-        {shortLandscape && waitingNotice}
-        {shortLandscape && errorNotice}
-
         <Scoreboard
           onQuit={
             game.status !== "finished" && view.yourSeat !== null ? quit : undefined
@@ -1667,8 +1597,6 @@ export function Game({
             )}
           </>
         )}
-
-        {shortLandscape && reviewBar}
 
         {/* What the board's three marks pay, in one line: enough to remind,
             not a panel to read. How to play has the full story. */}
@@ -1837,11 +1765,6 @@ export function Game({
             )}
           </section>
         )}
-
-        {/* After the play in the markup; `.landscape .multipliers` keeps the
-            key below both. */}
-        {shortLandscape && hintBar}
-        {shortLandscape && <DevTools gameId={gameId} />}
       </div>
     </div>
   );

@@ -54,25 +54,6 @@
   cursor: default;
 }
 
-/* In the side column of a phone held sideways, which is 170px: the tag and
-   Hint share a line, and the other button takes the next. This is SHORT_LANDSCAPE in
-   src/lib/useShortLandscape.ts, repeated verbatim. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .bar {
-    margin-bottom: 0;
-  }
-
-  .actions {
-    display: contents;
-  }
-
-  .ask,
-  .secondary {
-    padding: var(--space-1) var(--space-2);
-    font-size: var(--text-sm);
-  }
-}
-
 .heading {
   margin: 0 0 var(--space-3);
   font-size: 1.1rem;

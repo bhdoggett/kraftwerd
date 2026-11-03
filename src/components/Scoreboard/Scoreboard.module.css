@@ -7,15 +7,6 @@
   min-width: 200px;
 }
 
-/* The side column of a phone held sideways is 170px. This is SHORT_LANDSCAPE
-   in src/lib/useShortLandscape.ts, repeated verbatim. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .panel {
-    min-width: 0;
-    padding: var(--space-2);
-  }
-}
-
 /* Whose turn it is, then Quit, on one line above the cards. Quit keeps to
    the right even on its own, in a game with no turn to name. */
 .header {
@@ -266,11 +257,9 @@
  * Rows again in the side panel. The cards are for the stacked layout, where
  * the panel sits under the board and every line of it pushes the page down;
  * beside the board its height costs nothing, and three cards across 280px
- * cut names short that a row has room to show whole. A phone held sideways is
- * beside the board too, at any width: the second query is SHORT_LANDSCAPE in
- * src/lib/useShortLandscape.ts, repeated verbatim.
+ * cut names short that a row has room to show whole.
  */
-@media (min-width: 861px), (orientation: landscape) and (max-height: 500px) /* not stacked game */ {
+@media (min-width: 861px) /* not stacked game */ {
   .players {
     grid-auto-flow: row;
     gap: 0;

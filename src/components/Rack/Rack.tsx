@@ -1,7 +1,6 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { PassIcon, RecallIcon, ShuffleIcon, TradeIcon } from "../Icons/Icons";
 import { drawnFrom } from "../../lib/drawn";
-import { slotOffset } from "../../lib/rackGeometry";
 import styles from "./Rack.module.css";
 
 export type Selection = { kind: "letter"; index: number } | { kind: "blank" };
@@ -52,18 +51,6 @@ interface RackProps {
    */
   playAnswers?: boolean;
   playing: boolean;
-  /**
-   * Stack the letters this many to a row, with the blank on the bottom row
-   * and the buttons as icons two by two beneath, then Play. Left
-   * out, the rack is the single row it has always been.
-   */
-  columns?: number;
-  /**
-   * Take the buttons away, Play included, while a question stands in their
-   * place. Hidden rather than left out, so focus can go back to the button that
-   * asked.
-   */
-  actionsHidden?: boolean;
 }
 
 /** How long a shuffle's slide takes; matches `.shuffling` in Rack.module.css. */
@@ -94,8 +81,6 @@ export function Rack({
   canPlay,
   playAnswers = false,
   playing,
-  columns,
-  actionsHidden = false,
 }: RackProps) {
   /*
    * The tiles just drawn from the bag, which rise into the rack one after
@@ -160,39 +145,11 @@ export function Rack({
     },
   });
 
-  /*
-   * One tile carrying a count, not a tile each: they are interchangeable,
-   * and three of them took up as much rack as three letters for no reason.
-   * The count is dropped at one, where a bare tile says the same thing.
-   */
-  const blankCell = blanks > 0 && (
-    <div className={styles.blanks}>
-      <button
-        type="button"
-        className={[
-          styles.tile,
-          styles.blank,
-          isSelected({ kind: "blank" }) ? styles.selected : "",
-        ].join(" ")}
-        data-face="blank"
-        aria-label={`Blank tile, ${blanks} left`}
-        {...tileProps({ kind: "blank" })}
-      >
-        {blanks > 1 && <span className={styles.count}>{blanks}</span>}
-      </button>
-    </div>
-  );
-
   return (
     // The frame is only there to be measured: the rack's layout answers to its
     // own width, and a container query cannot restyle the container itself.
     <div className={styles.frame}>
-      <div
-        className={columns ? `${styles.rack} ${styles.columns}` : styles.rack}
-        data-rack=""
-        data-seat={seat === null ? undefined : seat % 4}
-        style={columns ? ({ "--rack-columns": columns } as React.CSSProperties) : undefined}
-      >
+      <div className={styles.rack} data-rack="" data-seat={seat === null ? undefined : seat % 4}>
         <div className={[styles.tiles, shuffling > 0 ? styles.shuffling : ""].join(" ")}>
           {[...order]
             /*
@@ -220,7 +177,6 @@ export function Rack({
                   .filter((i) => !spent.includes(i) || (i === draggedIndex && dragOverRack))
                   .indexOf(index) - slot;
 
-              const across = columns ? slotOffset(slot, slot + shift, columns) : null;
               const rising = isDrawn(index);
               return (
                 <button
@@ -238,11 +194,7 @@ export function Rack({
                   style={{
                     ...(shift === 0
                       ? {}
-                      : {
-                          transform: across
-                            ? `translate(calc(var(--rack-step) * ${across.x}), calc(var(--rack-step-y) * ${across.y}))`
-                            : `translateX(calc(var(--rack-step) * ${shift}))`,
-                        }),
+                      : { transform: `translateX(calc(var(--rack-step) * ${shift}))` }),
                     ...(rising
                       ? ({ "--draw-order": drawOrder.indexOf(index) } as React.CSSProperties)
                       : {}),
@@ -260,14 +212,32 @@ export function Rack({
                 </button>
               );
             })}
-
-          {/* After the letters in the page; `.columns .blank` pins it to the bottom row. */}
-          {columns ? blankCell : null}
         </div>
 
-        {columns ? null : blankCell}
+        {/*
+          One tile carrying a count, not a tile each: they are interchangeable,
+          and three of them took up as much rack as three letters for no reason.
+          The count is dropped at one, where a bare tile says the same thing.
+        */}
+        {blanks > 0 && (
+          <div className={styles.blanks}>
+            <button
+              type="button"
+              className={[
+                styles.tile,
+                styles.blank,
+                isSelected({ kind: "blank" }) ? styles.selected : "",
+              ].join(" ")}
+              data-face="blank"
+              aria-label={`Blank tile, ${blanks} left`}
+              {...tileProps({ kind: "blank" })}
+            >
+              {blanks > 1 && <span className={styles.count}>{blanks}</span>}
+            </button>
+          </div>
+        )}
 
-        <div className={actionsHidden ? `${styles.actions} ${styles.actionsHidden}` : styles.actions}>
+        <div className={styles.actions}>
           <button
             type="button"
             className={styles.action}

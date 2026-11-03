@@ -278,21 +278,6 @@ describe("accessibility", () => {
 });
 
 describe("the board's frame", () => {
-  test("a filling board drops the square frame", () => {
-    draw({ fill: true });
-
-    const frame = document.querySelector("[data-board-frame]");
-    expect(frame?.className).toMatch(/frameFill/);
-  });
-
-  test("without fill the frame stays square", () => {
-    draw();
-
-    const frame = document.querySelector("[data-board-frame]");
-    expect(frame).not.toBeNull();
-    expect(frame?.className).not.toMatch(/frameFill/);
-  });
-
   test("only the sides with more board beyond them fade", () => {
     draw();
     const grid = screen.getByRole("group", { name: /^Board,/ });

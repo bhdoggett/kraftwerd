@@ -8,8 +8,6 @@
 .rack {
   /* One tile plus the gap: how far a tile travels to swap places. */
   --rack-step: calc(var(--rack-tile-width) + var(--rack-gap));
-  /* The same going down a column, for a rack stacked in rows. */
-  --rack-step-y: calc(var(--rack-tile-height) + var(--rack-gap));
   /*
    * Two rows unless there is room for one: the blank and the letters on top,
    * the buttons underneath. The blank stays beside the letters -- one tile
@@ -162,8 +160,7 @@
 /* Deliberately no glyph: a blank is blank. The face color distinguishes it. */
 /* Its color comes from data-face in index.css, like every other tile. */
 .blank {
-  /* White on the white rack, so on paper it takes the one border a tile has. */
-  border: 1px solid var(--tile-blank-border);
+  border-color: var(--tile-edge);
 }
 
 
@@ -269,100 +266,6 @@
   color: var(--text-muted);
   opacity: var(--disabled-opacity);
   cursor: default;
-}
-
-/*
- * A rack standing as a column (the `columns` prop): the letters in a grid a
- * few tiles wide with the blank on the bottom row, then the buttons
- * as icons two by two, then Play. Sized so two tiles across fit a column about
- * 104px wide. Four across that left each button 19px wide, too small to tap.
- *
- * Tall as well as narrow: 274px in all, for the 291px a 360px-tall Android
- * phone leaves once the header, the padding and its 24px gesture bar are gone.
- *
- * Positioned so the tiles' offsetParent is the rack, the box `rackSlotUnder`
- * measures the pointer against. It never scrolls, which that also relies on,
- * and every tile is the same size so the rows line up exactly for `slotAt`.
- */
-.columns {
-  --rack-tile-width: 36px;
-  /*
-   * Set here too. index.css declares the height as `var(--rack-tile-width)` on
-   * :root, so it was resolved there, at the page's width, and overriding the
-   * width alone left tiles 36 wide and 46, 34 or 30 tall. Declared on this
-   * element, --rack-step-y above resolves against it as well.
-   */
-  --rack-tile-height: 36px;
-  --rack-gap: 4px;
-  gap: var(--space-1);
-  position: relative;
-  overflow: clip;
-  grid-template-columns: 1fr;
-  grid-template-areas:
-    "tiles"
-    "actions";
-  /* More above: a selected tile lifts 3px and rings 4px, and this box clips. */
-  padding: var(--space-2) var(--space-1) var(--space-1);
-}
-
-.columns .tiles {
-  display: grid;
-  grid-template-columns: repeat(var(--rack-columns), var(--rack-tile-width));
-  /*
-   * Four rows held open: seven letters and the blank are eight cells, which
-   * is four rows of two. Without them the grid shrank as tiles left it and
-   * Play, beneath, rose by a row under the finger that had just pressed it.
-   */
-  grid-template-rows: repeat(4, var(--rack-tile-height));
-  grid-auto-rows: var(--rack-tile-height);
-  justify-content: center;
-  align-items: start;
-}
-
-/* The wrapper steps aside so the blank is a cell of the grid itself. */
-.columns .blanks {
-  display: contents;
-}
-
-/* Centred along the bottom row, once the letters have left that row to it. */
-.columns .blank {
-  grid-column: 1 / -1;
-  grid-row: -2;
-  justify-self: center;
-}
-
-/* A seventh letter takes the bottom row's first cell, so the blank has the
-   other. Only the letters count: the blank's own wrapper is a child too. */
-.columns .tiles:has(> [data-rack-slot]:nth-child(7)) .blank {
-  grid-column: -2;
-}
-
-.columns .actions {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  justify-self: stretch;
-  gap: 4px;
-}
-
-.columns .actionsHidden {
-  display: none;
-}
-
-.columns .action {
-  width: auto;
-  min-width: 0;
-  height: 30px;
-}
-
-.columns .actionLabel {
-  display: none;
-}
-
-.columns .play {
-  grid-column: 1 / -1;
-  height: 32px;
-  /* "Playing…" has to stay on one line in the narrow column. */
-  padding: 0 var(--space-1);
 }
 
 /*

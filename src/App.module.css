@@ -103,41 +103,6 @@
   }
 }
 
-/*
- * A phone held sideways, where height is scarce: this is SHORT_LANDSCAPE in
- * src/lib/useShortLandscape.ts, repeated verbatim because a media query
- * cannot import it. The bar shrinks to about 28px of content and stops
- * sticking, so the board gets the screen. It still clears the notch.
- * --header-height is the bar's whole height, padding and inset included, for
- * layouts that need the viewport minus the header.
- */
-@media (orientation: landscape) and (max-height: 500px) {
-  :root {
-    --header-height: calc(
-      28px + max(var(--space-1), env(safe-area-inset-top, 0px)) +
-        var(--space-1) + 1px
-    );
-  }
-
-  .header {
-    position: static;
-    /* Border-box, so this counts the padding and the 1px rule as well. */
-    min-height: var(--header-height);
-    padding-top: max(var(--space-1), env(safe-area-inset-top));
-    padding-bottom: var(--space-1);
-  }
-
-  .markTile {
-    width: 22px;
-    height: 22px;
-    font-size: var(--text-sm);
-  }
-
-  .main {
-    --main-pad: var(--space-2);
-  }
-}
-
 .link {
   background: none;
   border: none;

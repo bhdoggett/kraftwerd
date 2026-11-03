@@ -71,30 +71,6 @@
 }
 
 /*
- * A rectangle, for a phone held sideways: the frame takes the height of its
- * row rather than the width's worth. The viewport inside still fits the board
- * by its shorter side and centres it, so zoomed out the board has room at the
- * sides, and zoomed in it fills the rectangle and pans.
- */
-.frameFill {
-  aspect-ratio: auto;
-  height: 100%;
-}
-
-/*
- * The board and its zoom buttons, sharing the parent's height. A grid, not a
- * flex column, for the reason `.board` gives: the frame takes the row left
- * over once the buttons have their own, and never its content's height.
- */
-.board.boardFill {
-  /* Two classes, because `.board` below sets `display` too and comes later:
-     at equal weight it won, and the zoom buttons fell off the bottom. */
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  height: 100%;
-}
-
-/*
  * The board's edges while zoomed in. The grid's own border scrolls out of
  * sight then, and a board cut off at a hard line reads as an open tic-tac-toe
  * grid; this melts it into the page instead, so it reads as running on past

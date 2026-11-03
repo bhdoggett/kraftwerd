@@ -27,7 +27,6 @@
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@capacitor/ios": "^8.5.3",
-    "@capacitor/status-bar": "8.0.4",
     "@capgo/capacitor-social-login": "8.5.14",
     "@convex-dev/better-auth": "^0.12.5",
     "better-auth": "~1.6.15",

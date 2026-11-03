@@ -37,22 +37,20 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* A plain mark that the row opens something; it no longer turns. */
 .chevron {
   display: flex;
   color: var(--text);
+  transition: transform 150ms ease;
 }
 
-/* The contents of the dialog's panel, which supplies its own padding. */
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+.chevronOpen {
+  transform: rotate(180deg);
 }
 
-.close {
-  composes: close from "../Button/Button.module.css";
-  align-self: flex-end;
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
 }
 
 .note {
@@ -64,8 +62,7 @@
 .letters {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-1);
+  gap: 3px;
 }
 
 /*
@@ -145,8 +142,7 @@
   position: absolute;
   bottom: calc(100% + 6px);
   left: 50%;
-  /* --nudge is set by LetterPopover, to keep it inside the dialog. */
-  transform: translateX(calc(-50% + var(--nudge, 0px)));
+  transform: translateX(-50%);
   z-index: 2;
   padding: 2px var(--space-2);
   border: 1px solid var(--border-strong);
