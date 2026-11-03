@@ -564,7 +564,9 @@ export function Board({
 
   return (
     <div className={styles.board}>
-      <div className={styles.frame}>
+      {/* Zoomed in, the page may give the board more room than a square: see
+          `.boardArea` in Game.module.css. */}
+      <div className={styles.frame} data-zoomed={zoom > 1 ? "" : undefined}>
         <div
           ref={viewport}
           className={styles.viewport}

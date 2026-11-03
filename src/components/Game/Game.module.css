@@ -113,6 +113,29 @@
 }
 
 /*
+ * Zoomed in on a wider screen, the board takes the whole column rather than
+ * a square in the middle of it: the square cut the board off at its sides
+ * while room went unused either side. Same height as the square, so the rack
+ * does not move, and the board's own scale holds too -- it fits the board to
+ * the box's shorter side. Back to the square at fit, where the score tally
+ * sits on the board's corner rather than the column's.
+ */
+@media (min-width: 641px) {
+  .boardArea {
+    container-type: inline-size;
+  }
+
+  .boardArea:has([data-zoomed]) {
+    width: 100%;
+  }
+
+  .boardArea [data-zoomed] {
+    aspect-ratio: auto;
+    height: min(100cqw, 72vh);
+  }
+}
+
+/*
  * The last round, once somebody has gone out.
  *
  * A block in the flow rather than a float over the board: it is true for the
