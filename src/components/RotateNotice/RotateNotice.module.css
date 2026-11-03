@@ -1,0 +1,28 @@
+.notice {
+  display: none;
+}
+
+/*
+ * A phone held sideways: landscape, a touch screen, and too short for a
+ * tablet. A phone on its side is at most about 430px tall; the smallest
+ * tablet on its side is well over 700.
+ */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .notice {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    padding: var(--space-6);
+    background: var(--surface);
+  }
+}
+
+.message {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  text-align: center;
+}
