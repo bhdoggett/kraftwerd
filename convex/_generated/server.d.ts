@@ -34,6 +34,7 @@ type Env = {
   readonly DEV_TOOLS: string | undefined;
   readonly GOOGLE_CLIENT_ID: string | undefined;
   readonly GOOGLE_CLIENT_SECRET: string | undefined;
+  readonly GOOGLE_IOS_CLIENT_ID: string | undefined;
   readonly SITE_URL: string | undefined;
 };
 

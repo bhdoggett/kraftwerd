@@ -71,22 +71,44 @@
 }
 
 /*
- * The board's edge while zoomed in. The grid's own border scrolls out of
- * sight then, and the board read as an open tic-tac-toe grid; this stays on
- * the edge the board is clipped to. Its own element, laid over the board,
- * because an outline on the scrolling box was painted under the board and
- * hidden by it. Not there at all unzoomed or zoomed out, where the grid's own
- * border is the edge.
+ * The board's edges while zoomed in. The grid's own border scrolls out of
+ * sight then, and a board cut off at a hard line reads as an open tic-tac-toe
+ * grid; this melts it into the page instead, so it reads as running on past
+ * what shows. Only on the sides with more board beyond them: panned as far as
+ * it goes, a side shows the board's real edge, unfaded. Its own element, laid
+ * over the board, in the page's own color. Not there at all when the whole
+ * board shows.
  */
 .edge {
+  --fade-top: 0px;
+  --fade-right: 0px;
+  --fade-bottom: 0px;
+  --fade-left: 0px;
   position: absolute;
   inset: var(--space-3);
-  border: 1px solid var(--board-frame);
-  /* A soft shadow falling inward off the edge, so the board reads as running
-     on under the frame rather than stopping at it. */
-  box-shadow: inset 0 0 8px rgb(0 0 0 / 0.22);
+  background:
+    linear-gradient(to bottom, var(--surface), transparent) top / 100% var(--fade-top) no-repeat,
+    linear-gradient(to left, var(--surface), transparent) right / var(--fade-right) 100% no-repeat,
+    linear-gradient(to top, var(--surface), transparent) bottom / 100% var(--fade-bottom) no-repeat,
+    linear-gradient(to right, var(--surface), transparent) left / var(--fade-left) 100% no-repeat;
   pointer-events: none;
   z-index: 2;
+}
+
+.edge[data-clipped~="top"] {
+  --fade-top: var(--space-6);
+}
+
+.edge[data-clipped~="right"] {
+  --fade-right: var(--space-6);
+}
+
+.edge[data-clipped~="bottom"] {
+  --fade-bottom: var(--space-6);
+}
+
+.edge[data-clipped~="left"] {
+  --fade-left: var(--space-6);
 }
 
 /*
@@ -138,6 +160,16 @@
 @media (max-width: 640px) /* phone */ {
   .viewport {
     --cell-base: 22px;
+  }
+
+  /*
+   * No zoom buttons on a phone. They are the way to zoom without a pinch,
+   * and on a phone double-tap is that way already: one finger, in to 2x and
+   * back to fit. Keyboards and switches, the other reasons for them, are at
+   * a desk, where the buttons stay.
+   */
+  .zoom {
+    display: none;
   }
 }
 

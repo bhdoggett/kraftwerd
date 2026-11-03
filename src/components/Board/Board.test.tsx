@@ -276,3 +276,73 @@ describe("accessibility", () => {
     expect(await axeViolations(document.body)).toEqual([]);
   });
 });
+
+describe("the board's frame", () => {
+  test("only the sides with more board beyond them fade", () => {
+    draw();
+    const grid = screen.getByRole("group", { name: /^Board,/ });
+    const rect = (top: number, right: number, bottom: number, left: number) =>
+      ({ top, right, bottom, left }) as DOMRect;
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: Element,
+    ) {
+      return this === grid ? rect(-50, 100, 100, -50) : rect(0, 100, 100, 0);
+    });
+
+    fireEvent.scroll(grid.parentElement!);
+
+    expect(document.querySelector("[data-clipped]")?.getAttribute("data-clipped")).toBe(
+      "top left",
+    );
+    vi.restoreAllMocks();
+  });
+});
+
+describe("double-tap to zoom", () => {
+  /** Whether the board is at its fitted size: the Fit button is off there.
+      (jsdom lays nothing out, so the fitted scale itself reads as NaN.) */
+  const zoomOf = () =>
+    screen.getByRole("button", { name: "Fit the board" }).getAttribute("aria-disabled");
+  const twice = (element: Element) => {
+    fireEvent.click(element, { detail: 1, clientX: 10, clientY: 10 });
+    fireEvent.click(element, { detail: 2, clientX: 12, clientY: 11 });
+  };
+
+  test("with nothing in hand, a double tap zooms in, and another zooms back", () => {
+    draw({ canPlace: false });
+    const fitted = zoomOf();
+
+    twice(square(2, 2));
+    expect(zoomOf()).not.toBe(fitted);
+
+    twice(square(2, 2));
+    expect(zoomOf()).toBe(fitted);
+  });
+
+  test("a tap that places a tile does not count toward one", () => {
+    const { onPlace } = draw();
+    const fitted = zoomOf();
+
+    twice(square(2, 2));
+    expect(onPlace).toHaveBeenCalledTimes(2);
+    expect(zoomOf()).toBe(fitted);
+  });
+
+  test("two taps far apart are not a double tap", () => {
+    draw({ canPlace: false });
+    const fitted = zoomOf();
+
+    fireEvent.click(square(0, 0), { detail: 1, clientX: 0, clientY: 0 });
+    fireEvent.click(square(4, 4), { detail: 1, clientX: 200, clientY: 200 });
+    expect(zoomOf()).toBe(fitted);
+  });
+
+  test("the keyboard never zooms by double press", () => {
+    draw({ canPlace: false });
+    const fitted = zoomOf();
+
+    press(square(2, 2));
+    press(square(2, 2));
+    expect(zoomOf()).toBe(fitted);
+  });
+});

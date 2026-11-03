@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { boardShapeNamed } from "../../../shared/boards";
 import type { Placement } from "../../../shared/engine/score";
 import { followPointer } from "../../lib/followPointer";
@@ -53,6 +53,11 @@ const MAX_ZOOM = 2.5;
 /** One press of a zoom button: a quarter of the fitted size, so 0.75 to 2.5 is
     seven presses and every stop is a round number. */
 const ZOOM_STEP = 0.25;
+/** A double tap zooms in to this, or back to the fitted size if already in. */
+const DOUBLE_TAP_ZOOM = 2;
+/** How close together two taps must be, in time and on screen, to be one. */
+const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_SLOP = 24;
 
 const BONUS_NAME: Record<number, string> = { 2: "double word", 3: "triple word", 4: "quadruple word" };
 
@@ -199,6 +204,40 @@ export function Board({
    * where the squares are at their smallest, zooming in is how a square
    * becomes big enough to hit.
    */
+  /**
+   * Double-tap to zoom: in to DOUBLE_TAP_ZOOM aimed at the tap, or back to
+   * fit if already zoomed in.
+   *
+   * Only taps that did nothing else count. A tap that places a tile or takes
+   * one back has done its job, and a second tap straight after it is another
+   * move, not a zoom -- so a square's own click says when it acted, and the
+   * viewport hears every click after the square has. Not from the keyboard,
+   * whose clicks have no place on screen.
+   */
+  const lastTap = useRef<{ time: number; x: number; y: number } | null>(null);
+  const tapActed = useRef(false);
+
+  const onViewportClick = (e: React.MouseEvent) => {
+    const acted = tapActed.current;
+    tapActed.current = false;
+    if (e.detail === 0 || acted || panned.current || dragged.current) {
+      lastTap.current = null;
+      return;
+    }
+    const last = lastTap.current;
+    const isDouble =
+      last !== null &&
+      e.timeStamp - last.time < DOUBLE_TAP_MS &&
+      Math.hypot(e.clientX - last.x, e.clientY - last.y) < DOUBLE_TAP_SLOP;
+    if (!isDouble) {
+      lastTap.current = { time: e.timeStamp, x: e.clientX, y: e.clientY };
+      return;
+    }
+    lastTap.current = null;
+    focus.current = { x: e.clientX, y: e.clientY };
+    setZoom((current) => (current > 1 ? 1 : clamp(DOUBLE_TAP_ZOOM)));
+  };
+
   const zoomTo = (next: (current: number) => number) => {
     const el = viewport.current;
     if (el !== null) {
@@ -327,6 +366,31 @@ export function Board({
     el.scrollLeft = (el.scrollLeft + x) * ratio - x;
     el.scrollTop = (el.scrollTop + y) * ratio - y;
   }, [zoom]);
+
+  /**
+   * The sides with more board beyond them, as a space-separated list. Measured
+   * from where the grid is drawn against the box, so a side the player has
+   * panned all the way to counts as the board's real edge.
+   */
+  const [clipped, setClipped] = useState("");
+
+  const measureClipped = useCallback(() => {
+    if (viewport.current === null || grid.current === null) return;
+    const box = viewport.current.getBoundingClientRect();
+    const board = grid.current.getBoundingClientRect();
+    setClipped(
+      [
+        board.top < box.top - 1 && "top",
+        board.right > box.right + 1 && "right",
+        board.bottom > box.bottom + 1 && "bottom",
+        board.left < box.left - 1 && "left",
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+  }, []);
+
+  useLayoutEffect(measureClipped, [measureClipped, zoom, fit]);
 
   const committed = useMemo(() => {
     const map = new Map<string, BoardTile>();
@@ -474,8 +538,13 @@ export function Board({
             if (blocked) return;
             // Tapping your own staged tile takes it back; anything else is a
             // square you may play onto, whatever is already there.
-            if (stage) onPickUp(x, y);
-            else if (canPlace) onPlace(x, y);
+            if (stage) {
+              tapActed.current = true;
+              onPickUp(x, y);
+            } else if (canPlace) {
+              tapActed.current = true;
+              onPlace(x, y);
+            }
           }}
         >
           {/* A tile staged this turn shows over whatever it landed on: the
@@ -500,6 +569,8 @@ export function Board({
           ref={viewport}
           className={styles.viewport}
           style={{ "--cell-scale": zoom * fit } as React.CSSProperties}
+          onScroll={measureClipped}
+          onClick={onViewportClick}
           onPointerDown={(e) => {
             pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
             // Cleared for every press, not only for one starting on a staged
@@ -537,7 +608,9 @@ export function Board({
             {cells}
           </div>
         </div>
-        {zoom > 1 && <div className={styles.edge} aria-hidden="true" />}
+        {clipped !== "" && (
+          <div className={styles.edge} data-clipped={clipped} aria-hidden="true" />
+        )}
       </div>
       {/* Under the board rather than over it: laid over a corner, the buttons
           covered a square that, at the fitted size, could not be panned out
