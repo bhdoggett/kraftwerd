@@ -161,6 +161,16 @@
   .viewport {
     --cell-base: 22px;
   }
+
+  /*
+   * No zoom buttons on a phone. They are the way to zoom without a pinch,
+   * and on a phone double-tap is that way already: one finger, in to 2x and
+   * back to fit. Keyboards and switches, the other reasons for them, are at
+   * a desk, where the buttons stay.
+   */
+  .zoom {
+    display: none;
+  }
 }
 
 /*
