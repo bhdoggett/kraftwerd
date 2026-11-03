@@ -15,7 +15,6 @@ import { FriendRequestsNotice } from "./components/FriendRequests/FriendRequests
 import { GameOverNotice } from "./components/GameOver/GameOver";
 import { RuleChangesNotice } from "./components/RuleChanges/RuleChanges";
 import { RulesDialog } from "./components/Rules/Rules";
-import { RotateNotice } from "./components/RotateNotice/RotateNotice";
 import { authClient } from "./lib/auth-client";
 import { signInWithGoogle } from "./lib/googleSignIn";
 import { promiseAGame, type PromisedGame } from "./lib/useStartGame";
@@ -153,7 +152,6 @@ export default function App() {
           <SignInForm canGuest={route.name === "lobby"} />
         </Unauthenticated>
       </main>
-      <RotateNotice />
     </div>
   );
 }
