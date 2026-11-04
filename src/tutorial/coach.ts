@@ -28,7 +28,7 @@ export const COACH: readonly CoachText[] = [
   // 2. You: ANA NITS PICA TUN STAB UN, closes a 3×3
   {
     before:
-      "Your move. Drag each tile onto its faded ghost letter, then press Play. The ? is a blank: it can be any letter, and here it becomes an S. You get 3 a game, never refilled.",
+      "Your move: drag each tile onto its faded ghost letter, then press Play. The ? is a blank that can be any letter; here it becomes an S. You get 3 a game, never refilled.",
     after:
       "You closed your first 3×3, even though Isolde laid most of it. A full 3×3 is worth 33, and whoever places the last tile takes it. Every word also scores all its letters, even the ones already on the board.",
   },
