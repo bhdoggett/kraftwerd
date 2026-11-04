@@ -537,14 +537,26 @@
   border-color: var(--tile-blank-edge);
   color: var(--tile-blank-edge);
   opacity: 1;
-  animation: blank-pulse 1.4s ease-in-out infinite;
+  animation: none;
 }
 
-@keyframes blank-pulse {
+/* The same soft halo as the rack's blank: only its opacity animates. */
+.ghostBlank::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  box-shadow:
+    0 0 0 2px var(--tile-blank-face),
+    0 0 0 3px color-mix(in srgb, var(--tile-blank-edge) 55%, transparent),
+    0 0 12px 3px color-mix(in srgb, var(--tile-blank-face) 80%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  animation: blank-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes blank-glow {
   50% {
-    box-shadow:
-      0 0 0 2px var(--tile-blank-face),
-      0 0 0 4px var(--tile-blank-edge);
+    opacity: 1;
   }
 }
 
@@ -572,9 +584,13 @@
     animation: none;
   }
 
-  .ghost,
-  .ghostBlank {
+  .ghost {
     animation: none;
+  }
+
+  .ghostBlank::after {
+    animation: none;
+    opacity: 1;
   }
 }
 

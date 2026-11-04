@@ -163,29 +163,41 @@
   border-color: var(--tile-edge);
 }
 
-/* Paired with the blank's ghost on the board, which pulses the same way. */
+/*
+ * Paired with the blank's ghost on the board, which pulses the same way: a
+ * soft white halo fading in and out. Only the halo's opacity animates, so the
+ * tile keeps its own shadow and the pulse stays smooth.
+ */
 .blankHint {
-  animation: blank-pulse 1.4s ease-in-out infinite;
+  position: relative;
 }
 
-@keyframes blank-pulse {
+.blankHint::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  box-shadow:
+    0 0 0 2px var(--tile-blank-face),
+    0 0 0 3px color-mix(in srgb, var(--tile-blank-edge) 55%, transparent),
+    0 0 12px 3px color-mix(in srgb, var(--tile-blank-face) 80%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  animation: blank-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes blank-glow {
   50% {
-    box-shadow:
-      0 0 0 2px var(--tile-blank-face),
-      0 0 0 4px var(--tile-blank-edge);
+    opacity: 1;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .blankHint {
+  .blankHint::after {
     animation: none;
-    box-shadow:
-      0 0 0 2px var(--tile-blank-face),
-      0 0 0 4px var(--tile-blank-edge);
+    opacity: 1;
   }
 }
-
-
 
 .count {
   font-size: calc(var(--rack-tile-width) * 0.4);
