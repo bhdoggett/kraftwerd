@@ -29,7 +29,14 @@ function against(opponents: readonly { name: string; pending: boolean }[]) {
     .join(", ");
 }
 
-export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
+export function Lobby({
+  onOpen,
+  openNewGame = false,
+}: {
+  onOpen: (gameId: Id<"games">) => void;
+  /** Arrive with the New game dialog already open (the tutorial's New game). */
+  openNewGame?: boolean;
+}) {
   const mine = useQuery(api.games.listMyGames);
   const respondToInvite = useMutation(api.games.respondToInvite);
   const openGames = useQuery(api.games.listOpenGames);
@@ -70,7 +77,7 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
   const told = declines?.[0];
 
   const viewer = useQuery(api.users.viewer);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(openNewGame);
   const { start, starting, error: startError, clearError } = useStartGame();
 
   /**
@@ -187,7 +194,10 @@ export function Lobby({ onOpen }: { onOpen: (gameId: Id<"games">) => void }) {
         New game
       </button>
 
+      {/* Not before the viewer is known: a guest gets a dialog of their own,
+          and opened on arrival the other one would flash up first. */}
       {creating &&
+        viewer !== undefined &&
         (viewer?.isGuest === true ? (
           <GuestGame
             onStart={(playerCount, bots) =>

@@ -14,11 +14,11 @@ import { MiniBoard } from "./components/MiniBoard/MiniBoard";
 import { FriendRequestsNotice } from "./components/FriendRequests/FriendRequests";
 import { GameOverNotice } from "./components/GameOver/GameOver";
 import { RuleChangesNotice } from "./components/RuleChanges/RuleChanges";
-import { RulesDialog } from "./components/Rules/Rules";
+import { Tutorial } from "./components/Tutorial/Tutorial";
 import { authClient } from "./lib/auth-client";
 import { signInWithGoogle } from "./lib/googleSignIn";
 import { promiseAGame, type PromisedGame } from "./lib/useStartGame";
-import { navigate, useRoute } from "./router";
+import { forgetNewGame, navigate, useRoute } from "./router";
 
 /*
  * The color reference, kept out of the router on purpose.
@@ -35,6 +35,7 @@ const TITLES = {
   game: "Game",
   account: "Account",
   friend: "Friend invite",
+  tutorial: "Tutorial",
 } as const;
 
 export default function App() {
@@ -49,11 +50,17 @@ export default function App() {
   useEffect(() => {
     const page = SHOWING_SWATCHES
       ? "Swatches"
-      : !isLoading && !isAuthenticated
+      : !isLoading && !isAuthenticated && route.name !== "tutorial"
         ? "Sign in"
         : TITLES[route.name];
     document.title = `${page} · kraftwerd`;
   }, [route.name, isAuthenticated, isLoading]);
+
+  // The lobby has opened the New game dialog by now; a reload should not.
+  const arrivedForNewGame = route.name === "lobby" && route.newGame === true;
+  useEffect(() => {
+    if (arrivedForNewGame) forgetNewGame();
+  }, [arrivedForNewGame]);
 
   // Before the router and before the sign-in gate: nothing to steer it away.
   if (SHOWING_SWATCHES) return <Swatches />;
@@ -119,38 +126,64 @@ export default function App() {
       </header>
 
       <main className={styles.main}>
-        <Authenticated>
-          <RuleChangesNotice />
-          <GameOverNotice
-            currentGameId={route.name === "game" ? route.gameId : null}
-            onOpen={(gameId) => navigate({ name: "game", gameId })}
+        {/* Outside the sign-in gate: the tutorial is the same signed in or
+            out, saves nothing, and is not interrupted by any notice. */}
+        {route.name === "tutorial" ? (
+          <Tutorial
+            onLeave={() => navigate({ name: "lobby" })}
+            onNewGame={() => {
+              if (isAuthenticated || isLoading) {
+                navigate({ name: "lobby", newGame: true });
+                return;
+              }
+              // As the sign-in page's "Play the computer": the lobby that
+              // loads under the new guest account deals the promised game.
+              navigate({ name: "lobby" });
+              promiseAGame("computer");
+              void authClient.signIn.anonymous().catch(() => {
+                // Back on the sign-in page, where the guest buttons are.
+              });
+            }}
           />
-          <FriendRequestsNotice />
-          {route.name === "game" ? (
-            <Game
-              gameId={route.gameId as Id<"games">}
-              onLeave={() => navigate({ name: "lobby" })}
-              onOpen={(gameId) => navigate({ name: "game", gameId })}
-            />
-          ) : route.name === "account" ? (
-            <Account onBack={() => navigate({ name: "lobby" })} />
-          ) : route.name === "friend" ? (
-            <AcceptFriend
-              token={route.token}
-              onDone={() => navigate({ name: "lobby" })}
-            />
-          ) : (
-            <Lobby onOpen={(gameId) => navigate({ name: "game", gameId })} />
-          )}
-          {/* Last, so it sits over any other notice: nothing else should be
-              answered before the name everybody will see is chosen. */}
-          <DisplayNameNotice />
-        </Authenticated>
-        <Unauthenticated>
-          {/* A guest account is offered on the way in, not on the way to
-              somebody else's game: a guest cannot take a seat at one. */}
-          <SignInForm canGuest={route.name === "lobby"} />
-        </Unauthenticated>
+        ) : (
+          <>
+            <Authenticated>
+              <RuleChangesNotice />
+              <GameOverNotice
+                currentGameId={route.name === "game" ? route.gameId : null}
+                onOpen={(gameId) => navigate({ name: "game", gameId })}
+              />
+              <FriendRequestsNotice />
+              {route.name === "game" ? (
+                <Game
+                  gameId={route.gameId as Id<"games">}
+                  onLeave={() => navigate({ name: "lobby" })}
+                  onOpen={(gameId) => navigate({ name: "game", gameId })}
+                />
+              ) : route.name === "account" ? (
+                <Account onBack={() => navigate({ name: "lobby" })} />
+              ) : route.name === "friend" ? (
+                <AcceptFriend
+                  token={route.token}
+                  onDone={() => navigate({ name: "lobby" })}
+                />
+              ) : (
+                <Lobby
+                  onOpen={(gameId) => navigate({ name: "game", gameId })}
+                  openNewGame={route.newGame === true}
+                />
+              )}
+              {/* Last, so it sits over any other notice: nothing else should be
+                  answered before the name everybody will see is chosen. */}
+              <DisplayNameNotice />
+            </Authenticated>
+            <Unauthenticated>
+              {/* A guest account is offered on the way in, not on the way to
+                  somebody else's game: a guest cannot take a seat at one. */}
+              <SignInForm canGuest={route.name === "lobby"} />
+            </Unauthenticated>
+          </>
+        )}
       </main>
     </div>
   );
@@ -196,7 +229,6 @@ const DEMO_FULL = ["1,1", "0,2", "1,2", "1,3", "3,3", "2,4", "1,5", "3,5"];
 
 function SignInForm({ canGuest }: { canGuest: boolean }) {
   const [error, setError] = useState<string | null>(null);
-  const [showRules, setShowRules] = useState(false);
   /** The game a guest is waiting on, so its button says so rather than sitting there. */
   const [guest, setGuest] = useState<PromisedGame | null>(null);
   const status = useQuery(api.users.authStatus);
@@ -204,8 +236,6 @@ function SignInForm({ canGuest }: { canGuest: boolean }) {
 
   return (
     <div className={styles.auth}>
-      {showRules && <RulesDialog onClose={() => setShowRules(false)} />}
-
       <div className={styles.card}>
         <div className={styles.hero}>
           <MiniBoard
@@ -293,9 +323,9 @@ function SignInForm({ canGuest }: { canGuest: boolean }) {
       <button
         type="button"
         className={styles.howTo}
-        onClick={() => setShowRules(true)}
+        onClick={() => navigate({ name: "tutorial" })}
       >
-        How to play
+        Tutorial
       </button>
     </div>
   );

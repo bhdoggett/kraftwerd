@@ -90,3 +90,107 @@
   font-size: var(--text-xs);
   cursor: pointer;
 }
+
+/*
+ * The screen: a game's layout, with the coach card over the board. Board and
+ * rack on the left and the scores beside them; stacked on a narrow screen,
+ * with the scores on top.
+ */
+.screen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.side {
+  composes: side from "../Game/Game.module.css";
+}
+
+@media (max-width: 860px) /* stacked game */ {
+  .screen {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .side {
+    order: -1;
+    width: auto;
+  }
+}
+
+.boardArea {
+  composes: boardArea from "../Game/Game.module.css";
+}
+
+/* The tile under the finger, exactly as the game draws it. */
+.dragTile {
+  composes: dragTile from "../Game/Game.module.css";
+}
+
+.dragBlank {
+  composes: dragBlank from "../Game/Game.module.css";
+}
+
+/* The game-over dialog, as GameOverDialog lays it out, with a closing line. */
+.endBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.endTitle {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.endScores {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.endScores li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.endYou {
+  font-weight: 700;
+}
+
+.endScore {
+  font-variant-numeric: tabular-nums;
+}
+
+.endClosing {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.endActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.endButton {
+  composes: button from "../Button/Button.module.css";
+}
+
+.endSecondary {
+  composes: secondary from "../Button/Button.module.css";
+}
