@@ -2,8 +2,10 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { RULES_VERSION } from "../../../shared/config";
+import { promisedGamePending } from "../../lib/useStartGame";
 import { navigate } from "../../router";
 import { tutorialStartedHere } from "../../tutorial/seen";
+import { friendRequestsShowing, friendRequestsSnoozed } from "../FriendRequests/snooze";
 import { Modal } from "../Modal/Modal";
 import styles from "./TutorialNotice.module.css";
 
@@ -34,33 +36,54 @@ export function TutorialDialog({ onTake, onLater }: TutorialDialogProps) {
   );
 }
 
-/** Whether some modal other than ours is on screen, watched as the page changes. */
-function useModalOpen(watching: boolean): boolean {
-  const [open, setOpen] = useState(false);
+interface Surroundings {
+  /** Some modal is on screen. */
+  dialogOpen: boolean;
+  /** "Later" on the friend reminder is in force. */
+  snoozed: boolean;
+}
+
+/**
+ * What is on the page, watched as it changes. Undefined until the first look
+ * has been taken, so nothing is decided on a guess.
+ */
+function useSurroundings(watching: boolean): Surroundings | undefined {
+  const [seen, setSeen] = useState<Surroundings>();
   useEffect(() => {
     if (!watching) return;
-    const check = () => setOpen(document.querySelector('[role="dialog"]') !== null);
-    check();
-    const observer = new MutationObserver(check);
+    const look = () =>
+      setSeen({
+        dialogOpen: document.querySelector('[role="dialog"]') !== null,
+        snoozed: friendRequestsSnoozed(),
+      });
+    look();
+    const observer = new MutationObserver(look);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [watching]);
-  return open;
+  return watching ? seen : undefined;
 }
 
 /**
  * Offers the tutorial once, to an account that has not seen it.
  *
- * It waits its turn: never over the display name prompt, the rule changes, or
- * any other open modal. Once it has shown, it is latched, so the modal it sees
- * is no longer somebody else's. Either button records it on the account, and
- * it closes at once rather than waiting for the server to agree.
+ * It waits its turn: not until the game results and friend requests have
+ * loaded and, if either would show a dialog, not over it; never over the
+ * display name prompt or the rule changes; not while a guest's dealt game is
+ * still on its way; and not over any other open modal (a backstop, checked
+ * from the page itself). Once it is up it stays up, so a friend request that
+ * arrives afterwards can still stack on it. Either button records it on the
+ * account, and it closes at once rather than waiting for the server.
  */
 export function TutorialNotice() {
   const viewer = useQuery(api.users.viewer);
+  const results = useQuery(api.games.pendingResults);
+  const friends = useQuery(api.friends.listFriends);
   const markSeen = useMutation(api.users.markTutorialSeen);
   const [done, setDone] = useState(false);
   const [shown, setShown] = useState(false);
+  // Read once, like the friend reminder's snooze: it does not change mid-load.
+  const [startedHere] = useState(() => tutorialStartedHere());
 
   const eligible =
     viewer !== undefined &&
@@ -69,19 +92,29 @@ export function TutorialNotice() {
     !viewer.needsDisplayName &&
     viewer.rulesSeen >= RULES_VERSION &&
     !done;
-  const startedHere = eligible && tutorialStartedHere();
-  const blocked = useModalOpen(eligible && !startedHere && !shown);
+  const silent = eligible && startedHere;
+  const loaded = results !== undefined && friends !== undefined;
+  const surroundings = useSurroundings(eligible && !silent && loaded && !shown);
 
   useEffect(() => {
     // Once the server agrees, the viewer reads as having seen it and this stops.
-    if (startedHere) void markSeen();
-  }, [startedHere, markSeen]);
+    if (silent) void markSeen();
+  }, [silent, markSeen]);
 
-  const show = eligible && !startedHere && (shown || !blocked);
+  const clear =
+    eligible &&
+    !silent &&
+    loaded &&
+    results.length === 0 &&
+    !friendRequestsShowing(friends.incoming.length, results.length, surroundings?.snoozed ?? true) &&
+    !promisedGamePending() &&
+    surroundings !== undefined &&
+    !surroundings.dialogOpen;
+  const show = shown || clear;
   // Latched during render: once up, the dialog the observer sees is our own.
   if (show && !shown) setShown(true);
 
-  if (!show) return null;
+  if (!show || !eligible) return null;
 
   const finish = () => {
     setDone(true);

@@ -84,6 +84,16 @@ export function promiseAGame(kind: PromisedGame) {
   }
 }
 
+/** Whether a guest's promised game is still waiting for the lobby to deal it. */
+export function promisedGamePending(): boolean {
+  try {
+    const kind = window.sessionStorage.getItem(GUEST_START);
+    return kind === "solo" || kind === "computer";
+  } catch {
+    return false;
+  }
+}
+
 /** Claims that promise, and says what was asked for. */
 export function claimPromisedGame(): PromisedGame | null {
   try {
