@@ -39,6 +39,11 @@ interface BoardProps {
   badCells?: ReadonlySet<string>;
   /** Squares played while you were away, pointed out as your turn opens. */
   recentCells?: ReadonlySet<string>;
+  /**
+   * Where each tile in hand is meant to go, drawn faintly over the square (the
+   * tutorial's hint). Not drawn where a tile is already staged.
+   */
+  ghosts?: readonly { x: number; y: number; letter: string }[];
   onPlace: (x: number, y: number) => void;
   onPickUp: (x: number, y: number) => void;
   /** Begin dragging a tile staged this turn to another square. */
@@ -88,6 +93,7 @@ export function Board({
   goodCells,
   badCells,
   recentCells,
+  ghosts,
   onPlace,
   onPickUp,
   onGrabStaged,
@@ -477,6 +483,10 @@ export function Board({
         if (empty) classes.push(styles.armed);
       }
 
+      const ghostLetter = stage
+        ? undefined
+        : ghosts?.find((g) => g.x === x && g.y === y)?.letter;
+
       cells.push(
         <button
           key={k}
@@ -515,6 +525,7 @@ export function Board({
                   : "open square",
             empty && bonusMultiplier !== undefined ? BONUS_NAME[bonusMultiplier] : undefined,
             empty && isCentre ? "centre" : undefined,
+            ghostLetter === undefined ? undefined : `place ${ghostLetter} here`,
             // The word rings say this in color alone, so it is said here too.
             badCells?.has(k)
               ? "in a word that is not valid"
@@ -550,6 +561,16 @@ export function Board({
           {/* A tile staged this turn shows over whatever it landed on: the
               letter under it is still there, and comes back if it is recalled. */}
           <span className={styles.glyph}>{(stage ?? tile)?.letter ?? ""}</span>
+          {ghostLetter !== undefined && (
+            <span
+              className={styles.ghost}
+              data-ghost="true"
+              data-seat={yourSeat === null ? undefined : yourSeat % 4}
+              aria-hidden="true"
+            >
+              {ghostLetter}
+            </span>
+          )}
           {showBonusMark && (
             <span className={styles.bonusMark}>
               {isCentre ? <CentreIcon /> : bonusMultiplier === 2 && <DoubleWordIcon />}

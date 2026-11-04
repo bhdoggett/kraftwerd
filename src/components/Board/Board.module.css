@@ -492,6 +492,33 @@
 }
 
 /*
+ * Where a tile in hand is meant to go. Drawn over the square, tile or not,
+ * in the viewer's own seat color (the span carries data-seat itself, so it
+ * does not take the color of a tile underneath). Dashed and pulsing: a
+ * suggestion, not a piece.
+ */
+.ghost {
+  grid-area: cell;
+  align-self: stretch;
+  justify-self: stretch;
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 2;
+  border: 2px dashed var(--seat-lit);
+  color: var(--seat-lit);
+  opacity: 0.7;
+  pointer-events: none;
+  animation: ghost-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ghost-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/*
  * No fading where that is unwelcome: the ring simply sits there instead, in
  * whatever its animation was strongest in, and is taken away on the same
  * timer.
@@ -512,6 +539,10 @@
   /* The pending border already says the blank is waiting; a pulse that never
      stops is the one thing a reduced-motion setting most wants gone. */
   .awaiting {
+    animation: none;
+  }
+
+  .ghost {
     animation: none;
   }
 }

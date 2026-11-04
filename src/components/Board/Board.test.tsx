@@ -260,6 +260,43 @@ describe("zooming by button", () => {
   });
 });
 
+describe("ghost letters", () => {
+  const ghost = (x: number, y: number) =>
+    square(x, y).querySelector("[data-ghost]");
+
+  test("shows the letter faintly at an empty square", () => {
+    draw({ ghosts: [{ x: 1, y: 1, letter: "N" }] });
+    expect(ghost(1, 1)?.textContent).toBe("N");
+    expect(ghost(1, 1)?.getAttribute("aria-hidden")).toBe("true");
+    expect(square(1, 1).getAttribute("aria-label")).toContain("place N here");
+    expect(ghost(0, 0)).toBeNull();
+  });
+
+  test("shows over a square that already holds a tile, which stays", () => {
+    draw({
+      tiles: [{ x: 2, y: 2, letter: "A", isBlank: false, placedBy: "u1", stacked: 1 }],
+      seatOf: new Map([["u1", 1]]),
+      ghosts: [{ x: 2, y: 2, letter: "N" }],
+    });
+    expect(ghost(2, 2)?.textContent).toBe("N");
+    expect(square(2, 2).textContent).toContain("A");
+  });
+
+  test("is not drawn where a pending tile sits", () => {
+    draw({
+      pending: [{ x: 3, y: 3, letter: "E", isBlank: false }],
+      ghosts: [{ x: 3, y: 3, letter: "N" }],
+    });
+    expect(ghost(3, 3)).toBeNull();
+    expect(square(3, 3).getAttribute("aria-label") ?? "").not.toContain("place N here");
+  });
+
+  test("has no axe violations", async () => {
+    draw({ ghosts: [{ x: 1, y: 1, letter: "N" }, { x: 2, y: 2, letter: "A" }] });
+    expect(await axeViolations(document.body)).toEqual([]);
+  });
+});
+
 describe("accessibility", () => {
   test("a board with played, staged and checked tiles has no axe violations", async () => {
     draw({
