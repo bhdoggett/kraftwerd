@@ -1,9 +1,12 @@
+import twoLetterWords from "../../shared/data/two-letter-words.json" with { type: "json" };
 import { boardShapeNamed } from "../../shared/boards";
 import { BLANKS_PER_GAME } from "../../shared/config";
 import { cellKey, makeBoard } from "../../shared/engine/board";
+import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements } from "../../shared/engine/legality";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { newSquareBlocks } from "../../shared/engine/squares";
+import { spotSteps, type SpotStep } from "../lib/recap";
 import { BAG_SIZE, BOARD_SIZE, LAYOUT, PLAYER_SEAT, RACK_SIZE, SCRIPT } from "./script";
 
 export interface TutorialTile {
@@ -34,6 +37,28 @@ export interface TurnFacts {
 export const seatId = (seat: number) => `seat${seat}`;
 
 const bonusSquares = boardShapeNamed(LAYOUT, BOARD_SIZE).bonusSquares;
+
+/**
+ * The words the tutorial knows, checked on the device: there is no server to
+ * ask (the tutorial works signed out), and the full word list is too big to
+ * ship to the browser. Every word of the recorded game and every two-letter
+ * word, which is what a staged tile can make on its way to the recorded move.
+ */
+export const tutorialDictionary = makeDictionary([...SCRIPT.flatMap((t) => t.words), ...twoLetterWords]);
+
+/** The record as a game's turn history, for the replay helpers a game uses. */
+export const HISTORY = SCRIPT.map((t, i) => ({
+  turnNumber: i,
+  userId: seatId(t.seat),
+  kind: "play" as const,
+  score: t.score,
+  placements: t.placements,
+}));
+
+/** SCRIPT[turn] as a game replays somebody else's play: a spot at a time, then its points. */
+export function replaySteps(turn: number): SpotStep[] {
+  return spotSteps(HISTORY, [{ turnNumber: turn }]);
+}
 
 /** The board after the first `turns` turns. */
 export function tilesAfter(turns: number): TutorialTile[] {

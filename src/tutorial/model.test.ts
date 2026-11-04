@@ -5,7 +5,7 @@ import { makeBoard, type Board } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
 import { BOARD_SIZE, LAYOUT, PLAYER_SEAT, SCRIPT } from "./script";
-import { checkPlacement, factsFor, rackAt, standingsAfter, tilesAfter } from "./model";
+import { checkPlacement, factsFor, rackAt, standingsAfter, tilesAfter, tutorialDictionary } from "./model";
 
 const dict = makeDictionary(words);
 
@@ -165,5 +165,14 @@ describe("rackAt", () => {
     SCRIPT.forEach((t, i) => {
       if (t.seat !== PLAYER_SEAT) expect(rackAt(i + 1)).toEqual(rackAt(i));
     });
+  });
+});
+
+describe("tutorialDictionary", () => {
+  test("knows every word of the recorded game and the two-letter words, and nothing made up", () => {
+    for (const t of SCRIPT) for (const w of t.words) expect(tutorialDictionary.has(w), w).toBe(true);
+    expect(tutorialDictionary.has("QI")).toBe(true);
+    expect(tutorialDictionary.has("PICAX")).toBe(false);
+    expect(tutorialDictionary.has("NB")).toBe(false);
   });
 });
