@@ -87,4 +87,29 @@ describe("checkPlacement", () => {
       y: 0,
     });
   });
+
+  test("a blank and a real tile of one letter are interchangeable", () => {
+    // Turn 5: the real O is on 13,12, the blank O on 12,10.
+    const want = SCRIPT[4].placements;
+    expect(checkPlacement(4, want)).toEqual({ kind: "ready" });
+    const swapped = want.map((p) =>
+      p.letter === "O" ? { ...p, isBlank: !p.isBlank } : p,
+    );
+    expect(swapped.filter((p) => p.letter === "O").map((p) => p.isBlank).sort()).toEqual([false, true]);
+    expect(checkPlacement(4, swapped)).toEqual({ kind: "ready" });
+  });
+
+  test("wrongLetter never names the same letter twice", () => {
+    for (let turn = 0; turn < SCRIPT.length; turn++) {
+      const want = SCRIPT[turn].placements;
+      // Every tile one ghost over (rotated): letters rarely line up, and a
+      // blank counts only by its letter.
+      const rotated = want.map((p, i) => {
+        const g = want[(i + 1) % want.length];
+        return { ...p, x: g.x, y: g.y };
+      });
+      const f = checkPlacement(turn, rotated);
+      if (f.kind === "wrongLetter") expect(f.placed).not.toBe(f.wanted);
+    }
+  });
 });

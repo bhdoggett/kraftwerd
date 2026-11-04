@@ -100,9 +100,9 @@ export function checkPlacement(turn: number, staged: readonly Placement[]): Feed
   const ghostAt = (x: number, y: number) => ghosts.find((g) => g.x === x && g.y === y);
   const unfilled = ghosts.filter((g) => !staged.some((s) => s.x === g.x && s.y === g.y));
 
-  // A blank matches only a blank ghost, whatever letter it stands for.
-  const matches = (s: Placement, g: Placement) =>
-    s.isBlank || g.isBlank ? s.isBlank === g.isBlank : s.letter === g.letter;
+  // By letter alone: a blank standing for O scores the same as a real O, so
+  // either may sit on either O ghost.
+  const matches = (s: Placement, g: Placement) => s.letter === g.letter;
 
   for (const s of staged) {
     if (ghostAt(s.x, s.y) !== undefined) continue;

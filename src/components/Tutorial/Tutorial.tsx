@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BAG_SIZE, BOARD_SIZE, LAYOUT, PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "../../tutorial/script";
 import { checkPlacement, factsFor, seatId, standingsAfter, tilesAfter, type Feedback } from "../../tutorial/model";
 import { CLOSING, COACH } from "../../tutorial/coach";
@@ -77,22 +77,31 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   /** The board as it stood before this turn's move. */
   const before = useMemo(() => makeBoard(tilesAfter(turn)), [turn]);
 
+  /** Cells holding a staged tile, for nameBlank (which staging calls). */
+  const filledRef = useRef<ReadonlySet<string>>(new Set());
+
   const staging = useTileStaging({
     letters,
     blanks,
     before,
     canPlace: placing,
-    // A blank becomes its ghost's letter. Off a blank ghost it still takes
-    // the first blank ghost's letter, so it stages as a wrong tile the card
-    // can explain, and the letter picker never opens.
+    // A blank becomes the letter of whatever ghost it lands on, blank's or
+    // not (a blank and a real tile of one letter score alike). Off every
+    // ghost it takes the first unfilled ghost's letter, so it stages as a
+    // tile the card can explain, and the letter picker never opens.
     nameBlank: (x, y) => {
-      const blankGhosts = ghosts.filter((g) => g.isBlank);
-      return (blankGhosts.find((g) => g.x === x && g.y === y) ?? blankGhosts[0])?.letter ?? null;
+      const at = ghosts.find((g) => g.x === x && g.y === y);
+      if (at !== undefined) return at.letter;
+      const filled = filledRef.current;
+      return (ghosts.find((g) => !filled.has(cellKey(g.x, g.y))) ?? ghosts[0])?.letter ?? null;
     },
     refuse: (why) => setError({ text: why }),
     clearError: () => setError(null),
   });
   const { pending } = staging;
+  useEffect(() => {
+    filledRef.current = new Set(pending.map((p) => cellKey(p.x, p.y)));
+  }, [pending]);
 
   const staged: Placement[] = useMemo(
     () => pending.map(({ x, y, letter, isBlank }) => ({ x, y, letter, isBlank })),
