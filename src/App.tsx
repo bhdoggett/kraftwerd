@@ -19,7 +19,7 @@ import { TutorialNotice } from "./components/Tutorial/TutorialNotice";
 import { authClient } from "./lib/auth-client";
 import { signInWithGoogle } from "./lib/googleSignIn";
 import { promiseAGame, type PromisedGame } from "./lib/useStartGame";
-import { forgetNewGame, navigate, useRoute } from "./router";
+import { forgetNewGame, goBackOr, navigate, useRoute } from "./router";
 
 /*
  * The color reference, kept out of the router on purpose.
@@ -131,7 +131,7 @@ export default function App() {
             out, saves nothing, and is not interrupted by any notice. */}
         {route.name === "tutorial" ? (
           <Tutorial
-            onLeave={() => navigate({ name: "lobby" })}
+            onLeave={() => goBackOr({ name: "lobby" })}
             onNewGame={() => {
               if (isAuthenticated || isLoading) {
                 navigate({ name: "lobby", newGame: true });

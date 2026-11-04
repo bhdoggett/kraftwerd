@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { forgetNewGame, navigate, useRoute } from "./router";
+import { forgetNewGame, goBackOr, navigate, useRoute } from "./router";
 
 afterEach(() => {
   cleanup();
@@ -24,6 +24,24 @@ describe("the router", () => {
 
     forgetNewGame();
     expect(window.location.pathname + window.location.search).toBe("/");
+  });
+
+  test("leaving goes to the fallback on a direct load", () => {
+    window.history.replaceState(null, "", "/tutorial");
+    const { result } = renderHook(() => useRoute());
+    act(() => goBackOr({ name: "lobby" }));
+    expect(window.location.pathname).toBe("/");
+    expect(result.current).toEqual({ name: "lobby" });
+  });
+
+  test("leaving steps back when the tutorial was reached in the app", () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    renderHook(() => useRoute());
+    act(() => navigate({ name: "tutorial" }));
+    act(() => goBackOr({ name: "lobby" }));
+    expect(back).toHaveBeenCalledOnce();
+    expect(window.location.pathname).toBe("/tutorial");
+    back.mockRestore();
   });
 
   test("a plain lobby is just the lobby", () => {

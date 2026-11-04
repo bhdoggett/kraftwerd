@@ -42,9 +42,24 @@ export function navigate(route: Route) {
   // on the page (an auth hand-off, say) is not this router's to throw away.
   const here = path.includes("?") ? window.location.pathname + window.location.search : window.location.pathname;
   if (path !== here) {
-    window.history.pushState(null, "", path);
+    window.history.pushState({ inApp: true }, "", path);
   }
   window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+/**
+ * Back to where the player came from: one step back when this entry was
+ * pushed by `navigate` (so there is an in-app entry before it), otherwise
+ * (a direct load or reload into a fresh tab) to `fallback`.
+ */
+export function goBackOr(fallback: Route) {
+  const state: unknown = window.history.state;
+  const inApp = typeof state === "object" && state !== null && "inApp" in state;
+  if (inApp) {
+    window.history.back();
+    return;
+  }
+  navigate(fallback);
 }
 
 /**
