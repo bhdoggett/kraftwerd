@@ -5,7 +5,7 @@ import { makeBoard, type Board } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
 import { BOARD_SIZE, LAYOUT, PLAYER_SEAT, SCRIPT } from "./script";
-import { checkPlacement, factsFor, standingsAfter, tilesAfter } from "./model";
+import { checkPlacement, factsFor, rackAt, standingsAfter, tilesAfter } from "./model";
 
 const dict = makeDictionary(words);
 
@@ -111,5 +111,59 @@ describe("checkPlacement", () => {
       const f = checkPlacement(turn, rotated);
       if (f.kind === "wrongLetter") expect(f.placed).not.toBe(f.wanted);
     }
+  });
+});
+
+describe("rackAt", () => {
+  const playerTurns = SCRIPT.flatMap((t, i) => (t.seat === PLAYER_SEAT ? [i] : []));
+  const sorted = (letters: readonly string[]) => [...letters].sort().join("");
+  const realLetters = (turn: number) => SCRIPT[turn].placements.filter((p) => !p.isBlank).map((p) => p.letter);
+
+  test("turn two's hand holds its five letters among seven", () => {
+    const hand = rackAt(1);
+    expect(hand.letters).toHaveLength(7);
+    const left = [...hand.letters];
+    for (const l of realLetters(1)) {
+      const at = left.indexOf(l);
+      expect(at, l).toBeGreaterThanOrEqual(0);
+      left.splice(at, 1);
+    }
+  });
+
+  test("every player turn's hand holds that turn's letters", () => {
+    for (const turn of playerTurns) {
+      const left = [...rackAt(turn).letters];
+      for (const l of realLetters(turn)) {
+        const at = left.indexOf(l);
+        expect(at, `turn ${turn + 1}: ${l}`).toBeGreaterThanOrEqual(0);
+        left.splice(at, 1);
+      }
+    }
+  });
+
+  test("the hand shrinks at the end: seven on turn 14, two on turn 16, none after", () => {
+    expect(rackAt(13).letters).toHaveLength(7);
+    expect(sorted(rackAt(15).letters)).toBe(sorted(realLetters(15)));
+    expect(rackAt(15).letters).toHaveLength(2);
+    expect(rackAt(16).letters).toHaveLength(0);
+    expect(rackAt(SCRIPT.length)).toEqual({ letters: [], blanks: 0 });
+  });
+
+  test("blanks run 3, 2, 1, 0 as the player spends them (one each on turns 2, 5, 11)", () => {
+    expect(playerTurns.map((t) => rackAt(t).blanks)).toEqual([3, 2, 1, 1, 0, 0]);
+  });
+
+  test("hand and blanks agree with the standings after every turn", () => {
+    for (let turns = 0; turns <= SCRIPT.length; turns++) {
+      const seat = standingsAfter(turns).seats[PLAYER_SEAT];
+      expect(rackAt(turns).letters, `after ${turns}`).toHaveLength(seat.tilesInHand);
+      expect(rackAt(turns).blanks, `after ${turns}`).toBe(seat.blanks);
+    }
+  });
+
+  test("an opponent's move leaves the hand as it was", () => {
+    SCRIPT.forEach((t, i) => {
+      if (t.seat !== PLAYER_SEAT) expect(rackAt(i + 1)).toEqual(rackAt(i));
+    });
   });
 });

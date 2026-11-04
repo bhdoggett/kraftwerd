@@ -4,7 +4,7 @@ import { cellKey, makeBoard } from "../../shared/engine/board";
 import { applyPlacements } from "../../shared/engine/legality";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { newSquareBlocks } from "../../shared/engine/squares";
-import { BAG_SIZE, BOARD_SIZE, LAYOUT, RACK_SIZE, SCRIPT } from "./script";
+import { BAG_SIZE, BOARD_SIZE, LAYOUT, PLAYER_SEAT, RACK_SIZE, SCRIPT } from "./script";
 
 export interface TutorialTile {
   x: number;
@@ -71,6 +71,29 @@ export function standingsAfter(turns: number): { seats: SeatStanding[]; bagLeft:
   for (const s of seats) s.out = s.tilesInHand === 0 && s.blanks === 0 && bagLeft === 0;
 
   return { seats, bagLeft };
+}
+
+/**
+ * Every letter (blanks aside) the player lays in the whole game, in the order
+ * laid. Everybody goes out, so whatever the player ever held was played: the
+ * hand at any moment is the next letters of this run.
+ */
+const playerLetters: readonly string[] = SCRIPT.flatMap((t) =>
+  t.seat === PLAYER_SEAT ? t.placements.filter((p) => !p.isBlank).map((p) => p.letter) : [],
+);
+
+/**
+ * The player's hand after the first `turns` turns, rebuilt from the record:
+ * the next RACK_SIZE letters still to be played (fewer once the bag is out),
+ * and the blanks not yet spent.
+ */
+export function rackAt(turns: number): { letters: string[]; blanks: number } {
+  let used = 0;
+  for (const t of SCRIPT.slice(0, Math.max(0, turns))) {
+    if (t.seat === PLAYER_SEAT) used += t.placements.filter((p) => !p.isBlank).length;
+  }
+  const seat = standingsAfter(turns).seats[PLAYER_SEAT];
+  return { letters: playerLetters.slice(used, used + RACK_SIZE), blanks: seat.blanks };
 }
 
 /** scoreTurn for SCRIPT[turn], on the board before it. */
