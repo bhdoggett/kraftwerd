@@ -345,6 +345,41 @@
   border-color: var(--accent);
 }
 
+/*
+ * The letter the tutorial wants: lit in the accent color, breathing
+ * the way a ghost does (only a halo's opacity animates, so it stays smooth).
+ */
+.blankLetterSuggested {
+  position: relative;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.blankLetterSuggested::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 10px 2px color-mix(in srgb, var(--accent) 50%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  animation: suggest-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes suggest-glow {
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blankLetterSuggested::after {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 
 
 

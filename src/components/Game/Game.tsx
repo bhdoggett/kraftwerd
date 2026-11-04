@@ -23,6 +23,8 @@ import { useTurnReplay } from "./useTurnReplay";
 import { changesNothing, useTileStaging, type Staged } from "./useTileStaging";
 import { Rack } from "../Rack/Rack";
 import { PlayPanel, ScoreBadge } from "./PlayPanel";
+import { TurnCard } from "./TurnCard";
+import { BlankPicker } from "./BlankPicker";
 import { rematchLabel } from "./rematch";
 import { userMessage } from "../../lib/errors";
 import { HintBar } from "../HintBar/HintBar";
@@ -41,7 +43,6 @@ import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
 import { SrOnly } from "../SrOnly/SrOnly";
 
-const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 /** How long a new live region is left empty before anything is said into it. */
 const ANNOUNCER_SETTLE_MS = 500;
 
@@ -830,14 +831,15 @@ export function Game({
         {(() => {
           const rackShown = me?.letters != null && game.status !== "finished" && !reviewing;
           const card = announcing && (
-            <div
-              // One element for the whole run of steps, not one per step: it
-              // stays up from one play to the next and changes color between
-              // players, rather than vanishing and fading back in each time.
-              className={[styles.announce, rackShown ? styles.announceOverRack : ""].join(" ")}
-              data-seat={seatOf.get(noteTurn.userId)}
-              // No role="status": the announcer says the play once, whole,
-              // rather than this card spot by spot.
+            <TurnCard
+              // A machine's level is noise here; the scoreboard still says it.
+              name={withoutLevel(noteTurn.name)}
+              seat={seatOf.get(noteTurn.userId)}
+              words={noteSpot !== undefined && !noteSpot.total ? noteSpot.words : undefined}
+              points={noteSpot === undefined || noteSpot.total ? noteTurn.score : undefined}
+              overRack={rackShown}
+              onSkip={skipAll}
+              skipRef={skipRef}
               // A catch-up replay never stands between you and your turn.
               onPointerDown={recapActive ? skipRecap : undefined}
               onFocus={() => {
@@ -848,29 +850,7 @@ export function Game({
               onBlur={(e) => {
                 if (e.relatedTarget !== null) cardHasFocus.current = false;
               }}
-            >
-              <button
-                ref={skipRef}
-                type="button"
-                className={styles.announceClose}
-                aria-label="Skip the replay"
-                title="Skip"
-                // Its own press, not the card's, which only cuts a catch-up short.
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={skipAll}
-              >
-                ×
-              </button>
-              {/* A machine's level is noise here; the scoreboard still says it. */}
-              <span className={styles.announceName}>{withoutLevel(noteTurn.name)}</span>
-              {noteSpot !== undefined && !noteSpot.total && noteSpot.words.length > 0 && (
-                <span className={styles.recapWords}>{noteSpot.words.join(", ")}</span>
-              )}
-              {/* The points are their own last step, once every spot is down. */}
-              {(noteSpot === undefined || noteSpot.total) && (
-                <span className={styles.recapPoints}>+{noteTurn.score}</span>
-              )}
-            </div>
+            />
           );
           if (!rackShown || !me?.letters) return card;
           return (
@@ -921,40 +901,7 @@ export function Game({
           );
         })()}
 
-        {blankAt !== null && (
-          // Pressing away takes the blank back, which is what the button
-          // under the letters used to say in words.
-          <Modal onDismiss={() => setBlankAt(null)} label="Choose a letter for the blank">
-            <div className={styles.popover}>
-              <p className={styles.popoverTitle}>What does this blank stand for?</p>
-
-              <div className={styles.letterGrid}>
-                {ALPHABET.slice(0, 20).map((letter) => (
-                  <button
-                    key={letter}
-                    type="button"
-                    className={styles.blankLetter}
-                    onClick={() => nameBlank(letter)}
-                  >
-                    {letter}
-                  </button>
-                ))}
-              </div>
-              <div className={styles.letterGridLast}>
-                {ALPHABET.slice(20).map((letter) => (
-                  <button
-                    key={letter}
-                    type="button"
-                    className={styles.blankLetter}
-                    onClick={() => nameBlank(letter)}
-                  >
-                    {letter}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Modal>
-        )}
+        {blankAt !== null && <BlankPicker onPick={nameBlank} onDismiss={() => setBlankAt(null)} />}
 
         {quitting !== null && (
           <Modal onDismiss={() => setQuitting(null)} label="Quit this game">
