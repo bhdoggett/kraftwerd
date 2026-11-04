@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BAG_SIZE, BOARD_SIZE, LAYOUT, PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "../../tutorial/script";
 import { checkPlacement, factsFor, seatId, standingsAfter, tilesAfter, type Feedback } from "../../tutorial/model";
-import { CLOSING, COACH } from "../../tutorial/coach";
+import { CLOSING, COACH, GAME_OVER_LINE } from "../../tutorial/coach";
 import { markTutorialStarted } from "../../tutorial/seen";
 import { cellKey, makeBoard } from "../../../shared/engine/board";
 import type { Placement } from "../../../shared/engine/score";
@@ -132,6 +132,10 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     [error],
   );
 
+  /** Bumped when Play is pressed early: the card, which on a short screen
+      is scrolled off above the rack, scrolls into view to say why. */
+  const [scrollSignal, setScrollSignal] = useState(0);
+
   function play() {
     if (!placing || feedback === null) return;
     if (feedback.kind !== "ready") {
@@ -139,6 +143,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
         text: describeFeedback(feedback),
         cell: feedback.kind === "offGhost" || feedback.kind === "wrongLetter" ? { x: feedback.x, y: feedback.y } : undefined,
       });
+      setScrollSignal((n) => n + 1);
       return;
     }
     staging.recallAll();
@@ -157,7 +162,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
 
   const card = (() => {
     if (phase === "over" || step === undefined) {
-      return { heading: "Game over", text: CLOSING };
+      return { heading: "Game over", text: GAME_OVER_LINE };
     }
     const coach = COACH[turn];
     if (phase === "place") {
@@ -193,6 +198,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
           text={card.text}
           breakdown={card.breakdown}
           error={card.error}
+          scrollSignal={scrollSignal}
           onNext={card.onNext}
           onLeave={onLeave}
         />

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { GAME_OVER_LINE } from "../../tutorial/coach";
 import { PLAYER_SEAT, SCRIPT } from "../../tutorial/script";
 import { markTutorialStarted } from "../../tutorial/seen";
 import { Tutorial } from "./Tutorial";
@@ -101,6 +102,42 @@ describe("the tutorial", () => {
     expect(screen.getByText("2 / 17")).toBeTruthy();
   });
 
+  test("the early-Play error scrolls the coach card into view", () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      draw();
+      toTurnTwo();
+      expect(scroll).not.toHaveBeenCalled();
+      fireEvent.click(button("Play"));
+      expect(scroll).toHaveBeenCalledWith({ block: "nearest" });
+      expect(scroll.mock.contexts[0]).toBe(screen.getByLabelText("Coach"));
+    } finally {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    }
+  });
+
+  test("a real O and the blank O swap places on turn 5", () => {
+    draw();
+    for (let turn = 0; turn < 4; turn++) {
+      if (SCRIPT[turn].seat === PLAYER_SEAT) {
+        stageTurn(turn);
+        fireEvent.click(button("Play"));
+      } else wait();
+      next();
+    }
+    // The real O goes on the blank's ghost, the blank on the other O ghost.
+    for (const p of SCRIPT[4].placements) {
+      if (p.letter === "O") continue;
+      stage(p.letter, p.x, p.y);
+    }
+    stage("O", 12, 10);
+    stage("blank", 13, 12);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(button("Play"));
+    expect(screen.getByText(/Nice: \+40/)).toBeTruthy();
+  });
+
   test("a tile off its ghost is ringed and explained", () => {
     draw();
     toTurnTwo();
@@ -163,6 +200,9 @@ describe("the tutorial", () => {
     expect(screen.queryByText(/Your turn/)).toBeNull();
     const dialog = within(screen.getByRole("dialog"));
     expect(dialog.getByText("Isolde won")).toBeTruthy();
+    // The closing line is in the dialog once; the card has a short line.
+    expect(screen.getAllByText(/Rostam's last tile carried him past you/)).toHaveLength(1);
+    expect(screen.getByText(GAME_OVER_LINE)).toBeTruthy();
     const scores = dialog.getAllByRole("listitem").map((li) => li.textContent);
     expect(scores).toEqual(["Isolde264", "Rostam253", "You239"]);
 

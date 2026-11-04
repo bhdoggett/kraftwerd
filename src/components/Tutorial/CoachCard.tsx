@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { LONG_WORD_BONUS } from "../../../shared/config";
 import type { TurnScore } from "../../../shared/engine/score";
 import { squareBreakdown } from "../../lib/breakdown";
@@ -15,6 +16,8 @@ interface CoachCardProps {
   /** Shows the Next button when given. */
   onNext?: () => void;
   onLeave: () => void;
+  /** Scrolls the card into view each time this changes (and is above 0). */
+  scrollSignal?: number;
 }
 
 function Breakdown({ score }: { score: TurnScore }) {
@@ -50,8 +53,15 @@ function Breakdown({ score }: { score: TurnScore }) {
 }
 
 export function CoachCard(p: CoachCardProps) {
+  const card = useRef<HTMLElement>(null);
+  const { scrollSignal } = p;
+  useEffect(() => {
+    // jsdom has no scrollIntoView.
+    if (scrollSignal) card.current?.scrollIntoView?.({ block: "nearest" });
+  }, [scrollSignal]);
+
   return (
-    <section className={`${styles.coach} ${p.error ? styles.coachError : ""}`} aria-label="Coach">
+    <section ref={card} className={`${styles.coach} ${p.error ? styles.coachError : ""}`} aria-label="Coach">
       <div className={styles.coachHead}>
         <span className={styles.coachHeading}>{p.heading}</span>
         <span className={styles.coachStep}>
