@@ -1,0 +1,92 @@
+.coach {
+  background: var(--surface-sunken);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.coachError {
+  background: var(--danger-soft);
+  border: 2px solid var(--danger);
+  color: var(--text);
+}
+
+.coachHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.coachHeading {
+  flex: 1;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.coachError .coachHeading {
+  color: var(--danger);
+}
+
+.coachStep {
+  color: var(--text-muted);
+}
+
+.coachLeave {
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-md);
+  line-height: 1;
+  min-width: 2rem;
+  min-height: 2rem;
+  cursor: pointer;
+}
+
+.coachText {
+  margin: var(--space-1) 0 0;
+}
+
+.breakdown {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.breakdownRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 1px 0;
+}
+
+.breakdownTotal {
+  border-top: 1px solid var(--border-strong);
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  font-weight: 800;
+}
+
+.coachFoot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+.coachNext {
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: 0;
+  border-radius: var(--radius-lg);
+  padding: var(--space-1) var(--space-4);
+  min-height: 2rem;
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
