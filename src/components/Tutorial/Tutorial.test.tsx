@@ -159,6 +159,8 @@ describe("the tutorial", () => {
       next();
     }
 
+    expect(screen.queryByText(/Waiting/)).toBeNull();
+    expect(screen.queryByText(/Your turn/)).toBeNull();
     const dialog = within(screen.getByRole("dialog"));
     expect(dialog.getByText("Isolde won")).toBeTruthy();
     const scores = dialog.getAllByRole("listitem").map((li) => li.textContent);

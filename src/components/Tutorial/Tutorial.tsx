@@ -261,11 +261,12 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
             tilesInHand: s.tilesInHand,
             blanks: s.blanks,
           }))}
-          currentSeat={step?.seat ?? -1}
+          // Once a move is down, the turn has passed to whoever is next.
+          currentSeat={(moved && phase !== "over" ? SCRIPT[turn + 1] : step)?.seat ?? -1}
           tilesLeft={standings.bagLeft}
           unseen={{}}
           bagSize={BAG_SIZE}
-          status="active"
+          status={phase === "over" ? "finished" : "active"}
         />
       </div>
 
