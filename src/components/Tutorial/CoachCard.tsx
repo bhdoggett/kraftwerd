@@ -77,6 +77,8 @@ export function CoachCard(p: CoachCardProps) {
   );
 }
 
+// The copy lives beside the card that shows it.
+// eslint-disable-next-line react-refresh/only-export-components
 export function describeFeedback(f: Feedback): string {
   switch (f.kind) {
     case "offGhost": {
