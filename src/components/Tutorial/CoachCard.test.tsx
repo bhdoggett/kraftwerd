@@ -8,6 +8,11 @@ afterEach(cleanup);
 
 const base = { step: 2, total: 17, heading: "Your move", text: "Close your first square.", onLeave: () => {} };
 
+/** Each breakdown row as [label, value]. */
+function rows(): string[][] {
+  return [...document.querySelectorAll("section > div > div > div")].map((r) => [...r.children].map((c) => c.textContent ?? ""));
+}
+
 describe("the coach card", () => {
   test("shows the step, heading and text", () => {
     render(<CoachCard {...base} />);
@@ -19,16 +24,16 @@ describe("the coach card", () => {
   test("breaks down a turn with a square", () => {
     const score = factsFor(1).score;
     render(<CoachCard {...base} breakdown={score} />);
-    expect(screen.getByText(/NITS/)).toBeTruthy();
-    expect(screen.getByText(/3×3 square/)).toBeTruthy();
+    expect(rows()).toContainEqual(["NITS", String(factsFor(1).score.words.find((w) => w.word === "NITS")?.points)]);
+    expect(rows()).toContainEqual(["3×3 square", "+33"]);
     expect(screen.getByText("Total").nextElementSibling?.textContent).toBe("53");
   });
 
   test("shows a multiplier and a long word row", () => {
     const score = factsFor(2).score;
     render(<CoachCard {...base} breakdown={score} />);
-    expect(screen.getByText(/EMO.*×3/)).toBeTruthy();
-    expect(screen.getByText(/long word/)).toBeTruthy();
+    expect(rows()).toContainEqual(["EMO 3 ×3", "9"]);
+    expect(rows()).toContainEqual(["Long word", "+5"]);
   });
 
   test("Next and leave call back", () => {

@@ -20,13 +20,12 @@ interface CoachCardProps {
 function Breakdown({ score }: { score: TurnScore }) {
   const rows: { label: string; value: string }[] = [];
   for (const w of score.words) {
-    const raw = w.bonus === undefined ? w.points : w.points / w.bonus;
     rows.push(
       w.bonus === undefined
-        ? { label: `${w.word} ${w.points}`, value: String(w.points) }
-        : { label: `${w.word} ${raw} ×${w.bonus} = ${w.points}`, value: String(w.points) },
+        ? { label: w.word, value: String(w.points) }
+        : { label: `${w.word} ${w.points / w.bonus} ×${w.bonus}`, value: String(w.points) },
     );
-    if (w.long) rows.push({ label: `+${LONG_WORD_BONUS} long word`, value: String(LONG_WORD_BONUS) });
+    if (w.long) rows.push({ label: "Long word", value: `+${LONG_WORD_BONUS}` });
   }
   for (const sq of squareBreakdown(score.squares)) {
     rows.push({
