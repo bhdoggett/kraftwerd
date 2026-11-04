@@ -2,7 +2,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
 import { authClient } from "../../lib/auth-client";
-import { navigate } from "../../router";
+import { navigate, useRoute } from "../../router";
 import { drawNames } from "../../../shared/names";
 import { useStartGame } from "../../lib/useStartGame";
 import { PracticeDialog } from "../Practice/Practice";
@@ -34,6 +34,7 @@ export function Menu() {
   const [twoLetterWords, setTwoLetterWords] = useState(false);
   const [friends, setFriends] = useState(false);
   const [practice, setPractice] = useState(false);
+  const route = useRoute();
   const game = useStartGame();
   const { isAuthenticated } = useConvexAuth();
   const viewer = useQuery(api.users.viewer);
@@ -123,7 +124,8 @@ export function Menu() {
             Two-letter words
           </button>
 
-          {isAuthenticated && (
+          {/* Nothing to open while already in it. */}
+          {isAuthenticated && route.name !== "tutorial" && (
             <button
               type="button"
               className={styles.item}
