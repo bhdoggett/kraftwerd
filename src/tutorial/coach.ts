@@ -28,7 +28,7 @@ export const COACH: readonly CoachText[] = [
   // 2. You: ANA NITS PICA TUN STAB UN, closes a 3×3
   {
     before:
-      "Your move: drag each tile onto its faded ghost letter, then press Play. The ? is a blank that can be any letter; here it becomes an S. You get 3 a game, never refilled.",
+      "Drag each tile onto its faded ghost letter, then press Play. The ? is a blank that can be any letter; here it becomes an S. You get 3 a game, never refilled.",
     after:
       "You closed your first 3×3, even though Isolde laid most of it. A full 3×3 is worth 33, and whoever places the last tile takes it. Every word also scores all its letters, even the ones already on the board.",
   },
@@ -117,7 +117,10 @@ const finalSeats = [...standingsAfter(SCRIPT.length).seats].sort((a, b) => b.sco
 const nameOf = (seat: number) => (seat === PLAYER_SEAT ? "you" : SEAT_NAMES[seat]);
 const [first, second, third] = finalSeats;
 
-/** Shown with the game-over screen. Scores come from the replay, not typed in. */
+/** The coach card's line at game over; CLOSING is in the end dialog. */
+export const GAME_OVER_LINE = "The bag is empty and everyone is out, so the game is over.";
+
+/** Shown in the game-over dialog. Scores come from the replay, not typed in. */
 export const CLOSING =
   `So close! ${nameOf(first.seat)} wins with ${first.score}, then ${nameOf(second.seat)} with ${second.score}, ` +
   `and ${nameOf(third.seat)} with ${third.score}. Rostam's last tile carried him past you.`;

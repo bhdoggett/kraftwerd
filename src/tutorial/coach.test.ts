@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { CLOSING, COACH } from "./coach";
+import { CLOSING, COACH, GAME_OVER_LINE } from "./coach";
 import { standingsAfter } from "./model";
 import { PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "./script";
 
@@ -37,5 +37,15 @@ describe("coach text", () => {
 
   test("a single board cell is a spot; square means a 3×3", () => {
     for (const [i] of COACH.entries()) expect(text(i)).not.toMatch(/×\d square|squares are ×/);
+  });
+
+  test("turn two's instruction does not repeat its heading, in three sentences", () => {
+    const before = COACH[1].before ?? "";
+    expect(before).not.toMatch(/^Your move/);
+    expect(before.split(/(?<=[.!])\s+/)).toHaveLength(3);
+  });
+
+  test("the game-over card line is not the closing line", () => {
+    expect(GAME_OVER_LINE).not.toContain(CLOSING);
   });
 });
