@@ -84,8 +84,6 @@ export function CreateGame({
    * first two.
    */
   const [seat, setSeat] = useState(0);
-  /** A practice game: hints on, counted toward nothing. Machines only. */
-  const [hints, setHints] = useState(false);
 
   const available = friends?.friends ?? [];
   const spare = seatsSpare(picked.length, open);
@@ -284,15 +282,6 @@ export function CreateGame({
                 </div>
               ))
             }
-            <label className={styles.row}>
-              <input
-                type="checkbox"
-                checked={hints}
-                onChange={(e) => setHints(e.target.checked)}
-              />
-              <span className={styles.name}>Allow hints (practice game)</span>
-            </label>
-            <p className={styles.hint}>Practice games don’t count toward your record.</p>
           </div>
         )}
 
@@ -414,7 +403,7 @@ export function CreateGame({
             className={styles.button}
             onClick={() =>
               path === "machines"
-                ? onStart(count, [], bots, false, seat, hints)
+                ? onStart(count, [], bots, false, seat, false)
                 : path === "alone"
                   ? onStart(1, [], [], false, seat, false)
                   : onStart(people, picked, [], listed && open > 0, seat, false)
