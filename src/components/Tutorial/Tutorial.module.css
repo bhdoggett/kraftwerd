@@ -10,7 +10,9 @@
 
 .coachError {
   background: var(--danger-soft);
-  border: 2px solid var(--danger);
+  border-color: var(--danger);
+  /* Same width as the card at rest: a thicker border would shift the layout. */
+  box-shadow: inset 0 0 0 1px var(--danger);
   color: var(--text);
 }
 
@@ -26,11 +28,11 @@
 .coachHeading {
   flex: 1;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--text);
 }
 
 .coachError .coachHeading {
-  color: var(--danger);
+  color: var(--text);
 }
 
 .coachStep {
@@ -44,8 +46,8 @@
   font: inherit;
   font-size: var(--text-md);
   line-height: 1;
-  min-width: 2rem;
-  min-height: 2rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   cursor: pointer;
 }
 
