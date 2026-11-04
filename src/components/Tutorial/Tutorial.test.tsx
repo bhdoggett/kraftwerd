@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { GAME_OVER_LINE } from "../../tutorial/coach";
+import { CALLOUTS, INTRO } from "../../tutorial/coach";
+import { rackAt, replaySteps } from "../../tutorial/model";
+import { RECAP_LEAD_MS, RECAP_PLAY_MS, RECAP_POINTS_MS } from "../Game/replayTiming";
 import { PLAYER_SEAT, SCRIPT } from "../../tutorial/script";
 import { markTutorialStarted } from "../../tutorial/seen";
 import { Tutorial } from "./Tutorial";
@@ -24,17 +26,25 @@ function draw() {
   return { onLeave, onNewGame, ...view };
 }
 
-/** The opponent's pause before their move goes down. */
-const wait = () => act(() => void vi.advanceTimersByTime(1000));
+const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
+
+/** An opponent's whole move, replayed at a game's pace: the pause, each spot, the points. */
+function letPlay(turn: number) {
+  advance(RECAP_LEAD_MS);
+  for (const s of replaySteps(turn)) advance(s.total ? RECAP_POINTS_MS : RECAP_PLAY_MS);
+}
+
+/** A tap somewhere off everything: what takes a bubble down. */
+const tapAway = () => fireEvent.click(document.body);
 
 const button = (name: string) => screen.getByRole("button", { name });
 
-const next = () => fireEvent.click(button("Next"));
-
-const square = (x: number, y: number) =>
-  screen.getByLabelText(new RegExp(`column ${x + 1}, row ${y + 1}$`));
+const square = (x: number, y: number) => screen.getByLabelText(new RegExp(`column ${x + 1}, row ${y + 1}$`));
 
 const rack = () => within(document.querySelector<HTMLElement>("[data-rack]")!);
+const rackLetters = () => rack().queryAllByRole("button", { name: /^[A-Z]$/ });
+
+const bubbles = () => screen.queryAllByRole("status").map((b) => b.textContent);
 
 /** Press and let go without moving: a tap, which selects the tile. */
 function tapTile(tile: Element) {
@@ -42,36 +52,54 @@ function tapTile(tile: Element) {
   fireEvent.pointerUp(window, { pointerId: 1 });
 }
 
-/** A letter from the rack, or "blank" for the blank. */
-function stage(letter: string, x: number, y: number) {
+/** A letter from the rack; for the blank, "blank" and the letter to name it. */
+function stage(letter: string, x: number, y: number, blankAs?: string) {
   const tile =
     letter === "blank"
       ? rack().getByRole("button", { name: /^Blank tile/ })
       : rack().getAllByRole("button", { name: letter })[0];
   tapTile(tile);
   fireEvent.click(square(x, y), { detail: 1 });
+  if (blankAs !== undefined) {
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: blankAs }));
+  }
 }
 
 /** Every tile of the turn on its ghost. */
 function stageTurn(turn: number) {
-  for (const p of SCRIPT[turn].placements) stage(p.isBlank ? "blank" : p.letter, p.x, p.y);
+  for (const p of SCRIPT[turn].placements) {
+    if (p.isBlank) stage("blank", p.x, p.y, p.letter);
+    else stage(p.letter, p.x, p.y);
+  }
+}
+
+/** Plays turns from..to-1 the way a player would, taking down every callout. */
+function playTurns(from: number, to: number) {
+  for (let turn = from; turn < to; turn++) {
+    if (SCRIPT[turn].seat === PLAYER_SEAT) {
+      stageTurn(turn);
+      fireEvent.click(button("Play"));
+    } else {
+      letPlay(turn);
+    }
+    if (CALLOUTS[turn].length > 0) tapAway();
+  }
 }
 
 /** From the first screen to the player's first turn. */
 function toTurnTwo() {
-  wait();
-  next();
+  draw();
+  tapAway();
+  playTurns(0, 1);
 }
 
 describe("the tutorial", () => {
-  test("opens on Isolde's move", () => {
+  test("is a game screen with no coach card", () => {
     draw();
-    expect(screen.getByText("1 / 17")).toBeTruthy();
-    expect(screen.getByText("Isolde's move")).toBeTruthy();
-    wait();
-    // Her tiles are down, and the card explains them.
-    expect(square(7, 7).getAttribute("aria-label")).toMatch(/^I, played by Isolde/);
-    expect(screen.getByText(/Isolde opens the game/)).toBeTruthy();
+    expect(screen.queryByLabelText("Coach")).toBeNull();
+    expect(screen.queryByText(/\d+ \/ 17/)).toBeNull();
+    expect(screen.getByLabelText("Scores")).toBeTruthy();
+    expect(button("Play")).toBeTruthy();
   });
 
   test("marks this device as having started it", () => {
@@ -79,105 +107,224 @@ describe("the tutorial", () => {
     expect(markTutorialStarted).toHaveBeenCalledOnce();
   });
 
-  test("Next reaches the player's turn, with a ghost for every tile", () => {
+  test("opens on one line that a tap takes down, then Isolde's move replays as in a game", () => {
     draw();
-    toTurnTwo();
-    expect(screen.getByText("2 / 17")).toBeTruthy();
-    expect(screen.getByText("Your move")).toBeTruthy();
-    expect(screen.getAllByLabelText(/place [A-Z] here/)).toHaveLength(6);
-    // The rack holds only this turn's tiles.
-    expect(rack().getAllByRole("button", { name: /^[A-Z]$/ })).toHaveLength(5);
-    expect(rack().getByRole("button", { name: /^Blank tile/ })).toBeTruthy();
+    expect(bubbles()).toEqual([INTRO]);
+    // Nothing moves while the intro is up.
+    advance(10_000);
+    expect(screen.queryByRole("button", { name: "Skip the replay" })).toBeNull();
+
+    tapAway();
+    expect(bubbles()).toEqual([]);
+    advance(RECAP_LEAD_MS);
+    // The turn card, in the rack's place: who, and what this spot made.
+    const card = screen.getByRole("button", { name: "Skip the replay" }).parentElement!;
+    expect(card.textContent).toContain("Isolde");
+    expect(card.textContent).toContain(replaySteps(0)[0].words.join(", "));
+    expect(document.querySelector("[data-rack]")!.closest("[inert]")).not.toBeNull();
+    expect(square(7, 7).getAttribute("aria-label")).toMatch(/^I, played by Isolde/);
+
+    for (const s of replaySteps(0).slice(0, -1)) advance(s.total ? RECAP_POINTS_MS : RECAP_PLAY_MS);
+    expect(card.textContent).toContain("+15");
+    advance(RECAP_POINTS_MS);
+    // Her move needs no explaining: straight on to the player's turn.
+    expect(screen.queryByRole("button", { name: "Skip the replay" })).toBeNull();
+    expect(bubbles()).toEqual([]);
+    expect(screen.getByText("Your turn")).toBeTruthy();
+    expect(document.querySelector("[data-rack]")!.closest("[inert]")).toBeNull();
   });
 
-  test("Play looks off, and pressing it early says what is missing", () => {
+  test("a tap skips the rest of a replay", () => {
     draw();
+    tapAway();
+    advance(RECAP_LEAD_MS);
+    tapAway();
+    expect(screen.queryByRole("button", { name: "Skip the replay" })).toBeNull();
+    expect(screen.getByText("Your turn")).toBeTruthy();
+    expect(square(9, 9).getAttribute("aria-label")).toMatch(/^A, played by Isolde/);
+  });
+
+  test("the player's move gets callouts that sit until a tap", () => {
+    toTurnTwo();
+    stageTurn(1);
+    fireEvent.click(button("Play"));
+    expect(bubbles()).toEqual(CALLOUTS[1].map((c) => c.text));
+    // It waits as long as it takes.
+    advance(20_000);
+    expect(bubbles()).toHaveLength(2);
+
+    tapAway();
+    expect(bubbles()).toEqual([]);
+    expect(screen.getByText("Rostam's turn")).toBeTruthy();
+  });
+
+  test("starting a drag takes the callouts down too", () => {
+    toTurnTwo();
+    stageTurn(1);
+    fireEvent.click(button("Play"));
+    expect(bubbles()).toHaveLength(2);
+    fireEvent.pointerDown(rackLetters()[0], { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(window, { pointerId: 1 });
+    expect(bubbles()).toEqual([]);
+    // The press counted once: Rostam's replay is under way, not skipped.
+    fireEvent.click(rackLetters()[0]);
+    advance(RECAP_LEAD_MS);
+    expect(screen.getByRole("button", { name: "Skip the replay" })).toBeTruthy();
+  });
+
+  test("the play panel scores the player's move as it is laid, lit on the first turn", () => {
+    toTurnTwo();
+    expect(screen.queryByText(/This play scores/)).toBeNull();
+    stage("A", 7, 9);
+    expect(screen.getByText(/This play scores/).closest("[data-lit]")).not.toBeNull();
+    for (const p of SCRIPT[1].placements) {
+      if (p.letter === "A") continue;
+      if (p.isBlank) stage("blank", p.x, p.y, p.letter);
+      else stage(p.letter, p.x, p.y);
+    }
+    expect(screen.getByText(/This play scores/).textContent).toContain("53");
+    expect(screen.getByText("Square bonus")).toBeTruthy();
+    fireEvent.click(button("Play"));
+    // Once played, as in a game, the panel goes.
+    expect(screen.queryByText(/This play scores/)).toBeNull();
+  });
+
+  test("the player's turn shows the whole hand, with ghosts only for this move", () => {
+    toTurnTwo();
+    expect(screen.getAllByLabelText(/place [A-Z] here/)).toHaveLength(SCRIPT[1].placements.length);
+    expect(rackLetters().map((b) => b.textContent).sort()).toEqual([...rackAt(1).letters].sort());
+    expect(rackLetters()).toHaveLength(7);
+    expect(rack().getByRole("button", { name: "Blank tile, 3 left" })).toBeTruthy();
+  });
+
+  test("the blank's ghost and the rack's blank pulse as a pair until it is laid", () => {
+    toTurnTwo();
+    const ghosts = document.querySelectorAll("[data-ghost]");
+    const blank = [...ghosts].filter((g) => g.hasAttribute("data-blank"));
+    expect(blank).toHaveLength(1);
+    expect(blank[0].textContent).toBe("S");
+    expect(rack().getByRole("button", { name: /^Blank tile/ }).getAttribute("data-hint")).toBe("blank");
+
+    stage("blank", 9, 7, "S");
+    expect(rack().getByRole("button", { name: /^Blank tile/ }).getAttribute("data-hint")).toBeNull();
+    expect(document.querySelectorAll("[data-ghost][data-blank]")).toHaveLength(0);
+  });
+
+  test("Play pressed early says what is missing in a bubble over the board", () => {
     toTurnTwo();
     const play = button("Play");
     expect(play.getAttribute("aria-disabled")).toBe("true");
-    expect(play.hasAttribute("disabled")).toBe(false);
-
     fireEvent.click(play);
-    expect(screen.getByText("6 more tiles to place.")).toBeTruthy();
-    expect(screen.getByText("2 / 17")).toBeTruthy();
+    expect(bubbles()).toEqual(["6 more tiles to place."]);
+    expect(screen.getByText("Your turn")).toBeTruthy();
   });
 
-  test("the early-Play error scrolls the coach card into view", () => {
-    const scroll = vi.fn();
-    Element.prototype.scrollIntoView = scroll;
-    try {
-      draw();
-      toTurnTwo();
-      expect(scroll).not.toHaveBeenCalled();
-      fireEvent.click(button("Play"));
-      expect(scroll).toHaveBeenCalledWith({ block: "nearest" });
-      expect(scroll.mock.contexts[0]).toBe(screen.getByLabelText("Coach"));
-    } finally {
-      delete (Element.prototype as Partial<Element>).scrollIntoView;
-    }
-  });
-
-  test("a real O and the blank O swap places on turn 5", () => {
-    draw();
-    for (let turn = 0; turn < 4; turn++) {
-      if (SCRIPT[turn].seat === PLAYER_SEAT) {
-        stageTurn(turn);
-        fireEvent.click(button("Play"));
-      } else wait();
-      next();
-    }
-    // The real O goes on the blank's ghost, the blank on the other O ghost.
-    for (const p of SCRIPT[4].placements) {
-      if (p.letter === "O") continue;
-      stage(p.letter, p.x, p.y);
-    }
-    stage("O", 12, 10);
-    stage("blank", 13, 12);
-    expect(screen.queryByRole("dialog")).toBeNull();
-    fireEvent.click(button("Play"));
-    expect(screen.getByText(/Nice: \+40/)).toBeTruthy();
-  });
-
-  test("a tile off its ghost is ringed and explained", () => {
-    draw();
+  test("a tile off its ghost is ringed and explained where it lies", () => {
     toTurnTwo();
     // The B belongs on 9,10; one square left of that is no ghost.
     stage("B", 8, 10);
     fireEvent.click(button("Play"));
-    expect(screen.getByText(/The B goes on the glowing square one square right/)).toBeTruthy();
+    expect(bubbles()).toEqual(["The B goes on the glowing square one square right."]);
+    expect(screen.getByRole("status").getAttribute("data-points-at")).toBe("8,10");
     expect(square(8, 10).getAttribute("aria-label")).toMatch(/not valid/);
+    // Moving a tile takes the nudge down.
+    stage("T", 8, 7);
+    expect(bubbles()).toEqual([]);
   });
 
-  test("the blank stages as its ghost's letter, with no letter picker", () => {
-    draw();
+  test("staged tiles are scored and ringed as a game rings them", () => {
+    toTurnTwo();
+    // The A under PIC makes PICA, a real word: green, and priced.
+    stage("A", 7, 9);
+    expect(square(7, 9).getAttribute("aria-label")).toMatch(/in a valid word/);
+    expect(screen.getByText(/This play scores/).textContent).toContain("4");
+    // The B on its own, touching nothing, is not a word.
+    stage("B", 9, 10);
+    expect(square(9, 10).getAttribute("aria-label")).toMatch(/not valid/);
+  });
+
+  test("a blank asks for its letter, as in a game, with the wanted one lit", () => {
     toTurnTwo();
     stage("blank", 9, 7);
-    expect(square(9, 7).getAttribute("aria-label")).toMatch(/^S, your tile/);
+    const picker = within(screen.getByRole("dialog"));
+    const lit = picker.getAllByRole("button").filter((b) => b.hasAttribute("data-suggested"));
+    expect(lit.map((b) => b.textContent)).toEqual(["S"]);
+    fireEvent.click(picker.getByRole("button", { name: "S" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+    expect(square(9, 7).getAttribute("aria-label")).toMatch(/^S, your tile/);
   });
 
-  test("all six tiles on their ghosts play for 53", () => {
-    draw();
+  test("a blank named the wrong letter is caught on Play", () => {
+    toTurnTwo();
+    stage("blank", 9, 7, "X");
+    fireEvent.click(button("Play"));
+    expect(bubbles()).toEqual(["That square wants S, not X."]);
+  });
+
+  test("a good Play scores, outlines the new 3×3 and refills the rack at once", () => {
     toTurnTwo();
     stageTurn(1);
     const play = button("Play");
     expect(play.getAttribute("aria-disabled")).toBe("false");
     fireEvent.click(play);
-    expect(screen.getByText(/\+53/)).toBeTruthy();
-    expect(screen.getByText(/You closed your first 3×3/)).toBeTruthy();
-    // The new square is outlined.
+
+    expect(screen.getByLabelText("Scores").textContent).toContain("53");
+    expect(bubbles()).toEqual(CALLOUTS[1].map((c) => c.text));
     expect(square(7, 7).getAttribute("aria-label")).toMatch(/in a valid word/);
+    expect(rackLetters().map((b) => b.textContent).sort()).toEqual([...rackAt(2).letters].sort());
+    expect(rack().getByRole("button", { name: "Blank tile, 2 left" })).toBeTruthy();
+    expect(screen.queryAllByLabelText(/place [A-Z] here/)).toHaveLength(0);
+  });
+
+  test("a real O and the blank O swap places on turn 5", () => {
+    draw();
+    tapAway();
+    playTurns(0, 4);
+    for (const p of SCRIPT[4].placements) {
+      if (p.letter === "O") continue;
+      stage(p.letter, p.x, p.y);
+    }
+    stage("O", 12, 10);
+    stage("blank", 13, 12, "O");
+    expect(screen.getByText(/This play scores/).textContent).toContain("40");
+    fireEvent.click(button("Play"));
+    expect(bubbles()).toEqual(CALLOUTS[4].map((c) => c.text));
+  });
+
+  test("opponents' turns play by themselves, one after another", () => {
+    draw();
+    tapAway();
+    playTurns(0, 8);
+    // Rostam's turn 9 and Isolde's turn 10 replay back to back with no tap.
+    expect(CALLOUTS[8]).toHaveLength(0);
+    letPlay(8);
+    expect(square(7, 1).getAttribute("aria-label")).toMatch(/^P, played by Rostam/);
+    expect(screen.getByText("Isolde's turn")).toBeTruthy();
+    letPlay(9);
+    expect(square(13, 1).getAttribute("aria-label")).toMatch(/^R, played by Isolde/);
+    expect(screen.getByText("Your turn")).toBeTruthy();
+  });
+
+  test("Isolde going out is pointed out, since she is skipped from then on", () => {
+    draw();
+    tapAway();
+    playTurns(0, 12);
+    letPlay(12);
+    expect(bubbles()).toEqual(CALLOUTS[12].map((c) => c.text));
+    tapAway();
+    expect(screen.getByText("Your turn")).toBeTruthy();
   });
 
   test("starts over when it is opened again", () => {
     const first = draw();
-    toTurnTwo();
+    tapAway();
+    letPlay(0);
     first.unmount();
     draw();
-    expect(screen.getByText("1 / 17")).toBeTruthy();
+    expect(bubbles()).toEqual([INTRO]);
   });
 
-  test("× leaves", () => {
+  test("Leave tutorial leaves", () => {
     const { onLeave } = draw();
     fireEvent.click(button("Leave tutorial"));
     expect(onLeave).toHaveBeenCalledOnce();
@@ -185,24 +332,13 @@ describe("the tutorial", () => {
 
   test("the whole game ends on the final scores", () => {
     const { onLeave, onNewGame } = draw();
-    for (let turn = 0; turn < SCRIPT.length; turn++) {
-      expect(screen.getByText(`${turn + 1} / 17`)).toBeTruthy();
-      if (SCRIPT[turn].seat === PLAYER_SEAT) {
-        stageTurn(turn);
-        fireEvent.click(button("Play"));
-      } else {
-        wait();
-      }
-      next();
-    }
+    tapAway();
+    playTurns(0, SCRIPT.length);
 
-    expect(screen.queryByText(/Waiting/)).toBeNull();
-    expect(screen.queryByText(/Your turn/)).toBeNull();
+    expect(rackLetters()).toHaveLength(0);
     const dialog = within(screen.getByRole("dialog"));
     expect(dialog.getByText("Isolde won")).toBeTruthy();
-    // The closing line is in the dialog once; the card has a short line.
-    expect(screen.getAllByText(/Rostam's last tile carried him past you/)).toHaveLength(1);
-    expect(screen.getByText(GAME_OVER_LINE)).toBeTruthy();
+    expect(dialog.getByText(/Rostam's last tile carried him past you/)).toBeTruthy();
     const scores = dialog.getAllByRole("listitem").map((li) => li.textContent);
     expect(scores).toEqual(["Isolde264", "Rostam253", "You239"]);
 

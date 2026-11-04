@@ -1,51 +1,107 @@
 import { describe, expect, test } from "vitest";
-import { CLOSING, COACH, GAME_OVER_LINE } from "./coach";
-import { standingsAfter } from "./model";
-import { PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "./script";
+import { BOARD_SIZE, PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "./script";
+import { CALLOUTS, CLOSING, INTRO } from "./coach";
+import { factsFor, standingsAfter, tilesAfter } from "./model";
 
-const text = (i: number) => `${COACH[i].before ?? ""} ${COACH[i].after}`;
+const all = CALLOUTS.flat();
 
-describe("coach text", () => {
-  test("one entry per turn", () => expect(COACH).toHaveLength(SCRIPT.length));
-
-  test("player turns tell the player what to do first", () => {
-    SCRIPT.forEach((t, i) => expect(Boolean(COACH[i].before)).toBe(t.seat === PLAYER_SEAT));
+describe("callouts", () => {
+  test("one entry per turn, at most two lines each", () => {
+    expect(CALLOUTS).toHaveLength(SCRIPT.length);
+    for (const c of CALLOUTS) expect(c.length).toBeLessThanOrEqual(2);
   });
 
-  test("names the right people", () => {
-    const all = [...COACH.map((_, i) => text(i)), CLOSING];
-    for (const entry of all) {
-      for (const real of ["Clintron", "Ugona", "Ben"]) expect(entry).not.toContain(real);
+  test("about the player's own moves, bar the one that changes whose turn it is", () => {
+    const others = SCRIPT.flatMap((t, i) => (t.seat !== PLAYER_SEAT && CALLOUTS[i].length > 0 ? [i + 1] : []));
+    expect(others).toEqual([13]);
+  });
+
+  test("each is one short line", () => {
+    for (const c of all) {
+      expect(c.text.length, c.text).toBeLessThanOrEqual(64);
+      expect(c.text.split(/(?<=[.!])\s+/).length, c.text).toBeLessThanOrEqual(2);
     }
-    SCRIPT.forEach((t, i) => {
-      if (t.seat !== PLAYER_SEAT) expect(text(i)).toContain(SEAT_NAMES[t.seat]);
+  });
+
+  test("each points at a square with a tile on it once the move is down", () => {
+    CALLOUTS.forEach((callouts, i) => {
+      const after = new Set(tilesAfter(i + 1).map((t) => `${t.x},${t.y}`));
+      for (const c of callouts) {
+        const [x, y] = c.cell.split(",").map(Number);
+        expect(x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE, c.cell).toBe(true);
+        expect(after.has(c.cell), `turn ${i + 1}: ${c.cell}`).toBe(true);
+      }
     });
   });
 
-  test("each concept is introduced", () => {
-    const all = COACH.map((_, i) => text(i)).join(" ").toLowerCase();
-    for (const w of ["centre", "both ways", "touch", "×2", "×3", "×4", "square", "33", "stack", "blank", "long word", "out"]) {
-      expect(all).toContain(w);
+  test("a 3×3 is mentioned only on a turn that closes one, pointing inside it", () => {
+    CALLOUTS.forEach((callouts, i) => {
+      const facts = factsFor(i);
+      for (const c of callouts) {
+        if (!c.text.includes("3×3")) continue;
+        expect(facts.score.squares.length, `turn ${i + 1}`).toBeGreaterThan(0);
+        expect(facts.newSquares, `turn ${i + 1}`).toContain(c.cell);
+      }
+    });
+  });
+
+  test("a word said to be multiplied was multiplied, and a +5 word was long", () => {
+    CALLOUTS.forEach((callouts, i) => {
+      const words = factsFor(i).score.words;
+      const scored = (w: string) => words.filter((s) => s.word === w);
+      for (const c of callouts) {
+        const named = (c.text.match(/\b[A-Z]{2,}\b/g) ?? []).filter((w) => scored(w).length > 0);
+        if (/tripled|doubles|run through|×12|hits the ×|crosses a ×/.test(c.text)) {
+          expect(named.length, c.text).toBeGreaterThan(0);
+          for (const w of named) expect(scored(w).some((s) => s.bonus !== undefined), `${w}, turn ${i + 1}`).toBe(true);
+        }
+        if (/\+5/.test(c.text)) {
+          for (const w of named) expect(scored(w).some((s) => s.long), `${w}, turn ${i + 1}`).toBe(true);
+        }
+      }
+    });
+  });
+
+  test("names the right people", () => {
+    for (const entry of [...all.map((c) => c.text), CLOSING, INTRO]) {
+      for (const real of ["Clintron", "Ugona", "Ben"]) expect(entry).not.toContain(real);
     }
+    for (const c of all) {
+      for (const name of SEAT_NAMES) if (name !== SEAT_NAMES[PLAYER_SEAT]) expect(c.text).not.toContain(`${name}'s turn`);
+    }
+  });
+
+  test("each rule is introduced", () => {
+    const text = all.map((c) => c.text).join(" ").toLowerCase();
+    for (const w of [
+      "touches",
+      "×3",
+      "×4",
+      "pays once",
+      "3×3",
+      "33",
+      "last tile",
+      "stacked",
+      "2 tiles a spot",
+      "blank",
+      "3 a game",
+      "+5",
+      "never multiplied",
+      "out",
+      "skipped",
+      "bag is empty",
+    ]) {
+      expect(text, w).toContain(w);
+    }
+  });
+
+  test("a single board cell is a spot; square means a 3×3", () => {
+    for (const c of all) expect(c.text).not.toMatch(/×\d square|squares are ×/);
   });
 
   test("the closing line gives the final scores, winner first", () => {
     const seats = [...standingsAfter(SCRIPT.length).seats].sort((a, b) => b.score - a.score);
     for (const s of seats) expect(CLOSING).toContain(String(s.score));
     expect(CLOSING).toContain(`${SEAT_NAMES[seats[0].seat]} wins with ${seats[0].score}`);
-  });
-
-  test("a single board cell is a spot; square means a 3×3", () => {
-    for (const [i] of COACH.entries()) expect(text(i)).not.toMatch(/×\d square|squares are ×/);
-  });
-
-  test("turn two's instruction does not repeat its heading, in three sentences", () => {
-    const before = COACH[1].before ?? "";
-    expect(before).not.toMatch(/^Your move/);
-    expect(before.split(/(?<=[.!])\s+/)).toHaveLength(3);
-  });
-
-  test("the game-over card line is not the closing line", () => {
-    expect(GAME_OVER_LINE).not.toContain(CLOSING);
   });
 });

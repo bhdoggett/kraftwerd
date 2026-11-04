@@ -1,135 +1,129 @@
-.coach {
-  background: var(--surface-sunken);
-  color: var(--text);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  line-height: 1.4;
-}
-
-.coachError {
-  background: var(--danger-soft);
-  border-color: var(--danger);
-  /* Same width as the card at rest: a thicker border would shift the layout. */
-  box-shadow: inset 0 0 0 1px var(--danger);
-  color: var(--text);
-}
-
-.coachHead {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.coachHeading {
-  flex: 1;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.coachError .coachHeading {
-  color: var(--text);
-}
-
-.coachStep {
-  color: var(--text-muted);
-}
-
-.coachLeave {
-  background: none;
-  border: 0;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: var(--text-md);
-  line-height: 1;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  cursor: pointer;
-}
-
-.coachText {
-  margin: var(--space-1) 0 0;
-}
-
-.breakdown {
-  margin-top: var(--space-2);
-  font-size: var(--text-xs);
-}
-
-.breakdownRow {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: 1px 0;
-}
-
-.breakdownTotal {
-  border-top: 1px solid var(--border-strong);
-  margin-top: var(--space-1);
-  padding-top: var(--space-1);
-  font-weight: 800;
-}
-
-.coachFoot {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: var(--space-2);
-}
-
-.coachNext {
-  background: var(--accent);
-  color: var(--text-inverse);
-  border: 0;
-  border-radius: var(--radius-lg);
-  padding: var(--space-1) var(--space-4);
-  min-height: 2rem;
-  font: inherit;
-  font-weight: 700;
-  font-size: var(--text-xs);
-  cursor: pointer;
-}
-
 /*
- * The screen: a game's layout, with the coach card over the board. Board and
- * rack on the left and the scores beside them; stacked on a narrow screen,
- * with the scores on top.
+ * The screen: a game's own layout, from Game.module.css, so the board, rack,
+ * scores and play panel sit exactly where they do in a game. Everything the
+ * tutorial adds floats over the board and takes no room.
  */
-.screen {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-6);
-  align-items: start;
+.layout {
+  composes: layout from "../Game/Game.module.css";
 }
 
 .main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-width: 0;
+  composes: main from "../Game/Game.module.css";
 }
 
 .side {
   composes: side from "../Game/Game.module.css";
 }
 
-@media (max-width: 860px) /* stacked game */ {
-  .screen {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
-  }
+.boardArea {
+  composes: boardArea from "../Game/Game.module.css";
+}
 
-  .side {
+.refusal {
+  composes: refusal from "../Game/Game.module.css";
+}
+
+.boardTally {
+  composes: boardTally from "../Game/Game.module.css";
+}
+
+.rackSlot {
+  composes: rackSlot from "../Game/Game.module.css";
+}
+
+.rackHidden {
+  composes: rackHidden from "../Game/Game.module.css";
+}
+
+/* The play panel's place, which in a stacked game is above the scores. */
+.playSlot {
+  border-radius: var(--radius-lg);
+}
+
+@media (max-width: 860px) /* stacked game */ {
+  .playSlot {
     order: -1;
-    width: auto;
   }
 }
 
-.boardArea {
-  composes: boardArea from "../Game/Game.module.css";
+/* Lit on the player's first turn: this is where a play's points are explained. */
+.playLit {
+  animation: play-lit 1.4s ease-in-out infinite;
+}
+
+@keyframes play-lit {
+  50% {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+}
+
+/*
+ * A short line over the board, pointing at a square: above or below it (see
+ * Bubble.tsx), never on it, with a notch toward it. Taps go through to the
+ * board; any tap takes it down.
+ */
+.bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 240;
+  width: max-content;
+  max-width: min(17rem, calc(100% - 2 * var(--space-1)));
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  box-shadow: var(--shadow-lift);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+/* Measured before it is seen, so it never flashes in the corner. */
+.bubble:not([data-placed]) {
+  visibility: hidden;
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: var(--arrow-x, 50%);
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border: inherit;
+  translate: -50% 0;
+  rotate: 45deg;
+}
+
+.bubble[data-side="above"]::after {
+  bottom: -6px;
+  border-top: 0;
+  border-left: 0;
+}
+
+.bubble[data-side="below"]::after {
+  top: -6px;
+  border-bottom: 0;
+  border-right: 0;
+}
+
+.bubble[data-side="centre"]::after {
+  display: none;
+}
+
+.bubbleError {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playLit {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--accent);
+  }
 }
 
 /* The tile under the finger, exactly as the game draws it. */
