@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { CLOSING, COACH } from "./coach";
+import { standingsAfter } from "./model";
 import { PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "./script";
 
 const text = (i: number) => `${COACH[i].before ?? ""} ${COACH[i].after}`;
@@ -28,7 +29,13 @@ describe("coach text", () => {
     }
   });
 
-  test("the closing line gives the final scores", () => {
-    for (const s of ["264", "253", "239"]) expect(CLOSING).toContain(s);
+  test("the closing line gives the final scores, winner first", () => {
+    const seats = [...standingsAfter(SCRIPT.length).seats].sort((a, b) => b.score - a.score);
+    for (const s of seats) expect(CLOSING).toContain(String(s.score));
+    expect(CLOSING).toContain(`${SEAT_NAMES[seats[0].seat]} wins with ${seats[0].score}`);
+  });
+
+  test("a single board cell is a spot; square means a 3×3", () => {
+    for (const [i] of COACH.entries()) expect(text(i)).not.toMatch(/×\d square|squares are ×/);
   });
 });

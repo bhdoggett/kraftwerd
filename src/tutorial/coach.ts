@@ -9,6 +9,9 @@
  * a closed 3×3. Change SCRIPT and this text has to be re-checked by hand.
  */
 
+import { standingsAfter } from "./model";
+import { PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "./script";
+
 export interface CoachText {
   /** Shown on the player's own turns, before they move: what to do. */
   before?: string;
@@ -20,12 +23,12 @@ export const COACH: readonly CoachText[] = [
   // 1. Isolde: UP CUT PIC TA
   {
     after:
-      "Isolde opens the game. The first word must cover the centre, a ×2 square that doubles any word running over it: PIC crosses it, and TA crosses another ×2. Every line of two or more tiles must be a real word, both ways: across and down.",
+      "Isolde opens the game. The first word must cover the centre, a ×2 spot that doubles any word running over it: PIC crosses it, and TA crosses another ×2. Every line of two or more tiles must be a real word, both ways: across and down.",
   },
   // 2. You: ANA NITS PICA TUN STAB UN, closes a 3×3
   {
     before:
-      "Your move. Drag each tile onto its faded ghost letter, then press Play. The ? is a blank: it can be any letter, and here it becomes an S. You get 3 blanks a game, and they never come back.",
+      "Your move. Drag each tile onto its faded ghost letter, then press Play. The ? is a blank: it can be any letter, and here it becomes an S. You get 3 a game, never refilled.",
     after:
       "You closed your first 3×3, even though Isolde laid most of it. A full 3×3 is worth 33, and whoever places the last tile takes it. Every word also scores all its letters, even the ones already on the board.",
   },
@@ -37,11 +40,11 @@ export const COACH: readonly CoachText[] = [
   // 4. Isolde: closes a 3×3 over yours
   {
     after:
-      "Isolde closed a 3×3 that overlaps yours, using your N and Rostam's K. Her tiles went down in more than one place. That's allowed, as long as every new tile touches the tiles already there.",
+      "Isolde closed a 3×3 that overlaps yours, using your N and Rostam's K. Her tiles went down in more than one place. That's allowed, as long as each group of new tiles touches the tiles already there, so the board stays in one piece.",
   },
   // 5. You: MOB GEM BIOME, M on a ×4
   {
-    before: "Head for the far corner, where the squares are ×4. Your blank becomes an O.",
+    before: "Head for the bottom-right corner: the spot one in from it is a ×4. Your blank becomes an O.",
     after:
       "Your M sits on a ×4, and both GEM and BIOME run through it, so both are multiplied. BIOME also earns the long-word bonus, which is never multiplied.",
   },
@@ -59,7 +62,7 @@ export const COACH: readonly CoachText[] = [
   {
     before: "There's another ×4 within reach, up in the top-left corner.",
     after:
-      "DOGS hits the ×4. Your Y on the end of LACE makes LACEY: the whole word scores again, and it's now long enough for the bonus.",
+      "DOGS hits the ×4. Your Y on the end of LACE makes LACEY: every letter scores again (the ×3 under the L was already used), and it's now long enough for the bonus.",
   },
   // 9. Rostam: PRY on a ×3, DRILL, EYE
   {
@@ -89,7 +92,7 @@ export const COACH: readonly CoachText[] = [
   },
   // 14. You: Isolde skipped; closes a 3×3, W on a ×3
   {
-    before: "Isolde is out, so she's skipped from now on. Your turn again: close a 3×3 up in the top-right corner.",
+    before: "Isolde is out, so she's skipped from now on. Close a 3×3 up in the top-right corner.",
     after:
       "The 3×3 is yours, though Isolde laid most of it. Your W lands on a ×3, and both WIFE and AW run through it.",
   },
@@ -110,5 +113,11 @@ export const COACH: readonly CoachText[] = [
   },
 ];
 
+const finalSeats = [...standingsAfter(SCRIPT.length).seats].sort((a, b) => b.score - a.score);
+const nameOf = (seat: number) => (seat === PLAYER_SEAT ? "you" : SEAT_NAMES[seat]);
+const [first, second, third] = finalSeats;
+
+/** Shown with the game-over screen. Scores come from the replay, not typed in. */
 export const CLOSING =
-  "So close! Isolde wins with 264, Rostam has 253, and you finish on 239. Rostam's last tile carried him past you.";
+  `So close! ${nameOf(first.seat)} wins with ${first.score}, then ${nameOf(second.seat)} with ${second.score}, ` +
+  `and ${nameOf(third.seat)} with ${third.score}. Rostam's last tile carried him past you.`;
