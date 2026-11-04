@@ -51,6 +51,11 @@ interface RackProps {
    */
   playAnswers?: boolean;
   playing: boolean;
+  /**
+   * The tutorial's hint that the blank has somewhere to go: it pulses the way
+   * its ghost on the board does.
+   */
+  blankHint?: boolean;
 }
 
 /** How long a shuffle's slide takes; matches `.shuffling` in Rack.module.css. */
@@ -81,6 +86,7 @@ export function Rack({
   canPlay,
   playAnswers = false,
   playing,
+  blankHint = false,
 }: RackProps) {
   /*
    * The tiles just drawn from the bag, which rise into the rack one after
@@ -227,8 +233,10 @@ export function Rack({
                 styles.tile,
                 styles.blank,
                 isSelected({ kind: "blank" }) ? styles.selected : "",
+                blankHint ? styles.blankHint : "",
               ].join(" ")}
               data-face="blank"
+              data-hint={blankHint ? "blank" : undefined}
               aria-label={`Blank tile, ${blanks} left`}
               {...tileProps({ kind: "blank" })}
             >

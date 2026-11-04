@@ -528,6 +528,27 @@
 }
 
 /*
+ * A blank's ghost: the blank tile's own white face and dark edge, with a
+ * white glow of its own, so it reads as the partner of the white tile in the
+ * rack (which pulses the same way) rather than as one more seat-colored hint.
+ */
+.ghostBlank {
+  background: color-mix(in srgb, var(--tile-blank-face) 80%, transparent);
+  border-color: var(--tile-blank-edge);
+  color: var(--tile-blank-edge);
+  opacity: 1;
+  animation: blank-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes blank-pulse {
+  50% {
+    box-shadow:
+      0 0 0 2px var(--tile-blank-face),
+      0 0 0 4px var(--tile-blank-edge);
+  }
+}
+
+/*
  * No fading where that is unwelcome: the ring simply sits there instead, in
  * whatever its animation was strongest in, and is taken away on the same
  * timer.
@@ -551,7 +572,8 @@
     animation: none;
   }
 
-  .ghost {
+  .ghost,
+  .ghostBlank {
     animation: none;
   }
 }

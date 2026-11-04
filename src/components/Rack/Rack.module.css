@@ -163,6 +163,28 @@
   border-color: var(--tile-edge);
 }
 
+/* Paired with the blank's ghost on the board, which pulses the same way. */
+.blankHint {
+  animation: blank-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes blank-pulse {
+  50% {
+    box-shadow:
+      0 0 0 2px var(--tile-blank-face),
+      0 0 0 4px var(--tile-blank-edge);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blankHint {
+    animation: none;
+    box-shadow:
+      0 0 0 2px var(--tile-blank-face),
+      0 0 0 4px var(--tile-blank-edge);
+  }
+}
+
 
 
 .count {

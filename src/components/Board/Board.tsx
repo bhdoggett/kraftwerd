@@ -41,9 +41,10 @@ interface BoardProps {
   recentCells?: ReadonlySet<string>;
   /**
    * Where each tile in hand is meant to go, drawn faintly over the square (the
-   * tutorial's hint). Not drawn where a tile is already staged.
+   * tutorial's hint). Not drawn where a tile is already staged. A blank's
+   * ghost is drawn as a blank tile is, white, so it pairs with the rack's.
    */
-  ghosts?: readonly { x: number; y: number; letter: string }[];
+  ghosts?: readonly { x: number; y: number; letter: string; isBlank?: boolean }[];
   onPlace: (x: number, y: number) => void;
   onPickUp: (x: number, y: number) => void;
   /** Begin dragging a tile staged this turn to another square. */
@@ -483,9 +484,8 @@ export function Board({
         if (empty) classes.push(styles.armed);
       }
 
-      const ghostLetter = stage
-        ? undefined
-        : ghosts?.find((g) => g.x === x && g.y === y)?.letter;
+      const ghost = stage ? undefined : ghosts?.find((g) => g.x === x && g.y === y);
+      const ghostLetter = ghost?.letter;
 
       cells.push(
         <button
@@ -563,8 +563,11 @@ export function Board({
           <span className={styles.glyph}>{(stage ?? tile)?.letter ?? ""}</span>
           {ghostLetter !== undefined && (
             <span
-              className={[styles.ghost, tile ? styles.ghostBadge : ""].join(" ").trim()}
+              className={[styles.ghost, tile ? styles.ghostBadge : "", ghost?.isBlank ? styles.ghostBlank : ""]
+                .join(" ")
+                .trim()}
               data-ghost="true"
+              data-blank={ghost?.isBlank ? "" : undefined}
               // Over a tile the letter shrinks to a corner badge, so the
               // tile's own letter stays readable under the outline.
               data-badge={tile ? "" : undefined}
