@@ -107,13 +107,11 @@ export function checkPlacement(turn: number, staged: readonly Placement[]): Feed
   for (const s of staged) {
     if (ghostAt(s.x, s.y) !== undefined) continue;
     const exact = unfilled.find((g) => matches(s, g));
-    const nearest = [...unfilled].sort(
+    const nearest = [...(unfilled.length > 0 ? unfilled : ghosts)].sort(
       (a, b) => Math.hypot(a.x - s.x, a.y - s.y) - Math.hypot(b.x - s.x, b.y - s.y),
     )[0];
     const target = exact ?? nearest;
-    if (target !== undefined) {
-      return { kind: "offGhost", letter: s.letter, x: s.x, y: s.y, target: { x: target.x, y: target.y } };
-    }
+    return { kind: "offGhost", letter: s.letter, x: s.x, y: s.y, target: { x: target.x, y: target.y } };
   }
 
   for (const s of staged) {

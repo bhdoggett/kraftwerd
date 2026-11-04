@@ -80,5 +80,11 @@ describe("checkPlacement", () => {
     // T on the A's square, A on the T's square
     const crossed = want.map((p) => (p.letter === "T" ? { ...p, x: 7, y: 9 } : p.letter === "A" ? { ...p, x: 8, y: 7 } : p));
     expect(checkPlacement(1, crossed)).toMatchObject({ kind: "wrongLetter" });
+    // all six right plus a stray seventh tile is still off a ghost
+    expect(checkPlacement(1, [...want, { x: 0, y: 0, letter: "Q", isBlank: false }])).toMatchObject({
+      kind: "offGhost",
+      x: 0,
+      y: 0,
+    });
   });
 });

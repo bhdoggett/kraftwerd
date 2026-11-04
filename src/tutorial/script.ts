@@ -16,7 +16,7 @@ export const BOARD_SIZE = 15;
 export const BAG_SIZE = 99;
 export const RACK_SIZE = 7;
 
-/** A recorded game: prod game j57933av51r6sst9bd49djkhc98ffafq (seat 0 Clintron, 1 BenDBeatz, 2 Ugona). */
+/** A recorded game: prod game j57933av51r6sst9bd49djkhc98ffafq (seats 0-2 of the recorded game). */
 interface RawTurn {
   seat: 0 | 1 | 2;
   score: number;
