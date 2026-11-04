@@ -51,11 +51,12 @@ function useSurroundings(watching: boolean): Surroundings | undefined {
   const [seen, setSeen] = useState<Surroundings>();
   useEffect(() => {
     if (!watching) return;
-    const look = () =>
-      setSeen({
-        dialogOpen: document.querySelector('[role="dialog"]') !== null,
-        snoozed: friendRequestsSnoozed(),
-      });
+    const look = () => {
+      const dialogOpen = document.querySelector('[role="dialog"]') !== null;
+      const snoozed = friendRequestsSnoozed();
+      // Most DOM changes change neither: keep the same object then.
+      setSeen((was) => (was?.dialogOpen === dialogOpen && was.snoozed === snoozed ? was : { dialogOpen, snoozed }));
+    };
     look();
     const observer = new MutationObserver(look);
     observer.observe(document.body, { childList: true, subtree: true });
