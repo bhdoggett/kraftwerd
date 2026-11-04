@@ -512,6 +512,15 @@
   animation: ghost-pulse 1.4s ease-in-out infinite;
 }
 
+/* Over a tile: the outline stays, the letter becomes a small corner badge. */
+.ghostBadge {
+  place-items: start end;
+  padding: 1px 3px;
+  font-size: 0.5em;
+  font-weight: 700;
+  line-height: 1;
+}
+
 @keyframes ghost-pulse {
   50% {
     opacity: 0.35;

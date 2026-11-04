@@ -280,6 +280,13 @@ describe("ghost letters", () => {
     });
     expect(ghost(2, 2)?.textContent).toBe("N");
     expect(square(2, 2).textContent).toContain("A");
+    expect(ghost(2, 2)?.hasAttribute("data-badge")).toBe(true);
+    expect(ghost(2, 2)?.className).toContain("ghostBadge");
+  });
+
+  test("is a plain ghost, not a badge, on an empty square", () => {
+    draw({ ghosts: [{ x: 1, y: 1, letter: "N" }] });
+    expect(ghost(1, 1)?.hasAttribute("data-badge")).toBe(false);
   });
 
   test("is not drawn where a pending tile sits", () => {

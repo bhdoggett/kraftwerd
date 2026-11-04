@@ -563,8 +563,11 @@ export function Board({
           <span className={styles.glyph}>{(stage ?? tile)?.letter ?? ""}</span>
           {ghostLetter !== undefined && (
             <span
-              className={styles.ghost}
+              className={[styles.ghost, tile ? styles.ghostBadge : ""].join(" ").trim()}
               data-ghost="true"
+              // Over a tile the letter shrinks to a corner badge, so the
+              // tile's own letter stays readable under the outline.
+              data-badge={tile ? "" : undefined}
               data-seat={yourSeat === null ? undefined : yourSeat % 4}
               aria-hidden="true"
             >
