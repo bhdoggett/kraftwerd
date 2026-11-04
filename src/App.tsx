@@ -15,6 +15,7 @@ import { FriendRequestsNotice } from "./components/FriendRequests/FriendRequests
 import { GameOverNotice } from "./components/GameOver/GameOver";
 import { RuleChangesNotice } from "./components/RuleChanges/RuleChanges";
 import { Tutorial } from "./components/Tutorial/Tutorial";
+import { TutorialNotice } from "./components/Tutorial/TutorialNotice";
 import { authClient } from "./lib/auth-client";
 import { signInWithGoogle } from "./lib/googleSignIn";
 import { promiseAGame, type PromisedGame } from "./lib/useStartGame";
@@ -176,6 +177,9 @@ export default function App() {
               {/* Last, so it sits over any other notice: nothing else should be
                   answered before the name everybody will see is chosen. */}
               <DisplayNameNotice />
+              {/* After the rest, and waits for them: it only shows once no
+                  other dialog is open. */}
+              <TutorialNotice />
             </Authenticated>
             <Unauthenticated>
               {/* A guest account is offered on the way in, not on the way to

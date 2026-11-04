@@ -92,6 +92,8 @@ export default defineSchema({
      * before it was tracked, which read as having seen version 9.
      */
     rulesSeen: v.optional(v.number()),
+    /** Offered the tutorial, or opened it from the menu. Absent reads as not yet. */
+    tutorialSeen: v.optional(v.boolean()),
   })
     .index("by_authId", ["authId"])
     .index("by_email", ["email"]),

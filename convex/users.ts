@@ -59,6 +59,8 @@ export const viewer = query({
           suggestedDisplayName: suggestDisplayName(user.name),
           /** The newest rules version this player has been told about. */
           rulesSeen: user.rulesSeen ?? RULES_SEEN_UNTRACKED,
+          /** Has been offered the tutorial, or opened it from the menu. */
+          tutorialSeen: user.tutorialSeen === true,
           stats: {
             wins: current ? (user.wins ?? 0) : 0,
             gamesPlayed: current ? (user.gamesPlayed ?? 0) : 0,
@@ -82,6 +84,17 @@ export const acknowledgeRules = mutation({
     const user = await currentUser(ctx);
     if (user.rulesSeen === RULES_VERSION) return null;
     await ctx.db.patch("users", user._id, { rulesSeen: RULES_VERSION });
+    return null;
+  },
+});
+
+/** The player has been offered the tutorial, or opened it. Never asked again. */
+export const markTutorialSeen = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await currentUser(ctx);
+    if (user.tutorialSeen === true) return null;
+    await ctx.db.patch("users", user._id, { tutorialSeen: true });
     return null;
   },
 });

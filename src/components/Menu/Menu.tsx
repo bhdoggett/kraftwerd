@@ -1,4 +1,4 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
 import { authClient } from "../../lib/auth-client";
@@ -32,6 +32,7 @@ export function Menu() {
   const [friends, setFriends] = useState(false);
   const { isAuthenticated } = useConvexAuth();
   const viewer = useQuery(api.users.viewer);
+  const markTutorialSeen = useMutation(api.users.markTutorialSeen);
   const [theme, setTheme] = useTheme();
   const wrap = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -116,6 +117,20 @@ export function Menu() {
           >
             Two-letter words
           </button>
+
+          {isAuthenticated && (
+            <button
+              type="button"
+              className={styles.item}
+              onClick={() => {
+                setOpen(false);
+                void markTutorialSeen();
+                navigate({ name: "tutorial" });
+              }}
+            >
+              Tutorial
+            </button>
+          )}
 
           {isAuthenticated && (
             <button
