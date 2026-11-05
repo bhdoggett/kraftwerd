@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { BOARD_SIZE, PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "./script";
-import { CALLOUTS, CLOSING, INTRO } from "./coach";
+import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, REPLAY_NOTE } from "./coach";
 import { factsFor, standingsAfter, tilesAfter } from "./model";
 
 const all = CALLOUTS.flat();
@@ -62,6 +62,19 @@ describe("callouts", () => {
     });
   });
 
+  test("the replay note is the first stack by another player, on the stacked square", () => {
+    const firstStack = SCRIPT.findIndex((t, i) => {
+      if (t.seat === PLAYER_SEAT) return false;
+      const before = new Set(tilesAfter(i).map((x) => `${x.x},${x.y}`));
+      return t.placements.some((p) => before.has(`${p.x},${p.y}`));
+    });
+    expect(REPLAY_NOTE.turn).toBe(firstStack);
+    const sitting = tilesAfter(REPLAY_NOTE.turn).find((x) => `${x.x},${x.y}` === REPLAY_NOTE.cell);
+    const landing = SCRIPT[REPLAY_NOTE.turn].placements.find((p) => `${p.x},${p.y}` === REPLAY_NOTE.cell);
+    expect(sitting).toMatchObject({ letter: "A", placedBy: `seat${PLAYER_SEAT}` });
+    expect(landing?.letter).toBe("K");
+  });
+
   test("names the right people", () => {
     for (const entry of [...all.map((c) => c.text), CLOSING, INTRO]) {
       for (const real of ["Clintron", "Ugona", "Ben"]) expect(entry).not.toContain(real);
@@ -72,7 +85,7 @@ describe("callouts", () => {
   });
 
   test("each rule is introduced", () => {
-    const text = all.map((c) => c.text).join(" ").toLowerCase();
+    const text = [...all.map((c) => c.text), BLANK_HINT, REPLAY_NOTE.text].join(" ").toLowerCase();
     for (const w of [
       "touches",
       "×3",
@@ -82,7 +95,7 @@ describe("callouts", () => {
       "33",
       "last tile",
       "stacked",
-      "2 tiles a spot",
+      "2 tiles at most",
       "blank",
       "3 a game",
       "+5",

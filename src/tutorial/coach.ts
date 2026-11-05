@@ -18,7 +18,25 @@ export interface Callout {
   /** The square it points at, as `x,y`. */
   cell: string;
   text: string;
+  /** Where it sits, when the usual (above, or below for a second line) would cover something. */
+  side?: "above" | "below" | "left" | "right";
 }
+
+/**
+ * Pointed at the rack's blank on the player's first turn, while it pulses
+ * with its ghost, until it is laid.
+ */
+export const BLANK_HINT = "A blank is any letter: drop it on the white ghost. 3 a game, never refilled.";
+
+/**
+ * The first time another player stacks, their replay stops on it until the
+ * player has read this: Rostam's K on the player's A, turn 3.
+ */
+export const REPLAY_NOTE: { turn: number } & Callout = {
+  turn: 2,
+  cell: "7,9",
+  text: "Rostam stacked a K on your A: PICA → PICK. A spot holds 2 tiles at most.",
+};
 
 /** The first screen's one line. */
 export const INTRO = "Learn by playing a real game. Drop each tile on its glowing ghost.";
@@ -26,10 +44,9 @@ export const INTRO = "Learn by playing a real game. Drop each tile on its glowin
 export const CALLOUTS: readonly (readonly Callout[])[] = [
   // 1. Isolde opens: her play is replayed the way a game replays it.
   [],
-  // 2. You: your first 3×3, your first blank
+  // 2. You: your first 3×3 (the blank is pointed out before the move: BLANK_HINT)
   [
-    { cell: "8,7", text: "You closed a 3×3: +33. The last tile in takes it." },
-    { cell: "9,7", text: "A blank is any letter. 3 a game, never refilled." },
+    { cell: "8,9", text: "You closed a 3×3: +33. The last tile in takes it.", side: "below" },
   ],
   // 3. Rostam
   [],
@@ -38,7 +55,7 @@ export const CALLOUTS: readonly (readonly Callout[])[] = [
   // 5. You: one ×4 multiplies two words; a long word
   [
     { cell: "13,13", text: "×4: GEM and BIOME both run through it." },
-    { cell: "13,14", text: "BIOME: 5+ letters earns +5, never multiplied." },
+    { cell: "13,10", text: "BIOME: 5+ letters earns +5, never multiplied.", side: "above" },
   ],
   // 6. Rostam
   [],
@@ -52,7 +69,7 @@ export const CALLOUTS: readonly (readonly Callout[])[] = [
   [],
   // 11. You: stacking; tiles in more than one place
   [
-    { cell: "1,4", text: "Stacked on Rostam's L: DRILL → DRAGONS. 2 tiles a spot, at most." },
+    { cell: "1,4", text: "Your stacks turn Rostam's DRILL into DRAGONS." },
     { cell: "13,14", text: "Two places at once is fine: each touches the board." },
   ],
   // 12. Rostam
@@ -61,7 +78,7 @@ export const CALLOUTS: readonly (readonly Callout[])[] = [
   [{ cell: "2,8", text: "Isolde is out of tiles: she's skipped from now on." }],
   // 14. You: W on a ×3; nothing left to draw
   [
-    { cell: "11,3", text: "W on a ×3: WIFE and AW both run through it." },
+    { cell: "11,3", text: "W on a ×3: WIFE and AW both run through it.", side: "left" },
     { cell: "12,4", text: "The bag is empty: your rack won't refill now." },
   ],
   // 15. Rostam

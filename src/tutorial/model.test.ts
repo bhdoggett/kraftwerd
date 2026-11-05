@@ -5,7 +5,7 @@ import { makeBoard, type Board } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, validateTurn, wordsFormed } from "../../shared/engine/legality";
 import { BOARD_SIZE, LAYOUT, PLAYER_SEAT, SCRIPT } from "./script";
-import { checkPlacement, factsFor, rackAt, standingsAfter, tilesAfter, tutorialDictionary } from "./model";
+import { checkPlacement, factsFor, loadFullDictionary, rackAt, standingsAfter, tilesAfter, tutorialDictionary } from "./model";
 
 const dict = makeDictionary(words);
 
@@ -174,5 +174,14 @@ describe("tutorialDictionary", () => {
     expect(tutorialDictionary.has("QI")).toBe(true);
     expect(tutorialDictionary.has("PICAX")).toBe(false);
     expect(tutorialDictionary.has("NB")).toBe(false);
+  });
+});
+
+describe("loadFullDictionary", () => {
+  test("knows real words the record never played, as a game would", async () => {
+    const full = await loadFullDictionary();
+    expect(full.has("TAB")).toBe(true);
+    expect(full.has("STAB")).toBe(true);
+    expect(full.has("PICAX")).toBe(false);
   });
 });

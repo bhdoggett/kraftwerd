@@ -9,10 +9,11 @@ import {
   seatId,
   standingsAfter,
   tilesAfter,
+  loadFullDictionary,
   tutorialDictionary,
   type Feedback,
 } from "../../tutorial/model";
-import { CALLOUTS, CLOSING, INTRO } from "../../tutorial/coach";
+import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, REPLAY_NOTE } from "../../tutorial/coach";
 import { describeFeedback } from "../../tutorial/feedback";
 import { markTutorialStarted } from "../../tutorial/seen";
 import { boardShapeNamed } from "../../../shared/boards";
@@ -59,6 +60,9 @@ const seatOf: ReadonlyMap<string, number> = new Map(SEATS.map((s) => [seatId(s),
 const nameOf: ReadonlyMap<string, string> = new Map(SEATS.map((s) => [seatId(s), SEAT_NAMES[s]]));
 const shape = boardShapeNamed(LAYOUT, BOARD_SIZE);
 
+/** The player's first turn with a blank to lay. */
+const FIRST_BLANK_TURN = SCRIPT.findIndex((t) => t.seat === PLAYER_SEAT && t.placements.some((p) => p.isBlank));
+
 const phaseFor = (turn: number): Phase =>
   turn >= TOTAL ? "over" : SCRIPT[turn].seat === PLAYER_SEAT ? "place" : "watch";
 
@@ -77,10 +81,26 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   const [refusal, setRefusal] = useState<string | null>(null);
   /** On an opponent's turn, the replay step on screen: -1 is the pause before it. */
   const [spot, setSpot] = useState(-1);
-  const area = useRef<HTMLDivElement>(null);
+  /** Whether this turn's replay note has been read. */
+  const [noteRead, setNoteRead] = useState(false);
 
   useEffect(() => {
     markTutorialStarted();
+  }, []);
+
+  /** The words staged tiles are checked against: a short list until the full one loads. */
+  const [dictionary, setDictionary] = useState(() => tutorialDictionary);
+  useEffect(() => {
+    let live = true;
+    loadFullDictionary()
+      .then((d) => {
+        if (live) setDictionary(() => d);
+      })
+      // Offline, the short list stands in.
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -95,6 +115,13 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
 
   const steps = useMemo(() => (phase === "watch" ? replaySteps(turn) : []), [phase, turn]);
   const shownStep = phase === "watch" && spot >= 0 ? steps[spot] : undefined;
+  /** The replay stops on the first stack by another player until it is read. */
+  const noting =
+    !noteRead &&
+    turn === REPLAY_NOTE.turn &&
+    shownStep !== undefined &&
+    !shownStep.total &&
+    shownStep.cells.has(REPLAY_NOTE.cell);
 
   /** How many turns are on the board (and in the scores). */
   const done = phase === "shown" || shownStep?.total === true ? turn + 1 : Math.min(turn, TOTAL);
@@ -167,9 +194,9 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
         ? undefined
         : [...new Set(wordsFormed(boards.after, placements))].map((word) => ({
             word,
-            valid: tutorialDictionary.has(word),
+            valid: dictionary.has(word),
           })),
-    [boards, placements],
+    [boards, placements, dictionary],
   );
   const wordCells = useMemo(
     () =>
@@ -182,13 +209,13 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     () =>
       boards === null
         ? null
-        : validateTurn(boards.before, placements, tutorialDictionary, {
+        : validateTurn(boards.before, placements, dictionary, {
             width: BOARD_SIZE,
             height: BOARD_SIZE,
             blocked: shape.blocked,
             centre: shape.centre,
           }),
-    [boards, placements],
+    [boards, placements, dictionary],
   );
 
   // --- the latest move, once it is down ---
@@ -224,6 +251,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     staging.recallAll();
     setError(null);
     setSpot(-1);
+    setNoteRead(false);
     setTurn(n);
     setPhase(phaseFor(n));
   }
@@ -238,7 +266,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   // nothing to point out afterwards the next turn follows at once, so their
   // turns chain.
   useEffect(() => {
-    if (phase !== "watch") return;
+    if (phase !== "watch" || noting) return;
     const ms = spot < 0 ? RECAP_LEAD_MS : steps[spot]?.total ? RECAP_POINTS_MS : RECAP_PLAY_MS;
     const t = setTimeout(() => {
       if (spot + 1 < steps.length) setSpot(spot + 1);
@@ -246,19 +274,21 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     }, ms);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the step it is for
-  }, [phase, turn, spot, steps]);
+  }, [phase, turn, spot, steps, noting]);
 
   /** Set when a press on the rack already counted as the tap, so its click does not count again. */
   const pressCounted = useRef(false);
 
   // A tap anywhere, or the start of a drag from the rack, takes down the
   // intro or the callouts and lets the game go on; during a replay it skips
-  // the rest of it, as the turn card's × does. A tap is a click, so a finger
+  // the rest of it, as the turn card's × does (or, on the replay's note,
+  // takes the note down and lets the replay go on). A tap is a click, so a finger
   // scrolling the page takes nothing down.
   useEffect(() => {
     if (phase !== "intro" && phase !== "shown" && phase !== "watch") return;
     const tap = () => {
       if (phase === "intro") setPhase("watch");
+      else if (noting) setNoteRead(true);
       else if (phase === "watch") moveDown();
       else advance();
     };
@@ -283,7 +313,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
       document.removeEventListener("keydown", key, true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the turn it is for
-  }, [phase, turn]);
+  }, [phase, turn, noting]);
 
   function play() {
     if (!placing || feedback === null) return;
@@ -327,7 +357,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   return (
     <div className={styles.layout}>
       <div className={styles.main}>
-        <div ref={area} className={styles.boardArea}>
+        <div className={styles.boardArea}>
           <Board
             boardSize={BOARD_SIZE}
             layout={LAYOUT}
@@ -347,12 +377,19 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
             onGrabStaged={placing ? staging.grabStaged : undefined}
           />
 
-          {phase === "intro" && <Bubble area={area} cell={null} text={INTRO} />}
+          {phase === "intro" && <Bubble cell={null} text={INTRO} dismissable />}
+          {noting && <Bubble cell={REPLAY_NOTE.cell} text={REPLAY_NOTE.text} dismissable />}
           {phase === "shown" &&
-            CALLOUTS[turn].map((c, i) => (
-              <Bubble key={`${turn}-${c.cell}`} area={area} cell={c.cell} text={c.text} prefer={i === 0 ? "above" : "below"} />
+            CALLOUTS[turn].map((c, i, all) => (
+              <Bubble
+                key={`${turn}-${c.cell}`}
+                cell={c.cell}
+                text={c.text}
+                prefer={c.side ?? (i === 0 ? "above" : "below")}
+                dismissable={i === all.length - 1}
+              />
             ))}
-          {error !== null && placing && <Bubble area={area} cell={error.cell} text={error.text} tone="error" />}
+          {error !== null && placing && <Bubble cell={error.cell} text={error.text} tone="error" />}
           {refusal !== null && <div className={styles.refusal}>{refusal}</div>}
 
           {/* What the staged play scores, in the board's corner, as in a game. */}
@@ -397,6 +434,10 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
               blankHint={blankWanted}
             />
           </div>
+          {/* The first blank, pointed out where it waits in the rack. */}
+          {blankWanted && turn === FIRST_BLANK_TURN && blankAt === null && (
+            <Bubble cell={null} anchor="[data-face=blank]" text={BLANK_HINT} prefer="above" />
+          )}
           {announcing && (
             <TurnCard
               name={SEAT_NAMES[step.seat]}

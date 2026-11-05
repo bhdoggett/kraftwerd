@@ -3,7 +3,7 @@ import { boardShapeNamed } from "../../shared/boards";
 import { BLANKS_PER_GAME } from "../../shared/config";
 import { cellKey, makeBoard } from "../../shared/engine/board";
 import { makeDictionary } from "../../shared/engine/dictionary";
-import { applyPlacements } from "../../shared/engine/legality";
+import { applyPlacements, type Dictionary } from "../../shared/engine/legality";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { newSquareBlocks } from "../../shared/engine/squares";
 import { spotSteps, type SpotStep } from "../lib/recap";
@@ -39,12 +39,26 @@ export const seatId = (seat: number) => `seat${seat}`;
 const bonusSquares = boardShapeNamed(LAYOUT, BOARD_SIZE).bonusSquares;
 
 /**
- * The words the tutorial knows, checked on the device: there is no server to
- * ask (the tutorial works signed out), and the full word list is too big to
- * ship to the browser. Every word of the recorded game and every two-letter
- * word, which is what a staged tile can make on its way to the recorded move.
+ * The words the tutorial knows before the full list arrives: every word of
+ * the recorded game and every two-letter word. Words are checked on the
+ * device, since there is no server to ask (the tutorial works signed out).
  */
 export const tutorialDictionary = makeDictionary([...SCRIPT.flatMap((t) => t.words), ...twoLetterWords]);
+
+let fullDictionary: Promise<Dictionary> | null = null;
+
+/**
+ * The game's whole word list, fetched on demand as its own chunk (about half
+ * a megabyte), so a staged tile spelling any real word on its way to the
+ * recorded move rings green as it would in a game.
+ */
+export function loadFullDictionary(): Promise<Dictionary> {
+  fullDictionary ??= import("../../shared/data/words.json").then((m) => {
+    const full = makeDictionary(m.default);
+    return { has: (word: string) => full.has(word) || tutorialDictionary.has(word) };
+  });
+  return fullDictionary;
+}
 
 /** The record as a game's turn history, for the replay helpers a game uses. */
 export const HISTORY = SCRIPT.map((t, i) => ({

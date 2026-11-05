@@ -48,7 +48,7 @@
 
 /* Lit on the player's first turn: this is where a play's points are explained. */
 .playLit {
-  animation: play-lit 1.4s ease-in-out infinite;
+  animation: play-lit var(--pulse) ease-in-out infinite;
 }
 
 @keyframes play-lit {
@@ -89,13 +89,23 @@
 .bubble::after {
   content: "";
   position: absolute;
-  left: var(--arrow-x, 50%);
   width: 10px;
   height: 10px;
   background: inherit;
   border: inherit;
-  translate: -50% 0;
   rotate: 45deg;
+}
+
+.bubble[data-side="above"]::after,
+.bubble[data-side="below"]::after {
+  left: var(--arrow, 50%);
+  translate: -50% 0;
+}
+
+.bubble[data-side="left"]::after,
+.bubble[data-side="right"]::after {
+  top: var(--arrow, 50%);
+  translate: 0 -50%;
 }
 
 .bubble[data-side="above"]::after {
@@ -110,8 +120,36 @@
   border-right: 0;
 }
 
+.bubble[data-side="left"]::after {
+  right: -6px;
+  border-bottom: 0;
+  border-left: 0;
+}
+
+.bubble[data-side="right"]::after {
+  left: -6px;
+  border-top: 0;
+  border-right: 0;
+}
+
 .bubble[data-side="centre"]::after {
   display: none;
+}
+
+/* Says outright that a press moves the game on (any tap does too). */
+.bubbleButton {
+  display: block;
+  margin: var(--space-2) 0 0 auto;
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--text-inverse);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .bubbleError {

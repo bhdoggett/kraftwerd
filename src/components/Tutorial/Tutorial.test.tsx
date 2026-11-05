@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { CALLOUTS, INTRO } from "../../tutorial/coach";
+import { BLANK_HINT, CALLOUTS, INTRO, REPLAY_NOTE } from "../../tutorial/coach";
 import { rackAt, replaySteps } from "../../tutorial/model";
 import { RECAP_LEAD_MS, RECAP_PLAY_MS, RECAP_POINTS_MS } from "../Game/replayTiming";
 import { PLAYER_SEAT, SCRIPT } from "../../tutorial/script";
@@ -28,10 +28,18 @@ function draw() {
 
 const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
 
-/** An opponent's whole move, replayed at a game's pace: the pause, each spot, the points. */
+/**
+ * An opponent's whole move, replayed at a game's pace: the pause, each spot,
+ * the points. The first stack stops the replay on a note, read with Got it.
+ */
 function letPlay(turn: number) {
   advance(RECAP_LEAD_MS);
-  for (const s of replaySteps(turn)) advance(s.total ? RECAP_POINTS_MS : RECAP_PLAY_MS);
+  for (const s of replaySteps(turn)) {
+    if (turn === REPLAY_NOTE.turn && !s.total && s.cells.has(REPLAY_NOTE.cell)) {
+      fireEvent.click(screen.getByRole("button", { name: "Got it" }));
+    }
+    advance(s.total ? RECAP_POINTS_MS : RECAP_PLAY_MS);
+  }
 }
 
 /** A tap somewhere off everything: what takes a bubble down. */
@@ -44,7 +52,7 @@ const square = (x: number, y: number) => screen.getByLabelText(new RegExp(`colum
 const rack = () => within(document.querySelector<HTMLElement>("[data-rack]")!);
 const rackLetters = () => rack().queryAllByRole("button", { name: /^[A-Z]$/ });
 
-const bubbles = () => screen.queryAllByRole("status").map((b) => b.textContent);
+const bubbles = () => screen.queryAllByRole("status").map((b) => b.querySelector("span")?.textContent);
 
 /** Press and let go without moving: a tap, which selects the tile. */
 function tapTile(tile: Element) {
@@ -127,11 +135,21 @@ describe("the tutorial", () => {
     for (const s of replaySteps(0).slice(0, -1)) advance(s.total ? RECAP_POINTS_MS : RECAP_PLAY_MS);
     expect(card.textContent).toContain("+15");
     advance(RECAP_POINTS_MS);
-    // Her move needs no explaining: straight on to the player's turn.
+    // Her move needs no explaining: straight on to the player's turn, where
+    // only the rack's blank is pointed out.
     expect(screen.queryByRole("button", { name: "Skip the replay" })).toBeNull();
-    expect(bubbles()).toEqual([]);
+    expect(bubbles()).toEqual([BLANK_HINT]);
     expect(screen.getByText("Your turn")).toBeTruthy();
     expect(document.querySelector("[data-rack]")!.closest("[inert]")).toBeNull();
+  });
+
+  test("a callout's Got it button moves the game on", () => {
+    draw();
+    expect(screen.getAllByRole("button", { name: "Got it" })).toHaveLength(1);
+    fireEvent.click(button("Got it"));
+    expect(bubbles()).toEqual([]);
+    advance(RECAP_LEAD_MS);
+    expect(screen.getByRole("button", { name: "Skip the replay" })).toBeTruthy();
   });
 
   test("a tap skips the rest of a replay", () => {
@@ -149,9 +167,11 @@ describe("the tutorial", () => {
     stageTurn(1);
     fireEvent.click(button("Play"));
     expect(bubbles()).toEqual(CALLOUTS[1].map((c) => c.text));
+    // One Got it, on the last line.
+    expect(screen.getAllByRole("button", { name: "Got it" })).toHaveLength(1);
     // It waits as long as it takes.
     advance(20_000);
-    expect(bubbles()).toHaveLength(2);
+    expect(bubbles()).toHaveLength(1);
 
     tapAway();
     expect(bubbles()).toEqual([]);
@@ -162,7 +182,7 @@ describe("the tutorial", () => {
     toTurnTwo();
     stageTurn(1);
     fireEvent.click(button("Play"));
-    expect(bubbles()).toHaveLength(2);
+    expect(bubbles()).toHaveLength(1);
     fireEvent.pointerDown(rackLetters()[0], { pointerId: 1, clientX: 10, clientY: 10 });
     fireEvent.pointerUp(window, { pointerId: 1 });
     expect(bubbles()).toEqual([]);
@@ -204,9 +224,12 @@ describe("the tutorial", () => {
     expect(blank).toHaveLength(1);
     expect(blank[0].textContent).toBe("S");
     expect(rack().getByRole("button", { name: /^Blank tile/ }).getAttribute("data-hint")).toBe("blank");
+    // And a line points at the rack's blank, saying what it is.
+    expect(bubbles()).toEqual([BLANK_HINT]);
 
     stage("blank", 9, 7, "S");
     expect(rack().getByRole("button", { name: /^Blank tile/ }).getAttribute("data-hint")).toBeNull();
+    expect(bubbles()).toEqual([]);
     expect(document.querySelectorAll("[data-ghost][data-blank]")).toHaveLength(0);
   });
 
@@ -215,7 +238,7 @@ describe("the tutorial", () => {
     const play = button("Play");
     expect(play.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(play);
-    expect(bubbles()).toEqual(["6 more tiles to place."]);
+    expect(bubbles()).toEqual(["6 more tiles to place.", BLANK_HINT]);
     expect(screen.getByText("Your turn")).toBeTruthy();
   });
 
@@ -224,12 +247,12 @@ describe("the tutorial", () => {
     // The B belongs on 9,10; one square left of that is no ghost.
     stage("B", 8, 10);
     fireEvent.click(button("Play"));
-    expect(bubbles()).toEqual(["The B goes on the glowing square one square right."]);
-    expect(screen.getByRole("status").getAttribute("data-points-at")).toBe("8,10");
+    expect(bubbles()).toEqual(["The B goes on the glowing square one square right.", BLANK_HINT]);
+    expect(screen.getAllByRole("status")[0].getAttribute("data-points-at")).toBe("8,10");
     expect(square(8, 10).getAttribute("aria-label")).toMatch(/not valid/);
     // Moving a tile takes the nudge down.
     stage("T", 8, 7);
-    expect(bubbles()).toEqual([]);
+    expect(bubbles()).toEqual([BLANK_HINT]);
   });
 
   test("staged tiles are scored and ringed as a game rings them", () => {
@@ -302,6 +325,31 @@ describe("the tutorial", () => {
     expect(screen.getByText("Isolde's turn")).toBeTruthy();
     letPlay(9);
     expect(square(13, 1).getAttribute("aria-label")).toMatch(/^R, played by Isolde/);
+    expect(screen.getByText("Your turn")).toBeTruthy();
+  });
+
+  test("the replay stops on the first stack until Got it, then carries on", () => {
+    draw();
+    tapAway();
+    playTurns(0, 2);
+    advance(RECAP_LEAD_MS);
+    const steps = replaySteps(2);
+    const at = steps.findIndex((s) => !s.total && s.cells.has(REPLAY_NOTE.cell));
+    for (const s of steps.slice(0, at)) advance(s.total ? RECAP_POINTS_MS : RECAP_PLAY_MS);
+    expect(bubbles()).toEqual([REPLAY_NOTE.text]);
+    // It holds there.
+    advance(20_000);
+    expect(bubbles()).toEqual([REPLAY_NOTE.text]);
+    expect(screen.getByText("Rostam's turn")).toBeTruthy();
+
+    fireEvent.click(button("Got it"));
+    expect(bubbles()).toEqual([]);
+    // The replay is still going (not skipped)...
+    expect(screen.getByRole("button", { name: "Skip the replay" })).toBeTruthy();
+    for (const s of steps.slice(at)) advance(s.total ? RECAP_POINTS_MS : RECAP_PLAY_MS);
+    // ...and Isolde's turn 4 follows by itself, with no note.
+    expect(screen.getByText("Isolde's turn")).toBeTruthy();
+    letPlay(3);
     expect(screen.getByText("Your turn")).toBeTruthy();
   });
 
