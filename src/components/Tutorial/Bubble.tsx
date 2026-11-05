@@ -90,17 +90,26 @@ export function Bubble({ cell, anchor, text, prefer = "above", tone = "note", di
         setPlaced({ left, top, arrow: clamp(cx - left, 12, b.width - 12), side });
       } else {
         const top = clamp(cy - b.height / 2, EDGE, a.height - b.height - EDGE);
-        const left = side === "right" ? c.right + GAP : c.left - b.width - GAP;
+        // Clamped too: with no side roomy enough this is the fallback, and it
+        // must still stay on the board.
+        const left = clamp(side === "right" ? c.right + GAP : c.left - b.width - GAP, EDGE, a.width - b.width - EDGE);
         setPlaced({ left, top, arrow: clamp(cy - top, 10, b.height - 10), side });
       }
     }
     place();
     window.addEventListener("resize", place);
-    // The board pans and zooms inside its own scrolling viewport.
+    // The board pans and zooms inside its own scrolling viewport...
     host?.addEventListener("scroll", place, true);
+    // ...and a zoom that scrolls nothing still resizes the squares.
+    const selector = anchor ?? (cell === null ? null : `[data-cell="${cell}"]`);
+    const target = selector === null ? null : (host?.querySelector(selector) ?? null);
+    const resized = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
+    if (host !== null) resized?.observe(host);
+    if (target !== null) resized?.observe(target);
     return () => {
       window.removeEventListener("resize", place);
       host?.removeEventListener("scroll", place, true);
+      resized?.disconnect();
     };
   }, [cell, anchor, text, prefer]);
 
