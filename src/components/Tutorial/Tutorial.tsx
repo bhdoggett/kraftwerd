@@ -18,7 +18,6 @@ import {
   INTRO,
   LEARNED,
   OFFER,
-  QUIPS,
   REPLAY_NOTE,
   scoreHint,
   welcomeBack,
@@ -52,6 +51,10 @@ import styles from "./Tutorial.module.css";
 interface TutorialProps {
   onLeave: () => void;
   onNewGame: () => void;
+  /** A guest account is being made for the real game: the button says so. */
+  dealing?: boolean;
+  /** Making that account failed. */
+  dealFailed?: boolean;
 }
 
 /**
@@ -97,7 +100,7 @@ function nextLabel(turn: number): string {
  * board when a move shows something new. Where the player left off is kept
  * on this device, so a return can pick up there.
  */
-export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
+export function Tutorial({ onLeave, onNewGame, dealing = false, dealFailed = false }: TutorialProps) {
   const [turn, setTurn] = useState(0);
   const [phase, setPhase] = useState<Phase>("intro");
   /** Where a returning player left off, offered on the first screen. */
@@ -672,7 +675,6 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
               seat={step.seat}
               words={step.words}
               points={step.score}
-              quip={QUIPS[turn]}
               overRack
               // The press that reached it has already moved things on: see
               // the tap listener above.
@@ -759,12 +761,18 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
                 <li key={line}>{line}</li>
               ))}
             </ul>
+            {dealFailed && (
+              <p className={styles.endError} role="alert">
+                Couldn't start a game just now. Try again, or sign in.
+              </p>
+            )}
             <div className={styles.endActions}>
+              {/* Back to wherever they came from: the lobby, or the sign-in page. */}
               <button type="button" className={styles.endSecondary} onClick={onLeave}>
-                Back to lobby
+                Done
               </button>
-              <button type="button" className={styles.endButton} onClick={onNewGame}>
-                Play a real game
+              <button type="button" className={styles.endButton} onClick={onNewGame} disabled={dealing}>
+                {dealing ? "Dealing…" : "Play a real game"}
               </button>
             </div>
           </div>

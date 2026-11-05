@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { BLANK_HINT, CALLOUTS, INTRO, OFFER, plain, QUIPS, REPLAY_NOTE, scoreHint } from "../../tutorial/coach";
+import { BLANK_HINT, CALLOUTS, INTRO, OFFER, plain, REPLAY_NOTE, scoreHint } from "../../tutorial/coach";
 import { rackAt } from "../../tutorial/model";
 import { IDLE_MS, LEAD_MS, SHOW_MS } from "../../tutorial/pace";
 import { readStats } from "../../tutorial/progress";
@@ -184,7 +184,6 @@ describe("the tutorial", () => {
     expect(bubbles()).toEqual(said(REPLAY_NOTE.text));
     expect(square(7, 9).getAttribute("aria-label")).toMatch(/^K, played by Rostam/);
     expect(square(7, 9).hasAttribute("data-spot")).toBe(true);
-    expect(card()).toContain(QUIPS[2]);
     advance(20_000);
     expect(bubbles()).toEqual(said(REPLAY_NOTE.text));
     fireEvent.click(button("Got it"));
@@ -201,9 +200,7 @@ describe("the tutorial", () => {
     letPlay(8);
     expect(square(7, 1).getAttribute("aria-label")).toMatch(/^P, played by Rostam/);
     expect(screen.getByText("Isolde's turn")).toBeTruthy();
-    advance(LEAD_MS);
-    expect(card()).toContain(QUIPS[9]);
-    advance(SHOW_MS);
+    letPlay(9);
     expect(square(13, 1).getAttribute("aria-label")).toMatch(/^R, played by Isolde/);
     expect(screen.getByText("Your turn")).toBeTruthy();
   });
@@ -579,6 +576,21 @@ describe("the tutorial", () => {
     expect(bubbles()).toEqual(said(CALLOUTS[OFFER.turn][0].text));
   });
 
+  test("while a guest account is made for the real game, the button says so", () => {
+    const view = render(<Tutorial onLeave={vi.fn()} onNewGame={vi.fn()} dealing />);
+    fireEvent.click(button("Let's play"));
+    fireEvent.click(document.body);
+    playTurns(0, OFFER.turn);
+    playMove(OFFER.turn);
+    for (const _ of CALLOUTS[OFFER.turn]) tapAway();
+    fireEvent.click(button("Skip to the end"));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByRole("button", { name: "Dealing…" }).hasAttribute("disabled")).toBe(true);
+    view.rerender(<Tutorial onLeave={vi.fn()} onNewGame={vi.fn()} dealFailed />);
+    expect(within(screen.getByRole("dialog")).getByRole("alert").textContent).toMatch(/Couldn't start a game/);
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Play a real game" })).toBeTruthy();
+  });
+
   test("Leave tutorial leaves", () => {
     const { onLeave } = draw();
     fireEvent.click(button("Leave tutorial"));
@@ -603,7 +615,7 @@ describe("the tutorial", () => {
 
     fireEvent.click(dialog.getByRole("button", { name: "Play a real game" }));
     expect(onNewGame).toHaveBeenCalledOnce();
-    fireEvent.click(dialog.getByRole("button", { name: "Back to lobby" }));
+    fireEvent.click(dialog.getByRole("button", { name: "Done" }));
     expect(onLeave).toHaveBeenCalledOnce();
   });
 });
