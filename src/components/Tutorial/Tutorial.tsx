@@ -269,6 +269,21 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   // --- the latest move, once it is down ---
 
   const tiles = useMemo(() => tilesAfter(done), [done]);
+
+  // As each move lands the board zooms back out to fit (see fitSignal), and
+  // on a small screen, where the page may be scrolled down to the rack or
+  // the scores, the board is brought back into view.
+  const boardArea = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (done === 0) return;
+    const small = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 860px)").matches;
+    const el = boardArea.current;
+    if (!small || el === null) return;
+    const r = el.getBoundingClientRect();
+    if (r.top >= 0 && r.bottom <= window.innerHeight) return;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView?.({ block: "nearest", behavior: still ? "auto" : "smooth" });
+  }, [done]);
   const standings = standingsAfter(done);
   const facts = useMemo(() => (step !== undefined && phase === "shown" ? factsFor(turn) : null), [step, phase, turn]);
   const mineShown = phase === "shown" && step?.seat === PLAYER_SEAT;
@@ -500,7 +515,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   return (
     <div className={styles.layout}>
       <div className={styles.main}>
-        <div className={styles.boardArea}>
+        <div ref={boardArea} className={styles.boardArea}>
           <Board
             boardSize={BOARD_SIZE}
             layout={LAYOUT}
@@ -517,10 +532,12 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
             badCells={badCells}
             recentCells={recentCells}
             spotCells={spotCells}
+            fitSignal={done}
             ghosts={ghosts}
             onGrabStaged={placing ? staging.grabStaged : undefined}
           />
 
+          {/* Under the board, in the zoom row's empty left end: never over a square. */}
           <Hud
             done={movesDone}
             total={PLAYER_TURNS.length}

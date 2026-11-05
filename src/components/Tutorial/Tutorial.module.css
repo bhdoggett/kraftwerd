@@ -218,24 +218,16 @@
   border-color: var(--danger);
 }
 
-/*
- * Progress and the sound switch, over the board frame's top-left corner,
- * mirroring the score badge on the right (see .boardTally in Game).
- */
+/* Progress and the sound switch, at the left end of the board's zoom row
+   (Board puts its zoom buttons at the right end of the same row). */
 .hud {
   position: absolute;
-  top: 0;
-  left: 0;
-  transform: translate(-10%, -40%);
-  z-index: 5;
+  left: var(--space-3);
+  bottom: 0;
+  height: 28px;
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: 0 0 0 var(--space-2);
-  border-radius: 999px;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-lift);
+  gap: 2px;
 }
 
 .dots {
@@ -261,7 +253,7 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  margin: -6px 0;
+  margin: -10px 0;
   border: 0;
   border-radius: 50%;
   background: transparent;

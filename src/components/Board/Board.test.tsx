@@ -390,3 +390,29 @@ describe("double-tap to zoom", () => {
     expect(zoomOf()).toBe(fitted);
   });
 });
+
+describe("fitSignal", () => {
+  test("a change zooms the board back out to fit", () => {
+    const props = {
+      boardSize: 5,
+      layout: "open",
+      tiles: [],
+      pending: [],
+      seatOf: new Map<string, number>(),
+      yourSeat: 0,
+      canPlace: true,
+      onPlace: vi.fn(),
+      onPickUp: vi.fn(),
+    };
+    const { rerender } = render(<Board {...props} fitSignal={0} />);
+    const fitButton = () => screen.getByRole("button", { name: "Fit the board" });
+    expect(fitButton().getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    expect(fitButton().getAttribute("aria-disabled")).toBe("false");
+    // The same signal leaves the zoom alone; a new one fits.
+    rerender(<Board {...props} fitSignal={0} />);
+    expect(fitButton().getAttribute("aria-disabled")).toBe("false");
+    rerender(<Board {...props} fitSignal={1} />);
+    expect(fitButton().getAttribute("aria-disabled")).toBe("true");
+  });
+});

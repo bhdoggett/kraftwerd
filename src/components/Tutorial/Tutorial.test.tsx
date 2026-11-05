@@ -527,6 +527,29 @@ describe("the tutorial", () => {
     expect(document.querySelector("[data-nudge]")).not.toBeNull();
   });
 
+  test("as a move lands the board zooms out to fit, and comes into view on a small screen", () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    const small = vi.fn((query: string) => ({ matches: query.includes("max-width") }) as MediaQueryList);
+    Object.defineProperty(window, "matchMedia", { value: small, configurable: true });
+    const below = vi.spyOn(Element.prototype, "getBoundingClientRect");
+    try {
+      draw();
+      fireEvent.click(button("Zoom in"));
+      expect(button("Fit the board").getAttribute("aria-disabled")).toBe("false");
+      // Scrolled so the board's top is off screen.
+      below.mockReturnValue({ top: -200, bottom: 100, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) });
+      tapAway();
+      advance(LEAD_MS);
+      expect(button("Fit the board").getAttribute("aria-disabled")).toBe("true");
+      expect(scroll).toHaveBeenCalledWith({ block: "nearest", behavior: "smooth" });
+    } finally {
+      below.mockRestore();
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+      delete (window as Partial<Window>).matchMedia;
+    }
+  });
+
   test("Leave tutorial leaves", () => {
     const { onLeave } = draw();
     fireEvent.click(button("Leave tutorial"));

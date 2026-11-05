@@ -9,8 +9,10 @@ interface HudProps {
 }
 
 /**
- * Over the board's top-left corner, taking no room: how far through the
- * tutorial the player is (a dot a move of theirs), and the sound switch.
+ * Under the board, at the left end of the zoom buttons' row, so it never
+ * covers a square: how far through the tutorial the player is (a dot a move of
+ * theirs), and the switch for its sound effects (a click as a tile lands, a
+ * chime when a move scores) and a phone's buzz.
  */
 export function Hud({ done, total, sound, onSound }: HudProps) {
   return (
@@ -25,6 +27,7 @@ export function Hud({ done, total, sound, onSound }: HudProps) {
         className={styles.soundButton}
         aria-pressed={sound}
         aria-label={sound ? "Sound and buzz on" : "Sound and buzz off"}
+        title="Sound effects"
         data-own-action=""
         onClick={onSound}
       >

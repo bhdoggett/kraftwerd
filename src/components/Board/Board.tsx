@@ -42,6 +42,11 @@ interface BoardProps {
   /** Squares the tutorial is talking about right now, lit until it stops. */
   spotCells?: ReadonlySet<string>;
   /**
+   * Each change zooms the board back out to fit, as the Fit button does: the
+   * tutorial bumps it as each move lands, so a zoomed-in phone sees it all.
+   */
+  fitSignal?: number;
+  /**
    * Where each tile in hand is meant to go, drawn faintly over the square (the
    * tutorial's hint). Not drawn where a tile is already staged. A blank's
    * ghost is drawn as a blank tile is, white, so it pairs with the rack's.
@@ -97,6 +102,7 @@ export function Board({
   badCells,
   recentCells,
   spotCells,
+  fitSignal,
   ghosts,
   onPlace,
   onPickUp,
@@ -138,6 +144,13 @@ export function Board({
 
   /** Zoom factor applied to the cell size, not to the page. */
   const [zoom, setZoom] = useState(1);
+  // Back to fit whenever the signal changes (set while rendering, so the
+  // fitted board is the first one drawn).
+  const [fittedFor, setFittedFor] = useState(fitSignal);
+  if (fitSignal !== fittedFor) {
+    setFittedFor(fitSignal);
+    setZoom(1);
+  }
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
 
