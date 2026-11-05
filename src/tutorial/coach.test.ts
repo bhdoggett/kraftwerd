@@ -99,7 +99,7 @@ describe("callouts", () => {
       "blank",
       "3 a game",
       "+5",
-      "never multiplied",
+      "flat +5",
       "out",
       "skipped",
       "bag is empty",

@@ -55,7 +55,7 @@ export const CALLOUTS: readonly (readonly Callout[])[] = [
   // 5. You: one ×4 multiplies two words; a long word
   [
     { cell: "13,13", text: "×4: GEM and BIOME both run through it." },
-    { cell: "13,10", text: "BIOME: 5+ letters earns +5, never multiplied.", side: "above" },
+    { cell: "13,10", text: "BIOME has 5+ letters: a flat +5, which the ×4 doesn't touch.", side: "above" },
   ],
   // 6. Rostam
   [],
