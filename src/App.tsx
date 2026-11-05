@@ -57,6 +57,19 @@ export default function App() {
     document.title = `${page} · kraftwerd`;
   }, [route.name, isAuthenticated, isLoading]);
 
+  /*
+   * A signed-out player who finished the tutorial and asked for a real game:
+   * a guest account is being made. The tutorial stays up saying so, rather
+   * than dropping them on the sign-in page while it happens, and the lobby
+   * that loads under the new account deals the promised game.
+   */
+  const [dealing, setDealing] = useState<"idle" | "dealing" | "failed">("idle");
+  useEffect(() => {
+    if (dealing === "dealing" && isAuthenticated) navigate({ name: "lobby" });
+  }, [dealing, isAuthenticated]);
+  // Once off the tutorial it is over: a later visit starts from nothing.
+  if (dealing !== "idle" && route.name !== "tutorial") setDealing("idle");
+
   // The lobby has opened the New game dialog by now; a reload should not.
   const arrivedForNewGame = route.name === "lobby" && route.newGame === true;
   useEffect(() => {
@@ -132,18 +145,19 @@ export default function App() {
         {route.name === "tutorial" ? (
           <Tutorial
             onLeave={() => goBackOr({ name: "lobby" })}
+            dealing={dealing === "dealing"}
+            dealFailed={dealing === "failed"}
             onNewGame={() => {
-              if (isAuthenticated || isLoading) {
+              if (isAuthenticated) {
                 navigate({ name: "lobby", newGame: true });
                 return;
               }
-              // As the sign-in page's "Play the computer": the lobby that
-              // loads under the new guest account deals the promised game.
-              navigate({ name: "lobby" });
+              // As the sign-in page's "Play the computer": a guest account,
+              // and the lobby that loads under it deals the promised game.
+              // The navigation waits for the account (see `dealing`).
+              setDealing("dealing");
               promiseAGame("computer");
-              void authClient.signIn.anonymous().catch(() => {
-                // Back on the sign-in page, where the guest buttons are.
-              });
+              void authClient.signIn.anonymous().catch(() => setDealing("failed"));
             }}
           />
         ) : (

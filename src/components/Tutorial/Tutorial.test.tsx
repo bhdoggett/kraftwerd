@@ -576,6 +576,21 @@ describe("the tutorial", () => {
     expect(bubbles()).toEqual(said(CALLOUTS[OFFER.turn][0].text));
   });
 
+  test("while a guest account is made for the real game, the button says so", () => {
+    const view = render(<Tutorial onLeave={vi.fn()} onNewGame={vi.fn()} dealing />);
+    fireEvent.click(button("Let's play"));
+    fireEvent.click(document.body);
+    playTurns(0, OFFER.turn);
+    playMove(OFFER.turn);
+    for (const _ of CALLOUTS[OFFER.turn]) tapAway();
+    fireEvent.click(button("Skip to the end"));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByRole("button", { name: "Dealing…" }).hasAttribute("disabled")).toBe(true);
+    view.rerender(<Tutorial onLeave={vi.fn()} onNewGame={vi.fn()} dealFailed />);
+    expect(within(screen.getByRole("dialog")).getByRole("alert").textContent).toMatch(/Couldn't start a game/);
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Play a real game" })).toBeTruthy();
+  });
+
   test("Leave tutorial leaves", () => {
     const { onLeave } = draw();
     fireEvent.click(button("Leave tutorial"));
@@ -600,7 +615,7 @@ describe("the tutorial", () => {
 
     fireEvent.click(dialog.getByRole("button", { name: "Play a real game" }));
     expect(onNewGame).toHaveBeenCalledOnce();
-    fireEvent.click(dialog.getByRole("button", { name: "Back to lobby" }));
+    fireEvent.click(dialog.getByRole("button", { name: "Done" }));
     expect(onLeave).toHaveBeenCalledOnce();
   });
 });
