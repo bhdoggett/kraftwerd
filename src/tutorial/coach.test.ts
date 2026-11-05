@@ -75,6 +75,31 @@ describe("callouts", () => {
     expect(landing?.letter).toBe("K");
   });
 
+  test("a callout counting the places a move went down counts them right", () => {
+    const words = ["one", "two", "three", "four"];
+    CALLOUTS.forEach((callouts, i) => {
+      for (const c of callouts) {
+        const said = c.text.match(/\b(one|two|three|four) separate places\b/);
+        if (said === null) continue;
+        // Groups of this move's tiles, joined where they sit side by side.
+        const left = [...SCRIPT[i].placements];
+        let groups = 0;
+        while (left.length > 0) {
+          groups++;
+          const queue = [left.pop()!];
+          while (queue.length > 0) {
+            const p = queue.pop()!;
+            for (let j = left.length - 1; j >= 0; j--) {
+              if (Math.abs(left[j].x - p.x) + Math.abs(left[j].y - p.y) === 1) queue.push(...left.splice(j, 1));
+            }
+          }
+        }
+        expect(words[groups - 1], `turn ${i + 1}`).toBe(said[1]);
+      }
+    });
+    expect(CALLOUTS[10].some((c) => c.text.includes("three separate places"))).toBe(true);
+  });
+
   test("names the right people", () => {
     for (const entry of [...all.map((c) => c.text), CLOSING, INTRO]) {
       for (const real of ["Clintron", "Ugona", "Ben"]) expect(entry).not.toContain(real);

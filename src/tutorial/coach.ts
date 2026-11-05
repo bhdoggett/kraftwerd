@@ -69,10 +69,10 @@ export const CALLOUTS: readonly (readonly Callout[])[] = [
   [],
   // 10. Isolde
   [],
-  // 11. You: stacking; tiles in more than one place
+  // 11. You: stacking; tiles in three separate places
   [
     { cell: "1,4", text: "Your stacks turn Rostam's DRILL into DRAGONS!" },
-    { cell: "13,14", text: "Tiles in two places at once are fine, as long as each group touches the board." },
+    { cell: "13,14", text: "Your tiles went down in three separate places. That's fine, as long as each group touches tiles already on the board." },
   ],
   // 12. Rostam
   [],
