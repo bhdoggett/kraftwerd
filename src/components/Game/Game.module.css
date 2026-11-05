@@ -227,6 +227,9 @@
   .announce {
     font-size: var(--text-md);
     flex-direction: column;
+    /* One column always: wrapping a column that ran out of height started a
+       second one, and the points landed off the card's right edge. */
+    flex-wrap: nowrap;
     gap: var(--space-1);
   }
 
@@ -258,10 +261,14 @@
   opacity: 1;
 }
 
-/* Exactly over the hidden rack, so the page keeps its shape. */
+/* Over the hidden rack, so the page keeps its shape: at least the rack's
+   height, and taller -- over whatever is below, never pushing it -- when a
+   play's words run to more lines than the rack has room for. */
 .announceOverRack {
   position: absolute;
-  inset: 0;
+  inset: 0 0 auto;
+  min-height: 100%;
+  z-index: 5;
 }
 
 /* Who, a little faded, so it sets off what they made rather than running
