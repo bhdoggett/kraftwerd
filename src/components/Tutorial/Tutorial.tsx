@@ -349,6 +349,8 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
 
   function play() {
     if (!placing || feedback === null) return;
+    // The note on the play panel is read first: this press only puts it away.
+    if (scoreHintShown) return;
     if (feedback.kind !== "ready") {
       const unfilled = step.placements.find((g) => !placements.some((p) => p.x === g.x && p.y === g.y));
       const at =
@@ -520,9 +522,10 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
         {staged && (
           <div className={styles.playSlot}>
             <PlayPanel score={preview} checked={checked} legality={legality} leftOpen={0} scoreBadge={scoreBadge} />
-            {/* Below the panel: above it, on a phone, it would cover Play. */}
+            {/* Above the panel, where a phone can see it: over the rack, and
+                so over Play, which waits for Got it anyway. */}
             {scoreHintShown && preview !== null && (
-              <Bubble cell={null} anchor="section" text={scoreHint(preview.total)} prefer="below" dismissable />
+              <Bubble cell={null} anchor="section" text={scoreHint(preview.total)} prefer="above" dismissable />
             )}
           </div>
         )}

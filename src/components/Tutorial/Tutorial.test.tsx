@@ -81,12 +81,19 @@ function stageTurn(turn: number) {
   }
 }
 
+/** Lays the turn's tiles and plays them, putting away the play-panel note first if it is up. */
+function playMove(turn: number) {
+  stageTurn(turn);
+  const note = screen.queryAllByRole("status").find((b) => b.textContent?.startsWith("This panel adds up"));
+  if (note !== undefined) fireEvent.click(within(note).getByRole("button", { name: "Got it" }));
+  fireEvent.click(button("Play"));
+}
+
 /** Plays turns from..to-1 the way a player would, taking down every callout. */
 function playTurns(from: number, to: number) {
   for (let turn = from; turn < to; turn++) {
     if (SCRIPT[turn].seat === PLAYER_SEAT) {
-      stageTurn(turn);
-      fireEvent.click(button("Play"));
+      playMove(turn);
     } else {
       letPlay(turn);
     }
@@ -165,8 +172,7 @@ describe("the tutorial", () => {
 
   test("the player's move gets callouts that sit until a tap", () => {
     toTurnTwo();
-    stageTurn(1);
-    fireEvent.click(button("Play"));
+    playMove(1);
     expect(bubbles()).toEqual(CALLOUTS[1].map((c) => c.text));
     // One Got it, on the last line.
     expect(screen.getAllByRole("button", { name: "Got it" })).toHaveLength(1);
@@ -181,8 +187,7 @@ describe("the tutorial", () => {
 
   test("starting a drag takes the callouts down too", () => {
     toTurnTwo();
-    stageTurn(1);
-    fireEvent.click(button("Play"));
+    playMove(1);
     expect(bubbles()).toHaveLength(1);
     fireEvent.pointerDown(rackLetters()[0], { pointerId: 1, clientX: 10, clientY: 10 });
     fireEvent.pointerUp(window, { pointerId: 1 });
@@ -191,6 +196,17 @@ describe("the tutorial", () => {
     fireEvent.click(rackLetters()[0]);
     advance(RECAP_LEAD_MS);
     expect(screen.getByRole("button", { name: "Skip the replay" })).toBeTruthy();
+  });
+
+  test("Play waits for the play-panel note: the first press only puts it away", () => {
+    toTurnTwo();
+    stageTurn(1);
+    expect(bubbles()).toEqual([scoreHint(53)]);
+    fireEvent.click(button("Play"));
+    expect(bubbles()).toEqual([]);
+    expect(screen.getByText("Your turn")).toBeTruthy();
+    fireEvent.click(button("Play"));
+    expect(bubbles()).toEqual([CALLOUTS[1][0].text]);
   });
 
   test("the play panel scores the move as it is laid, and is explained once it is right", () => {
@@ -209,6 +225,7 @@ describe("the tutorial", () => {
     expect(screen.getByText("Square bonus")).toBeTruthy();
     // Every tile right, Play not pressed: a note says what the panel is for.
     expect(bubbles()).toEqual([scoreHint(53)]);
+    expect(screen.getByRole("status").getAttribute("data-side")).not.toBe("below");
     // It sits with the panel, pointing at it.
     expect(screen.getByRole("status").parentElement?.querySelector("section")?.textContent).toContain("This play scores");
     fireEvent.click(button("Got it"));
@@ -314,6 +331,7 @@ describe("the tutorial", () => {
     stageTurn(1);
     const play = button("Play");
     expect(play.getAttribute("aria-disabled")).toBe("false");
+    fireEvent.click(button("Got it"));
     fireEvent.click(play);
 
     expect(screen.getByLabelText("Scores").textContent).toContain("53");
@@ -404,8 +422,7 @@ describe("the tutorial", () => {
 
   test("Enter on a focused Got it moves on once, not twice", () => {
     toTurnTwo();
-    stageTurn(1);
-    fireEvent.click(button("Play"));
+    playMove(1);
     const got = button("Got it");
     got.focus();
     // A button answers Enter with a click of its own: the key alone does nothing.
