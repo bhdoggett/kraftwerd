@@ -17,11 +17,12 @@ interface BubbleProps {
   prefer?: Side;
   tone?: "note" | "error";
   /**
-   * Shows a "Got it" button, so it is plain that a press moves the game on.
-   * The press itself is handled by the tutorial's tap listener, like a tap
-   * anywhere else.
+   * Shows a "Got it" button, so it is plain how to put it away. While the
+   * tutorial waits for a tap, the press is handled by its tap listener like a
+   * tap anywhere else; otherwise `onDismiss` handles it.
    */
   dismissable?: boolean;
+  onDismiss?: () => void;
 }
 
 interface Placed {
@@ -52,7 +53,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi
  * layout; placed beside the square rather than on it, and kept inside the
  * board's bounds.
  */
-export function Bubble({ cell, anchor, text, prefer = "above", tone = "note", dismissable = false }: BubbleProps) {
+export function Bubble({ cell, anchor, text, prefer = "above", tone = "note", dismissable = false, onDismiss }: BubbleProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [placed, setPlaced] = useState<Placed | null>(null);
 
@@ -120,7 +121,7 @@ export function Bubble({ cell, anchor, text, prefer = "above", tone = "note", di
     >
       <span>{text}</span>
       {dismissable && (
-        <button type="button" className={styles.bubbleButton}>
+        <button type="button" className={styles.bubbleButton} onClick={onDismiss}>
           Got it
         </button>
       )}

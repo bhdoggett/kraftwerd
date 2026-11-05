@@ -83,6 +83,8 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   const [spot, setSpot] = useState(-1);
   /** Whether this turn's replay note has been read. */
   const [noteRead, setNoteRead] = useState(false);
+  /** Whether the first turn's blank hint has been put away. */
+  const [blankHintRead, setBlankHintRead] = useState(false);
 
   useEffect(() => {
     markTutorialStarted();
@@ -389,7 +391,9 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
                 dismissable={i === all.length - 1}
               />
             ))}
-          {error !== null && placing && <Bubble cell={error.cell} text={error.text} tone="error" />}
+          {error !== null && placing && (
+            <Bubble cell={error.cell} text={error.text} tone="error" dismissable onDismiss={() => setError(null)} />
+          )}
           {refusal !== null && <div className={styles.refusal}>{refusal}</div>}
 
           {/* What the staged play scores, in the board's corner, as in a game. */}
@@ -435,8 +439,15 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
             />
           </div>
           {/* The first blank, pointed out where it waits in the rack. */}
-          {blankWanted && turn === FIRST_BLANK_TURN && blankAt === null && (
-            <Bubble cell={null} anchor="[data-face=blank]" text={BLANK_HINT} prefer="above" />
+          {blankWanted && turn === FIRST_BLANK_TURN && blankAt === null && !blankHintRead && (
+            <Bubble
+              cell={null}
+              anchor="[data-face=blank]"
+              text={BLANK_HINT}
+              prefer="above"
+              dismissable
+              onDismiss={() => setBlankHintRead(true)}
+            />
           )}
           {announcing && (
             <TurnCard

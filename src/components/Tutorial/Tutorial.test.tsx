@@ -226,11 +226,26 @@ describe("the tutorial", () => {
     expect(rack().getByRole("button", { name: /^Blank tile/ }).getAttribute("data-hint")).toBe("blank");
     // And a line points at the rack's blank, saying what it is.
     expect(bubbles()).toEqual([BLANK_HINT]);
+    expect(screen.getByRole("status").getAttribute("data-points-at")).toBeNull();
 
     stage("blank", 9, 7, "S");
     expect(rack().getByRole("button", { name: /^Blank tile/ }).getAttribute("data-hint")).toBeNull();
     expect(bubbles()).toEqual([]);
     expect(document.querySelectorAll("[data-ghost][data-blank]")).toHaveLength(0);
+  });
+
+  test("every hint has Got it: the blank hint and a nudge go away with it", () => {
+    toTurnTwo();
+    fireEvent.click(button("Got it"));
+    expect(bubbles()).toEqual([]);
+    // Still pulsing, just no longer explained.
+    expect(rack().getByRole("button", { name: /^Blank tile/ }).getAttribute("data-hint")).toBe("blank");
+
+    fireEvent.click(button("Play"));
+    expect(bubbles()).toEqual(["6 more tiles to place."]);
+    fireEvent.click(button("Got it"));
+    expect(bubbles()).toEqual([]);
+    expect(screen.getByText("Your turn")).toBeTruthy();
   });
 
   test("Play pressed early says what is missing in a bubble over the board", () => {

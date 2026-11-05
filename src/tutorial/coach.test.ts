@@ -16,10 +16,10 @@ describe("callouts", () => {
     expect(others).toEqual([13]);
   });
 
-  test("each is one short line", () => {
-    for (const c of all) {
-      expect(c.text.length, c.text).toBeLessThanOrEqual(64);
-      expect(c.text.split(/(?<=[.!])\s+/).length, c.text).toBeLessThanOrEqual(2);
+  test("each is short: a sentence or two, three at most", () => {
+    for (const c of [...all, REPLAY_NOTE, { text: BLANK_HINT }, { text: INTRO }]) {
+      expect(c.text.length, c.text).toBeLessThanOrEqual(140);
+      expect(c.text.split(/(?<=[.!])\s+/).length, c.text).toBeLessThanOrEqual(3);
     }
   });
 
@@ -97,7 +97,7 @@ describe("callouts", () => {
       "stacked",
       "2 tiles at most",
       "blank",
-      "3 a game",
+      "3 for the whole game",
       "+5",
       "flat +5",
       "out",
