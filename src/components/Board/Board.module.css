@@ -528,7 +528,7 @@
   z-index: 2;
   border: 2px dashed var(--seat-lit);
   color: var(--seat-lit);
-  opacity: 0.7;
+  font-weight: 800;
   pointer-events: none;
   animation: ghost-pulse var(--pulse) ease-in-out infinite;
 }
@@ -541,7 +541,6 @@
 .ghostBadge {
   place-items: start end;
   border: 3px dashed var(--seat-full);
-  opacity: 1;
   animation: badge-pulse var(--pulse) ease-in-out infinite;
 }
 
@@ -562,15 +561,43 @@
   box-shadow: 0 0 0 1px var(--surface-raised);
 }
 
+/* Over a tile: no tint (the tile's letter must stay readable), but the
+   outline blinks and the same glow swells round the square. */
 @keyframes badge-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+
   50% {
     border-color: transparent;
+    box-shadow:
+      0 0 0 2px var(--seat-full),
+      0 0 10px 3px color-mix(in srgb, var(--seat-full) 70%, transparent);
   }
 }
 
+/*
+ * A tint and a glow in the seat's color swelling and fading: plain to see on
+ * the dark board, where fading the outline alone was easy to miss. The same
+ * two shadows at both ends, so it eases smoothly.
+ */
 @keyframes ghost-pulse {
+  0%,
+  100% {
+    background-color: color-mix(in srgb, var(--seat-full) 12%, transparent);
+    box-shadow:
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+
   50% {
-    opacity: 0.35;
+    background-color: color-mix(in srgb, var(--seat-full) 38%, transparent);
+    box-shadow:
+      0 0 0 2px var(--seat-full),
+      0 0 10px 3px color-mix(in srgb, var(--seat-full) 70%, transparent);
   }
 }
 
@@ -640,6 +667,11 @@
   .ghost,
   .ghostBadge {
     animation: none;
+    box-shadow: 0 0 0 2px var(--seat-full);
+  }
+
+  .ghost:not(.ghostBadge) {
+    background-color: color-mix(in srgb, var(--seat-full) 25%, transparent);
   }
 
   .spot::after {
