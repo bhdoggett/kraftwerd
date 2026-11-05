@@ -35,6 +35,8 @@ export const BLANK_HINT = "This white tile is a blank: it can be any letter. You
 export const REPLAY_NOTE: { turn: number } & Callout = {
   turn: 2,
   cell: "7,9",
+  // Below: above it would cover PICK, the word it is about.
+  side: "below",
   text: "Rostam stacked his K right on top of your A, turning PICA into PICK. A spot can hold 2 tiles at most.",
 };
 

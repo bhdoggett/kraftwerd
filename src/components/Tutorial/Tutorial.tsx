@@ -380,7 +380,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
           />
 
           {phase === "intro" && <Bubble cell={null} text={INTRO} dismissable />}
-          {noting && <Bubble cell={REPLAY_NOTE.cell} text={REPLAY_NOTE.text} dismissable />}
+          {noting && <Bubble cell={REPLAY_NOTE.cell} text={REPLAY_NOTE.text} prefer={REPLAY_NOTE.side} dismissable />}
           {phase === "shown" &&
             CALLOUTS[turn].map((c, i, all) => (
               <Bubble
