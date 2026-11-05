@@ -51,6 +51,13 @@ interface RackProps {
    */
   playAnswers?: boolean;
   playing: boolean;
+  /**
+   * The tutorial's hint that the blank has somewhere to go: it pulses the way
+   * its ghost on the board does.
+   */
+  blankHint?: boolean;
+  /** The tutorial's nudge when the player is stuck: this tile wiggles. */
+  nudge?: Selection | null;
 }
 
 /** How long a shuffle's slide takes; matches `.shuffling` in Rack.module.css. */
@@ -81,6 +88,8 @@ export function Rack({
   canPlay,
   playAnswers = false,
   playing,
+  blankHint = false,
+  nudge = null,
 }: RackProps) {
   /*
    * The tiles just drawn from the bag, which rise into the rack one after
@@ -133,8 +142,13 @@ export function Rack({
    * Keyboard-triggered clicks arrive with `detail === 0` and no preceding
    * pointerdown, so they toggle selection on their own.
    */
+  const nudged = (sel: Selection) =>
+    nudge !== null &&
+    nudge.kind === sel.kind &&
+    (sel.kind === "blank" || (nudge.kind === "letter" && nudge.index === sel.index));
   const tileProps = (sel: Selection) => ({
     "aria-pressed": isSelected(sel),
+    "data-nudge": nudged(sel) ? "" : undefined,
     onPointerDown: (e: ReactPointerEvent) => {
       onSelect(sel);
       onGrab(sel, e);
@@ -227,8 +241,10 @@ export function Rack({
                 styles.tile,
                 styles.blank,
                 isSelected({ kind: "blank" }) ? styles.selected : "",
+                blankHint ? styles.blankHint : "",
               ].join(" ")}
               data-face="blank"
+              data-hint={blankHint ? "blank" : undefined}
               aria-label={`Blank tile, ${blanks} left`}
               {...tileProps({ kind: "blank" })}
             >

@@ -61,6 +61,8 @@ interface ScoreboardProps {
   status: "lobby" | "active" | "finished";
   /** Absent when there is nothing to quit — a finished game, or a spectator. */
   onQuit?: () => void;
+  /** What the quit button says: the tutorial is left, not quit. */
+  quitLabel?: string;
 }
 
 export function Scoreboard({
@@ -73,6 +75,7 @@ export function Scoreboard({
   bagSize,
   status,
   onQuit,
+  quitLabel = "Quit",
 }: ScoreboardProps) {
   const ordered = [...players].sort((a, b) => a.seat - b.seat);
   const onTurn = ordered.find((p) => p.seat === currentSeat) ?? null;
@@ -102,7 +105,7 @@ export function Scoreboard({
           )}
           {onQuit && (
             <button type="button" className={styles.quit} onClick={onQuit}>
-              Quit
+              {quitLabel}
             </button>
           )}
         </div>

@@ -39,6 +39,19 @@ interface BoardProps {
   badCells?: ReadonlySet<string>;
   /** Squares played while you were away, pointed out as your turn opens. */
   recentCells?: ReadonlySet<string>;
+  /** Squares the tutorial is talking about right now, lit until it stops. */
+  spotCells?: ReadonlySet<string>;
+  /**
+   * Each change zooms the board back out to fit, as the Fit button does: the
+   * tutorial bumps it as each move lands, so a zoomed-in phone sees it all.
+   */
+  fitSignal?: number;
+  /**
+   * Where each tile in hand is meant to go, drawn faintly over the square (the
+   * tutorial's hint). Not drawn where a tile is already staged. A blank's
+   * ghost is drawn as a blank tile is, white, so it pairs with the rack's.
+   */
+  ghosts?: readonly { x: number; y: number; letter: string; isBlank?: boolean }[];
   onPlace: (x: number, y: number) => void;
   onPickUp: (x: number, y: number) => void;
   /** Begin dragging a tile staged this turn to another square. */
@@ -88,6 +101,9 @@ export function Board({
   goodCells,
   badCells,
   recentCells,
+  spotCells,
+  fitSignal,
+  ghosts,
   onPlace,
   onPickUp,
   onGrabStaged,
@@ -128,6 +144,13 @@ export function Board({
 
   /** Zoom factor applied to the cell size, not to the page. */
   const [zoom, setZoom] = useState(1);
+  // Back to fit whenever the signal changes (set while rendering, so the
+  // fitted board is the first one drawn).
+  const [fittedFor, setFittedFor] = useState(fitSignal);
+  if (fitSignal !== fittedFor) {
+    setFittedFor(fitSignal);
+    setZoom(1);
+  }
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
 
@@ -464,6 +487,7 @@ export function Board({
       if (goodCells?.has(k)) classes.push(styles.inWord);
       if (badCells?.has(k)) classes.push(styles.inBadWord);
       if (recentCells?.has(k)) classes.push(styles.recent);
+      if (spotCells?.has(k)) classes.push(styles.spot);
       if (awaiting) classes.push(styles.tile, styles.awaiting);
       if (empty && !awaiting) classes.push(styles.open);
       // Single-use: gated on `empty`, so the mark is simply gone for good
@@ -476,6 +500,9 @@ export function Board({
         classes.push(styles.playable);
         if (empty) classes.push(styles.armed);
       }
+
+      const ghost = stage ? undefined : ghosts?.find((g) => g.x === x && g.y === y);
+      const ghostLetter = ghost?.letter;
 
       cells.push(
         <button
@@ -491,6 +518,7 @@ export function Board({
           // has a letter it scores like any tile, so it looks like any tile.
           data-face={awaiting ? "blank" : undefined}
           data-staged={stage === undefined ? undefined : ""}
+          data-spot={spotCells?.has(k) ? "" : undefined}
           data-pos={k}
           tabIndex={k === cursor ? 0 : -1}
           onFocus={() => setCursor(k)}
@@ -515,6 +543,7 @@ export function Board({
                   : "open square",
             empty && bonusMultiplier !== undefined ? BONUS_NAME[bonusMultiplier] : undefined,
             empty && isCentre ? "centre" : undefined,
+            ghostLetter === undefined ? undefined : `place ${ghostLetter} here`,
             // The word rings say this in color alone, so it is said here too.
             badCells?.has(k)
               ? "in a word that is not valid"
@@ -550,6 +579,23 @@ export function Board({
           {/* A tile staged this turn shows over whatever it landed on: the
               letter under it is still there, and comes back if it is recalled. */}
           <span className={styles.glyph}>{(stage ?? tile)?.letter ?? ""}</span>
+          {ghostLetter !== undefined && (
+            <span
+              className={[styles.ghost, tile ? styles.ghostBadge : "", ghost?.isBlank ? styles.ghostBlank : ""]
+                .join(" ")
+                .trim()}
+              data-ghost="true"
+              data-blank={ghost?.isBlank ? "" : undefined}
+              // Over a tile the letter shrinks to a corner badge, so the
+              // tile's own letter stays readable under the outline.
+              data-badge={tile ? "" : undefined}
+              data-seat={yourSeat === null ? undefined : yourSeat % 4}
+              aria-hidden="true"
+            >
+              {/* Over a tile, a solid chip, so it stands out on any tile color. */}
+              {tile ? <span className={styles.ghostLetter}>{ghostLetter}</span> : ghostLetter}
+            </span>
+          )}
           {showBonusMark && (
             <span className={styles.bonusMark}>
               {isCentre ? <CentreIcon /> : bonusMultiplier === 2 && <DoubleWordIcon />}

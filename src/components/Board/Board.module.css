@@ -396,7 +396,7 @@
 /* A blank that has landed but has not been told its letter yet. */
 .awaiting {
   border-color: var(--pending);
-  animation: pulse 1.2s ease-in-out infinite;
+  animation: pulse var(--pulse) ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -463,6 +463,27 @@
   animation: recent-play 800ms ease-out 4;
 }
 
+/*
+ * A square the tutorial is talking about: an accent ring breathing at the
+ * shared pulse rate for as long as the hint is up.
+ */
+.spot::after {
+  content: "";
+  grid-area: cell;
+  align-self: stretch;
+  justify-self: stretch;
+  z-index: 3;
+  border: 3px solid var(--accent);
+  pointer-events: none;
+  animation: spot-pulse var(--pulse) ease-in-out infinite;
+}
+
+@keyframes spot-pulse {
+  50% {
+    border-color: transparent;
+  }
+}
+
 @keyframes recent-play {
   from {
     border-color: var(--cell-empty);
@@ -492,6 +513,134 @@
 }
 
 /*
+ * Where a tile in hand is meant to go. Drawn over the square, tile or not,
+ * in the viewer's own seat color (the span carries data-seat itself, so it
+ * does not take the color of a tile underneath). Dashed and pulsing: a
+ * suggestion, not a piece.
+ */
+.ghost {
+  grid-area: cell;
+  align-self: stretch;
+  justify-self: stretch;
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 2;
+  border: 2px dashed var(--seat-lit);
+  color: var(--seat-lit);
+  font-weight: 800;
+  pointer-events: none;
+  animation: ghost-pulse var(--pulse) ease-in-out infinite;
+}
+
+/*
+ * Over a tile, where the faint dashed hint was easy to miss on a pale or
+ * gold face: a thicker outline in the seat's full color, blinking at the
+ * shared rate, and the letter as a solid chip in the corner.
+ */
+.ghostBadge {
+  place-items: start end;
+  border: 3px dashed var(--seat-full);
+  animation: badge-pulse var(--pulse) ease-in-out infinite;
+}
+
+/* Hung off the top-right corner, so the tile's own letter stays readable
+   even on a phone's smallest squares. */
+.ghostLetter {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  z-index: 1;
+  padding: 1px 2px;
+  border-radius: 2px;
+  background: var(--seat-full);
+  color: var(--text-inverse);
+  font-size: 0.5em;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0 0 1px var(--surface-raised);
+}
+
+/* Over a tile: no tint (the tile's letter must stay readable), but the
+   outline blinks and the same glow swells round the square. */
+@keyframes badge-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+
+  50% {
+    border-color: transparent;
+    box-shadow:
+      0 0 0 2px var(--seat-full),
+      0 0 10px 3px color-mix(in srgb, var(--seat-full) 70%, transparent);
+  }
+}
+
+/*
+ * A tint and a glow in the seat's color swelling and fading: plain to see on
+ * the dark board, where fading the outline alone was easy to miss. The same
+ * two shadows at both ends, so it eases smoothly.
+ */
+@keyframes ghost-pulse {
+  0%,
+  100% {
+    background-color: color-mix(in srgb, var(--seat-full) 12%, transparent);
+    box-shadow:
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+
+  50% {
+    background-color: color-mix(in srgb, var(--seat-full) 38%, transparent);
+    box-shadow:
+      0 0 0 2px var(--seat-full),
+      0 0 10px 3px color-mix(in srgb, var(--seat-full) 70%, transparent);
+  }
+}
+
+/*
+ * A blank's ghost: the blank tile's own white face and dark edge, with a
+ * white glow of its own, so it reads as the partner of the white tile in the
+ * rack (which pulses the same way) rather than as one more seat-colored hint.
+ */
+.ghostBlank {
+  background: color-mix(in srgb, var(--tile-blank-face) 80%, transparent);
+  border-color: var(--tile-blank-edge);
+  color: var(--tile-blank-edge);
+  opacity: 1;
+  animation: none;
+}
+
+.ghostBlank .ghostLetter {
+  background: var(--tile-blank-face);
+  color: var(--tile-blank-edge);
+  box-shadow: 0 0 0 1px var(--tile-blank-edge);
+}
+
+/* The same soft halo as the rack's blank: only its opacity animates. */
+.ghostBlank::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  box-shadow:
+    0 0 0 2px var(--tile-blank-face),
+    0 0 0 3px color-mix(in srgb, var(--tile-blank-edge) 55%, transparent),
+    0 0 12px 3px color-mix(in srgb, var(--tile-blank-face) 80%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  animation: blank-glow var(--pulse) ease-in-out infinite;
+}
+
+@keyframes blank-glow {
+  50% {
+    opacity: 1;
+  }
+}
+
+/*
  * No fading where that is unwelcome: the ring simply sits there instead, in
  * whatever its animation was strongest in, and is taken away on the same
  * timer.
@@ -513,6 +662,25 @@
      stops is the one thing a reduced-motion setting most wants gone. */
   .awaiting {
     animation: none;
+  }
+
+  .ghost,
+  .ghostBadge {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--seat-full);
+  }
+
+  .ghost:not(.ghostBadge) {
+    background-color: color-mix(in srgb, var(--seat-full) 25%, transparent);
+  }
+
+  .spot::after {
+    animation: none;
+  }
+
+  .ghostBlank::after {
+    animation: none;
+    opacity: 1;
   }
 }
 

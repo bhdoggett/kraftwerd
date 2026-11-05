@@ -3,32 +3,8 @@ import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Modal } from "../Modal/Modal";
+import { friendRequestsShowing, snooze, snoozedUntil } from "./snooze";
 import styles from "./FriendRequests.module.css";
-
-/** How long "Later" keeps the reminder away. */
-export const SNOOZE_MS = 24 * 60 * 60 * 1000;
-const SNOOZE_KEY = "kraftwerd:friend-requests-snoozed-until";
-
-/*
- * The snooze is a per-device convenience, so it lives in this browser only
- * and every read and write is allowed to fail: a private window, blocked
- * storage or a thumbnail render just means the reminder can show again.
- */
-function snoozedUntil(): number {
-  try {
-    return Number(localStorage.getItem(SNOOZE_KEY) ?? 0) || 0;
-  } catch {
-    return 0;
-  }
-}
-
-function snooze(now: number) {
-  try {
-    localStorage.setItem(SNOOZE_KEY, String(now + SNOOZE_MS));
-  } catch {
-    // Nowhere to remember it; the reminder comes back next load.
-  }
-}
 
 interface Request {
   friendshipId: Id<"friendships">;
@@ -95,9 +71,8 @@ export function FriendRequestsNotice() {
   const [snoozed, setSnoozed] = useState(() => Date.now() < snoozedUntil());
 
   const incoming = data?.incoming ?? [];
-  if (incoming.length === 0) return null;
-  if (results === undefined || results.length > 0) return null;
-  if (snoozed) return null;
+  if (results === undefined) return null;
+  if (!friendRequestsShowing(incoming.length, results.length, snoozed)) return null;
 
   return (
     <FriendRequestsDialog

@@ -12,6 +12,10 @@
  */
 :root,
 [data-theme="light"] {
+  /* One rate for everything that pulses to ask for attention (ghosts, the
+     blank, a waiting blank, the tutorial's hints), so they breathe together. */
+  --pulse: 1.4s;
+
   /*
    * The three seat colors, one per GAME.maxPlayers, plus orange for
    * `--pending` below (not a seat). Replaced the old cyan/magenta/lime/violet

@@ -27,6 +27,20 @@ describe("rules seen", () => {
   });
 });
 
+describe("tutorial seen", () => {
+  test("is false for a new user, true after marking, and marking twice is fine", async () => {
+    const t = convexTest(schema, modules);
+    await t.run((ctx) => ctx.db.insert("users", { authId: "auth|a", displayName: "Ana" }));
+    const asAna = t.withIdentity({ subject: "auth|a" });
+
+    expect((await asAna.query(api.users.viewer))?.tutorialSeen).toBe(false);
+    await asAna.mutation(api.users.markTutorialSeen, {});
+    expect((await asAna.query(api.users.viewer))?.tutorialSeen).toBe(true);
+    await asAna.mutation(api.users.markTutorialSeen, {});
+    expect((await asAna.query(api.users.viewer))?.tutorialSeen).toBe(true);
+  });
+});
+
 describe("display names", () => {
   /** Two people as Google hands them over: a real name and an address, nothing chosen. */
   async function fromGoogle() {

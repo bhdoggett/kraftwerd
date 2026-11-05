@@ -1,8 +1,11 @@
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
 import { authClient } from "../../lib/auth-client";
-import { navigate } from "../../router";
+import { navigate, useRoute } from "../../router";
+import { drawNames } from "../../../shared/names";
+import { useStartGame } from "../../lib/useStartGame";
+import { PracticeDialog } from "../Practice/Practice";
 import { Friends } from "../Friends/Friends";
 import { MoonIcon, MoreIcon, SunIcon, SystemIcon } from "../Icons/Icons";
 import styles from "./Menu.module.css";
@@ -30,8 +33,12 @@ export function Menu() {
   const [rules, setRules] = useState(false);
   const [twoLetterWords, setTwoLetterWords] = useState(false);
   const [friends, setFriends] = useState(false);
+  const [practice, setPractice] = useState(false);
+  const route = useRoute();
+  const game = useStartGame();
   const { isAuthenticated } = useConvexAuth();
   const viewer = useQuery(api.users.viewer);
+  const markTutorialSeen = useMutation(api.users.markTutorialSeen);
   const [theme, setTheme] = useTheme();
   const wrap = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -116,6 +123,35 @@ export function Menu() {
           >
             Two-letter words
           </button>
+
+          {/* Nothing to open while already in it. */}
+          {isAuthenticated && route.name !== "tutorial" && (
+            <button
+              type="button"
+              className={styles.item}
+              onClick={() => {
+                setOpen(false);
+                void markTutorialSeen();
+                navigate({ name: "tutorial" });
+              }}
+            >
+              Tutorial
+            </button>
+          )}
+
+          {isAuthenticated && (
+            <button
+              type="button"
+              className={styles.item}
+              onClick={() => {
+                game.clearError();
+                setPractice(true);
+                setOpen(false);
+              }}
+            >
+              Practice
+            </button>
+          )}
 
           {isAuthenticated && (
             <button
@@ -224,6 +260,25 @@ export function Menu() {
         <TwoLetterWordsDialog
           onClose={() => setTwoLetterWords(false)}
           returnFocusTo={trigger}
+        />
+      )}
+
+      {practice && (
+        <PracticeDialog
+          starting={game.starting}
+          error={game.error}
+          onCancel={() => setPractice(false)}
+          onStart={(playerCount, seat) => {
+            const bots = drawNames(playerCount - 1, Math.random).map((name) => ({
+              name,
+              level: "medium" as const,
+            }));
+            void game.start(playerCount, [], bots, false, seat, true).then((started) => {
+              if (started === null) return;
+              setPractice(false);
+              navigate({ name: "game", gameId: started.gameId });
+            });
+          }}
         />
       )}
 

@@ -1,30 +1,30 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { cellKey, makeBoard } from "../../../shared/engine/board";
+import { makeBoard } from "../../../shared/engine/board";
 import { makeDictionary } from "../../../shared/engine/dictionary";
 import {
   applyPlacements,
   validateTurn,
   wordsFormed,
-  type Fault,
 } from "../../../shared/engine/legality";
 import { boardShapeNamed } from "../../../shared/boards";
-import { scoreTurn, type Placement, type TurnScore } from "../../../shared/engine/score";
+import { scoreTurn, type Placement } from "../../../shared/engine/score";
 import {
-  STACK_CAP,
   GAME,
   BAG_SIZE,
-  LONG_WORD_BONUS,
 } from "../../../shared/config";
 import { Board } from "../Board/Board";
 import { DevTools } from "../DevTools/DevTools";
 import styles from "./Game.module.css";
 import { withoutLevel } from "../../../shared/names";
 import { useTurnReplay } from "./useTurnReplay";
-import { Rack, type Selection } from "../Rack/Rack";
+import { changesNothing, useTileStaging, type Staged } from "./useTileStaging";
+import { Rack } from "../Rack/Rack";
+import { PlayPanel, ScoreBadge } from "./PlayPanel";
+import { TurnCard } from "./TurnCard";
+import { BlankPicker } from "./BlankPicker";
 import { rematchLabel } from "./rematch";
 import { userMessage } from "../../lib/errors";
 import { HintBar } from "../HintBar/HintBar";
@@ -33,12 +33,9 @@ import { nearSquares } from "../../../shared/engine/nearSquares";
 import type { HintMove } from "../../../shared/sim/coach";
 import { markCells } from "../../lib/boardFeedback";
 import { boardAfter, scoresAfter, standingAt } from "../../lib/replay";
-import { squareBreakdown } from "../../lib/breakdown";
-import { moveToPosition, rackSlotUnder, shuffled } from "../../lib/rackGeometry";
 import { readDraft, writeDraft } from "../../lib/draft";
-import { moveStagedTo, stageAt } from "../../lib/staging";
+import { stageAt } from "../../lib/staging";
 import { useWakeLock } from "../../lib/useWakeLock";
-import { followPointer } from "../../lib/followPointer";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
 import { GameSummary } from "../GameSummary/GameSummary";
 import { Modal } from "../Modal/Modal";
@@ -46,62 +43,8 @@ import { DoubleWordIcon, QuadWordIcon, TripleWordIcon } from "../Icons/Icons";
 import { SeatPicker } from "../SeatPicker/SeatPicker";
 import { SrOnly } from "../SrOnly/SrOnly";
 
-const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 /** How long a new live region is left empty before anything is said into it. */
 const ANNOUNCER_SETTLE_MS = 500;
-
-
-/**
- * The score split by what earned it: the tiles themselves, then each size of
- * square. Every tile is a 1×1 worth 1, and a k×k is worth k², so the whole
- * scoring rule is legible from the table.
- */
-/** Squares only: the words carry their own points beside each word. */
-/**
- * The square bonus, split by size. The arithmetic lives in
- * `src/lib/breakdown.ts`, where it can be tested: it was computing a block's
- * worth as `size * size` long after squares went flat, so this table showed
- * 9 for a 3x3 the turn's own total had paid 33 for.
- */
-const breakdownOf = (score: TurnScore) => squareBreakdown(score.squares);
-
-/** One thing wrong with a staged play, in words a player can act on. */
-function describeFault(legality: Fault): string {
-  switch (legality.reason) {
-    case "empty-turn":
-      return "Place at least one tile.";
-    case "out-of-bounds":
-      return "That square is off the board.";
-    case "duplicate-cell":
-      return "Two tiles on the same square.";
-    case "stack-full":
-      return "That square is full -- no more tiles may land there.";
-    case "blocked":
-      return "That square cannot be played on.";
-    case "missing-centre":
-      return "The first word has to cover the centre square.";
-    case "disconnected":
-      return "Every tile must connect to the tiles already on the board.";
-    case "unchanged":
-      return "A tile laid on another has to change the letter underneath it.";
-    case "erased":
-      return legality.words.length === 1
-        ? `${legality.words[0]} was already on the board and would be covered completely. A word already played has to keep at least one of its letters.`
-        : `${legality.words.join(", ")} were already on the board and would be covered completely. A word already played has to keep at least one of its letters.`;
-    case "invalid-words":
-      return legality.words.length === 1
-        ? `${legality.words[0]} is not a word.`
-        : `Not words: ${legality.words.join(", ")}.`;
-  }
-}
-
-/** A staged placement, plus which rack slot it came from. */
-interface Staged extends Placement {
-  from: Selection;
-}
-
-/** Where a drag started: the rack, or a tile already staged on the board. */
-type Origin = { kind: "rack"; selection: Selection } | { kind: "cell"; x: number; y: number };
 
 /** One line saying what a turn did, for the review bar. */
 function describeTurn(turn: {
@@ -142,14 +85,6 @@ export function Game({
   const [hintState, setHintState] = useState<HintState>(NO_HINT);
   const [copied, setCopied] = useState(false);
 
-  const [pending, setPending] = useState<Staged[]>([]);
-  const [selected, setSelected] = useState<Selection | null>(null);
-  /**
-   * A blank has been dropped on this square and is waiting to be told what
-   * letter it stands for. Asking on release rather than beforehand means the
-   * blank drags like any other tile.
-   */
-  const [blankAt, setBlankAt] = useState<{ x: number; y: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   /**
    * Why a tile just bounced back.
@@ -165,15 +100,6 @@ export function Game({
 
   const [submitting, setSubmitting] = useState(false);
 
-  /**
-   * Rack display order, as indices into the dealt letters, with BLANK for the
-   * blank so it can be moved like anything else. Purely cosmetic:
-   * selections and staged tiles always travel by real index, so reordering can
-   * never change which tile a placement came from.
-   */
-  const [rackOrder, setRackOrder] = useState<number[]>([]);
-  /** Letter index the pointer is over while dragging a rack tile. */
-  const [rackHover, setRackHover] = useState<number | null>(null);
   /** Whether the swap confirmation is showing. */
   const [swapping, setSwapping] = useState(false);
   /** Whether the pass confirmation is showing. */
@@ -192,17 +118,41 @@ export function Game({
   /** Color picked while taking an open seat at a game reached by link. */
   const [joinSeatChoice, setJoinSeatChoice] = useState<number | null>(null);
 
-  /** Live pointer drag: the tile that follows the finger/cursor. */
-  const [drag, setDrag] = useState<{
-    letter: string;
-    isBlank: boolean;
-    x: number;
-    y: number;
-    origin: Origin;
-  } | null>(null);
-  const dragRef = useRef<{ moved: boolean } | null>(null);
-
   const me = view?.players.find((p) => p.letters !== null);
+
+  /** The board before this turn: what a staged tile lands on. */
+  const before = useMemo(() => (view ? makeBoard(view.tiles) : null), [view]);
+
+  const {
+    pending,
+    setPending,
+    selected,
+    setSelected,
+    blankAt,
+    setBlankAt,
+    rackOrder,
+    previewOrder,
+    spentIndices,
+    blanksLeft,
+    draggedLetterIndex,
+    dragOverRack,
+    drag,
+    place,
+    pickUp,
+    grab,
+    grabStaged,
+    shuffle,
+    recallAll,
+  } = useTileStaging({
+    letters: me?.letters ?? [],
+    blanks: me?.blanks ?? 0,
+    before,
+    canPlace: me !== undefined,
+    // The game screen asks: the letter picker opens on `blankAt`.
+    nameBlank: () => null,
+    refuse,
+    clearError: () => setError(null),
+  });
 
   const placements: Placement[] = useMemo(
     () => pending.map(({ x, y, letter, isBlank }) => ({ x, y, letter, isBlank })),
@@ -210,10 +160,9 @@ export function Game({
   );
 
   const boards = useMemo(() => {
-    if (!view) return null;
-    const before = makeBoard(view.tiles);
+    if (!before) return null;
     return { before, after: applyPlacements(before, placements) };
-  }, [view, placements]);
+  }, [before, placements]);
 
   const preview = useMemo(() => {
     if (!boards || placements.length === 0 || !view) return null;
@@ -289,95 +238,6 @@ export function Game({
     });
   }, [view, boards, placements, checked]);
 
-  const rackSignature = (view?.players.find((p) => p.letters !== null)?.letters ?? []).join(
-    ",",
-  );
-  // A new rack starts in dealt order. Reset while rendering, not in an
-  // effect, so the old order is never drawn against the new letters.
-  const [orderedRack, setOrderedRack] = useState<string | null>(null);
-  if (orderedRack !== rackSignature) {
-    setOrderedRack(rackSignature);
-    const count = rackSignature === "" ? 0 : rackSignature.split(",").length;
-    setRackOrder(Array.from({ length: count }, (_, i) => i));
-  }
-
-  function shuffleRack() {
-    setRackOrder(shuffled);
-  }
-
-  /** Drop a dragged rack tile into a position, sliding the rest along. */
-  function reorderRack(fromIndex: number, position: number | null) {
-    if (position === null) return;
-    setRackOrder((current) => moveToPosition(current, spentIndices, fromIndex, position));
-  }
-
-  /**
-   * Drag a staged tile off the board and back into the rack, landing where it
-   * was dropped. The letter never left `rackOrder` — staged tiles are only
-   * hidden from the rack — so this unstages it and moves it into position.
-   */
-  function recallToRack(from: { x: number; y: number }, position: number | null) {
-    const tile = pending.find((p) => p.x === from.x && p.y === from.y);
-    if (tile === undefined) return;
-
-    setPending((current) => current.filter((p) => p !== tile));
-    setError(null);
-
-    if (position !== null && tile.from.kind === "letter") {
-      const index = tile.from.index;
-      // The tile is no longer staged, so it is visible again for the move.
-      const stillHidden = spentIndices.filter((i) => i !== index);
-      setRackOrder((current) => moveToPosition(current, stillHidden, index, position));
-    }
-  }
-
-  /**
-   * Order to render right now. While a rack tile is over another slot this is
-   * the order it *would* become, so the gap follows the pointer instead of
-   * appearing only on release.
-   */
-  /** Letters currently staged on the board, so hidden from the rack. */
-  const spentIndices = useMemo(
-    () =>
-      pending
-        .filter((p) => p.from.kind === "letter")
-        .map((p) => (p.from as { kind: "letter"; index: number }).index),
-    [pending],
-  );
-
-  /** Blanks still in hand: the allowance less any staged or being named. */
-  const blanksLeft = Math.max(
-    0,
-    (me?.blanks ?? 0) -
-      pending.filter((p) => p.from.kind === "blank").length -
-      (blankAt === null ? 0 : 1),
-  );
-
-  /**
-   * The rack letter a drag concerns, whether it started in the rack or is a
-   * staged tile heading back. Blanks have no rack slot to move.
-   */
-  const draggedLetterIndex = useMemo(() => {
-    if (drag === undefined || drag === null) return null;
-    if (drag.origin.kind === "rack") {
-      return drag.origin.selection.kind === "letter"
-        ? drag.origin.selection.index
-        : null;
-    }
-    const cell = drag.origin;
-    const staged = pending.find((p) => p.x === cell.x && p.y === cell.y);
-    if (staged === undefined || staged.from.kind !== "letter") return null;
-    return staged.from.index;
-  }, [drag, pending]);
-
-  const previewOrder = useMemo(() => {
-    if (draggedLetterIndex === null || rackHover === null) return rackOrder;
-    const dragged = draggedLetterIndex;
-
-    const stillHidden = spentIndices.filter((i) => i !== dragged);
-    return moveToPosition(rackOrder, stillHidden, dragged, rackHover);
-  }, [draggedLetterIndex, rackHover, rackOrder, spentIndices]);
-
   // Other players' plays: the catch-up replay and plays landing as you watch.
   const { history, point, board: replayBoard, recapActive, skipRecap, skipAll, noteSpot, noteTurn } =
     useTurnReplay({ gameId, view, reviewing });
@@ -430,82 +290,6 @@ export function Game({
     if (turnNumber === undefined) return;
     writeDraft(gameId, turnNumber, pending, playable);
   }, [gameId, turnNumber, pending, playable]);
-
-  // Kept in a ref so the pointer listeners below can call the current
-  // `place` without re-subscribing on every mouse move.
-  const reorderRef = useRef<(fromIndex: number, over: number | null) => void>(() => {});
-  reorderRef.current = reorderRack;
-
-  const recallRef = useRef<(from: { x: number; y: number }, over: number | null) => void>(
-    () => {},
-  );
-  recallRef.current = recallToRack;
-
-  const dropRef = useRef<(x: number, y: number, origin: Origin) => void>(() => {});
-  dropRef.current = (x, y, origin) => {
-    if (origin.kind !== "cell") place(x, y);
-    // A staged tile that cannot land on the square it was dropped on goes
-    // home to the rack, not back to the square it left.
-    else if (!moveStaged(origin, x, y)) recallRef.current(origin, null);
-  };
-
-  // Window-level so the drag survives leaving the rack, and so releasing
-  // anywhere ends it.
-  const dragging = drag !== null;
-  useEffect(() => {
-    if (!dragging) return;
-
-    const onMove = (e: PointerEvent) => {
-      if (dragRef.current) dragRef.current.moved = true;
-      setDrag((d) => (d === null ? null : { ...d, x: e.clientX, y: e.clientY }));
-
-      setRackHover(rackSlotUnder(e.clientX, e.clientY).position);
-    };
-
-    const onUp = (e: PointerEvent) => {
-      const moved = dragRef.current?.moved ?? false;
-      const origin = drag?.origin;
-      dragRef.current = null;
-      setDrag(null);
-      setRackHover(null);
-
-      // A press without movement is a selection, not a drag: leave the tile
-      // selected so tap-then-tap still works.
-      if (!moved) return;
-
-      // Dropped onto the rack. Same geometry as the preview, so releasing
-      // lands where the gap was shown.
-      const over = rackSlotUnder(e.clientX, e.clientY);
-      if (over.overRack) {
-        if (origin === undefined) return;
-        if (origin.kind === "cell") recallRef.current(origin, over.position);
-        else if (origin.selection.kind === "letter") {
-          reorderRef.current(origin.selection.index, over.position);
-        }
-        return;
-      }
-
-      const cell = document
-        .elementFromPoint(e.clientX, e.clientY)
-        ?.closest("[data-cell]")
-        ?.getAttribute("data-cell");
-      if (!cell) {
-        // Dropped somewhere no tile can go -- the margin round the board, a
-        // blocked square, the page itself. A staged tile goes to the rack
-        // rather than back to its square: letting go of it there reads as
-        // putting it down, not as wanting it where it was.
-        if (origin?.kind === "cell") recallRef.current(origin, null);
-        return;
-      }
-
-      const [cx, cy] = cell.split(",").map(Number);
-      if (cx !== undefined && cy !== undefined && origin !== undefined) {
-        dropRef.current(cx, cy, origin);
-      }
-    };
-
-    return followPointer(onMove, onUp);
-  }, [dragging, drag?.origin]);
 
   const myTurn =
     me !== undefined && view?.game.status === "active" && me.seat === view.game.currentSeat;
@@ -699,96 +483,6 @@ export function Game({
 
 
 
-  /**
-   * Pointer-based dragging, deliberately not HTML5 drag-and-drop: `draggable`
-   * on a form control never fires `dragstart` in Firefox or Safari, and drag
-   * events do not exist on touch at all. Pointer events behave identically for
-   * mouse, trackpad and finger.
-   */
-  function startDrag(
-    letter: string,
-    isBlank: boolean,
-    origin: Origin,
-    event: ReactPointerEvent,
-  ) {
-    dragRef.current = { moved: false };
-    setDrag({ letter, isBlank, x: event.clientX, y: event.clientY, origin });
-  }
-
-  /** Drag a tile out of the rack. The blank drags blank; it is asked about
-   * only once it lands somewhere. */
-  function grab(selection: Selection, event: ReactPointerEvent) {
-    // Not gated on whose turn it is: sorting your own rack is thinking, and
-    // thinking is most of what you do while you wait. Dropping one on the
-    // board is what needs the turn, and `place` still asks for it -- off your
-    // turn a tile dragged onto a square simply goes back where it came from.
-    if (me === undefined) return;
-    // The blank has to be answered before anything else can be moved.
-    if (blankAt !== null) return;
-
-    if (selection.kind === "blank") {
-      startDrag("", true, { kind: "rack", selection }, event);
-      return;
-    }
-
-    const letter = me.letters?.[selection.index];
-    if (letter === undefined) return;
-
-    startDrag(letter, false, { kind: "rack", selection }, event);
-  }
-
-  /** Drag a tile already staged this turn to a different square. */
-  function grabStaged(x: number, y: number, event: ReactPointerEvent) {
-    const tile = pending.find((p) => p.x === x && p.y === y);
-    if (tile === undefined) return;
-    startDrag(tile.letter, tile.isBlank, { kind: "cell", x, y }, event);
-  }
-
-  /**
-   * Move a staged tile, keeping the rack slot it came from. False when the
-   * square refuses it, so the caller can send it to the rack instead.
-   */
-  function moveStaged(origin: { x: number; y: number }, x: number, y: number): boolean {
-    const moving = pending.find((p) => p.x === origin.x && p.y === origin.y);
-    if (moving !== undefined) {
-      // Landing it there would change nothing, so it stays where it was.
-      if (changesNothing(x, y, moving.letter)) {
-        refuse(`That square is already ${moving.letter} — a tile has to change it.`);
-        return false;
-      }
-      if (isFull(x, y)) {
-        refuse(`That square is full — ${STACK_CAP} tiles is the limit.`);
-        return false;
-      }
-    }
-
-    setPending((current) => moveStagedTo(current, origin, x, y));
-    setError(null);
-    return true;
-  }
-
-  /**
-   * Whether a letter would land on the same letter, changing nothing.
-   *
-   * The rules refuse such a play, so there is no point letting it be staged
-   * and explaining afterwards: the tile simply does not land, and goes back
-   * where it came from.
-   */
-  function changesNothing(x: number, y: number, letter: string) {
-    return boards?.before.get(cellKey(x, y))?.letter === letter.toUpperCase();
-  }
-
-  /**
-   * Whether a square has taken all the tiles it ever will.
-   *
-   * The rules refuse a play there, so the tile does not land: it goes back
-   * where it came from rather than sitting on the board waiting to be told
-   * on Play.
-   */
-  function isFull(x: number, y: number) {
-    return (boards?.before.get(cellKey(x, y))?.stacked ?? 0) >= STACK_CAP;
-  }
-
   async function ask() {
     const key = hintKey;
     // An answer for a rack since swapped away must not overwrite the search
@@ -824,59 +518,6 @@ export function Game({
     announce(why);
     if (refusalTimer.current !== null) clearTimeout(refusalTimer.current);
     refusalTimer.current = setTimeout(() => setRefusal(null), 2600);
-  }
-
-  function place(x: number, y: number) {
-    if (selected === null || me === undefined) return;
-
-    if (selected.kind === "blank") {
-      // A full square takes nothing: no point asking what the blank stands
-      // for when it cannot land.
-      if (isFull(x, y)) {
-        refuse(`That square is full — ${STACK_CAP} tiles is the limit.`);
-        setSelected(null);
-        return;
-      }
-      // Landed, but nameless: ask now.
-      setBlankAt({ x, y });
-      setSelected(null);
-      setError(null);
-      return;
-    } else {
-      const letter = me.letters?.[selected.index];
-      if (letter === undefined) return;
-      if (changesNothing(x, y, letter)) {
-        refuse(`That square is already ${letter} — a tile has to change it.`);
-        setSelected(null);
-        return;
-      }
-      if (isFull(x, y)) {
-        refuse(`That square is full — ${STACK_CAP} tiles is the limit.`);
-        setSelected(null);
-        return;
-      }
-      setPending((p) => stageAt(p, { x, y, letter, isBlank: false, from: selected }));
-    }
-
-    setSelected(null);
-    setError(null);
-  }
-
-  function pickUp(x: number, y: number) {
-    const tile = pending.find((p) => p.x === x && p.y === y);
-    setPending((p) => p.filter((s) => !(s.x === x && s.y === y)));
-    setError(null);
-
-    // A blank's letter is a decision, so tapping it reopens that decision
-    // rather than throwing the tile back to the rack.
-    if (tile?.isBlank === true) setBlankAt({ x, y });
-  }
-
-  function clear() {
-    setPending([]);
-    setSelected(null);
-    setBlankAt(null);
-    setError(null);
   }
 
   /** The rack's swap button asks first: the swap is once a game. */
@@ -940,7 +581,7 @@ export function Game({
   function nameBlank(letter: string) {
     if (blankAt === null) return;
     // A blank standing for the letter already there is no change either.
-    if (changesNothing(blankAt.x, blankAt.y, letter)) {
+    if (changesNothing(before, blankAt.x, blankAt.y, letter)) {
       refuse(`That square is already ${letter} — a tile has to change it.`);
       setBlankAt(null);
       return;
@@ -970,7 +611,7 @@ export function Game({
           isBlank,
         })),
       });
-      clear();
+      recallAll();
     } catch (e) {
       setError(userMessage(e));
     } finally {
@@ -1038,22 +679,8 @@ export function Game({
       ? game.currentSeat
       : (seatOf.get(replayStanding.onTurn) ?? game.currentSeat);
 
-  /*
-   * What this play scores. A play that is not legal scores nothing, whatever
-   * its words and squares would have added up to. Drawn in the play panel, and
-   * over the board on a small screen, where the panel is a scroll away.
-   */
-  const scoreBadge = preview && (
-    <span
-      className={[
-        styles.previewScore,
-        legality?.ok === true ? "" : styles.previewNothing,
-        legality !== null && !legality.ok ? styles.previewInvalid : "",
-      ].join(" ")}
-    >
-      {legality?.ok === true ? preview.total : 0}
-    </span>
-  );
+  /* What this play scores: in the play panel, and over the board's corner. */
+  const scoreBadge = preview && <ScoreBadge score={preview} legality={legality} />;
 
   return (
     <div className={styles.layout}>
@@ -1204,14 +831,15 @@ export function Game({
         {(() => {
           const rackShown = me?.letters != null && game.status !== "finished" && !reviewing;
           const card = announcing && (
-            <div
-              // One element for the whole run of steps, not one per step: it
-              // stays up from one play to the next and changes color between
-              // players, rather than vanishing and fading back in each time.
-              className={[styles.announce, rackShown ? styles.announceOverRack : ""].join(" ")}
-              data-seat={seatOf.get(noteTurn.userId)}
-              // No role="status": the announcer says the play once, whole,
-              // rather than this card spot by spot.
+            <TurnCard
+              // A machine's level is noise here; the scoreboard still says it.
+              name={withoutLevel(noteTurn.name)}
+              seat={seatOf.get(noteTurn.userId)}
+              words={noteSpot !== undefined && !noteSpot.total ? noteSpot.words : undefined}
+              points={noteSpot === undefined || noteSpot.total ? noteTurn.score : undefined}
+              overRack={rackShown}
+              onSkip={skipAll}
+              skipRef={skipRef}
               // A catch-up replay never stands between you and your turn.
               onPointerDown={recapActive ? skipRecap : undefined}
               onFocus={() => {
@@ -1222,29 +850,7 @@ export function Game({
               onBlur={(e) => {
                 if (e.relatedTarget !== null) cardHasFocus.current = false;
               }}
-            >
-              <button
-                ref={skipRef}
-                type="button"
-                className={styles.announceClose}
-                aria-label="Skip the replay"
-                title="Skip"
-                // Its own press, not the card's, which only cuts a catch-up short.
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={skipAll}
-              >
-                ×
-              </button>
-              {/* A machine's level is noise here; the scoreboard still says it. */}
-              <span className={styles.announceName}>{withoutLevel(noteTurn.name)}</span>
-              {noteSpot !== undefined && !noteSpot.total && noteSpot.words.length > 0 && (
-                <span className={styles.recapWords}>{noteSpot.words.join(", ")}</span>
-              )}
-              {/* The points are their own last step, once every spot is down. */}
-              {(noteSpot === undefined || noteSpot.total) && (
-                <span className={styles.recapPoints}>+{noteTurn.score}</span>
-              )}
-            </div>
+            />
           );
           if (!rackShown || !me?.letters) return card;
           return (
@@ -1265,9 +871,9 @@ export function Game({
                 order={rackOrder}
                 previewOrder={previewOrder}
                 draggedIndex={draggedLetterIndex}
-                dragOverRack={rackHover !== null}
-                onShuffle={shuffleRack}
-                onRecall={clear}
+                dragOverRack={dragOverRack}
+                onShuffle={shuffle}
+                onRecall={recallAll}
                 canRecall={pending.length > 0}
                 onSwap={toggleSwap}
                 // Once a game, and only while the bag has something to swap with.
@@ -1295,40 +901,7 @@ export function Game({
           );
         })()}
 
-        {blankAt !== null && (
-          // Pressing away takes the blank back, which is what the button
-          // under the letters used to say in words.
-          <Modal onDismiss={() => setBlankAt(null)} label="Choose a letter for the blank">
-            <div className={styles.popover}>
-              <p className={styles.popoverTitle}>What does this blank stand for?</p>
-
-              <div className={styles.letterGrid}>
-                {ALPHABET.slice(0, 20).map((letter) => (
-                  <button
-                    key={letter}
-                    type="button"
-                    className={styles.blankLetter}
-                    onClick={() => nameBlank(letter)}
-                  >
-                    {letter}
-                  </button>
-                ))}
-              </div>
-              <div className={styles.letterGridLast}>
-                {ALPHABET.slice(20).map((letter) => (
-                  <button
-                    key={letter}
-                    type="button"
-                    className={styles.blankLetter}
-                    onClick={() => nameBlank(letter)}
-                  >
-                    {letter}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Modal>
-        )}
+        {blankAt !== null && <BlankPicker onPick={nameBlank} onDismiss={() => setBlankAt(null)} />}
 
         {quitting !== null && (
           <Modal onDismiss={() => setQuitting(null)} label="Quit this game">
@@ -1632,138 +1205,13 @@ export function Game({
         */}
 
         {pending.length > 0 && (
-          <section className={styles.play}>
-            <div className={styles.words}>
-              {/* Every occurrence, not every distinct word: a letter at a
-                  crossing belongs to two words and is paid for in each, so
-                  showing AT once when it was formed twice would make the
-                  chips fail to add up to the total. */}
-              {(preview?.words ?? []).map((scored, i) => {
-                const valid = checked?.find((e) => e.word === scored.word)?.valid;
-                // A real word the play cannot make — unreachable, or burying
-                // something — is marked wrong without the line through it.
-                // The line means "not a word", and this one is a word.
-                const unplayable =
-                  valid === true && legality !== null && !legality.ok;
-                return (
-                  <span
-                    key={`${scored.word}-${i}`}
-                    className={[
-                      styles.word,
-                      valid === undefined
-                        ? styles.checking
-                        : unplayable
-                          ? styles.blockedWord
-                          : valid
-                            ? styles.valid
-                            : styles.invalid,
-                      // Only once it counts: a chip still being checked, or one
-                      // that turns out not to be a word, has nothing doubled.
-                      scored.bonus !== undefined && valid === true && !unplayable
-                        ? styles.doubled
-                        : "",
-                    ].join(" ")}
-                  >
-                    {scored.word}
-                    {/* The multiplier the square applied, said rather than
-                        left to be inferred from a number that looks too big.
-                        x4 when the play crossed two of them. */}
-                    {scored.bonus !== undefined && valid === true && !unplayable && (
-                      <span className={styles.doubleMark}>×{scored.bonus}</span>
-                    )}
-                    {/* The long-word bonus is flat and turn-wide (see the
-                        summary line below), not baked into this word's own
-                        points -- so it gets the same kind of said-not-inferred
-                        badge the multiplier does, just with a plus instead of
-                        a times, on whichever word actually reached the length
-                        that earned it. */}
-                    {scored.long &&
-                      valid === true &&
-                      !unplayable && (
-                        <span className={styles.longMark}>
-                          +{LONG_WORD_BONUS}
-                        </span>
-                      )}
-                    {/* While the verdict is out the points hold their space, so
-                        the chip does not resize when it lands. Once the answer
-                        is in and the word scores nothing, the space goes: it
-                        cannot change again, and an empty gap reads as a bug. */}
-                    {valid === undefined ? (
-                      <span className={[styles.wordPoints, styles.pointsHidden].join(" ")}>
-                        {scored.points}
-                      </span>
-                    ) : (
-                      valid &&
-                      !unplayable && <span className={styles.wordPoints}>{scored.points}</span>
-                    )}
-                  </span>
-                );
-              })}
-            </div>
-
-            {preview && breakdownOf(preview).length > 0 && (
-              <div className={styles.bonus}>
-                <h3 className={styles.bonusHeading}>Square bonus</h3>
-                <table className={styles.breakdown}>
-                  <thead>
-                    <tr>
-                      <th scope="col">Size</th>
-                      <th scope="col">Number</th>
-                      <th scope="col">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {breakdownOf(preview).map((line) => (
-                      <tr key={line.size}>
-                        <td>
-                          <span className={styles.size}>{line.size}</span>
-                        </td>
-                        <td>{line.count}</td>
-                        <td className={styles.rowTotal}>{line.total}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {preview && preview.longWordBonus > 0 && (
-              <p className={styles.scoreLine}>
-                Long words:{" "}
-                <span className={styles.previewScore}>+{preview.longWordBonus}</span>
-              </p>
-            )}
-
-            {/*
-              One slot for the verdict: what the play scores, or -- when it
-              cannot be played -- why not, one line per kind of fault, since a
-              play can be disconnected and not a word at once. Never both: a
-              play that is wrong scores 0, which the badge on the board already
-              says. A separate line held open for the reasons left a blank gap
-              under every good play, and the panel has to keep its height
-              rather than grow a line when a fault appears -- on a phone that
-              is what made the board jump. One slot does both.
-            */}
-            {legality !== null && !legality.ok ? (
-              <div className={styles.reasons}>
-                {legality.faults.map((fault) => (
-                  <p key={fault.reason} className={styles.reason}>
-                    {describeFault(fault)}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              preview && (
-                <p className={styles.scoreLine}>
-                  This play scores {scoreBadge}
-                </p>
-              )
-            )}
-
-            {leftOpen > 0 && (
-              <p className={styles.warning}>Leaves a 3×3 one tile short for the next player.</p>
-            )}
-          </section>
+          <PlayPanel
+            score={preview}
+            checked={checked}
+            legality={legality}
+            leftOpen={leftOpen}
+            scoreBadge={scoreBadge}
+          />
         )}
       </div>
     </div>
