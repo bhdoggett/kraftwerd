@@ -8,8 +8,8 @@ interface BubbleProps {
   cell: string | null;
   /**
    * Something other than a board square to point at, found inside the same
-   * parent: the rack's blank, say. It may then spill out of its parent
-   * upward, over the board.
+   * parent: the rack's blank, say. It may then spill out of its parent above
+   * or below, over whatever is there.
    */
   anchor?: string;
   text: string;
@@ -79,7 +79,7 @@ export function Bubble({ cell, anchor, text, prefer = "above", tone = "note", di
       const cy = (c.top + c.bottom) / 2;
       const room: Record<Side, boolean> = {
         above: anchor !== undefined || c.top >= b.height + GAP,
-        below: a.height - c.bottom >= b.height + GAP,
+        below: anchor !== undefined || a.height - c.bottom >= b.height + GAP,
         right: a.width - c.right >= b.width + GAP + EDGE,
         left: c.left >= b.width + GAP + EDGE,
       };

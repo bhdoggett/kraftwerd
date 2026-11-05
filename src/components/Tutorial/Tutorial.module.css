@@ -35,25 +35,15 @@
   composes: rackHidden from "../Game/Game.module.css";
 }
 
-/* The play panel's place, which in a stacked game is above the scores. */
+/* The play panel's place, which in a stacked game is above the scores. It
+   anchors the first turn's note about what the panel is for. */
 .playSlot {
-  border-radius: var(--radius-lg);
+  position: relative;
 }
 
 @media (max-width: 860px) /* stacked game */ {
   .playSlot {
     order: -1;
-  }
-}
-
-/* Lit on the player's first turn: this is where a play's points are explained. */
-.playLit {
-  animation: play-lit var(--pulse) ease-in-out infinite;
-}
-
-@keyframes play-lit {
-  50% {
-    box-shadow: 0 0 0 3px var(--accent);
   }
 }
 
@@ -155,13 +145,6 @@
 .bubbleError {
   background: var(--danger-soft);
   border-color: var(--danger);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .playLit {
-    animation: none;
-    box-shadow: 0 0 0 3px var(--accent);
-  }
 }
 
 /* The tile under the finger, exactly as the game draws it. */

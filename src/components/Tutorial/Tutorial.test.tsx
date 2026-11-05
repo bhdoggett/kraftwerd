@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { BLANK_HINT, CALLOUTS, INTRO, REPLAY_NOTE } from "../../tutorial/coach";
+import { BLANK_HINT, CALLOUTS, INTRO, REPLAY_NOTE, scoreHint } from "../../tutorial/coach";
 import { rackAt, replaySteps } from "../../tutorial/model";
 import { RECAP_LEAD_MS, RECAP_PLAY_MS, RECAP_POINTS_MS } from "../Game/replayTiming";
 import { PLAYER_SEAT, SCRIPT } from "../../tutorial/script";
@@ -193,11 +193,13 @@ describe("the tutorial", () => {
     expect(screen.getByRole("button", { name: "Skip the replay" })).toBeTruthy();
   });
 
-  test("the play panel scores the player's move as it is laid, lit on the first turn", () => {
+  test("the play panel scores the move as it is laid, and is explained once it is right", () => {
     toTurnTwo();
     expect(screen.queryByText(/This play scores/)).toBeNull();
     stage("A", 7, 9);
-    expect(screen.getByText(/This play scores/).closest("[data-lit]")).not.toBeNull();
+    expect(screen.getByText(/This play scores/)).toBeTruthy();
+    // Not yet: the move is not all down.
+    expect(bubbles()).not.toContain(scoreHint(53));
     for (const p of SCRIPT[1].placements) {
       if (p.letter === "A") continue;
       if (p.isBlank) stage("blank", p.x, p.y, p.letter);
@@ -205,6 +207,12 @@ describe("the tutorial", () => {
     }
     expect(screen.getByText(/This play scores/).textContent).toContain("53");
     expect(screen.getByText("Square bonus")).toBeTruthy();
+    // Every tile right, Play not pressed: a note says what the panel is for.
+    expect(bubbles()).toEqual([scoreHint(53)]);
+    // It sits with the panel, pointing at it.
+    expect(screen.getByRole("status").parentElement?.querySelector("section")?.textContent).toContain("This play scores");
+    fireEvent.click(button("Got it"));
+    expect(bubbles()).toEqual([]);
     fireEvent.click(button("Play"));
     // Once played, as in a game, the panel goes.
     expect(screen.queryByText(/This play scores/)).toBeNull();

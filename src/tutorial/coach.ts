@@ -40,6 +40,13 @@ export const REPLAY_NOTE: { turn: number } & Callout = {
   text: "Rostam stacked his K right on top of your A, turning PICA into PICK. A spot can hold 2 tiles at most.",
 };
 
+/**
+ * On the player's first turn, once every tile is on its ghost and before
+ * Play: what the play panel is for. `total` is what the move will score.
+ */
+export const scoreHint = (total: number) =>
+  `This panel adds up your move: each word's points, any multipliers and bonuses, and the total, ${total}. Press Play when you're ready!`;
+
 /** The first screen's one line. */
 export const INTRO = "Learn by playing a real game! On your turns, drag each tile onto its glowing ghost, then press Play.";
 

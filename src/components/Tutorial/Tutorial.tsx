@@ -13,7 +13,7 @@ import {
   tutorialDictionary,
   type Feedback,
 } from "../../tutorial/model";
-import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, REPLAY_NOTE } from "../../tutorial/coach";
+import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, REPLAY_NOTE, scoreHint } from "../../tutorial/coach";
 import { describeFeedback } from "../../tutorial/feedback";
 import { markTutorialStarted } from "../../tutorial/seen";
 import { boardShapeNamed } from "../../../shared/boards";
@@ -60,6 +60,8 @@ const seatOf: ReadonlyMap<string, number> = new Map(SEATS.map((s) => [seatId(s),
 const nameOf: ReadonlyMap<string, string> = new Map(SEATS.map((s) => [seatId(s), SEAT_NAMES[s]]));
 const shape = boardShapeNamed(LAYOUT, BOARD_SIZE);
 
+/** The player's first turn. */
+const FIRST_PLAYER_TURN = SCRIPT.findIndex((t) => t.seat === PLAYER_SEAT);
 /** The player's first turn with a blank to lay. */
 const FIRST_BLANK_TURN = SCRIPT.findIndex((t) => t.seat === PLAYER_SEAT && t.placements.some((p) => p.isBlank));
 
@@ -85,6 +87,8 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   const [noteRead, setNoteRead] = useState(false);
   /** Whether the first turn's blank hint has been put away. */
   const [blankHintRead, setBlankHintRead] = useState(false);
+  /** Whether the first turn's note on the play panel has been put away. */
+  const [scoreHintRead, setScoreHintRead] = useState(false);
   /** After a move, which of its callouts is up: they come one at a time. */
   const [callout, setCallout] = useState(0);
 
@@ -257,6 +261,8 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     step.placements.some((g) => g.isBlank && !placements.some((p) => p.x === g.x && p.y === g.y));
   /** The first blank, pointed out where it waits in the rack, until a tap. */
   const blankHintShown = blankWanted && turn === FIRST_BLANK_TURN && blankAt === null && !blankHintRead;
+  /** On the first turn, once every tile is right and before Play: what the play panel is for. */
+  const scoreHintShown = placing && turn === FIRST_PLAYER_TURN && feedback?.kind === "ready" && !scoreHintRead;
 
   // --- moving the game along ---
 
@@ -310,8 +316,9 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     else if (phase === "shown") advance();
     // On the player's turn the only thing a tap takes down is the blank hint.
     else if (blankHintShown) setBlankHintRead(true);
+    else if (scoreHintShown) setScoreHintRead(true);
   });
-  const waitsForTap = phase === "intro" || phase === "shown" || phase === "watch" || blankHintShown;
+  const waitsForTap = phase === "intro" || phase === "shown" || phase === "watch" || blankHintShown || scoreHintShown;
   useEffect(() => {
     if (!waitsForTap) return;
     // A press counted before this listener was up says nothing about the next click.
@@ -368,8 +375,6 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   const winner = finalScores[0];
 
   const scoreBadge = preview && <ScoreBadge score={preview} legality={legality} />;
-  /** Points are explained in the play panel: lit up on the player's first turn. */
-  const panelLit = turn === 1;
   /** Somebody else's play on the turn card, in the rack's place, as in a game. */
   const announcing = shownStep !== undefined && step !== undefined;
 
@@ -513,8 +518,12 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
 
         {/* The game's own play panel, while the player lays a play. */}
         {staged && (
-          <div className={[styles.playSlot, panelLit ? styles.playLit : ""].join(" ")} data-lit={panelLit ? "" : undefined}>
+          <div className={styles.playSlot}>
             <PlayPanel score={preview} checked={checked} legality={legality} leftOpen={0} scoreBadge={scoreBadge} />
+            {/* Below the panel: above it, on a phone, it would cover Play. */}
+            {scoreHintShown && preview !== null && (
+              <Bubble cell={null} anchor="section" text={scoreHint(preview.total)} prefer="below" dismissable />
+            )}
           </div>
         )}
       </div>

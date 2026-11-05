@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { BOARD_SIZE, PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "./script";
-import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, REPLAY_NOTE } from "./coach";
+import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, REPLAY_NOTE, scoreHint } from "./coach";
 import { factsFor, standingsAfter, tilesAfter } from "./model";
 
 const all = CALLOUTS.flat();
@@ -17,7 +17,7 @@ describe("callouts", () => {
   });
 
   test("each is short: a sentence or two, three at most", () => {
-    for (const c of [...all, REPLAY_NOTE, { text: BLANK_HINT }, { text: INTRO }]) {
+    for (const c of [...all, REPLAY_NOTE, { text: BLANK_HINT }, { text: INTRO }, { text: scoreHint(53) }]) {
       expect(c.text.length, c.text).toBeLessThanOrEqual(140);
       expect(c.text.split(/(?<=[.!])\s+/).length, c.text).toBeLessThanOrEqual(3);
     }
