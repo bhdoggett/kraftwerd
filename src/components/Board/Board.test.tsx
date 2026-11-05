@@ -282,6 +282,8 @@ describe("ghost letters", () => {
     expect(square(2, 2).textContent).toContain("A");
     expect(ghost(2, 2)?.hasAttribute("data-badge")).toBe(true);
     expect(ghost(2, 2)?.className).toContain("ghostBadge");
+    // The letter is a chip of its own, so it reads on any tile color.
+    expect(ghost(2, 2)?.querySelector("[class*=ghostLetter]")?.textContent).toBe("N");
   });
 
   test("is a plain ghost, not a badge, on an empty square", () => {

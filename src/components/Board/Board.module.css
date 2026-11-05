@@ -533,13 +533,39 @@
   animation: ghost-pulse var(--pulse) ease-in-out infinite;
 }
 
-/* Over a tile: the outline stays, the letter becomes a small corner badge. */
+/*
+ * Over a tile, where the faint dashed hint was easy to miss on a pale or
+ * gold face: a thicker outline in the seat's full color, blinking at the
+ * shared rate, and the letter as a solid chip in the corner.
+ */
 .ghostBadge {
   place-items: start end;
-  padding: 1px 3px;
+  border: 3px dashed var(--seat-full);
+  opacity: 1;
+  animation: badge-pulse var(--pulse) ease-in-out infinite;
+}
+
+/* Hung off the top-right corner, so the tile's own letter stays readable
+   even on a phone's smallest squares. */
+.ghostLetter {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  z-index: 1;
+  padding: 1px 2px;
+  border-radius: 2px;
+  background: var(--seat-full);
+  color: var(--text-inverse);
   font-size: 0.5em;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
+  box-shadow: 0 0 0 1px var(--surface-raised);
+}
+
+@keyframes badge-pulse {
+  50% {
+    border-color: transparent;
+  }
 }
 
 @keyframes ghost-pulse {
@@ -559,6 +585,12 @@
   color: var(--tile-blank-edge);
   opacity: 1;
   animation: none;
+}
+
+.ghostBlank .ghostLetter {
+  background: var(--tile-blank-face);
+  color: var(--tile-blank-edge);
+  box-shadow: 0 0 0 1px var(--tile-blank-edge);
 }
 
 /* The same soft halo as the rack's blank: only its opacity animates. */
@@ -605,7 +637,8 @@
     animation: none;
   }
 
-  .ghost {
+  .ghost,
+  .ghostBadge {
     animation: none;
   }
 

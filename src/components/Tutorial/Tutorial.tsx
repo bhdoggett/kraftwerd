@@ -353,8 +353,12 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     return index >= 0 ? { kind: "letter", index } : null;
   })();
 
-  /** The ghost the drag demo goes to. */
-  const handGhost = placing && hand && blankAt === null ? open[0] : undefined;
+  /**
+   * The ghost the drag demo goes to: the first open one while the demo is on
+   * (first turn, or after two early presses), and the nudged one when the
+   * player has sat still a while.
+   */
+  const handGhost = placing && blankAt === null ? (hand ? open[0] : nudgeGhost) : undefined;
 
   // --- moving the game along ---
 

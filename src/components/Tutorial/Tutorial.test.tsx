@@ -305,14 +305,20 @@ describe("the tutorial", () => {
     expect(document.querySelector("[data-hand]")).not.toBeNull();
   });
 
-  test("sitting still brings a nudge: the next ghost lit, its tile wiggling", () => {
+  test("sitting still brings a nudge: the next ghost lit, its tile wiggling, the finger showing it", () => {
     toTurnTwo();
+    // Touching the rack ends the first turn's demo, so this is the idle one.
+    fireEvent.pointerDown(rackLetters()[0], { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(window, { pointerId: 1 });
+    expect(document.querySelector("[data-hand]")).toBeNull();
     expect(document.querySelector("[data-spot]")).toBeNull();
     advance(IDLE_MS);
     const first = SCRIPT[1].placements[0];
     expect(square(first.x, first.y).hasAttribute("data-spot")).toBe(true);
     const wiggling = rack().getAllByRole("button").filter((b) => b.hasAttribute("data-nudge"));
     expect(wiggling.map((b) => b.textContent)).toEqual([first.letter]);
+    // And the finger shows that tile going to its place.
+    expect(document.querySelector("[data-hand]")?.textContent).toBe(first.letter);
     // Laying a tile starts the clock again.
     stage(first.letter, first.x, first.y);
     expect(document.querySelector("[data-nudge]")).toBeNull();

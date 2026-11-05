@@ -592,7 +592,8 @@ export function Board({
               data-seat={yourSeat === null ? undefined : yourSeat % 4}
               aria-hidden="true"
             >
-              {ghostLetter}
+              {/* Over a tile, a solid chip, so it stands out on any tile color. */}
+              {tile ? <span className={styles.ghostLetter}>{ghostLetter}</span> : ghostLetter}
             </span>
           )}
           {showBonusMark && (
