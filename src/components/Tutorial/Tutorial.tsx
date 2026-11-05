@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { BAG_SIZE, BOARD_SIZE, LAYOUT, PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "../../tutorial/script";
 import {
   checkPlacement,
@@ -85,6 +85,8 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   const [noteRead, setNoteRead] = useState(false);
   /** Whether the first turn's blank hint has been put away. */
   const [blankHintRead, setBlankHintRead] = useState(false);
+  /** After a move, which of its callouts is up: they come one at a time. */
+  const [callout, setCallout] = useState(0);
 
   useEffect(() => {
     markTutorialStarted();
@@ -124,6 +126,9 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     shownStep !== undefined &&
     !shownStep.total &&
     shownStep.cells.has(REPLAY_NOTE.cell);
+  /** The replay step the note stops on, on its turn. */
+  const noteStep =
+    turn === REPLAY_NOTE.turn ? steps.findIndex((st) => !st.total && st.cells.has(REPLAY_NOTE.cell)) : -1;
 
   /** How many turns are on the board (and in the scores). */
   const done = phase === "shown" || shownStep?.total === true ? turn + 1 : Math.min(turn, TOTAL);
@@ -246,6 +251,13 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     return bad.size > 0 ? bad : undefined;
   }, [wordCells, error]);
 
+  /** The blank still has a ghost to go to: the pair pulse white together. */
+  const blankWanted =
+    placing &&
+    step.placements.some((g) => g.isBlank && !placements.some((p) => p.x === g.x && p.y === g.y));
+  /** The first blank, pointed out where it waits in the rack, until a tap. */
+  const blankHintShown = blankWanted && turn === FIRST_BLANK_TURN && blankAt === null && !blankHintRead;
+
   // --- moving the game along ---
 
   function advance() {
@@ -254,6 +266,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     setError(null);
     setSpot(-1);
     setNoteRead(false);
+    setCallout(0);
     setTurn(n);
     setPhase(phaseFor(n));
   }
@@ -267,33 +280,42 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   // An opponent's move is replayed at a game's pace, a spot at a time; with
   // nothing to point out afterwards the next turn follows at once, so their
   // turns chain.
+  const stepOn = useEffectEvent(() => {
+    if (spot + 1 < steps.length) setSpot(spot + 1);
+    else moveDown();
+  });
   useEffect(() => {
     if (phase !== "watch" || noting) return;
     const ms = spot < 0 ? RECAP_LEAD_MS : steps[spot]?.total ? RECAP_POINTS_MS : RECAP_PLAY_MS;
-    const t = setTimeout(() => {
-      if (spot + 1 < steps.length) setSpot(spot + 1);
-      else moveDown();
-    }, ms);
+    const t = setTimeout(stepOn, ms);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the step it is for
   }, [phase, turn, spot, steps, noting]);
 
   /** Set when a press on the rack already counted as the tap, so its click does not count again. */
   const pressCounted = useRef(false);
 
   // A tap anywhere, or the start of a drag from the rack, takes down the
-  // intro or the callouts and lets the game go on; during a replay it skips
-  // the rest of it, as the turn card's × does (or, on the replay's note,
-  // takes the note down and lets the replay go on). A tap is a click, so a finger
+  // intro, a callout or the blank hint and lets the game go on; during a
+  // replay it skips the rest of it, as the turn card's × does, but stops on
+  // the replay's note if it has not been read. A tap is a click, so a finger
   // scrolling the page takes nothing down.
+  /** A tap, while the tutorial waits for one: what it moves on. */
+  const tap = useEffectEvent(() => {
+    if (phase === "intro") setPhase("watch");
+    else if (noting) setNoteRead(true);
+    // Skipping a replay never skips its note: it stops there instead.
+    else if (phase === "watch" && !noteRead && noteStep >= 0 && spot < noteStep) setSpot(noteStep);
+    else if (phase === "watch") moveDown();
+    else if (phase === "shown" && callout + 1 < CALLOUTS[turn].length) setCallout(callout + 1);
+    else if (phase === "shown") advance();
+    // On the player's turn the only thing a tap takes down is the blank hint.
+    else if (blankHintShown) setBlankHintRead(true);
+  });
+  const waitsForTap = phase === "intro" || phase === "shown" || phase === "watch" || blankHintShown;
   useEffect(() => {
-    if (phase !== "intro" && phase !== "shown" && phase !== "watch") return;
-    const tap = () => {
-      if (phase === "intro") setPhase("watch");
-      else if (noting) setNoteRead(true);
-      else if (phase === "watch") moveDown();
-      else advance();
-    };
+    if (!waitsForTap) return;
+    // A press counted before this listener was up says nothing about the next click.
+    pressCounted.current = false;
     const press = (e: PointerEvent) => {
       // Every click starts with a press, so this is where a stale mark is cleared.
       pressCounted.current = e.target instanceof Element && e.target.closest("[data-rack]") !== null;
@@ -304,7 +326,9 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
       else tap();
     };
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === " " || e.key === "Escape") tap();
+      // A focused control answers Enter and Space with a click of its own.
+      const onControl = e.target instanceof Element && e.target.closest("button, a, input, select, textarea") !== null;
+      if (e.key === "Escape" || ((e.key === "Enter" || e.key === " ") && !onControl)) tap();
     };
     document.addEventListener("pointerdown", press, true);
     document.addEventListener("click", click, true);
@@ -314,8 +338,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
       document.removeEventListener("click", click, true);
       document.removeEventListener("keydown", key, true);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the turn it is for
-  }, [phase, turn, noting]);
+  }, [waitsForTap]);
 
   function play() {
     if (!placing || feedback === null) return;
@@ -345,10 +368,6 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
   const winner = finalScores[0];
 
   const scoreBadge = preview && <ScoreBadge score={preview} legality={legality} />;
-  /** The blank still has a ghost to go to: the pair pulse white together. */
-  const blankWanted =
-    placing &&
-    step.placements.some((g) => g.isBlank && !placements.some((p) => p.x === g.x && p.y === g.y));
   /** Points are explained in the play panel: lit up on the player's first turn. */
   const panelLit = turn === 1;
   /** Somebody else's play on the turn card, in the rack's place, as in a game. */
@@ -381,16 +400,15 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
 
           {phase === "intro" && <Bubble cell={null} text={INTRO} dismissable />}
           {noting && <Bubble cell={REPLAY_NOTE.cell} text={REPLAY_NOTE.text} prefer={REPLAY_NOTE.side} dismissable />}
-          {phase === "shown" &&
-            CALLOUTS[turn].map((c, i, all) => (
-              <Bubble
-                key={`${turn}-${c.cell}`}
-                cell={c.cell}
-                text={c.text}
-                prefer={c.side ?? (i === 0 ? "above" : "below")}
-                dismissable={i === all.length - 1}
-              />
-            ))}
+          {phase === "shown" && CALLOUTS[turn][callout] !== undefined && (
+            <Bubble
+              key={`${turn}-${callout}`}
+              cell={CALLOUTS[turn][callout].cell}
+              text={CALLOUTS[turn][callout].text}
+              prefer={CALLOUTS[turn][callout].side ?? "above"}
+              dismissable
+            />
+          )}
           {error !== null && placing && (
             <Bubble cell={error.cell} text={error.text} tone="error" dismissable onDismiss={() => setError(null)} />
           )}
@@ -439,15 +457,8 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
             />
           </div>
           {/* The first blank, pointed out where it waits in the rack. */}
-          {blankWanted && turn === FIRST_BLANK_TURN && blankAt === null && !blankHintRead && (
-            <Bubble
-              cell={null}
-              anchor="[data-face=blank]"
-              text={BLANK_HINT}
-              prefer="above"
-              dismissable
-              onDismiss={() => setBlankHintRead(true)}
-            />
+          {blankHintShown && (
+            <Bubble cell={null} anchor="[data-face=blank]" text={BLANK_HINT} prefer="above" dismissable />
           )}
           {announcing && (
             <TurnCard

@@ -90,7 +90,8 @@ function playTurns(from: number, to: number) {
     } else {
       letPlay(turn);
     }
-    if (CALLOUTS[turn].length > 0) tapAway();
+    // A move's callouts come one at a time.
+    for (const _ of CALLOUTS[turn]) tapAway();
   }
 }
 
@@ -253,7 +254,8 @@ describe("the tutorial", () => {
     const play = button("Play");
     expect(play.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(play);
-    expect(bubbles()).toEqual(["6 more tiles to place.", BLANK_HINT]);
+    // The press on Play also took the blank hint down.
+    expect(bubbles()).toEqual(["6 more tiles to place."]);
     expect(screen.getByText("Your turn")).toBeTruthy();
   });
 
@@ -262,12 +264,12 @@ describe("the tutorial", () => {
     // The B belongs on 9,10; one square left of that is no ghost.
     stage("B", 8, 10);
     fireEvent.click(button("Play"));
-    expect(bubbles()).toEqual(["The B goes on the glowing square one square right.", BLANK_HINT]);
+    expect(bubbles()).toEqual(["The B goes on the glowing square one square right."]);
     expect(screen.getAllByRole("status")[0].getAttribute("data-points-at")).toBe("8,10");
     expect(square(8, 10).getAttribute("aria-label")).toMatch(/not valid/);
     // Moving a tile takes the nudge down.
     stage("T", 8, 7);
-    expect(bubbles()).toEqual([BLANK_HINT]);
+    expect(bubbles()).toEqual([]);
   });
 
   test("staged tiles are scored and ringed as a game rings them", () => {
@@ -326,7 +328,13 @@ describe("the tutorial", () => {
     stage("blank", 13, 12, "O");
     expect(screen.getByText(/This play scores/).textContent).toContain("40");
     fireEvent.click(button("Play"));
-    expect(bubbles()).toEqual(CALLOUTS[4].map((c) => c.text));
+    // Two callouts, one at a time, each with its Got it.
+    expect(bubbles()).toEqual([CALLOUTS[4][0].text]);
+    fireEvent.click(button("Got it"));
+    expect(bubbles()).toEqual([CALLOUTS[4][1].text]);
+    fireEvent.click(button("Got it"));
+    expect(bubbles()).toEqual([]);
+    expect(screen.getByText("Rostam's turn")).toBeTruthy();
   });
 
   test("opponents' turns play by themselves, one after another", () => {
@@ -366,6 +374,54 @@ describe("the tutorial", () => {
     expect(screen.getByText("Isolde's turn")).toBeTruthy();
     letPlay(3);
     expect(screen.getByText("Your turn")).toBeTruthy();
+  });
+
+  test("skipping Rostam's replay early stops on the stack note rather than past it", () => {
+    draw();
+    tapAway();
+    playTurns(0, 2);
+    // A tap in the pause before the first spot.
+    tapAway();
+    expect(bubbles()).toEqual([REPLAY_NOTE.text]);
+    expect(square(7, 9).getAttribute("aria-label")).toMatch(/^K, played by Rostam/);
+    advance(20_000);
+    expect(bubbles()).toEqual([REPLAY_NOTE.text]);
+    fireEvent.click(button("Got it"));
+    expect(bubbles()).toEqual([]);
+    // Once read, a tap skips the rest as usual.
+    tapAway();
+    expect(screen.queryByRole("button", { name: "Skip the replay" })).toBeNull();
+    expect(screen.getByText("Isolde's turn")).toBeTruthy();
+  });
+
+  test("Enter on a focused Got it moves on once, not twice", () => {
+    toTurnTwo();
+    stageTurn(1);
+    fireEvent.click(button("Play"));
+    const got = button("Got it");
+    got.focus();
+    // A button answers Enter with a click of its own: the key alone does nothing.
+    fireEvent.keyDown(got, { key: "Enter" });
+    expect(bubbles()).toEqual([CALLOUTS[1][0].text]);
+    fireEvent.click(got);
+    expect(bubbles()).toEqual([]);
+    expect(screen.getByText("Rostam's turn")).toBeTruthy();
+    // Enter away from any control is a tap: here it skips Rostam's replay to his note.
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    expect(bubbles()).toEqual([REPLAY_NOTE.text]);
+  });
+
+  test("the blank hint goes on a tap anywhere, or when a drag starts", () => {
+    toTurnTwo();
+    expect(bubbles()).toEqual([BLANK_HINT]);
+    tapAway();
+    expect(bubbles()).toEqual([]);
+
+    cleanup();
+    toTurnTwo();
+    expect(bubbles()).toEqual([BLANK_HINT]);
+    fireEvent.pointerDown(rackLetters()[0], { pointerId: 1, clientX: 10, clientY: 10 });
+    expect(bubbles()).toEqual([]);
   });
 
   test("Isolde going out is pointed out, since she is skipped from then on", () => {
