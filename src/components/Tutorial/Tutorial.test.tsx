@@ -585,7 +585,7 @@ describe("the tutorial", () => {
     for (const _ of CALLOUTS[OFFER.turn]) tapAway();
     fireEvent.click(button("Skip to the end"));
     const dialog = within(screen.getByRole("dialog"));
-    expect(dialog.getByRole("button", { name: "Dealing…" }).hasAttribute("disabled")).toBe(true);
+    expect(dialog.getByRole("button", { name: "Starting game…" }).hasAttribute("disabled")).toBe(true);
     view.rerender(<Tutorial onLeave={vi.fn()} onNewGame={vi.fn()} dealFailed />);
     expect(within(screen.getByRole("dialog")).getByRole("alert").textContent).toMatch(/Couldn't start a game/);
     expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Play a real game" })).toBeTruthy();

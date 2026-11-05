@@ -329,7 +329,7 @@ function SignInForm({ canGuest }: { canGuest: boolean }) {
               }}
             >
               {guest === kind
-                ? "Dealing…"
+                ? "Starting game…"
                 : kind === "solo"
                   ? "Play on your own"
                   : "Play the computer"}

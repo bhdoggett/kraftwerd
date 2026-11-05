@@ -772,7 +772,7 @@ export function Tutorial({ onLeave, onNewGame, dealing = false, dealFailed = fal
                 Done
               </button>
               <button type="button" className={styles.endButton} onClick={onNewGame} disabled={dealing}>
-                {dealing ? "Dealing…" : "Play a real game"}
+                {dealing ? "Starting game…" : "Play a real game"}
               </button>
             </div>
           </div>
