@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { BOARD_SIZE, PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "./script";
-import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, LEARNED, OFFER, plain, QUIPS, REPLAY_NOTE, scoreHint, welcomeBack } from "./coach";
+import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, LEARNED, OFFER, plain, REPLAY_NOTE, scoreHint, welcomeBack } from "./coach";
 import { factsFor, standingsAfter, tilesAfter } from "./model";
 
 const all = CALLOUTS.flat().map((c) => ({ ...c, text: plain(c.text) }));
@@ -30,8 +30,7 @@ describe("callouts", () => {
     for (const c of CALLOUTS.flat()) expect(plain(c.text)).not.toMatch(/\*|\[x/);
   });
 
-  test("quips are on opponents' turns, and the recap is short", () => {
-    for (const turn of Object.keys(QUIPS).map(Number)) expect(SCRIPT[turn].seat).not.toBe(PLAYER_SEAT);
+  test("the recap is short", () => {
     expect(LEARNED.length).toBeGreaterThanOrEqual(5);
     expect(LEARNED.length).toBeLessThanOrEqual(8);
   });

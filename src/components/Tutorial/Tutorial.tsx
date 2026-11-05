@@ -18,7 +18,6 @@ import {
   INTRO,
   LEARNED,
   OFFER,
-  QUIPS,
   REPLAY_NOTE,
   scoreHint,
   welcomeBack,
@@ -672,7 +671,6 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
               seat={step.seat}
               words={step.words}
               points={step.score}
-              quip={QUIPS[turn]}
               overRack
               // The press that reached it has already moved things on: see
               // the tap listener above.
