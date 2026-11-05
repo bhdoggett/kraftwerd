@@ -1,4 +1,6 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { SrOnly } from "../SrOnly/SrOnly";
+import { Rich } from "./Rich";
 import styles from "./Tutorial.module.css";
 
 export type Side = "above" | "below" | "left" | "right";
@@ -23,6 +25,13 @@ interface BubbleProps {
    */
   dismissable?: boolean;
   onDismiss?: () => void;
+  /** What the button says: "Got it" unless it says what comes next. */
+  dismissLabel?: string;
+  /**
+   * A second choice beside it. Its press is its own: the tutorial's tap
+   * listener leaves it alone.
+   */
+  secondary?: { label: string; onClick: () => void };
 }
 
 interface Placed {
@@ -47,15 +56,44 @@ const FALLBACK: Record<Side, Side[]> = {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
 
+/** "column 9, row 8", as the board's own squares are named aloud. */
+const squareName = (cell: string) => {
+  const [x, y] = cell.split(",").map(Number);
+  return `column ${x + 1}, row ${y + 1}`;
+};
+
 /**
  * A short line floating over the board, pointing at one square. Absolutely
  * positioned inside its parent, the board area, so it never moves the
  * layout; placed beside the square rather than on it, and kept inside the
  * board's bounds.
  */
-export function Bubble({ cell, anchor, text, prefer = "above", tone = "note", dismissable = false, onDismiss }: BubbleProps) {
+export function Bubble({
+  cell,
+  anchor,
+  text,
+  prefer = "above",
+  tone = "note",
+  dismissable = false,
+  onDismiss,
+  dismissLabel = "Got it",
+  secondary,
+}: BubbleProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [placed, setPlaced] = useState<Placed | null>(null);
+  const button = useRef<HTMLButtonElement>(null);
+
+  // Focus goes to the button, so a keyboard can answer it, and back to where
+  // it was once the bubble goes (if nothing else took it meanwhile).
+  useEffect(() => {
+    if (!dismissable) return;
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    button.current?.focus({ preventScroll: true });
+    return () => {
+      const lost = document.activeElement === null || document.activeElement === document.body;
+      if (lost && before !== null && before.isConnected) before.focus({ preventScroll: true });
+    };
+  }, [dismissable, text]);
 
   useLayoutEffect(() => {
     // The board area it sits in (read off the DOM: a parent's ref is not set
@@ -128,11 +166,28 @@ export function Bubble({ cell, anchor, text, prefer = "above", tone = "note", di
           : ({ left: placed.left, top: placed.top, "--arrow": `${placed.arrow}px` } as CSSProperties)
       }
     >
-      <span>{text}</span>
-      {dismissable && (
-        <button type="button" className={styles.bubbleButton} onClick={onDismiss}>
-          Got it
-        </button>
+      <span>
+        <Rich text={text} />
+      </span>
+      {cell !== null && <SrOnly>{` At ${squareName(cell)}.`}</SrOnly>}
+      {(dismissable || secondary !== undefined) && (
+        <div className={styles.bubbleActions}>
+          {secondary !== undefined && (
+            <button
+              type="button"
+              className={styles.bubbleSecondary}
+              data-own-action=""
+              onClick={secondary.onClick}
+            >
+              {secondary.label}
+            </button>
+          )}
+          {dismissable && (
+            <button ref={button} type="button" className={styles.bubbleButton} onClick={onDismiss}>
+              {dismissLabel}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

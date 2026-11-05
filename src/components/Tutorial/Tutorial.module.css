@@ -39,6 +39,25 @@
    anchors the first turn's note about what the panel is for. */
 .playSlot {
   position: relative;
+  border-radius: var(--radius-lg);
+}
+
+/* Lit only while the first turn's note is talking about the panel. */
+.playLit {
+  animation: play-lit var(--pulse) ease-in-out infinite;
+}
+
+@keyframes play-lit {
+  50% {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playLit {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--accent);
+  }
 }
 
 @media (max-width: 860px) /* stacked game */ {
@@ -66,14 +85,36 @@
   border: 1px solid var(--accent);
   box-shadow: var(--shadow-lift);
   font-size: var(--text-sm);
-  font-weight: 600;
-  line-height: 1.35;
+  font-weight: 500;
+  line-height: 1.4;
   pointer-events: none;
+}
+
+.bubble strong {
+  font-weight: 800;
 }
 
 /* Measured before it is seen, so it never flashes in the corner. */
 .bubble:not([data-placed]) {
   visibility: hidden;
+}
+
+/* In with a short fade and rise once placed. */
+.bubble[data-placed] {
+  animation: bubble-in 180ms ease-out;
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble[data-placed] {
+    animation: none;
+  }
 }
 
 .bubble::after {
@@ -126,25 +167,257 @@
   display: none;
 }
 
-/* Says outright that a press moves the game on (any tap does too). */
-.bubbleButton {
-  display: block;
-  margin: var(--space-2) 0 0 auto;
-  padding: var(--space-1) var(--space-3);
-  border: 0;
+.bubbleActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Says outright that a press moves the game on (any tap does too). A full
+   44px target, however small it looks. */
+.bubbleButton,
+.bubbleSecondary {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
-  background: var(--accent);
-  color: var(--text-inverse);
   font: inherit;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: 700;
   pointer-events: auto;
   cursor: pointer;
 }
 
+.bubbleButton {
+  border: 0;
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.bubbleSecondary {
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text);
+}
+
+/* A multiplier in a hint, drawn as the board draws it. */
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.markIcon {
+  display: inline-grid;
+  color: var(--accent);
+}
+
 .bubbleError {
   background: var(--danger-soft);
   border-color: var(--danger);
+}
+
+/*
+ * Progress and the sound switch, over the board frame's top-left corner,
+ * mirroring the score badge on the right (see .boardTally in Game).
+ */
+.hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-10%, -40%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 0 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lift);
+}
+
+.dots {
+  display: flex;
+  gap: 4px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+}
+
+.dot[data-done] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Small to look at, a full 44px to press. */
+.soundButton {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -6px 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.soundButton[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+/* A big moment's number, rising off the square and fading. */
+.flyUp {
+  position: absolute;
+  z-index: 245;
+  translate: -50% -50%;
+  font-size: var(--text-xl);
+  font-weight: 900;
+  color: var(--play);
+  text-shadow: 0 1px 0 var(--surface-raised), 0 0 12px var(--surface-raised);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.flyUp[data-placed] {
+  animation: fly-up 1400ms ease-out forwards;
+}
+
+@keyframes fly-up {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.15);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translateY(-40px) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-64px) scale(1);
+  }
+}
+
+/* The drag, shown: a see-through tile and a fingertip, rack to ghost. */
+.hand {
+  position: fixed;
+  z-index: 90;
+  pointer-events: none;
+  animation: hand-move 2400ms ease-in-out infinite;
+}
+
+@keyframes hand-move {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+
+  12%,
+  20% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+
+  70%,
+  82% {
+    opacity: 1;
+    transform: translate(var(--hand-dx), var(--hand-dy));
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(var(--hand-dx), var(--hand-dy));
+  }
+}
+
+.handTile {
+  position: absolute;
+  translate: -50% -50%;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 36px;
+  border: var(--tile-stroke) solid var(--tile-edge);
+  background: var(--tile-face);
+  color: var(--tile-text);
+  font-weight: 800;
+  opacity: 0.75;
+}
+
+.handBlank {
+  background: var(--tile-blank-face);
+  border-color: var(--tile-blank-edge);
+}
+
+.handFinger {
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 35%, transparent);
+  border: 2px solid var(--surface-raised);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hand {
+    display: none;
+  }
+
+  /* Still there to read, just without the rise. */
+  .flyUp[data-placed] {
+    animation: fly-fade 1400ms linear forwards;
+  }
+}
+
+@keyframes fly-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The closing dialog's list of what was learned. */
+.learned {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.learned li::before {
+  content: "✓";
+  margin-right: var(--space-2);
+  color: var(--play);
+  font-weight: 800;
+}
+
+.learnedTitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
 }
 
 /* The tile under the finger, exactly as the game draws it. */

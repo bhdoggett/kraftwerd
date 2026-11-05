@@ -6,7 +6,6 @@ import { makeDictionary } from "../../shared/engine/dictionary";
 import { applyPlacements, type Dictionary } from "../../shared/engine/legality";
 import { scoreTurn, type Placement, type TurnScore } from "../../shared/engine/score";
 import { newSquareBlocks } from "../../shared/engine/squares";
-import { spotSteps, type SpotStep } from "../lib/recap";
 import { BAG_SIZE, BOARD_SIZE, LAYOUT, PLAYER_SEAT, RACK_SIZE, SCRIPT } from "./script";
 
 export interface TutorialTile {
@@ -65,20 +64,6 @@ export function loadFullDictionary(): Promise<Dictionary> {
     },
   );
   return fullDictionary;
-}
-
-/** The record as a game's turn history, for the replay helpers a game uses. */
-export const HISTORY = SCRIPT.map((t, i) => ({
-  turnNumber: i,
-  userId: seatId(t.seat),
-  kind: "play" as const,
-  score: t.score,
-  placements: t.placements,
-}));
-
-/** SCRIPT[turn] as a game replays somebody else's play: a spot at a time, then its points. */
-export function replaySteps(turn: number): SpotStep[] {
-  return spotSteps(HISTORY, [{ turnNumber: turn }]);
 }
 
 /** The board after the first `turns` turns. */

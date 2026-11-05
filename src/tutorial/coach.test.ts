@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { BOARD_SIZE, PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "./script";
-import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, REPLAY_NOTE, scoreHint } from "./coach";
+import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, LEARNED, OFFER, plain, QUIPS, REPLAY_NOTE, scoreHint, welcomeBack } from "./coach";
 import { factsFor, standingsAfter, tilesAfter } from "./model";
 
-const all = CALLOUTS.flat();
+const all = CALLOUTS.flat().map((c) => ({ ...c, text: plain(c.text) }));
 
 describe("callouts", () => {
   test("one entry per turn, at most two lines each", () => {
@@ -16,11 +16,29 @@ describe("callouts", () => {
     expect(others).toEqual([13]);
   });
 
-  test("each is short: a sentence or two, three at most", () => {
-    for (const c of [...all, REPLAY_NOTE, { text: BLANK_HINT }, { text: INTRO }, { text: scoreHint(53) }]) {
-      expect(c.text.length, c.text).toBeLessThanOrEqual(140);
-      expect(c.text.split(/(?<=[.!])\s+/).length, c.text).toBeLessThanOrEqual(3);
+  test("each hint is short: about 90 characters, two sentences at most", () => {
+    const hints = [...all.map((c) => c.text), REPLAY_NOTE.text, BLANK_HINT, INTRO, scoreHint(53), OFFER.text, welcomeBack(3, 6)];
+    for (const raw of hints) {
+      const text = plain(raw);
+      expect(text.length, text).toBeLessThanOrEqual(90);
+      expect(text.split(/(?<=[.!])\s+/).length, text).toBeLessThanOrEqual(2);
     }
+  });
+
+  test("markup reads as plain words", () => {
+    expect(plain("A [x3] and **bold**")).toBe("A ×3 and bold");
+    for (const c of CALLOUTS.flat()) expect(plain(c.text)).not.toMatch(/\*|\[x/);
+  });
+
+  test("quips are on opponents' turns, and the recap is short", () => {
+    for (const turn of Object.keys(QUIPS).map(Number)) expect(SCRIPT[turn].seat).not.toBe(PLAYER_SEAT);
+    expect(LEARNED.length).toBeGreaterThanOrEqual(5);
+    expect(LEARNED.length).toBeLessThanOrEqual(8);
+  });
+
+  test("the offer to skip comes after the player's third move", () => {
+    const third = SCRIPT.flatMap((t, i) => (t.seat === PLAYER_SEAT ? [i] : []))[2];
+    expect(OFFER.turn).toBe(third);
   });
 
   test("each points at a square with a tile on it once the move is down", () => {
@@ -51,7 +69,7 @@ describe("callouts", () => {
       const scored = (w: string) => words.filter((s) => s.word === w);
       for (const c of callouts) {
         const named = (c.text.match(/\b[A-Z]{2,}\b/g) ?? []).filter((w) => scored(w).length > 0);
-        if (/tripled|doubles|run through|×12|hits the ×|crosses a ×/.test(c.text)) {
+        if (/tripled|doubles|run through|multiplies|×12|hits the ×|crosses a ×/.test(c.text)) {
           expect(named.length, c.text).toBeGreaterThan(0);
           for (const w of named) expect(scored(w).some((s) => s.bonus !== undefined), `${w}, turn ${i + 1}`).toBe(true);
         }
@@ -79,7 +97,7 @@ describe("callouts", () => {
     const words = ["one", "two", "three", "four"];
     CALLOUTS.forEach((callouts, i) => {
       for (const c of callouts) {
-        const said = c.text.match(/\b(one|two|three|four) separate places\b/);
+        const said = c.text.toLowerCase().match(/\b(one|two|three|four) separate places\b/);
         if (said === null) continue;
         // Groups of this move's tiles, joined where they sit side by side.
         const left = [...SCRIPT[i].placements];
@@ -97,7 +115,7 @@ describe("callouts", () => {
         expect(words[groups - 1], `turn ${i + 1}`).toBe(said[1]);
       }
     });
-    expect(CALLOUTS[10].some((c) => c.text.includes("three separate places"))).toBe(true);
+    expect(CALLOUTS[10].some((c) => c.text.toLowerCase().includes("three separate places"))).toBe(true);
   });
 
   test("names the right people", () => {
@@ -110,7 +128,7 @@ describe("callouts", () => {
   });
 
   test("each rule is introduced", () => {
-    const text = [...all.map((c) => c.text), BLANK_HINT, REPLAY_NOTE.text].join(" ").toLowerCase();
+    const text = [...all.map((c) => c.text), BLANK_HINT, REPLAY_NOTE.text].map(plain).join(" ").toLowerCase();
     for (const w of [
       "touches",
       "×3",
