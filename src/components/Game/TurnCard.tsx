@@ -10,6 +10,8 @@ interface TurnCardProps {
   words?: readonly string[];
   /** What the play scored; shown once every spot is down. */
   points?: number;
+  /** Something the player says about their move (the tutorial's opponents do, now and then). */
+  quip?: string;
   /** Laid over the rack, which stays underneath, hidden. */
   overRack: boolean;
   onSkip: () => void;
@@ -23,7 +25,7 @@ interface TurnCardProps {
  * Who just played, what it made and what it scored, in the rack's place while
  * somebody else's play is being shown, a spot at a time.
  */
-export function TurnCard({ name, seat, words, points, overRack, onSkip, skipRef, onPointerDown, onFocus, onBlur }: TurnCardProps) {
+export function TurnCard({ name, seat, words, points, quip, overRack, onSkip, skipRef, onPointerDown, onFocus, onBlur }: TurnCardProps) {
   return (
     <div
       // One element for the whole run of steps, not one per step: it
@@ -53,6 +55,7 @@ export function TurnCard({ name, seat, words, points, overRack, onSkip, skipRef,
       {words !== undefined && words.length > 0 && <span className={styles.recapWords}>{words.join(", ")}</span>}
       {/* The points are their own last step, once every spot is down. */}
       {points !== undefined && <span className={styles.recapPoints}>+{points}</span>}
+      {quip !== undefined && <span className={styles.recapQuip}>“{quip}”</span>}
     </div>
   );
 }

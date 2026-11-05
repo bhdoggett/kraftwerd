@@ -271,6 +271,15 @@
   opacity: 0.8;
 }
 
+/* A line from the player, on its own row under the play. */
+.recapQuip {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: var(--text-sm);
+  font-style: italic;
+  opacity: 0.85;
+}
+
 .rackSlot {
   position: relative;
 }

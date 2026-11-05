@@ -39,6 +39,8 @@ interface BoardProps {
   badCells?: ReadonlySet<string>;
   /** Squares played while you were away, pointed out as your turn opens. */
   recentCells?: ReadonlySet<string>;
+  /** Squares the tutorial is talking about right now, lit until it stops. */
+  spotCells?: ReadonlySet<string>;
   /**
    * Where each tile in hand is meant to go, drawn faintly over the square (the
    * tutorial's hint). Not drawn where a tile is already staged. A blank's
@@ -94,6 +96,7 @@ export function Board({
   goodCells,
   badCells,
   recentCells,
+  spotCells,
   ghosts,
   onPlace,
   onPickUp,
@@ -471,6 +474,7 @@ export function Board({
       if (goodCells?.has(k)) classes.push(styles.inWord);
       if (badCells?.has(k)) classes.push(styles.inBadWord);
       if (recentCells?.has(k)) classes.push(styles.recent);
+      if (spotCells?.has(k)) classes.push(styles.spot);
       if (awaiting) classes.push(styles.tile, styles.awaiting);
       if (empty && !awaiting) classes.push(styles.open);
       // Single-use: gated on `empty`, so the mark is simply gone for good
@@ -501,6 +505,7 @@ export function Board({
           // has a letter it scores like any tile, so it looks like any tile.
           data-face={awaiting ? "blank" : undefined}
           data-staged={stage === undefined ? undefined : ""}
+          data-spot={spotCells?.has(k) ? "" : undefined}
           data-pos={k}
           tabIndex={k === cursor ? 0 : -1}
           onFocus={() => setCursor(k)}

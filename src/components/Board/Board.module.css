@@ -463,6 +463,27 @@
   animation: recent-play 800ms ease-out 4;
 }
 
+/*
+ * A square the tutorial is talking about: an accent ring breathing at the
+ * shared pulse rate for as long as the hint is up.
+ */
+.spot::after {
+  content: "";
+  grid-area: cell;
+  align-self: stretch;
+  justify-self: stretch;
+  z-index: 3;
+  border: 3px solid var(--accent);
+  pointer-events: none;
+  animation: spot-pulse var(--pulse) ease-in-out infinite;
+}
+
+@keyframes spot-pulse {
+  50% {
+    border-color: transparent;
+  }
+}
+
 @keyframes recent-play {
   from {
     border-color: var(--cell-empty);
@@ -585,6 +606,10 @@
   }
 
   .ghost {
+    animation: none;
+  }
+
+  .spot::after {
     animation: none;
   }
 
