@@ -154,7 +154,6 @@ export function Bubble({
   return (
     <div
       ref={ref}
-      role="status"
       className={[styles.bubble, tone === "error" ? styles.bubbleError : ""].join(" ")}
       data-side={placed?.side}
       data-placed={placed === null ? undefined : ""}
@@ -166,10 +165,13 @@ export function Bubble({
           : ({ left: placed.left, top: placed.top, "--arrow": `${placed.arrow}px` } as CSSProperties)
       }
     >
-      <span>
-        <Rich text={text} />
+      {/* Only the words are announced, not the buttons. */}
+      <span role="status">
+        <span>
+          <Rich text={text} />
+        </span>
+        {cell !== null && <SrOnly>{` At ${squareName(cell)}.`}</SrOnly>}
       </span>
-      {cell !== null && <SrOnly>{` At ${squareName(cell)}.`}</SrOnly>}
       {(dismissable || secondary !== undefined) && (
         <div className={styles.bubbleActions}>
           {secondary !== undefined && (

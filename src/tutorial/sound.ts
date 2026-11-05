@@ -1,7 +1,8 @@
 /**
  * The tutorial's two sounds, made on the spot with Web Audio (no files): a
- * soft click as a tile lands, and a chime when a move scores. Off until the
- * player turns them on; the choice is kept on this device.
+ * soft click as a tile lands, and a chime when a move scores, plus a short
+ * buzz for a big moment on a phone. Off until the player turns them on; the
+ * one switch covers both, and the choice is kept on this device.
  */
 const KEY = "kraftwerd:tutorial-sound";
 
@@ -26,6 +27,8 @@ let context: AudioContext | null = null;
 function audio(): AudioContext | null {
   if (typeof window === "undefined" || typeof window.AudioContext === "undefined") return null;
   context ??= new window.AudioContext();
+  // iOS starts it suspended until a gesture asks for sound.
+  if (context.state === "suspended") void context.resume();
   return context;
 }
 
@@ -58,8 +61,9 @@ export function playChime(big = false): void {
   if (big) tone(1320, 0.16, 0.4, 0.07);
 }
 
-/** A short buzz on a phone that has one, for a big moment. */
+/** A short buzz on a phone that has one, for a big moment (when sound is on). */
 export function buzz(): void {
+  if (!soundOn()) return;
   try {
     navigator.vibrate?.(25);
   } catch {

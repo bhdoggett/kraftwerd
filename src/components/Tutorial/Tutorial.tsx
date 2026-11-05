@@ -177,7 +177,12 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     // Asked, as in a game: the picker opens with the wanted letter lit.
     nameBlank: () => null,
     refuse: (why) => setRefusal(why),
-    clearError: () => setError(null),
+    // Called wherever staging changes: the idle clock starts again too, so a
+    // nudge always waits its full time.
+    clearError: () => {
+      setError(null);
+      setIdleAt(null);
+    },
   });
   const { pending, blankAt, setBlankAt } = staging;
 
@@ -385,7 +390,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     setTurn(TOTAL);
     setPhase("over");
     forgetTurn();
-    recordStats((s) => ({ ...s, skipped: s.skipped + 1 }));
+    recordStats((s) => ({ ...s, skipped: s.skipped + 1, furthest: Math.max(s.furthest, turn) }));
   }
 
   // An opponent's move lands after a short pause and is shown a moment;

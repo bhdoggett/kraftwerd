@@ -56,7 +56,9 @@ const rack = () => within(document.querySelector<HTMLElement>("[data-rack]")!);
 const rackLetters = () => rack().queryAllByRole("button", { name: /^[A-Z]$/ });
 
 /** The words of every bubble on screen. */
-const bubbles = () => screen.queryAllByRole("status").map((b) => b.querySelector("span")?.textContent);
+const bubbles = () => screen.queryAllByRole("status").map((b) => b.firstElementChild?.textContent);
+/** The bubble around a live region: where its placement and buttons are. */
+const bubbleOf = (status: HTMLElement) => status.parentElement!;
 const said = (...texts: string[]) => texts.map(plain);
 
 /** The turn card's text, while an opponent's move is on it. */
@@ -100,7 +102,7 @@ function stageTurn(turn: number) {
 function playMove(turn: number) {
   stageTurn(turn);
   const note = screen.queryAllByRole("status").find((b) => b.textContent?.startsWith("This panel adds up"));
-  if (note !== undefined) fireEvent.click(within(note).getByRole("button", { name: "Got it" }));
+  if (note !== undefined) fireEvent.click(within(bubbleOf(note)).getByRole("button", { name: "Got it" }));
   fireEvent.click(button("Play"));
 }
 
@@ -351,7 +353,7 @@ describe("the tutorial", () => {
     stage("B", 8, 10);
     fireEvent.click(button("Play"));
     expect(bubbles()).toEqual(["The B goes on the glowing square one square right."]);
-    expect(screen.getByRole("status").getAttribute("data-points-at")).toBe("8,10");
+    expect(bubbleOf(screen.getByRole("status")).getAttribute("data-points-at")).toBe("8,10");
     expect(square(8, 10).getAttribute("aria-label")).toMatch(/not valid/);
     expect(square(8, 10).hasAttribute("data-spot")).toBe(true);
     // Moving on takes the nudge down (two tiles down now brings the blank hint).
@@ -383,7 +385,7 @@ describe("the tutorial", () => {
     expect(bubbles()).toEqual(said(scoreHint(53)));
     // The panel is lit while the note talks about it, and only then.
     expect(screen.getByText(/This play scores/).closest("[data-lit]")).not.toBeNull();
-    expect(screen.getByRole("status").getAttribute("data-side")).not.toBe("below");
+    expect(bubbleOf(screen.getByRole("status")).getAttribute("data-side")).not.toBe("below");
     // The first press on Play only puts the note away.
     fireEvent.click(button("Play"));
     expect(bubbles()).toEqual([]);
@@ -484,14 +486,45 @@ describe("the tutorial", () => {
 
   test("the sound switch is off at first and remembers being turned on", () => {
     const first = draw();
-    expect(button("Sound off").getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(button("Sound off"));
-    expect(button("Sound on").getAttribute("aria-pressed")).toBe("true");
+    expect(button("Sound and buzz off").getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(button("Sound and buzz off"));
+    expect(button("Sound and buzz on").getAttribute("aria-pressed")).toBe("true");
     // Not a tap: the intro is still up.
     expect(bubbles()).toEqual(said(INTRO));
     first.unmount();
     draw();
-    expect(button("Sound on")).toBeTruthy();
+    expect(button("Sound and buzz on")).toBeTruthy();
+  });
+
+  test("a saved place that is not one of the player's later turns is ignored", () => {
+    for (const bad of ["0", "1", "2", "17", "99", "-3", "x"]) {
+      window.localStorage.setItem("kraftwerd:tutorial-resume", bad);
+      draw();
+      expect(bubbles(), bad).toEqual(said(INTRO));
+      cleanup();
+    }
+  });
+
+  test("odd stats on the device read as zeros", () => {
+    window.localStorage.setItem("kraftwerd:tutorial-stats", JSON.stringify({ opened: "lots", furthest: null, skipped: 2 }));
+    expect(readStats()).toEqual({ opened: 0, furthest: 0, skipped: 2, finished: 0 });
+    window.localStorage.setItem("kraftwerd:tutorial-stats", "[1,2]");
+    expect(readStats()).toEqual({ opened: 0, furthest: 0, skipped: 0, finished: 0 });
+  });
+
+  test("the idle nudge always waits its full time, even back at the same tile count", () => {
+    toTurnTwo();
+    advance(IDLE_MS);
+    expect(document.querySelector("[data-nudge]")).not.toBeNull();
+    const first = SCRIPT[1].placements[0];
+    stage(first.letter, first.x, first.y);
+    // Back to no tiles: the same count as when the nudge came, but a fresh wait.
+    fireEvent.click(square(first.x, first.y), { detail: 1 });
+    expect(document.querySelector("[data-nudge]")).toBeNull();
+    advance(IDLE_MS - 100);
+    expect(document.querySelector("[data-nudge]")).toBeNull();
+    advance(100);
+    expect(document.querySelector("[data-nudge]")).not.toBeNull();
   });
 
   test("Leave tutorial leaves", () => {

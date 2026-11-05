@@ -20,7 +20,7 @@ function layOut() {
       const [x, y] = cell.split(",").map(Number);
       return rect(x * CELL, y * CELL, CELL, CELL);
     }
-    if (this.getAttribute("role") === "status") return rect(0, 0, BUBBLE.width, BUBBLE.height);
+    if (this.getAttribute("data-points-at") !== null) return rect(0, 0, BUBBLE.width, BUBBLE.height);
     return rect(0, 0, 0, 0);
   });
 }
@@ -36,8 +36,8 @@ function drawAt(cell: string, prefer?: "above" | "below" | "left" | "right") {
       <Bubble cell={cell} text="A line" prefer={prefer} />
     </div>,
   );
-  const style = screen.getByRole("status").style;
-  return { left: parseFloat(style.left), top: parseFloat(style.top), side: screen.getByRole("status").dataset.side };
+  const bubble = screen.getByRole("status").parentElement!;
+  return { left: parseFloat(bubble.style.left), top: parseFloat(bubble.style.top), side: bubble.dataset.side };
 }
 
 afterEach(() => {

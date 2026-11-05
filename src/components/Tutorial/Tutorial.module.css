@@ -274,9 +274,10 @@
 }
 
 /* A big moment's number, rising off the square and fading. */
+/* Under the bubbles (240), so it never runs across a hint's words. */
 .flyUp {
   position: absolute;
-  z-index: 245;
+  z-index: 235;
   translate: -50% -50%;
   font-size: var(--text-xl);
   font-weight: 900;

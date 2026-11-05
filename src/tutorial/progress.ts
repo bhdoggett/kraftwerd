@@ -6,14 +6,19 @@
  * localStorage, read and written in try/catch: a blocked store just means a
  * fresh start, which is the harmless way to be wrong.
  */
+import { PLAYER_SEAT, SCRIPT } from "./script";
+
 const RESUME = "kraftwerd:tutorial-resume";
+
+/** The player's turns after their first: the only places a return can pick up. */
+const RESUMABLE = SCRIPT.flatMap((t, i) => (t.seat === PLAYER_SEAT ? [i] : [])).slice(1);
 const STATS = "kraftwerd:tutorial-stats";
 
 export function savedTurn(): number | null {
   try {
     const raw = window.localStorage.getItem(RESUME);
     const n = raw === null ? NaN : Number(raw);
-    return Number.isInteger(n) && n > 0 ? n : null;
+    return RESUMABLE.includes(n) ? n : null;
   } catch {
     return null;
   }
@@ -47,7 +52,13 @@ export function readStats(): TutorialStats {
   const none = { opened: 0, furthest: 0, skipped: 0, finished: 0 };
   try {
     const raw = window.localStorage.getItem(STATS);
-    return raw === null ? none : { ...none, ...(JSON.parse(raw) as Partial<TutorialStats>) };
+    if (raw === null) return none;
+    const read: unknown = JSON.parse(raw);
+    const field = (k: keyof TutorialStats) => {
+      const v = typeof read === "object" && read !== null ? (read as Record<string, unknown>)[k] : undefined;
+      return typeof v === "number" && Number.isFinite(v) ? v : 0;
+    };
+    return { opened: field("opened"), furthest: field("furthest"), skipped: field("skipped"), finished: field("finished") };
   } catch {
     return none;
   }

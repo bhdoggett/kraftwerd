@@ -83,7 +83,7 @@ export const LEARNED: readonly string[] = [
 
 /** Now and then an opponent says something on their turn card. */
 export const QUIPS: Readonly<Record<number, string>> = {
-  2: "Sorry, I needed that A!",
+  2: "Sorry, I needed that spot!",
   3: "Nice square. This one's mine.",
   9: "Watch this.",
   16: "One tile is all I need.",

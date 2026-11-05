@@ -24,7 +24,7 @@ export function Hud({ done, total, sound, onSound }: HudProps) {
         type="button"
         className={styles.soundButton}
         aria-pressed={sound}
-        aria-label={sound ? "Sound on" : "Sound off"}
+        aria-label={sound ? "Sound and buzz on" : "Sound and buzz off"}
         data-own-action=""
         onClick={onSound}
       >
