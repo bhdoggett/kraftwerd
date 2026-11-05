@@ -396,7 +396,7 @@
 /* A blank that has landed but has not been told its letter yet. */
 .awaiting {
   border-color: var(--pending);
-  animation: pulse 1.2s ease-in-out infinite;
+  animation: pulse var(--pulse) ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -509,7 +509,7 @@
   color: var(--seat-lit);
   opacity: 0.7;
   pointer-events: none;
-  animation: ghost-pulse 1.4s ease-in-out infinite;
+  animation: ghost-pulse var(--pulse) ease-in-out infinite;
 }
 
 /* Over a tile: the outline stays, the letter becomes a small corner badge. */
@@ -551,7 +551,7 @@
     0 0 12px 3px color-mix(in srgb, var(--tile-blank-face) 80%, transparent);
   opacity: 0;
   pointer-events: none;
-  animation: blank-glow 1.8s ease-in-out infinite;
+  animation: blank-glow var(--pulse) ease-in-out infinite;
 }
 
 @keyframes blank-glow {

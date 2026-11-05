@@ -364,7 +364,7 @@
     0 0 10px 2px color-mix(in srgb, var(--accent) 50%, transparent);
   opacity: 0;
   pointer-events: none;
-  animation: suggest-glow 1.8s ease-in-out infinite;
+  animation: suggest-glow var(--pulse) ease-in-out infinite;
 }
 
 @keyframes suggest-glow {

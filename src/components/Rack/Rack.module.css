@@ -183,7 +183,7 @@
     0 0 12px 3px color-mix(in srgb, var(--tile-blank-face) 80%, transparent);
   opacity: 0;
   pointer-events: none;
-  animation: blank-glow 1.8s ease-in-out infinite;
+  animation: blank-glow var(--pulse) ease-in-out infinite;
 }
 
 @keyframes blank-glow {
