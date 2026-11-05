@@ -53,10 +53,17 @@ let fullDictionary: Promise<Dictionary> | null = null;
  * recorded move rings green as it would in a game.
  */
 export function loadFullDictionary(): Promise<Dictionary> {
-  fullDictionary ??= import("../../shared/data/words.json").then((m) => {
-    const full = makeDictionary(m.default);
-    return { has: (word: string) => full.has(word) || tutorialDictionary.has(word) };
-  });
+  fullDictionary ??= import("../../shared/data/words.json").then(
+    (m) => {
+      const full = makeDictionary(m.default);
+      return { has: (word: string) => full.has(word) || tutorialDictionary.has(word) };
+    },
+    (err: unknown) => {
+      // Not kept: the next visit tries again.
+      fullDictionary = null;
+      throw err;
+    },
+  );
   return fullDictionary;
 }
 
