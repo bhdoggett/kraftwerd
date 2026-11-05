@@ -39,7 +39,7 @@ import { Rack, type Selection } from "../Rack/Rack";
 import { Scoreboard } from "../Scoreboard/Scoreboard";
 import { Modal } from "../Modal/Modal";
 import { headline } from "../GameOver/headline";
-import { changesNothing, useTileStaging } from "../Game/useTileStaging";
+import { changesNothing, useTileStaging, type Staged } from "../Game/useTileStaging";
 import { PlayPanel, ScoreBadge } from "../Game/PlayPanel";
 import { TurnCard } from "../Game/TurnCard";
 import { BlankPicker } from "../Game/BlankPicker";
@@ -404,6 +404,25 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
     else advance();
   }
 
+  /** From the player's third move on, they may have the tiles laid for them. */
+  const canAutoPlace = placing && turn >= PLAYER_TURNS[2] && feedback?.kind !== "ready";
+
+  /** Every tile of the move on its ghost, from the rack, as if dragged there. */
+  function autoPlace() {
+    if (!placing) return;
+    const used = new Set<number>();
+    const laid: Staged[] = step.placements.map((g) => {
+      if (g.isBlank) return { x: g.x, y: g.y, letter: g.letter, isBlank: true, from: { kind: "blank" } };
+      const index = rack.letters.findIndex((l, i) => l === g.letter && !used.has(i));
+      used.add(index);
+      return { x: g.x, y: g.y, letter: g.letter, isBlank: false, from: { kind: "letter", index } };
+    });
+    setBlankAt(null);
+    staging.setPending(laid);
+    setError(null);
+    setHand(false);
+  }
+
   function skipToEnd() {
     staging.recallAll();
     setTurn(TOTAL);
@@ -546,6 +565,7 @@ export function Tutorial({ onLeave, onNewGame }: TutorialProps) {
             done={movesDone}
             total={PLAYER_TURNS.length}
             sound={sound}
+            onAutoPlace={canAutoPlace ? autoPlace : undefined}
             onSound={() => {
               setSoundOn(!sound);
               setSound(!sound);

@@ -556,6 +556,29 @@ describe("the tutorial", () => {
     }
   });
 
+  test("from the third move a button lays the tiles; Play then plays them", () => {
+    draw();
+    tapAway();
+    // Not on the first two moves.
+    playTurns(0, 1);
+    expect(screen.queryByRole("button", { name: "Place tiles for me" })).toBeNull();
+    playTurns(1, 4);
+    expect(screen.queryByRole("button", { name: "Place tiles for me" })).toBeNull();
+    playTurns(4, OFFER.turn);
+    // The third move: lay one by hand, then let the button do the rest.
+    const first = SCRIPT[OFFER.turn].placements[0];
+    stage(first.letter, first.x, first.y);
+    fireEvent.click(button("Place tiles for me"));
+    for (const p of SCRIPT[OFFER.turn].placements) {
+      expect(square(p.x, p.y).getAttribute("aria-label")).toMatch(new RegExp(`^${p.letter}, your tile`));
+    }
+    expect(rackLetters()).toHaveLength(rackAt(OFFER.turn).letters.length - SCRIPT[OFFER.turn].placements.filter((p) => !p.isBlank).length);
+    // All down: the button goes, and Play plays the move.
+    expect(screen.queryByRole("button", { name: "Place tiles for me" })).toBeNull();
+    fireEvent.click(button("Play"));
+    expect(bubbles()).toEqual(said(CALLOUTS[OFFER.turn][0].text));
+  });
+
   test("Leave tutorial leaves", () => {
     const { onLeave } = draw();
     fireEvent.click(button("Leave tutorial"));
