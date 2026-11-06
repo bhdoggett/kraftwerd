@@ -26,6 +26,5 @@
 }
 
 .secondary {
-  composes: button from "../Button/Button.module.css";
-  background: transparent;
+  composes: secondary from "../Button/Button.module.css";
 }
