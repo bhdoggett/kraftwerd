@@ -20,8 +20,8 @@ interface BubbleProps {
   tone?: "note" | "error";
   /**
    * Shows a "Got it" button, so it is plain how to put it away. While the
-   * tutorial waits for a tap, the press is handled by its tap listener like a
-   * tap anywhere else; otherwise `onDismiss` handles it.
+   * tutorial waits for a tap, the press is handled by its tap listener, which
+   * takes a bubble down on this button alone; otherwise `onDismiss` handles it.
    */
   dismissable?: boolean;
   onDismiss?: () => void;
@@ -185,7 +185,13 @@ export function Bubble({
             </button>
           )}
           {dismissable && (
-            <button ref={button} type="button" className={styles.bubbleButton} onClick={onDismiss}>
+            <button
+              ref={button}
+              type="button"
+              className={styles.bubbleButton}
+              data-bubble-dismiss=""
+              onClick={onDismiss}
+            >
               {dismissLabel}
             </button>
           )}

@@ -244,21 +244,36 @@
   }
 }
 
-/* Small to look at, a full 44px to press, like the sound switch. */
+/*
+ * A pill in the accent colour, so it reads as a button and not a footnote.
+ * It draws at the row's 28px; the ::before pads the press target out to
+ * 44px without making the row taller.
+ */
 .autoPlace {
-  min-height: 44px;
-  margin: -8px 0 -8px var(--space-1);
-  padding: 0 var(--space-2);
-  border: 0;
-  background: transparent;
+  position: relative;
+  min-height: 28px;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
   color: var(--accent);
   font: inherit;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
   white-space: nowrap;
   cursor: pointer;
+}
+
+.autoPlace::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
+
+.autoPlace:hover {
+  background: var(--accent);
+  color: var(--surface-raised);
 }
 
 .dots {

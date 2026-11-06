@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { BLANK_HINT, CALLOUTS, INTRO, OFFER, plain, REPLAY_NOTE, scoreHint } from "../../tutorial/coach";
+import { BLANK_HINT, CALLOUTS, INTRO, MULTIPLIER_NOTE, OFFER, plain, REPLAY_NOTE, REPLAY_NOTES, scoreHint } from "../../tutorial/coach";
 import { rackAt } from "../../tutorial/model";
 import { IDLE_MS, LEAD_MS, SHOW_MS } from "../../tutorial/pace";
 import { readStats } from "../../tutorial/progress";
@@ -45,8 +45,14 @@ function draw() {
 
 const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
 
-/** A tap somewhere off everything: what takes a bubble down. */
-const tapAway = () => fireEvent.click(document.body);
+/** A tap somewhere off everything: what hurries an opponent's move, and leaves a bubble up. */
+const tapOff = () => fireEvent.click(document.body);
+
+/** The tap that moves the tutorial on: a bubble's own button if one is up, else a tap off everything. */
+const tapAway = () => {
+  const own = document.querySelector<HTMLElement>("[data-bubble-dismiss]");
+  fireEvent.click(own ?? document.body);
+};
 
 const button = (name: string | RegExp) => screen.getByRole("button", { name });
 
@@ -67,7 +73,7 @@ const card = () => screen.queryByRole("button", { name: "Skip the replay" })?.pa
 /** An opponent's move: the pause, then landed and shown. The first stack waits for Got it. */
 function letPlay(turn: number) {
   advance(LEAD_MS);
-  if (turn === REPLAY_NOTE.turn) fireEvent.click(button("Got it"));
+  if (REPLAY_NOTES.some((n) => n.turn === turn)) fireEvent.click(button("Got it"));
   advance(SHOW_MS);
 }
 
@@ -175,6 +181,18 @@ describe("the tutorial", () => {
     expect(screen.getByText("Your turn")).toBeTruthy();
   });
 
+  test("the first ×12 holds Isolde's move until Got it", () => {
+    toTurnTwo();
+    playTurns(1, MULTIPLIER_NOTE.turn);
+    advance(LEAD_MS);
+    expect(bubbles()).toEqual(said(MULTIPLIER_NOTE.text));
+    advance(20_000);
+    tapOff();
+    expect(bubbles()).toEqual(said(MULTIPLIER_NOTE.text));
+    fireEvent.click(button("Got it"));
+    expect(bubbles()).toEqual([]);
+  });
+
   test("the first stack holds Rostam's move until Got it, even when hurried", () => {
     toTurnTwo();
     playMove(1);
@@ -219,15 +237,18 @@ describe("the tutorial", () => {
     expect(screen.getByText("Rostam's turn")).toBeTruthy();
   });
 
-  test("starting a drag takes a callout down, and counts once", () => {
+  test("a callout stays up through taps and drags elsewhere, and goes on its own button", () => {
     toTurnTwo();
     playMove(1);
-    expect(bubbles()).toHaveLength(1);
+    expect(bubbles()).toEqual(said(CALLOUTS[1][0].text));
+    // A tap on the way to scrolling down to the scores, and a press on the rack.
+    tapOff();
     fireEvent.pointerDown(rackLetters()[0], { pointerId: 1, clientX: 10, clientY: 10 });
     fireEvent.pointerUp(window, { pointerId: 1 });
-    expect(bubbles()).toEqual([]);
     fireEvent.click(rackLetters()[0]);
-    expect(card()).toBeNull();
+    expect(bubbles()).toEqual(said(CALLOUTS[1][0].text));
+    tapAway();
+    expect(bubbles()).toEqual([]);
     expect(screen.getByText("Rostam's turn")).toBeTruthy();
   });
 
@@ -256,7 +277,7 @@ describe("the tutorial", () => {
     expect(bubbles()).toEqual([]);
   });
 
-  test("the blank hint goes on Got it, a tap anywhere, or a drag", () => {
+  test("the blank hint goes on Got it or a drag, not a tap elsewhere", () => {
     const twoDown = () => {
       toTurnTwo();
       stage("A", 7, 9);
@@ -268,8 +289,8 @@ describe("the tutorial", () => {
     expect(bubbles()).toEqual([]);
     cleanup();
     twoDown();
-    tapAway();
-    expect(bubbles()).toEqual([]);
+    tapOff();
+    expect(bubbles()).toEqual(said(BLANK_HINT));
     cleanup();
     twoDown();
     fireEvent.pointerDown(rackLetters()[0], { pointerId: 1, clientX: 10, clientY: 10 });
@@ -553,27 +574,26 @@ describe("the tutorial", () => {
     }
   });
 
-  test("from the third move a button lays the tiles; Play then plays them", () => {
+  test("from the second move a button lays the tiles; Play then plays them", () => {
     draw();
     tapAway();
-    // Not on the first two moves.
+    // Not on the first move.
     playTurns(0, 1);
     expect(screen.queryByRole("button", { name: "Place tiles for me" })).toBeNull();
-    playTurns(1, 4);
-    expect(screen.queryByRole("button", { name: "Place tiles for me" })).toBeNull();
-    playTurns(4, OFFER.turn);
-    // The third move: lay one by hand, then let the button do the rest.
-    const first = SCRIPT[OFFER.turn].placements[0];
+    const second = 4;
+    playTurns(1, second);
+    // The second move: lay one by hand, then let the button do the rest.
+    const first = SCRIPT[second].placements[0];
     stage(first.letter, first.x, first.y);
     fireEvent.click(button("Place tiles for me"));
-    for (const p of SCRIPT[OFFER.turn].placements) {
+    for (const p of SCRIPT[second].placements) {
       expect(square(p.x, p.y).getAttribute("aria-label")).toMatch(new RegExp(`^${p.letter}, your tile`));
     }
-    expect(rackLetters()).toHaveLength(rackAt(OFFER.turn).letters.length - SCRIPT[OFFER.turn].placements.filter((p) => !p.isBlank).length);
+    expect(rackLetters()).toHaveLength(rackAt(second).letters.length - SCRIPT[second].placements.filter((p) => !p.isBlank).length);
     // All down: the button goes, and Play plays the move.
     expect(screen.queryByRole("button", { name: "Place tiles for me" })).toBeNull();
     fireEvent.click(button("Play"));
-    expect(bubbles()).toEqual(said(CALLOUTS[OFFER.turn][0].text));
+    expect(bubbles()).toEqual(said(CALLOUTS[second][0].text));
   });
 
   test("while a guest account is made for the real game, the button says so", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { BOARD_SIZE, PLAYER_SEAT, SCRIPT, SEAT_NAMES } from "./script";
-import { BLANK_HINT, CALLOUTS, CLOSING, INTRO, LEARNED, OFFER, plain, REPLAY_NOTE, scoreHint, welcomeBack } from "./coach";
+import { BLANK_HINT, calloutCells, CALLOUTS, CLOSING, INTRO, LEARNED, MULTIPLIER_NOTE, OFFER, plain, REPLAY_NOTE, REPLAY_NOTES, scoreHint, welcomeBack } from "./coach";
 import { factsFor, standingsAfter, tilesAfter } from "./model";
 
 const all = CALLOUTS.flat().map((c) => ({ ...c, text: plain(c.text) }));
@@ -17,7 +17,7 @@ describe("callouts", () => {
   });
 
   test("each hint is short: about 90 characters, two sentences at most", () => {
-    const hints = [...all.map((c) => c.text), REPLAY_NOTE.text, BLANK_HINT, INTRO, scoreHint(53), OFFER.text, welcomeBack(3, 6)];
+    const hints = [...all.map((c) => c.text), REPLAY_NOTE.text, MULTIPLIER_NOTE.text, BLANK_HINT, INTRO, scoreHint(53), OFFER.text, welcomeBack(3, 6)];
     for (const raw of hints) {
       const text = plain(raw);
       expect(text.length, text).toBeLessThanOrEqual(90);
@@ -40,10 +40,11 @@ describe("callouts", () => {
     expect(OFFER.turn).toBe(third);
   });
 
-  test("each points at a square with a tile on it once the move is down", () => {
+  test("each points at a square with a tile on it once the move is down, or at none", () => {
     CALLOUTS.forEach((callouts, i) => {
       const after = new Set(tilesAfter(i + 1).map((t) => `${t.x},${t.y}`));
       for (const c of callouts) {
+        if (c.cell === null) continue;
         const [x, y] = c.cell.split(",").map(Number);
         expect(x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE, c.cell).toBe(true);
         expect(after.has(c.cell), `turn ${i + 1}: ${c.cell}`).toBe(true);
@@ -92,29 +93,22 @@ describe("callouts", () => {
     expect(landing?.letter).toBe("K");
   });
 
-  test("a callout counting the places a move went down counts them right", () => {
-    const words = ["one", "two", "three", "four"];
-    CALLOUTS.forEach((callouts, i) => {
-      for (const c of callouts) {
-        const said = c.text.toLowerCase().match(/\b(one|two|three|four) separate places\b/);
-        if (said === null) continue;
-        // Groups of this move's tiles, joined where they sit side by side.
-        const left = [...SCRIPT[i].placements];
-        let groups = 0;
-        while (left.length > 0) {
-          groups++;
-          const queue = [left.pop()!];
-          while (queue.length > 0) {
-            const p = queue.pop()!;
-            for (let j = left.length - 1; j >= 0; j--) {
-              if (Math.abs(left[j].x - p.x) + Math.abs(left[j].y - p.y) === 1) queue.push(...left.splice(j, 1));
-            }
-          }
-        }
-        expect(words[groups - 1], `turn ${i + 1}`).toBe(said[1]);
-      }
-    });
-    expect(CALLOUTS[10].some((c) => c.text.toLowerCase().includes("three separate places"))).toBe(true);
+  test("the multiplier note is the first word through two multipliers, and its sums are right", () => {
+    const first = SCRIPT.findIndex((_, i) => factsFor(i).score.words.some((w) => (w.bonus ?? 1) >= 12));
+    expect(MULTIPLIER_NOTE.turn).toBe(first);
+    expect(SCRIPT[first].seat).not.toBe(PLAYER_SEAT);
+    const word = factsFor(first).score.words.find((w) => w.word === "REFORMED");
+    expect(word).toMatchObject({ bonus: 12, points: 96 });
+    expect(SCRIPT[first].placements.some((p) => `${p.x},${p.y}` === MULTIPLIER_NOTE.cell)).toBe(true);
+  });
+
+  test("a line about the game rather than a square points at nothing", () => {
+    const unpointed = CALLOUTS.flat().filter((c) => c.cell === null).map((c) => plain(c.text));
+    expect(unpointed).toEqual([
+      expect.stringMatching(/she's out/),
+      expect.stringMatching(/^The bag is empty/),
+      expect.stringMatching(/you're out too/),
+    ]);
   });
 
   test("names the right people", () => {
@@ -129,10 +123,8 @@ describe("callouts", () => {
   test("each rule is introduced", () => {
     const text = [...all.map((c) => c.text), BLANK_HINT, REPLAY_NOTE.text].map(plain).join(" ").toLowerCase();
     for (const w of [
-      "touches",
       "×3",
       "×4",
-      "pays once",
       "3×3",
       "33",
       "last tile",
@@ -140,8 +132,9 @@ describe("callouts", () => {
       "2 tiles at most",
       "blank",
       "3 for the whole game",
-      "+5",
-      "flat +5",
+      "5+ letters",
+      "5 point bonus",
+      "doesn't multiply the bonus",
       "out",
       "skipped",
       "bag is empty",
@@ -158,5 +151,20 @@ describe("callouts", () => {
     const seats = [...standingsAfter(SCRIPT.length).seats].sort((a, b) => b.score - a.score);
     for (const s of seats) expect(CLOSING).toContain(String(s.score));
     expect(CLOSING).toContain(`${SEAT_NAMES[seats[0].seat]} wins with ${seats[0].score}`);
+  });
+
+  test("a callout lights every tile of each word it names", () => {
+    const named = [
+      ...CALLOUTS.flatMap((cs, turn) => cs.map((c) => ({ turn, c }))),
+      ...REPLAY_NOTES.map((c) => ({ turn: c.turn, c })),
+    ].filter(({ c }) => c.words !== undefined);
+    expect(named.length).toBeGreaterThanOrEqual(7);
+    for (const { turn, c } of named) {
+      const lit = calloutCells(turn, c);
+      const letters = c.words!.reduce((n, w) => n + w.length, 0);
+      // Words through the same square share it: at least each word's own tiles, less the overlaps.
+      expect(lit.length, c.text).toBeGreaterThanOrEqual(Math.max(...c.words!.map((w) => w.length)));
+      expect(lit.length, c.text).toBeGreaterThanOrEqual(letters - (c.words!.length - 1));
+    }
   });
 });

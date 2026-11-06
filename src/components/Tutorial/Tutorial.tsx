@@ -13,12 +13,13 @@ import {
 } from "../../tutorial/model";
 import {
   BLANK_HINT,
+  calloutCells,
   CALLOUTS,
   CLOSING,
   INTRO,
   LEARNED,
   OFFER,
-  REPLAY_NOTE,
+  REPLAY_NOTES,
   scoreHint,
   welcomeBack,
 } from "../../tutorial/coach";
@@ -158,8 +159,10 @@ export function Tutorial({ onLeave, onNewGame, dealing = false, dealFailed = fal
   const ghosts = placing ? step.placements : [];
   /** An opponent's move, landed and on the turn card. */
   const showing = phase === "watch" && landed && step !== undefined;
-  /** The first stack by another player holds their turn until it is read. */
-  const noting = showing && !noteRead && turn === REPLAY_NOTE.turn;
+  /** A move by another player worth a note (the first stack, the first ×12)
+      holds their turn until the note is read. */
+  const replayNote = REPLAY_NOTES.find((n) => n.turn === turn);
+  const noting = showing && !noteRead && replayNote !== undefined;
 
   /** How many turns are on the board (and in the scores). */
   const done = phase === "shown" || showing ? turn + 1 : Math.min(turn, TOTAL);
@@ -373,8 +376,8 @@ export function Tutorial({ onLeave, onNewGame, dealing = false, dealFailed = fal
   /** The squares the tutorial is talking about right now, lit on the board. */
   const spotCells = (() => {
     const cells = new Set<string>();
-    if (shownCallout !== undefined) cells.add(shownCallout.cell);
-    if (noting) cells.add(REPLAY_NOTE.cell);
+    if (shownCallout !== undefined) for (const c of calloutCells(turn, shownCallout)) cells.add(c);
+    if (noting) for (const c of calloutCells(turn, replayNote)) cells.add(c);
     if (error?.cell != null) cells.add(error.cell);
     if (nudgeCell !== null) cells.add(nudgeCell);
     return cells.size > 0 ? cells : undefined;
@@ -407,8 +410,8 @@ export function Tutorial({ onLeave, onNewGame, dealing = false, dealFailed = fal
     else advance();
   }
 
-  /** From the player's third move on, they may have the tiles laid for them. */
-  const canAutoPlace = placing && turn >= PLAYER_TURNS[2] && feedback?.kind !== "ready";
+  /** From the player's second move on, they may have the tiles laid for them. */
+  const canAutoPlace = placing && turn >= PLAYER_TURNS[1] && feedback?.kind !== "ready";
 
   /** Every tile of the move on its ghost, from the rack, as if dragged there. */
   function autoPlace() {
@@ -450,12 +453,13 @@ export function Tutorial({ onLeave, onNewGame, dealing = false, dealFailed = fal
   /** Set when a press on the rack already counted as the tap, so its click does not count again. */
   const pressCounted = useRef(false);
 
-  // A tap anywhere, or the start of a drag from the rack, takes down the
-  // intro, a callout or a hint and lets the game go on; during an opponent's
-  // turn it hurries their move along, but stops on the stack note if it has
-  // not been read. A tap is a click, so a finger scrolling the page takes
-  // nothing down; a button with its own job (Skip, the sound switch) is left
-  // to do it.
+  // A bubble's own button takes it down and lets the game go on: the intro,
+  // a replay note, a callout or a hint. A tap anywhere else leaves it up --
+  // some need the page scrolled to make sense of, and a tap on the way to
+  // scrolling took them down unread. The blank hint also goes once a drag
+  // starts from the rack, since that is what it asks for. With no bubble up,
+  // during an opponent's turn, a tap anywhere hurries their move along. A
+  // button with its own job (Skip, the sound switch) is left to do it.
   /** A tap, while the tutorial waits for one: what it moves on. */
   const tap = useEffectEvent(() => {
     if (phase === "intro") {
@@ -471,6 +475,15 @@ export function Tutorial({ onLeave, onNewGame, dealing = false, dealFailed = fal
     else if (scoreHintShown) setScoreHintRead(true);
   });
   const waitsForTap = phase === "intro" || phase === "shown" || phase === "watch" || blankHintShown || scoreHintShown;
+  /** Whether a bubble is up, so only its own button moves the tutorial on. */
+  const bubbleUp = phase === "intro" || phase === "shown" || noting || blankHintShown || scoreHintShown;
+  /** Whether a press or click on this target counts as the tap. */
+  const counts = useEffectEvent((target: EventTarget | null, from: "rack" | "click") => {
+    if (!bubbleUp) return true;
+    if (!(target instanceof Element)) return false;
+    if (from === "rack") return blankHintShown;
+    return target.closest("[data-bubble-dismiss]") !== null;
+  });
   useEffect(() => {
     if (!waitsForTap) return;
     // A press counted before this listener was up says nothing about the next click.
@@ -478,12 +491,13 @@ export function Tutorial({ onLeave, onNewGame, dealing = false, dealFailed = fal
     const ownAction = (e: Event) => e.target instanceof Element && e.target.closest("[data-own-action]") !== null;
     const press = (e: PointerEvent) => {
       // Every click starts with a press, so this is where a stale mark is cleared.
-      pressCounted.current = e.target instanceof Element && e.target.closest("[data-rack]") !== null;
+      pressCounted.current =
+        e.target instanceof Element && e.target.closest("[data-rack]") !== null && counts(e.target, "rack");
       if (pressCounted.current) tap();
     };
     const click = (e: MouseEvent) => {
       if (pressCounted.current) pressCounted.current = false;
-      else if (!ownAction(e)) tap();
+      else if (!ownAction(e) && counts(e.target, "click")) tap();
     };
     const key = (e: KeyboardEvent) => {
       // A focused control answers Enter and Space with a click of its own.
@@ -503,7 +517,10 @@ export function Tutorial({ onLeave, onNewGame, dealing = false, dealFailed = fal
   function play() {
     if (!placing || feedback === null) return;
     // The note on the play panel is read first: this press only puts it away.
-    if (scoreHintShown) return;
+    if (scoreHintShown) {
+      setScoreHintRead(true);
+      return;
+    }
     if (feedback.kind !== "ready") {
       const at =
         feedback.kind === "offGhost" || feedback.kind === "wrongLetter"
@@ -596,7 +613,7 @@ export function Tutorial({ onLeave, onNewGame, dealing = false, dealFailed = fal
               />
             ))}
           {noting && (
-            <Bubble cell={REPLAY_NOTE.cell} text={REPLAY_NOTE.text} prefer={REPLAY_NOTE.side} dismissable />
+            <Bubble key={`note-${turn}`} cell={replayNote.cell} text={replayNote.text} prefer={replayNote.side} dismissable />
           )}
           {shownCallout !== undefined && (
             <Bubble

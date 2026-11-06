@@ -6,7 +6,7 @@ interface HudProps {
   total: number;
   sound: boolean;
   onSound: () => void;
-  /** From the player's third move: lays every tile of the move on its ghost. */
+  /** From the player's second move: lays every tile of the move on its ghost. */
   onAutoPlace?: () => void;
 }
 
@@ -14,7 +14,7 @@ interface HudProps {
  * Under the board, at the left end of the zoom buttons' row, so it never
  * covers a square: how far through the tutorial the player is (a dot a move of
  * theirs), and the switch for its sound effects (a click as a tile lands, a
- * chime when a move scores) and a phone's buzz. From the player's third
+ * chime when a move scores) and a phone's buzz. From the player's second
  * move, a button to lay the move's tiles for them.
  */
 export function Hud({ done, total, sound, onSound, onAutoPlace }: HudProps) {
